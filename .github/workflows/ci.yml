@@ -1,0 +1,49 @@
+name: PxApi CI
+
+run-name: ${{ github.event_name == 'pull_request' &&
+  format('PxApi CI for PR {0}', github.event.pull_request.number) || 
+  format('PxApi CI for {0}', github.event.head_commit.message) }}
+
+on:
+  pull_request:
+    branches:
+    - dev
+  push:
+    branches:
+    - main
+    - test
+    - dev
+  workflow_dispatch:
+
+# CI environment variable set to false to prevent warnings to cause the pipeline to fail
+env: 
+  CI: false
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        dotnet-version: ['9.x']
+        configuration: [ 'Debug' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up dotnet 
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+
+      - name: Install backend dependencies
+        run: dotnet restore
+
+      - name: Build backend
+        run: dotnet build --no-restore --verbosity normal --configuration ${{ matrix.configuration }} /p:TargetFramework=net9.0
+
+      - name: Run backend tests
+        run: dotnet test --no-restore --verbosity normal --configuration ${{ matrix.configuration }} /p:TargetFramework=net9.0
