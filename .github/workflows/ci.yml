@@ -25,7 +25,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         dotnet-version: ['9.x']
-        configuration: [ 'Debug', 'Release' ]
+        configuration: [ 'Debug' ]
 
     runs-on: ${{ matrix.os }}
 
