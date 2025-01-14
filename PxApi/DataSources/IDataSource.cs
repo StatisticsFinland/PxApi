@@ -10,6 +10,6 @@ namespace PxApi.DataSources
 
         public Task GetDatabases();
 
-        public Task GetContentgroup();
+        public Task GetContentgroup(List<string> hierarchy);
     }
 }
