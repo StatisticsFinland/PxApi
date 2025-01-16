@@ -27,3 +27,4 @@ bld/
 msbuild.log
 msbuild.err
 msbuild.wrn
+/PxApi/appsettings.json
