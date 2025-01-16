@@ -11,18 +11,24 @@ on:
 
 jobs:
   sonar:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dotnet-version: ['9.x']
+        configuration: [ 'Debug' ]
+        
+    runs-on: ${{ matrix.os }}
     if: ${{ github.actor != 'dependabot[bot]' }}
-    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+            fetch-depth: 0
 
       - name: Setup dotnet
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.x'
+            dotnet-version: '9.x'
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -45,10 +51,10 @@ jobs:
             /d:sonar.scanner.scanAll=false
 
       - name: Build backend
-        run: dotnet build --configuration Test /p:TargetFramework=net9.0
+        run: dotnet build --configuration ${{ matrix.configuration }} /p:TargetFramework=net9.0
 
       - name: Run coverage test
-        run: dotnet-coverage collect "dotnet test --configuration Test --logger trx /p:TargetFramework=net9.0" -f xml -o coverage.xml
+        run: dotnet-coverage collect "dotnet test --configuration ${{ matrix.configuration }} --logger trx /p:TargetFramework=net9.0" -f xml -o coverage.xml
         
       - name: End SonarScanner
         run: dotnet sonarscanner end /d:sonar.token=${{ secrets.SONAR_TOKEN }}
