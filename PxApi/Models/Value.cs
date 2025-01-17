@@ -1,8 +1,8 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace PxApi.Models.V1
+namespace PxApi.Models
 {
-    public class DimensionValueV1
+    public class Value
     {
         public required string Code { get; set; }
 

@@ -1,8 +1,6 @@
-﻿using Px.Utils.Models.Metadata.Enums;
-
-namespace PxApi.Models.V1
+﻿namespace PxApi.Models
 {
-    public class DimensionBaseV1
+    public class VariableBase
     {
         public required string Code { get; set; }
 

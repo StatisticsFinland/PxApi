@@ -1,13 +1,13 @@
 ﻿using Px.Utils.Models.Metadata.Enums;
 using System.Text.Json.Serialization;
 
-namespace PxApi.Models.V1
+namespace PxApi.Models
 {
-    public class DimensionV1 : DimensionBaseV1
+    public class Variable : VariableBase
     {
         public required DimensionType Type { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public required List<DimensionValueV1>? Values { get; set; }
+        public required List<Value>? Values { get; set; }
     }
 }

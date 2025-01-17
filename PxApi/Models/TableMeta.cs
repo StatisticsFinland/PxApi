@@ -1,6 +1,6 @@
-﻿namespace PxApi.Models.V1
+﻿namespace PxApi.Models
 {
-    public class TableV1
+    public class TableMeta
     {
         public required string? ID { get; set; }
 
@@ -16,10 +16,10 @@
 
         public required string LastPeriod { get; set; }
 
-        public required ContentDimensionV1 ContentDimension { get; set; }
+        public required ContentVariable ContentVariable { get; set; }
 
-        public required TimeDimensionV1 TimeDimension { get; set; }
+        public required TimeVariable TimeVariable { get; set; }
 
-        public required List<DimensionV1> ClassificatoryDimensions { get; set; }
+        public required List<Variable> ClassificatoryVariables { get; set; }
     }
 }

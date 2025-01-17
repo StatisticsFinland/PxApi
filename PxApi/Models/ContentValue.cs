@@ -1,6 +1,6 @@
-﻿namespace PxApi.Models.V1
+﻿namespace PxApi.Models
 {
-    public class ContentDimensionValueV1 : DimensionValueV1
+    public class ContentValue : Value
     {
         public required string Unit { get; set; }
 
