@@ -20,15 +20,15 @@ namespace PxApi.ModelBuilders
 
             return new TableMeta()
             {
-                Contents = GetValueByLanguage(meta.AdditionalProperties, "CONTENTS", lang),
-                Description = GetValueByLanguage(meta.AdditionalProperties, "DESCRIPTION", lang),
-                Note = GetValueByLanguage(meta.AdditionalProperties, "NOTE", lang),
+                Contents = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.CONTENTS, lang),
+                Description = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.DESCRIPTION, lang),
+                Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
                 ContentVariable = BuildContentDimensionV1(meta, urlRoot, lang),
                 TimeVariable = BuildTimeDimensionV1(meta.GetTimeDimension(), urlRoot, lang),
                 ClassificatoryVariables = dimensions,
                 FirstPeriod = meta.GetTimeDimension().Values[0].Name[lang],
                 LastPeriod = meta.GetTimeDimension().Values[^1].Name[lang],
-                ID = GetValueByLanguage(meta.AdditionalProperties, "TABLEID", lang),
+                ID = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.TABLEID, lang),
                 LastModified = meta.GetContentDimension().Values.Map(v => v.LastUpdated).Max()
             };
         }
@@ -41,7 +41,7 @@ namespace PxApi.ModelBuilders
             List<ContentValue> values = contentDim.Values
                 .Map(v =>
                 {
-                    string? source = GetValueByLanguage(v.AdditionalProperties, "SOURCE", lang) ?? tableOrDimSource;
+                    string? source = GetValueByLanguage(v.AdditionalProperties, PxFileConstants.SOURCE, lang) ?? tableOrDimSource;
                     return BuildContentDimensionValueV1(v, source, lang);
                 })
                 .ToList();
@@ -50,7 +50,7 @@ namespace PxApi.ModelBuilders
             {
                 Code = contentDim.Code,
                 Name = contentDim.Name[lang],
-                Note = GetValueByLanguage(contentDim.AdditionalProperties, "NOTE", lang),
+                Note = GetValueByLanguage(contentDim.AdditionalProperties, PxFileConstants.NOTE, lang),
                 Values = values,
                 Url = $"{urlBase}/{contentDim.Code}?lang={lang}"
             };
@@ -62,7 +62,7 @@ namespace PxApi.ModelBuilders
             {
                 Code = meta.Code,
                 Name = meta.Name[lang],
-                Note = GetValueByLanguage(meta.AdditionalProperties, "NOTE", lang),
+                Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
                 Interval = meta.Interval,
                 Size = meta.Values.Count,
                 Url = $"{urlBase}/{meta.Code}?lang={lang}",
@@ -76,7 +76,7 @@ namespace PxApi.ModelBuilders
             {
                 Code = meta.Code,
                 Name = meta.Name[lang],
-                Note = GetValueByLanguage(meta.AdditionalProperties, "NOTE", lang),
+                Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
                 Size = meta.Values.Count,
                 Type = meta.Type,
                 Url = $"{urlBase}/{meta.Code}?lang={lang}",
@@ -90,7 +90,7 @@ namespace PxApi.ModelBuilders
             {
                 Code = meta.Code,
                 Name = meta.Name[lang],
-                Note = GetValueByLanguage(meta.AdditionalProperties, "NOTE", lang),
+                Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
             };
         }
 
@@ -100,7 +100,7 @@ namespace PxApi.ModelBuilders
             {
                 Code = dimMeta.Code,
                 Name = dimMeta.Name[lang],
-                Note = GetValueByLanguage(dimMeta.AdditionalProperties, "NOTE", lang),
+                Note = GetValueByLanguage(dimMeta.AdditionalProperties, PxFileConstants.NOTE, lang),
                 LastUpdated = dimMeta.LastUpdated,
                 Unit = dimMeta.Unit[lang],
                 Precision = dimMeta.Precision,
@@ -127,8 +127,8 @@ namespace PxApi.ModelBuilders
 
         private static string GetSourceByLang(IReadOnlyMatrixMetadata meta, string lang)
         {
-            return GetValueByLanguage(meta.AdditionalProperties, "SOURCE", lang)
-                ?? GetValueByLanguage(meta.GetContentDimension().AdditionalProperties, "SOURCE", lang)
+            return GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.SOURCE, lang)
+                ?? GetValueByLanguage(meta.GetContentDimension().AdditionalProperties, PxFileConstants.SOURCE, lang)
                 ?? "";
         }
     }
