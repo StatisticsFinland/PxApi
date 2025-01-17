@@ -1,5 +1,6 @@
 ﻿using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.Dimensions;
+using Px.Utils.Models.Metadata.Enums;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata.MetaProperties;
 using PxApi.Models.V1;
@@ -8,10 +9,13 @@ namespace PxApi.ModelBuilders
 {
     public static class V1ModelBuilder
     {
-        public static TableV1 BuildTableV1(IReadOnlyMatrixMetadata meta, string lang)
+        public static TableV1 BuildTableV1(IReadOnlyMatrixMetadata meta, string urlRoot, string? lang = null)
         {
+            lang ??= meta.DefaultLanguage;
+
             List<DimensionV1> dimensions = meta.Dimensions
-                .Select(d => BuildDimensionV1(d, lang))
+                .Where(d => d.Type is not DimensionType.Time or DimensionType.Content)
+                .Select(d => BuildDimensionV1(d, urlRoot, lang))
                 .ToList();
 
             return new TableV1()
@@ -19,7 +23,9 @@ namespace PxApi.ModelBuilders
                 Contents = GetValueByLanguage(meta.AdditionalProperties, "CONTENTS", lang),
                 Description = GetValueByLanguage(meta.AdditionalProperties, "DESCRIPTION", lang),
                 Note = GetValueByLanguage(meta.AdditionalProperties, "NOTE", lang),
-                Dimensions = dimensions,
+                ContentDimension = BuildContentDimensionV1(meta, urlRoot, lang),
+                TimeDimension = BuildTimeDimensionV1(meta.GetTimeDimension(), urlRoot, lang),
+                ClassificatoryDimensions = dimensions,
                 FirstPeriod = meta.GetTimeDimension().Values[0].Name[lang],
                 LastPeriod = meta.GetTimeDimension().Values[^1].Name[lang],
                 ID = GetValueByLanguage(meta.AdditionalProperties, "TABLEID", lang),
@@ -27,51 +33,78 @@ namespace PxApi.ModelBuilders
             };
         }
 
-        public static DimensionV1 BuildDimensionV1(IReadOnlyDimension meta, string lang)
+        public static ContentDimensionV1 BuildContentDimensionV1(IReadOnlyMatrixMetadata meta, string urlBase, string lang)
+        {
+            ContentDimension contentDim = meta.GetContentDimension();
+            string? tableOrDimSource = GetSourceByLang(meta, lang);
+
+            List<ContentDimensionValueV1> values = contentDim.Values
+                .Map(v =>
+                {
+                    string? source = GetValueByLanguage(v.AdditionalProperties, "SOURCE", lang) ?? tableOrDimSource;
+                    return BuildContentDimensionValueV1(v, source, lang);
+                })
+                .ToList();
+
+            return new ContentDimensionV1()
+            {
+                Code = contentDim.Code,
+                Name = contentDim.Name[lang],
+                Note = GetValueByLanguage(contentDim.AdditionalProperties, "NOTE", lang),
+                Values = values,
+                Url = $"{urlBase}/{contentDim.Code}?lang={lang}"
+            };
+        }
+
+        public static TimeDimensionV1 BuildTimeDimensionV1(TimeDimension meta, string urlBase, string lang)
+        {
+            return new TimeDimensionV1()
+            {
+                Code = meta.Code,
+                Name = meta.Name[lang],
+                Note = GetValueByLanguage(meta.AdditionalProperties, "NOTE", lang),
+                Interval = meta.Interval,
+                Size = meta.Values.Count,
+                Url = $"{urlBase}/{meta.Code}?lang={lang}",
+                Values = meta.Values.Select(v => BuildDimensionValueV1(v, lang)).ToList()
+            };
+        }
+
+        public static DimensionV1 BuildDimensionV1(IReadOnlyDimension meta, string urlBase, string lang)
         {
             return new DimensionV1()
             {
                 Code = meta.Code,
-                Interval = meta is TimeDimension timeDimension ? timeDimension.Interval : null,
                 Name = meta.Name[lang],
                 Note = GetValueByLanguage(meta.AdditionalProperties, "NOTE", lang),
                 Size = meta.Values.Count,
                 Type = meta.Type,
-                Url = $"api/v1/meta/{meta.Code}",
+                Url = $"{urlBase}/{meta.Code}?lang={lang}",
                 Values =  meta.Values.Select(v => BuildDimensionValueV1(v, lang)).ToList()
             };
         }
 
         public static DimensionValueV1 BuildDimensionValueV1(IReadOnlyDimensionValue meta, string lang)
         {
-            if (meta is ContentDimensionValue contentDimensionValue)
-            {
-                return BuildContentDimensionValueV1(contentDimensionValue, lang);
-            }
-
             return new DimensionValueV1()
             {
                 Code = meta.Code,
                 Name = meta.Name[lang],
                 Note = GetValueByLanguage(meta.AdditionalProperties, "NOTE", lang),
-                LastUpdated = null,
-                Unit = null,
-                Precision = null,
-                Source = null
             };
         }
 
-        public static DimensionValueV1 BuildContentDimensionValueV1(ContentDimensionValue meta, string lang)
+        public static ContentDimensionValueV1 BuildContentDimensionValueV1(ContentDimensionValue dimMeta, string source, string lang)
         {
-            return new DimensionValueV1()
+            return new ContentDimensionValueV1()
             {
-                Code = meta.Code,
-                Name = meta.Name[lang],
-                Note = GetValueByLanguage(meta.AdditionalProperties, "NOTE", lang),
-                LastUpdated = meta.LastUpdated,
-                Unit = meta.Unit[lang],
-                Precision = meta.Precision,
-                Source = GetValueByLanguage(meta.AdditionalProperties, "SOURCE", lang)
+                Code = dimMeta.Code,
+                Name = dimMeta.Name[lang],
+                Note = GetValueByLanguage(dimMeta.AdditionalProperties, "NOTE", lang),
+                LastUpdated = dimMeta.LastUpdated,
+                Unit = dimMeta.Unit[lang],
+                Precision = dimMeta.Precision,
+                Source = source
             };
         }
 
@@ -90,6 +123,13 @@ namespace PxApi.ModelBuilders
             }
 
             return null;
+        }
+
+        private static string GetSourceByLang(IReadOnlyMatrixMetadata meta, string lang)
+        {
+            return GetValueByLanguage(meta.AdditionalProperties, "SOURCE", lang)
+                ?? GetValueByLanguage(meta.GetContentDimension().AdditionalProperties, "SOURCE", lang)
+                ?? "";
         }
     }
 }

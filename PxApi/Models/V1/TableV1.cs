@@ -16,6 +16,10 @@
 
         public required string LastPeriod { get; set; }
 
-        public required List<DimensionV1> Dimensions { get; set; }
+        public required ContentDimensionV1 ContentDimension { get; set; }
+
+        public required TimeDimensionV1 TimeDimension { get; set; }
+
+        public required List<DimensionV1> ClassificatoryDimensions { get; set; }
     }
 }

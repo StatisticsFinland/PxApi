@@ -1,4 +1,4 @@
-
+using Microsoft.OpenApi.Models;
 using PxApi.Configuration;
 using PxApi.DataSources;
 
@@ -26,7 +26,15 @@ namespace PxApi
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
-                app.MapOpenApi();
+                app.UseSwagger(c =>
+                {
+                    c.RouteTemplate = "{documentName}/document.json";
+                });
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/openapi/document.json", "PxApi");
+                    c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
+                });
             }
 
             app.UseHttpsRedirection();
@@ -41,10 +49,10 @@ namespace PxApi
         private static void AddServices(IServiceCollection serviceCollection)
         {
             serviceCollection.AddControllers();
-
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            serviceCollection.AddOpenApi();
-
+            serviceCollection.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("openapi", new OpenApiInfo { Title = "PxApi", Version = "v1" });
+            });
             serviceCollection.AddTransient<IDataSource, LocalFileSystemDataSource>();
         }
     }
