@@ -52,6 +52,7 @@ namespace PxApi
             serviceCollection.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("openapi", new OpenApiInfo { Title = "PxApi", Version = "v1" });
+                c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "PxApi.xml"));
             });
             serviceCollection.AddTransient<IDataSource, LocalFileSystemDataSource>();
         }

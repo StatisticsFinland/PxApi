@@ -27,12 +27,12 @@ namespace PxApi.Controllers
 
                 if (lang is not null)
                 {
-                    if (meta.AvailableLanguages.Contains(lang)) return ModelBuilder.BuildTableV1(meta, urlBase, lang);
+                    if (meta.AvailableLanguages.Contains(lang)) return ModelBuilder.BuildTableMeta(meta, urlBase, lang);
                     else return BadRequest($"The content is not available in language: {lang}");
                 }
                 else
                 {
-                    return ModelBuilder.BuildTableV1(meta, urlBase);
+                    return ModelBuilder.BuildTableMeta(meta, urlBase);
                 }
             }
             return NotFound();

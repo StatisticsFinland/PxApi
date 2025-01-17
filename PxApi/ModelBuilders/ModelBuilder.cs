@@ -9,13 +9,13 @@ namespace PxApi.ModelBuilders
 {
     public static class ModelBuilder
     {
-        public static TableMeta BuildTableV1(IReadOnlyMatrixMetadata meta, string urlRoot, string? lang = null)
+        public static TableMeta BuildTableMeta(IReadOnlyMatrixMetadata meta, string urlRoot, string? lang = null)
         {
             lang ??= meta.DefaultLanguage;
 
             List<Variable> dimensions = meta.Dimensions
                 .Where(d => d.Type is not DimensionType.Time or DimensionType.Content)
-                .Select(d => BuildDimensionV1(d, urlRoot, lang))
+                .Select(d => BuildVariable(d, urlRoot, lang))
                 .ToList();
 
             return new TableMeta()
@@ -23,8 +23,8 @@ namespace PxApi.ModelBuilders
                 Contents = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.CONTENTS, lang),
                 Description = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.DESCRIPTION, lang),
                 Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
-                ContentVariable = BuildContentDimensionV1(meta, urlRoot, lang),
-                TimeVariable = BuildTimeDimensionV1(meta.GetTimeDimension(), urlRoot, lang),
+                ContentVariable = BuildContentVariable(meta, urlRoot, lang),
+                TimeVariable = BuildTimeVariable(meta.GetTimeDimension(), urlRoot, lang),
                 ClassificatoryVariables = dimensions,
                 FirstPeriod = meta.GetTimeDimension().Values[0].Name[lang],
                 LastPeriod = meta.GetTimeDimension().Values[^1].Name[lang],
@@ -33,7 +33,7 @@ namespace PxApi.ModelBuilders
             };
         }
 
-        public static ContentVariable BuildContentDimensionV1(IReadOnlyMatrixMetadata meta, string urlBase, string lang)
+        public static ContentVariable BuildContentVariable(IReadOnlyMatrixMetadata meta, string urlBase, string lang)
         {
             ContentDimension contentDim = meta.GetContentDimension();
             string? tableOrDimSource = GetSourceByLang(meta, lang);
@@ -42,7 +42,7 @@ namespace PxApi.ModelBuilders
                 .Map(v =>
                 {
                     string? source = GetValueByLanguage(v.AdditionalProperties, PxFileConstants.SOURCE, lang) ?? tableOrDimSource;
-                    return BuildContentDimensionValueV1(v, source, lang);
+                    return BuildContentValue(v, source, lang);
                 })
                 .ToList();
 
@@ -56,7 +56,7 @@ namespace PxApi.ModelBuilders
             };
         }
 
-        public static TimeVariable BuildTimeDimensionV1(TimeDimension meta, string urlBase, string lang)
+        public static TimeVariable BuildTimeVariable(TimeDimension meta, string urlBase, string lang)
         {
             return new TimeVariable()
             {
@@ -66,11 +66,11 @@ namespace PxApi.ModelBuilders
                 Interval = meta.Interval,
                 Size = meta.Values.Count,
                 Url = $"{urlBase}/{meta.Code}?lang={lang}",
-                Values = meta.Values.Select(v => BuildDimensionValueV1(v, lang)).ToList()
+                Values = meta.Values.Select(v => BuildValue(v, lang)).ToList()
             };
         }
 
-        public static Variable BuildDimensionV1(IReadOnlyDimension meta, string urlBase, string lang)
+        public static Variable BuildVariable(IReadOnlyDimension meta, string urlBase, string lang)
         {
             return new Variable()
             {
@@ -80,11 +80,11 @@ namespace PxApi.ModelBuilders
                 Size = meta.Values.Count,
                 Type = meta.Type,
                 Url = $"{urlBase}/{meta.Code}?lang={lang}",
-                Values =  meta.Values.Select(v => BuildDimensionValueV1(v, lang)).ToList()
+                Values =  meta.Values.Select(v => BuildValue(v, lang)).ToList()
             };
         }
 
-        public static Value BuildDimensionValueV1(IReadOnlyDimensionValue meta, string lang)
+        public static Value BuildValue(IReadOnlyDimensionValue meta, string lang)
         {
             return new Value()
             {
@@ -94,7 +94,7 @@ namespace PxApi.ModelBuilders
             };
         }
 
-        public static ContentValue BuildContentDimensionValueV1(ContentDimensionValue dimMeta, string source, string lang)
+        public static ContentValue BuildContentValue(ContentDimensionValue dimMeta, string source, string lang)
         {
             return new ContentValue()
             {
