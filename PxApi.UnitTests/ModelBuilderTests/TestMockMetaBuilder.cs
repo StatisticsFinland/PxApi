@@ -57,7 +57,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             return new(defaultLang, availableLangs, dimensions, props);
         }
 
-        private static Dimension GetMockDimension(string identifier, DimensionType type)
+        internal static Dimension GetMockDimension(string identifier, DimensionType type)
         {
             MultilanguageString name = new([
                 new("fi", $"{identifier}-name.fi"),
@@ -113,7 +113,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             return new TimeDimension($"{identifier}-code", name, props, values, TimeDimensionInterval.Year);
         }
 
-        private static ContentDimension GetMockContentDimension(string identifier)
+        internal static ContentDimension GetMockContentDimension(string identifier)
         {
             MultilanguageString name = new([
                 new("fi", $"{identifier}-name.fi"),
@@ -141,7 +141,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             return new ContentDimension($"{identifier}-code", name, props, values);
         }
 
-        private static DimensionValue GetMockDimensionValue(string identifier)
+        internal static DimensionValue GetMockDimensionValue(string identifier)
         {
             MultilanguageString name = new([
                 new("fi", $"{identifier}-name.fi"),
@@ -163,7 +163,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             return new DimensionValue($"{identifier}-code", name, false, props);
         }
 
-        private static ContentDimensionValue GetMockContentValue(string identifier)
+        internal static ContentDimensionValue GetMockContentValue(string identifier)
         {
             DimensionValue value = GetMockDimensionValue(identifier);
 

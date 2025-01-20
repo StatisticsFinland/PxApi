@@ -1,4 +1,6 @@
 ﻿using Px.Utils.Models.Metadata;
+using Px.Utils.Models.Metadata.Dimensions;
+using Px.Utils.Models.Metadata.Enums;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 
@@ -79,6 +81,74 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Note, Is.EqualTo("content-note.en"));
                 Assert.That(result.Values, Has.Count.EqualTo(2));
                 Assert.That(result.Url.ToString(), Is.EqualTo("https://example.com/example-db/content-code?lang=en"));
+            });
+        }
+
+        [Test]
+        public static void BuildTimeVariableTest()
+        {
+            // Arrange
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+            Uri urlRoot = new("https://example.com/example-db/");
+            string lang = "en";
+
+            // Act
+            TimeVariable result = ModelBuilder.BuildTimeVariable(meta, urlRoot, lang);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result.Code, Is.EqualTo("time-code"));
+                Assert.That(result.Name, Is.EqualTo("time-name.en"));
+                Assert.That(result.Note, Is.EqualTo("time-note.en"));
+                Assert.That(result.Interval, Is.EqualTo(TimeDimensionInterval.Year));
+                Assert.That(result.Values, Has.Count.EqualTo(2));
+                Assert.That(result.Url.ToString(), Is.EqualTo("https://example.com/example-db/time-code?lang=en"));
+            });
+        }
+
+        [Test]
+        public static void BuildDimensionTest()
+        {
+            // Arrange
+            Dimension dimMeta = TestMockMetaBuilder.GetMockDimension("nominal", DimensionType.Nominal);
+            Uri urlRoot = new("https://example.com/example-db/");
+            string lang = "en";
+
+            // Act
+            Variable result = ModelBuilder.BuildVariable(dimMeta, urlRoot, lang);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result.Code, Is.EqualTo("nominal-code"));
+                Assert.That(result.Name, Is.EqualTo("nominal-name.en"));
+                Assert.That(result.Note, Is.EqualTo("nominal-note.en"));
+            });
+        }
+
+        [Test]
+        public static void BuildContentValueTest()
+        {
+            // Arrange
+            string source = "source";
+            string lang = "en";
+            ContentDimensionValue dimMeta = TestMockMetaBuilder.GetMockContentValue("content");
+
+            // Act
+            ContentValue result = ModelBuilder.BuildContentValue(dimMeta, source, lang);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result.Code, Is.EqualTo("content-code"));
+                // Assert.That(result.Note, Is.EqualTo("content-note.en")); TODO: Bug in Px.Utils - note is not set
+                Assert.That(result.Name, Is.EqualTo("content-name.en"));
+                Assert.That(result.Source, Is.EqualTo(source));
+                Assert.That(result.Unit, Is.EqualTo("content-unit.en"));
             });
         }
     }

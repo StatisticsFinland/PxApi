@@ -25,7 +25,7 @@ namespace PxApi.ModelBuilders
                 Description = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.DESCRIPTION, lang),
                 Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
                 ContentVariable = BuildContentVariable(meta, urlRoot, lang),
-                TimeVariable = BuildTimeVariable(meta.GetTimeDimension(), urlRoot, lang),
+                TimeVariable = BuildTimeVariable(meta, urlRoot, lang),
                 ClassificatoryVariables = dimensions,
                 FirstPeriod = meta.GetTimeDimension().Values[0].Name[lang],
                 LastPeriod = meta.GetTimeDimension().Values[^1].Name[lang],
@@ -57,17 +57,19 @@ namespace PxApi.ModelBuilders
             };
         }
 
-        public static TimeVariable BuildTimeVariable(TimeDimension meta, Uri urlBase, string lang)
+        public static TimeVariable BuildTimeVariable(IReadOnlyMatrixMetadata meta, Uri urlBase, string lang)
         {
+            TimeDimension timeDim = meta.GetTimeDimension();
+
             return new TimeVariable()
             {
-                Code = meta.Code,
-                Name = meta.Name[lang],
-                Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
-                Interval = meta.Interval,
-                Size = meta.Values.Count,
-                Url = urlBase.AddRelativePath(meta.Code).AddQueryParameters(("lang", lang)),
-                Values = meta.Values.Select(v => BuildValue(v, lang)).ToList()
+                Code = timeDim.Code,
+                Name = timeDim.Name[lang],
+                Note = GetValueByLanguage(timeDim.AdditionalProperties, PxFileConstants.NOTE, lang),
+                Interval = timeDim.Interval,
+                Size = timeDim.Values.Count,
+                Url = urlBase.AddRelativePath(timeDim.Code).AddQueryParameters(("lang", lang)),
+                Values = timeDim.Values.Select(v => BuildValue(v, lang)).ToList()
             };
         }
 
@@ -95,16 +97,16 @@ namespace PxApi.ModelBuilders
             };
         }
 
-        public static ContentValue BuildContentValue(ContentDimensionValue dimMeta, string source, string lang)
+        public static ContentValue BuildContentValue(ContentDimensionValue dimValMeta, string source, string lang)
         {
             return new ContentValue()
             {
-                Code = dimMeta.Code,
-                Name = dimMeta.Name[lang],
-                Note = GetValueByLanguage(dimMeta.AdditionalProperties, PxFileConstants.NOTE, lang),
-                LastUpdated = dimMeta.LastUpdated,
-                Unit = dimMeta.Unit[lang],
-                Precision = dimMeta.Precision,
+                Code = dimValMeta.Code,
+                Name = dimValMeta.Name[lang],
+                Note = GetValueByLanguage(dimValMeta.AdditionalProperties, PxFileConstants.NOTE, lang),
+                LastUpdated = dimValMeta.LastUpdated,
+                Unit = dimValMeta.Unit[lang],
+                Precision = dimValMeta.Precision,
                 Source = source
             };
         }
