@@ -4,12 +4,13 @@ using Px.Utils.Models.Metadata.Enums;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata.MetaProperties;
 using PxApi.Models;
+using PxApi.Utilities;
 
 namespace PxApi.ModelBuilders
 {
     public static class ModelBuilder
     {
-        public static TableMeta BuildTableMeta(IReadOnlyMatrixMetadata meta, string urlRoot, string? lang = null)
+        public static TableMeta BuildTableMeta(IReadOnlyMatrixMetadata meta, Uri urlRoot, string? lang = null)
         {
             lang ??= meta.DefaultLanguage;
 
@@ -33,7 +34,7 @@ namespace PxApi.ModelBuilders
             };
         }
 
-        public static ContentVariable BuildContentVariable(IReadOnlyMatrixMetadata meta, string urlBase, string lang)
+        public static ContentVariable BuildContentVariable(IReadOnlyMatrixMetadata meta, Uri urlBase, string lang)
         {
             ContentDimension contentDim = meta.GetContentDimension();
             string? tableOrDimSource = GetSourceByLang(meta, lang);
@@ -52,11 +53,11 @@ namespace PxApi.ModelBuilders
                 Name = contentDim.Name[lang],
                 Note = GetValueByLanguage(contentDim.AdditionalProperties, PxFileConstants.NOTE, lang),
                 Values = values,
-                Url = $"{urlBase}/{contentDim.Code}?lang={lang}"
+                Url = urlBase.AddRelativePath(contentDim.Code).AddQueryParameters(("lang", lang))
             };
         }
 
-        public static TimeVariable BuildTimeVariable(TimeDimension meta, string urlBase, string lang)
+        public static TimeVariable BuildTimeVariable(TimeDimension meta, Uri urlBase, string lang)
         {
             return new TimeVariable()
             {
@@ -65,12 +66,12 @@ namespace PxApi.ModelBuilders
                 Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
                 Interval = meta.Interval,
                 Size = meta.Values.Count,
-                Url = $"{urlBase}/{meta.Code}?lang={lang}",
+                Url = urlBase.AddRelativePath(meta.Code).AddQueryParameters(("lang", lang)),
                 Values = meta.Values.Select(v => BuildValue(v, lang)).ToList()
             };
         }
 
-        public static Variable BuildVariable(IReadOnlyDimension meta, string urlBase, string lang)
+        public static Variable BuildVariable(IReadOnlyDimension meta, Uri urlBase, string lang)
         {
             return new Variable()
             {
@@ -79,7 +80,7 @@ namespace PxApi.ModelBuilders
                 Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
                 Size = meta.Values.Count,
                 Type = meta.Type,
-                Url = $"{urlBase}/{meta.Code}?lang={lang}",
+                Url = urlBase.AddRelativePath(meta.Code).AddQueryParameters(("lang", lang)),
                 Values =  meta.Values.Select(v => BuildValue(v, lang)).ToList()
             };
         }

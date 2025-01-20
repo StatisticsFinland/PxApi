@@ -19,7 +19,7 @@ namespace PxApi.Controllers
             if(await dataSource.IsFileAsync(hierarchy))
             {
                 IReadOnlyMatrixMetadata meta = await dataSource.GetTableMetadataAsync(hierarchy);
-                string urlBase = linkGenerator.GetUriByAction(
+                string urlString = linkGenerator.GetUriByAction(
                     HttpContext,
                     action: nameof(GetMetadataById),
                     controller: nameof(MetadataController))
@@ -27,12 +27,12 @@ namespace PxApi.Controllers
 
                 if (lang is not null)
                 {
-                    if (meta.AvailableLanguages.Contains(lang)) return ModelBuilder.BuildTableMeta(meta, urlBase, lang);
+                    if (meta.AvailableLanguages.Contains(lang)) return ModelBuilder.BuildTableMeta(meta, new Uri(urlString), lang);
                     else return BadRequest($"The content is not available in language: {lang}");
                 }
                 else
                 {
-                    return ModelBuilder.BuildTableMeta(meta, urlBase);
+                    return ModelBuilder.BuildTableMeta(meta, new Uri(urlString));
                 }
             }
             return NotFound();

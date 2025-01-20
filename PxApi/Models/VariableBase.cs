@@ -10,6 +10,6 @@
 
         public int Size { get; set; }
 
-        public required string Url { get; set; }
+        public required Uri Url { get; set; }
     }
 }
