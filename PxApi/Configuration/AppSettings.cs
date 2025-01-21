@@ -4,7 +4,7 @@
     {
         public DataSourceConfig DataSource { get; }
 
-        public string UrlRoot { get; }
+        public Uri RootUrl { get; }
 
         /// <summary>
         /// The currently active configuration for the application.
@@ -28,8 +28,10 @@
         {
             IConfigurationSection section = dataSourceConfig.GetRequiredSection(nameof(DataSource));
             DataSource = new DataSourceConfig(section);
-            UrlRoot = dataSourceConfig.GetValue<string>(nameof(UrlRoot))
-                ?? throw new InvalidOperationException("UrlRoot is not set in the configuration.");
+            string rootStr = dataSourceConfig.GetValue<string>(nameof(RootUrl))
+                ?? throw new InvalidOperationException("RootUrl is not set in the configuration.");
+            RootUrl = new Uri(rootStr, UriKind.Absolute)
+                ?? throw new InvalidOperationException("RootUrl is not valid absolute url");
         }
 
         /// <summary>

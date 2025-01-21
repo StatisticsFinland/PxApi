@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Px.Utils.Models.Metadata;
+using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.ModelBuilders;
 using PxApi.Models;
@@ -9,30 +10,26 @@ namespace PxApi.Controllers
 {
     [Route("meta")]
     [ApiController]
-    public class MetadataController(IDataSource dataSource, LinkGenerator linkGenerator) : ControllerBase
+    public class MetadataController(IDataSource dataSource) : ControllerBase
     {
-        // GET meta/{path}
         [HttpGet("{*path}")]
         public async Task<ActionResult<TableMeta>> GetMetadataById([FromRoute] string path, [FromQuery] string? lang)
         {
-            List<string> hierarchy = PathFunctions.BuildHierarchy(path);
+            AppSettings settings = AppSettings.Active;
+
+            List<string> hierarchy = PathFunctions.BuildHierarchyFromRelativeUrl(path);
             if(await dataSource.IsFileAsync(hierarchy))
             {
                 IReadOnlyMatrixMetadata meta = await dataSource.GetTableMetadataAsync(hierarchy);
-                string urlString = linkGenerator.GetUriByAction(
-                    HttpContext,
-                    action: nameof(GetMetadataById),
-                    controller: nameof(MetadataController))
-                    ?? throw new InvalidOperationException("Could not generate URL.");
 
                 if (lang is not null)
                 {
-                    if (meta.AvailableLanguages.Contains(lang)) return ModelBuilder.BuildTableMeta(meta, new Uri(urlString), lang);
+                    if (meta.AvailableLanguages.Contains(lang)) return Ok(ModelBuilder.BuildTableMeta(meta, settings.RootUrl, lang));
                     else return BadRequest($"The content is not available in language: {lang}");
                 }
                 else
                 {
-                    return ModelBuilder.BuildTableMeta(meta, new Uri(urlString));
+                    return Ok(ModelBuilder.BuildTableMeta(meta, settings.RootUrl));
                 }
             }
             return NotFound();

@@ -103,6 +103,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Name, Is.EqualTo("time-name.en"));
                 Assert.That(result.Note, Is.EqualTo("time-note.en"));
                 Assert.That(result.Interval, Is.EqualTo(TimeDimensionInterval.Year));
+                Assert.That(result.Size, Is.EqualTo(2));
                 Assert.That(result.Values, Has.Count.EqualTo(2));
                 Assert.That(result.Url.ToString(), Is.EqualTo("https://example.com/example-db/time-code?lang=en"));
             });
@@ -126,6 +127,10 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Code, Is.EqualTo("nominal-code"));
                 Assert.That(result.Name, Is.EqualTo("nominal-name.en"));
                 Assert.That(result.Note, Is.EqualTo("nominal-note.en"));
+                Assert.That(result.Size, Is.EqualTo(2));
+                Assert.That(result.Type, Is.EqualTo(DimensionType.Nominal));
+                Assert.That(result.Values, Has.Count.EqualTo(2));
+                Assert.That(result.Url.ToString(), Is.EqualTo("https://example.com/example-db/nominal-code?lang=en"));
             });
         }
 
@@ -149,6 +154,26 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Name, Is.EqualTo("content-name.en"));
                 Assert.That(result.Source, Is.EqualTo(source));
                 Assert.That(result.Unit, Is.EqualTo("content-unit.en"));
+            });
+        }
+
+        [Test]
+        public static void BuildValueTest()
+        {
+            // Arrange
+            string lang = "en";
+            DimensionValue dimMeta = TestMockMetaBuilder.GetMockDimensionValue("value");
+
+            // Act
+            Value result = ModelBuilder.BuildValue(dimMeta, lang);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result.Code, Is.EqualTo("value-code"));
+                Assert.That(result.Name, Is.EqualTo("value-name.en"));
+                Assert.That(result.Note, Is.EqualTo("value-note.en"));
             });
         }
     }
