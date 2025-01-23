@@ -10,13 +10,14 @@ namespace PxApi.ModelBuilders
 {
     public static class ModelBuilder
     {
-        public static TableMeta BuildTableMeta(IReadOnlyMatrixMetadata meta, Uri urlRoot, string? lang = null)
+        public static TableMeta BuildTableMeta(IReadOnlyMatrixMetadata meta, Uri urlRoot, string? lang = null, bool? dropValues = null)
         {
             lang ??= meta.DefaultLanguage;
+            bool dontListVars = dropValues ?? false;
 
             List<Variable> dimensions = meta.Dimensions
                 .Where(d => d.Type is not DimensionType.Time or DimensionType.Content)
-                .Select(d => BuildVariable(d, urlRoot, lang))
+                .Select(d => BuildVariable(d, urlRoot, lang, dontListVars))
                 .ToList();
 
             return new TableMeta()
@@ -24,8 +25,8 @@ namespace PxApi.ModelBuilders
                 Contents = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.CONTENTS, lang),
                 Description = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.DESCRIPTION, lang),
                 Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
-                ContentVariable = BuildContentVariable(meta, urlRoot, lang),
-                TimeVariable = BuildTimeVariable(meta, urlRoot, lang),
+                ContentVariable = BuildContentVariable(meta, urlRoot, lang, dontListVars),
+                TimeVariable = BuildTimeVariable(meta, urlRoot, lang, dontListVars),
                 ClassificatoryVariables = dimensions,
                 FirstPeriod = meta.GetTimeDimension().Values[0].Name[lang],
                 LastPeriod = meta.GetTimeDimension().Values[^1].Name[lang],
@@ -34,13 +35,14 @@ namespace PxApi.ModelBuilders
             };
         }
 
-        public static ContentVariable BuildContentVariable(IReadOnlyMatrixMetadata meta, Uri urlBase, string lang)
+        public static ContentVariable BuildContentVariable(IReadOnlyMatrixMetadata meta, Uri urlBase, string lang, bool dropvalues = false)
         {
             ContentDimension contentDim = meta.GetContentDimension();
             string? tableOrDimSource = GetSourceByLang(meta, lang);
 
-            List<ContentValue> values = contentDim.Values
-                .Map(v =>
+            List<ContentValue>? values = dropvalues
+                ? null
+                : contentDim.Values.Map(v =>
                 {
                     string? source = GetValueByLanguage(v.AdditionalProperties, PxFileConstants.SOURCE, lang) ?? tableOrDimSource;
                     return BuildContentValue(v, source, lang);
@@ -57,7 +59,7 @@ namespace PxApi.ModelBuilders
             };
         }
 
-        public static TimeVariable BuildTimeVariable(IReadOnlyMatrixMetadata meta, Uri urlBase, string lang)
+        public static TimeVariable BuildTimeVariable(IReadOnlyMatrixMetadata meta, Uri urlBase, string lang, bool dropValues)
         {
             TimeDimension timeDim = meta.GetTimeDimension();
 
@@ -69,11 +71,11 @@ namespace PxApi.ModelBuilders
                 Interval = timeDim.Interval,
                 Size = timeDim.Values.Count,
                 Url = urlBase.AddRelativePath(timeDim.Code).AddQueryParameters(("lang", lang)),
-                Values = timeDim.Values.Select(v => BuildValue(v, lang)).ToList()
+                Values = dropValues ? null : timeDim.Values.Select(v => BuildValue(v, lang)).ToList()
             };
         }
 
-        public static Variable BuildVariable(IReadOnlyDimension meta, Uri urlBase, string lang)
+        public static Variable BuildVariable(IReadOnlyDimension meta, Uri urlBase, string lang, bool dropValues)
         {
             return new Variable()
             {
@@ -83,7 +85,7 @@ namespace PxApi.ModelBuilders
                 Size = meta.Values.Count,
                 Type = meta.Type,
                 Url = urlBase.AddRelativePath(meta.Code).AddQueryParameters(("lang", lang)),
-                Values =  meta.Values.Select(v => BuildValue(v, lang)).ToList()
+                Values = dropValues ? null : meta.Values.Select(v => BuildValue(v, lang)).ToList()
             };
         }
 
@@ -113,9 +115,9 @@ namespace PxApi.ModelBuilders
 
         private static string? GetValueByLanguage(IReadOnlyDictionary<string, MetaProperty> propertyCollection, string key, string lang)
         {
-            if(propertyCollection.TryGetValue(key, out MetaProperty? property))
+            if (propertyCollection.TryGetValue(key, out MetaProperty? property))
             {
-                if(property is MultilanguageStringProperty multilanguageStringProperty)
+                if (property is MultilanguageStringProperty multilanguageStringProperty)
                 {
                     return multilanguageStringProperty.Value[lang];
                 }

@@ -32,7 +32,7 @@ namespace PxApi.UnitTests.ControllerTests
             Dictionary<string, string?> inMemorySettings = new()
             {
                 {"RootUrl", "https://testurl.fi"},
-                {"DataSource:LocalFileSystem:RootPath", "path/to/datasource"}
+                {"DataSource:LocalFileSystem:RootPath", "datasource/root/"}
             };
 
             IConfiguration _configuration = new ConfigurationBuilder()
@@ -46,16 +46,17 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetMetadataById_FileExists_ReturnsTableMeta()
         {
             // Arrange
-            string path = "some/path";
+            string database = "example-db";
+            string file = "filename.px";
             string lang = "en";
-            List<string> hierarchy = ["some", "path"];
+            TablePath tablePath = new($"datasource/root/{database}/{file}");
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
-            _mockDataSource.Setup(ds => ds.IsFileAsync(hierarchy)).ReturnsAsync(true);
-            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(hierarchy)).ReturnsAsync(meta);
+            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
+            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetMetadataById(path, lang);
+            ActionResult<TableMeta> result = await _controller.GetMetadataById(database, file, lang, true);
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<TableMeta>>());
@@ -68,13 +69,13 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetMetadataById_FileDoesNotExist_ReturnsNotFound()
         {
             // Arrange
-            string path = "some/path";
-            List<string> hierarchy = ["some", "path"];
+            string database = "example-db";
+            string file = "filename.px";
 
-            _mockDataSource.Setup(ds => ds.IsFileAsync(hierarchy)).ReturnsAsync(false);
+            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync((TablePath?)null);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetMetadataById(path, null);
+            ActionResult<TableMeta> result = await _controller.GetMetadataById(database, file, null, true);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -84,16 +85,17 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetMetadataById_LanguageNotAvailable_ReturnsBadRequest()
         {
             // Arrange
-            string path = "some/path";
+            string database = "example-db";
+            string file = "filename.px";
             string lang = "de";
-            List<string> hierarchy = ["some", "path"];
+            TablePath tablePath = new($"datasource/root/{database}/{file}");
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
-            _mockDataSource.Setup(ds => ds.IsFileAsync(hierarchy)).ReturnsAsync(true);
-            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(hierarchy)).ReturnsAsync(meta);
+            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
+            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetMetadataById(path, lang);
+            ActionResult<TableMeta> result = await _controller.GetMetadataById(database, file, lang, true);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
@@ -105,15 +107,16 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetMetadataById_NoLanguageSpecified_ReturnsTableMeta()
         {
             // Arrange
-            string path = "some/path";
-            List<string> hierarchy = ["some", "path"];
+            string database = "example-db";
+            string file = "filename.px";
+            TablePath tablePath = new($"datasource/root/{database}/{file}");
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
-            _mockDataSource.Setup(ds => ds.IsFileAsync(hierarchy)).ReturnsAsync(true);
-            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(hierarchy)).ReturnsAsync(meta);
+            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
+            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetMetadataById(path, null);
+            ActionResult<TableMeta> result = await _controller.GetMetadataById(database, file, null, null);
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<TableMeta>>());

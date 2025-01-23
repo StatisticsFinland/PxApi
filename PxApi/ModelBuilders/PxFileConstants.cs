@@ -2,6 +2,8 @@
 {
     public static class PxFileConstants
     {
+        public const string FILE_ENDING = ".px";
+
         public const string NOTE = "NOTE";
         public const string SOURCE = "SOURCE";
         public const string TABLEID = "TABLEID";

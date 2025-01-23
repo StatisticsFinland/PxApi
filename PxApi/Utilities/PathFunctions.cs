@@ -19,15 +19,16 @@
             return BuildAndSecurePath(basePath, Path.Combine([.. userPath]));
         }
 
-        public static List<string> BuildHierarchyFromRelativeUrl(string relativeUrl)
+        public static void CheckStringsForInvalidPathChars(params string[] pathStrings)
         {
-            List<string> hierarchy = [.. relativeUrl.Split('/', StringSplitOptions.RemoveEmptyEntries)];
             char[] invalidPathChars = Path.GetInvalidPathChars();
-            if (hierarchy.Any(s => s.Any(c => invalidPathChars.Contains(c))))
+            foreach (string s in pathStrings)
             {
-                throw new ArgumentException("Path contains invalid characters.");
+                if (s.Any(c => invalidPathChars.Contains(c)))
+                {
+                    throw new ArgumentException($"String {s} contains invalid characters.");
+                }
             }
-            return hierarchy;
         }
     }
 }

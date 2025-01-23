@@ -4,12 +4,10 @@ namespace PxApi.DataSources
 {
     public interface IDataSource
     {
-        public Task<bool> IsFileAsync(List<string> hierarchy);
+        public Task<TablePath?> GetTablePathAsync(string database, string filename);
 
-        public Task<IReadOnlyMatrixMetadata> GetTableMetadataAsync(List<string> hierarchy);
+        public Task<IReadOnlyMatrixMetadata> GetTableMetadataAsync(TablePath path);
 
         public Task GetDatabasesAsync();
-
-        public Task GetContentgroupAsync(List<string> hierarchy);
     }
 }

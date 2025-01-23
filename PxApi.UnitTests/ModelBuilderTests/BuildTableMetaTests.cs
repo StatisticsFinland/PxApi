@@ -93,7 +93,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             string lang = "en";
 
             // Act
-            TimeVariable result = ModelBuilder.BuildTimeVariable(meta, urlRoot, lang);
+            TimeVariable result = ModelBuilder.BuildTimeVariable(meta, urlRoot, lang, false);
 
             // Assert
             Assert.Multiple(() =>
@@ -118,7 +118,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             string lang = "en";
 
             // Act
-            Variable result = ModelBuilder.BuildVariable(dimMeta, urlRoot, lang);
+            Variable result = ModelBuilder.BuildVariable(dimMeta, urlRoot, lang, false);
 
             // Assert
             Assert.Multiple(() =>

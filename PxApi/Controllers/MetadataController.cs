@@ -12,26 +12,31 @@ namespace PxApi.Controllers
     [ApiController]
     public class MetadataController(IDataSource dataSource) : ControllerBase
     {
-        [HttpGet("{*path}")]
-        public async Task<ActionResult<TableMeta>> GetMetadataById([FromRoute] string path, [FromQuery] string? lang)
+        [HttpGet("{database}/{file}")]
+        public async Task<ActionResult<TableMeta>> GetMetadataById(
+            [FromRoute] string database,
+            [FromRoute] string file,
+            [FromQuery] string? lang,
+            [FromQuery] bool? dropValues)
         {
             AppSettings settings = AppSettings.Active;
+            PathFunctions.CheckStringsForInvalidPathChars(database, file);
 
-            List<string> hierarchy = PathFunctions.BuildHierarchyFromRelativeUrl(path);
-            if(await dataSource.IsFileAsync(hierarchy))
+            TablePath? path = await dataSource.GetTablePathAsync(database, file);
+            if (path is not null)
             {
-                IReadOnlyMatrixMetadata meta = await dataSource.GetTableMetadataAsync(hierarchy);
+                IReadOnlyMatrixMetadata meta = await dataSource.GetTableMetadataAsync(path);
 
-                if (lang is not null)
+                if (lang is null || meta.AvailableLanguages.Contains(lang))
                 {
-                    if (meta.AvailableLanguages.Contains(lang)) return Ok(ModelBuilder.BuildTableMeta(meta, settings.RootUrl, lang));
-                    else return BadRequest($"The content is not available in language: {lang}");
+                    return Ok(ModelBuilder.BuildTableMeta(meta, settings.RootUrl, lang, dropValues));
                 }
                 else
                 {
-                    return Ok(ModelBuilder.BuildTableMeta(meta, settings.RootUrl));
+                    return BadRequest($"The content is not available in language: {lang}");
                 }
             }
+
             return NotFound();
         }
     }

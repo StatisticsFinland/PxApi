@@ -2,6 +2,7 @@
 using Px.Utils.Models.Metadata;
 using Px.Utils.PxFile.Metadata;
 using PxApi.Configuration;
+using PxApi.ModelBuilders;
 using PxApi.Utilities;
 using System.Text;
 
@@ -22,12 +23,26 @@ namespace PxApi.DataSources
             throw new NotImplementedException();
         }
 
-        public async Task<IReadOnlyMatrixMetadata> GetTableMetadataAsync(List<string> hierarchy)
+        public Task<TablePath?> GetTablePathAsync(string database, string filename)
         {
-            string path = PathFunctions.BuildAndSecurePath(config.RootPath, hierarchy);
+            string rootPath = Path.Combine(config.RootPath, database);
+            if(!filename.EndsWith(PxFileConstants.FILE_ENDING)) filename += PxFileConstants.FILE_ENDING;
+            return Task.Run(() =>
+            {
+                string? filePath = Directory.EnumerateFiles(rootPath, filename, SearchOption.AllDirectories).FirstOrDefault();
+                if (filePath is not null)
+                {
+                    if (filePath.StartsWith(rootPath)) return new TablePath(filePath);
+                    else throw new UnauthorizedAccessException("The file is not in the root path");
+                }
+                return null;
+            });
+        }
 
+        public async Task<IReadOnlyMatrixMetadata> GetTableMetadataAsync(TablePath path)
+        {
             PxFileMetadataReader reader = new();
-            using FileStream fileStream = new(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using FileStream fileStream = new(path.ToPathString(), FileMode.Open, FileAccess.Read, FileShare.Read);
             Encoding encoding = await reader.GetEncodingAsync(fileStream);
 
             if (fileStream.CanSeek) fileStream.Seek(0, SeekOrigin.Begin);
@@ -37,12 +52,6 @@ namespace PxApi.DataSources
             
             MatrixMetadataBuilder builder = new();
             return await builder.BuildAsync(metaEntries);
-        }
-
-        public Task<bool> IsFileAsync(List<string> hierarchy)
-        {
-            string path = PathFunctions.BuildAndSecurePath(config.RootPath, hierarchy);
-            return Task.Factory.StartNew(() => File.Exists(path));
         }
     }
 }
