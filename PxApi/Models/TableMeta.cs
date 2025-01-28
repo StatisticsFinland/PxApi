@@ -21,5 +21,7 @@
         public required TimeVariable TimeVariable { get; set; }
 
         public required List<Variable> ClassificatoryVariables { get; set; }
+        
+        public required List<Link> Links { get; set; }
     }
 }

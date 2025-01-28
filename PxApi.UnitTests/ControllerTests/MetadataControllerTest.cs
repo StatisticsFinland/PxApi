@@ -56,7 +56,7 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetMetadataById(database, file, lang, true);
+            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, lang, true);
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<TableMeta>>());
@@ -75,7 +75,7 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync((TablePath?)null);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetMetadataById(database, file, null, true);
+            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, null, true);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -95,7 +95,7 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetMetadataById(database, file, lang, true);
+            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, lang, true);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
@@ -116,7 +116,7 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetMetadataById(database, file, null, null);
+            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, null, null);
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<TableMeta>>());

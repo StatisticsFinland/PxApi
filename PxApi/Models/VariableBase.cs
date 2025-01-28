@@ -8,8 +8,8 @@
 
         public required string? Note { get; set; }
 
-        public int Size { get; set; }
+        public required int Size { get; set; }
 
-        public required Uri Url { get; set; }
+        public required List<Link> Links { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Px.Utils.Models.Metadata.Enums;
+using System.Text.Json.Serialization;
 
 namespace PxApi.Models
 {
@@ -6,6 +7,7 @@ namespace PxApi.Models
     {
         public required TimeDimensionInterval Interval { get; set; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public required List<Value>? Values { get; set; }
     }
 }

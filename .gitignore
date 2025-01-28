@@ -28,3 +28,7 @@ msbuild.log
 msbuild.err
 msbuild.wrn
 /PxApi/appsettings.json
+/PxApi/nlog.config
+/PxApi/internal-nlog-pxapi.txt
+/PxApi/Properties/PublishProfiles
+/PxApi/.config/dotnet-tools.json

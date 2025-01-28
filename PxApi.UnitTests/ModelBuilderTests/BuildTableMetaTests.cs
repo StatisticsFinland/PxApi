@@ -13,7 +13,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
         {
             // Arrange
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-            Uri urlRoot = new("https://example.com/example-db/");
+            Uri urlRoot = new("https://example.com/meta/example-db/example-table?lang=en");
             string lang = "en";
 
             // Act
@@ -33,6 +33,61 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.FirstPeriod, Is.EqualTo("time-value0-name.en"));
                 Assert.That(result.LastPeriod, Is.EqualTo("time-value1-name.en"));
                 Assert.That(result.LastModified, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
+                Assert.That(result.Links, Has.Count.EqualTo(1));
+                Assert.That(result.Links[0].Rel, Is.EqualTo("self"));
+                Assert.That(result.Links[0].Href, Is.EqualTo("https://example.com/meta/example-db/example-table?lang=en"));
+                Assert.That(result.Links[0].Method, Is.EqualTo("GET"));
+            });
+        }
+
+        [Test]
+        public static void BuildTableMeta_CheckVariableValueLengths_WhenShowValuesTrue()
+        {
+            // Arrange
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+            Uri urlRoot = new("https://example.com/meta/example-db/example-table?lang=en&showValues=true");
+            string lang = "en";
+            // Act
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot, lang, true);
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.ContentVariable.Values, Has.Count.EqualTo(2));
+                Assert.That(result.TimeVariable.Values, Has.Count.EqualTo(2));
+                Assert.That(result.ClassificatoryVariables[0].Values, Has.Count.EqualTo(2));
+                Assert.That(result.ClassificatoryVariables[1].Values, Has.Count.EqualTo(2));
+                Assert.That(result.ClassificatoryVariables[2].Values, Has.Count.EqualTo(2));
+            });
+        }
+
+        [Test]
+        public static void BuildTableMeta_CheckContentVariable_WhenShowValuesTrue()
+        {
+            // Arrange
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+            Uri urlRoot = new("https://example.com/meta/example-db/example-table?lang=en&showValues=true");
+            string lang = "en";
+            // Act
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot, lang, true);
+            // Assert
+            Assert.Multiple(() =>
+            {
+                if(result.ContentVariable?.Values is null)
+                {
+                    Assert.Fail("ContentVariable.Values is null");
+                }
+                else
+                {
+                    Assert.That(result.ContentVariable.Values, Has.Count.EqualTo(2));
+                    Assert.That(result.ContentVariable.Values[0].Code, Is.EqualTo("content-value0-code"));
+                    Assert.That(result.ContentVariable.Values[0].Name, Is.EqualTo("content-value0-name.en"));
+                    Assert.That(result.ContentVariable.Values[0].Source, Is.EqualTo("table-source.en"));
+                    Assert.That(result.ContentVariable.Values[0].Unit, Is.EqualTo("content-value0-unit.en"));
+                    Assert.That(result.ContentVariable.Values[1].Code, Is.EqualTo("content-value1-code"));
+                    Assert.That(result.ContentVariable.Values[1].Name, Is.EqualTo("content-value1-name.en"));
+                    Assert.That(result.ContentVariable.Values[1].Source, Is.EqualTo("table-source.en"));
+                    Assert.That(result.ContentVariable.Values[1].Unit, Is.EqualTo("content-value1-unit.en"));
+                }
             });
         }
 
@@ -41,7 +96,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
         {
             // Arrange
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-            Uri urlRoot = new("https://example.com/example-db/");
+            Uri urlRoot = new("https://example.com/meta/example-db/example-table");
 
             // Act
             TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot);
@@ -59,6 +114,10 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.ClassificatoryVariables, Has.Count.EqualTo(3));
                 Assert.That(result.FirstPeriod, Is.EqualTo("time-value0-name.fi"));
                 Assert.That(result.LastPeriod, Is.EqualTo("time-value1-name.fi"));
+                Assert.That(result.Links, Has.Count.EqualTo(1));
+                Assert.That(result.Links[0].Rel, Is.EqualTo("self"));
+                Assert.That(result.Links[0].Href, Is.EqualTo("https://example.com/meta/example-db/example-table"));
+                Assert.That(result.Links[0].Method, Is.EqualTo("GET"));
                 Assert.That(result.LastModified, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
             });
         }
@@ -68,10 +127,10 @@ namespace PxApi.UnitTests.ModelBuilderTests
         {
             // Arrange
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-            Uri urlRoot = new("https://example.com/example-db/");
+            Uri urlRoot = new("https://example.com/meta/example-db/example-table");
             string lang = "en";
             // Act
-            ContentVariable result = ModelBuilder.BuildContentVariable(meta, urlRoot, lang);
+            ContentVariable result = ModelBuilder.BuildContentVariable(meta, lang, false, urlRoot);
             // Assert
             Assert.Multiple(() =>
             {
@@ -79,8 +138,15 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Code, Is.EqualTo("content-code"));
                 Assert.That(result.Name, Is.EqualTo("content-name.en"));
                 Assert.That(result.Note, Is.EqualTo("content-note.en"));
-                Assert.That(result.Values, Has.Count.EqualTo(2));
-                Assert.That(result.Url.ToString(), Is.EqualTo("https://example.com/example-db/content-code?lang=en"));
+                Assert.That(result.Size, Is.EqualTo(2));
+                Assert.That(result.Values, Is.Null); // showValues is false
+                Assert.That(result.Links, Has.Count.EqualTo(2));
+                Assert.That(result.Links[0].Rel, Is.EqualTo("describedby"));
+                Assert.That(result.Links[0].Href, Is.EqualTo("https://example.com/meta/example-db/example-table/content-code"));
+                Assert.That(result.Links[0].Method, Is.EqualTo("GET"));
+                Assert.That(result.Links[1].Rel, Is.EqualTo("up"));
+                Assert.That(result.Links[1].Href, Is.EqualTo("https://example.com/meta/example-db/example-table"));
+                Assert.That(result.Links[1].Method, Is.EqualTo("GET"));
             });
         }
 
@@ -89,11 +155,11 @@ namespace PxApi.UnitTests.ModelBuilderTests
         {
             // Arrange
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-            Uri urlRoot = new("https://example.com/example-db/");
+            Uri urlRoot = new("https://example.com/meta/example-db/example-table/");
             string lang = "en";
 
             // Act
-            TimeVariable result = ModelBuilder.BuildTimeVariable(meta, urlRoot, lang, false);
+            TimeVariable result = ModelBuilder.BuildTimeVariable(meta, lang, false, urlRoot);
 
             // Assert
             Assert.Multiple(() =>
@@ -104,8 +170,14 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Note, Is.EqualTo("time-note.en"));
                 Assert.That(result.Interval, Is.EqualTo(TimeDimensionInterval.Year));
                 Assert.That(result.Size, Is.EqualTo(2));
-                Assert.That(result.Values, Has.Count.EqualTo(2));
-                Assert.That(result.Url.ToString(), Is.EqualTo("https://example.com/example-db/time-code?lang=en"));
+                Assert.That(result.Values, Is.Null); // showValues is false
+                Assert.That(result.Links, Has.Count.EqualTo(2));
+                Assert.That(result.Links[0].Rel, Is.EqualTo("describedby"));
+                Assert.That(result.Links[0].Href, Is.EqualTo("https://example.com/meta/example-db/example-table/time-code"));
+                Assert.That(result.Links[0].Method, Is.EqualTo("GET"));
+                Assert.That(result.Links[1].Rel, Is.EqualTo("up"));
+                Assert.That(result.Links[1].Href, Is.EqualTo("https://example.com/meta/example-db/example-table/"));
+                Assert.That(result.Links[1].Method, Is.EqualTo("GET"));
             });
         }
 
@@ -114,11 +186,12 @@ namespace PxApi.UnitTests.ModelBuilderTests
         {
             // Arrange
             Dimension dimMeta = TestMockMetaBuilder.GetMockDimension("nominal", DimensionType.Nominal);
-            Uri urlRoot = new("https://example.com/example-db/");
+            Uri urlRoot = new("https://example.com/meta/example-db/example-table/");
             string lang = "en";
 
             // Act
-            Variable result = ModelBuilder.BuildVariable(dimMeta, urlRoot, lang, false);
+            Variable result = ModelBuilder.BuildVariable(dimMeta, lang, false, urlRoot);
+
 
             // Assert
             Assert.Multiple(() =>
@@ -129,8 +202,14 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Note, Is.EqualTo("nominal-note.en"));
                 Assert.That(result.Size, Is.EqualTo(2));
                 Assert.That(result.Type, Is.EqualTo(DimensionType.Nominal));
-                Assert.That(result.Values, Has.Count.EqualTo(2));
-                Assert.That(result.Url.ToString(), Is.EqualTo("https://example.com/example-db/nominal-code?lang=en"));
+                Assert.That(result.Values, Is.Null);
+                Assert.That(result.Links, Has.Count.EqualTo(2));
+                Assert.That(result.Links[0].Rel, Is.EqualTo("describedby"));
+                Assert.That(result.Links[0].Href, Is.EqualTo("https://example.com/meta/example-db/example-table/nominal-code"));
+                Assert.That(result.Links[0].Method, Is.EqualTo("GET"));
+                Assert.That(result.Links[1].Rel, Is.EqualTo("up"));
+                Assert.That(result.Links[1].Href, Is.EqualTo("https://example.com/meta/example-db/example-table/"));
+                Assert.That(result.Links[1].Method, Is.EqualTo("GET"));
             });
         }
 
