@@ -7,21 +7,21 @@ using System.Text;
 
 namespace PxApi.DataSources
 {
+    /// <summary>
+    /// Data source for using database on the local file system.
+    /// </summary>
     public class LocalFileSystemDataSource() : IDataSource
     {
 
         private readonly LocalFileSystemConfig config = AppSettings.Active.DataSource.LocalFileSystem;
 
-        public Task GetContentgroupAsync(List<string> hierarchy)
-        {
-            throw new NotImplementedException();
-        }
-
+        /// <inheritdoc/>
         public Task GetDatabasesAsync()
         {
             throw new NotImplementedException();
         }
 
+        /// <inheritdoc/>
         public Task<TablePath?> GetTablePathAsync(string database, string filename)
         {
             string rootPath = Path.Combine(config.RootPath, database);
@@ -38,6 +38,7 @@ namespace PxApi.DataSources
             });
         }
 
+        /// <inheritdoc/>
         public async Task<IReadOnlyMatrixMetadata> GetTableMetadataAsync(TablePath path)
         {
             PxFileMetadataReader reader = new();

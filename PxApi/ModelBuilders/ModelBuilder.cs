@@ -8,8 +8,19 @@ using PxApi.Utilities;
 
 namespace PxApi.ModelBuilders
 {
+    /// <summary>
+    /// Collection of static methods for building the response metadata models from the metadata provided by Px.Utils.
+    /// </summary>
     public static class ModelBuilder
     {
+        /// <summary>
+        /// Build the <see cref="TableMeta"/> objects.
+        /// </summary>
+        /// <param name="meta">Input <see cref="IReadOnlyMatrixMetadata"/></param>
+        /// <param name="baseUrlWithParams">Url used to costruct the <see cref="Link"/> objests in the response.</param>
+        /// <param name="lang">Language of the response, if not provided the default language of the input <paramref name="meta"/> will be used.</param>
+        /// <param name="showValues">If true the variable values will be included. If not provided, defaults to false.</param>
+        /// <returns><see cref="TableMeta"/> based on the input meta.</returns>
         public static TableMeta BuildTableMeta(IReadOnlyMatrixMetadata meta, Uri baseUrlWithParams, string? lang = null, bool? showValues = null)
         {
             lang ??= meta.DefaultLanguage;
@@ -45,7 +56,16 @@ namespace PxApi.ModelBuilders
             };
         }
 
-        public static ContentVariable BuildContentVariable(IReadOnlyMatrixMetadata meta, string lang, bool showValues, Uri urlBaseWithParams, string rel)
+        /// <summary>
+        /// Build the <see cref="ContentVariable"/> object based on the input <paramref name="meta"/>.
+        /// </summary>
+        /// <param name="meta">Input <see cref="IReadOnlyMatrixMetadata"/></param>
+        /// <param name="lang">Language of the response, if not provided the default language of the input <paramref name="meta"/> will be used.</param>
+        /// <param name="showValues">If true the variable values will be included. If not provided, defaults to false.</param>
+        /// <param name="baseUrlWithParams">Url used to costruct the <see cref="Link"/> objests in the response.</param>
+        /// <param name="rel">The relation type in the links pointing to this object.</param>
+        /// <returns><see cref="ContentVariable"/> based on the provided <paramref name="meta"/></returns>
+        public static ContentVariable BuildContentVariable(IReadOnlyMatrixMetadata meta, string lang, bool showValues, Uri baseUrlWithParams, string rel)
         {
             ContentDimension contentDim = meta.GetContentDimension();
             string? tableOrDimSource = GetSourceByLang(meta, lang);
@@ -65,7 +85,7 @@ namespace PxApi.ModelBuilders
                 Note = GetValueByLanguage(contentDim.AdditionalProperties, PxFileConstants.NOTE, lang),
                 Size = contentDim.Values.Count,
                 Values = values,
-                Links = BuildVariableLinks(urlBaseWithParams, contentDim.Code, rel)
+                Links = BuildVariableLinks(baseUrlWithParams, contentDim.Code, rel)
             };
         }
 

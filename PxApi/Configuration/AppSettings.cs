@@ -1,9 +1,21 @@
 ﻿namespace PxApi.Configuration
 {
+    /// <summary>
+    /// The main class for all application settings.
+    /// Use the <see cref="Load"/> method to load the settings from the configuration.
+    /// The loaded settings can be accessed through the <see cref="Active"/> property.
+    /// </summary>
     public class AppSettings
     {
+        /// <summary>
+        /// The configuration for the data source.
+        /// </summary>
         public DataSourceConfig DataSource { get; }
 
+        /// <summary>
+        /// The root URL where the application is hosted.
+        /// Used to create URLs for the API.
+        /// </summary>
         public Uri RootUrl { get; }
 
         /// <summary>
