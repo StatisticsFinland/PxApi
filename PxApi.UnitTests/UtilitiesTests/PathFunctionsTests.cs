@@ -20,6 +20,20 @@ namespace PxApi.UnitTests.UtilitiesTests
         }
 
         [Test]
+        public void BuildAndSecurePath_ValidUnixPath_ReturnsCombinedPath()
+        {
+            // Arrange
+            string basePath = "C:/base";
+            string userPath = "folder/file.txt";
+
+            // Act
+            string result = PathFunctions.BuildAndSecurePath(basePath, userPath);
+
+            // Assert
+            Assert.That(result, Is.EqualTo(Path.Combine("C:", "base", "folder", "file.txt")));
+        }
+
+        [Test]
         public void BuildAndSecurePath_InvalidPath_ThrowsUnauthorizedAccessException()
         {
             // Arrange
@@ -48,7 +62,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         public void CheckStringsForInvalidPathChars_ValidStrings_DoesNotThrow()
         {
             // Arrange
-            string[] validStrings = { "validPath1", "validPath2" };
+            string[] validStrings = ["validPath1", "validPath2"];
 
             // Act & Assert
             Assert.DoesNotThrow(() => PathFunctions.CheckStringsForInvalidPathChars(validStrings));
@@ -58,7 +72,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         public void CheckStringsForInvalidPathChars_InvalidStrings_ThrowsArgumentException()
         {
             // Arrange
-            string[] invalidStrings = { "invalid|Path1", "validPath2" };
+            string[] invalidStrings = ["invalid|Path1", "validPath2"];
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() => PathFunctions.CheckStringsForInvalidPathChars(invalidStrings));

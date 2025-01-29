@@ -10,7 +10,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         {
             // Arrange
             Uri baseUrl = new("https://example.com/base");
-            string[] relativePath = { "path1", "path2" };
+            string[] relativePath = ["path1", "path2"];
 
             // Act
             Uri result = baseUrl.AddRelativePath(relativePath);
@@ -24,7 +24,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         {
             // Arrange
             Uri baseUrl = new("https://example.com/base?param1=value1&param2=value2");
-            string[] relativePath = { "path1", "path2" };
+            string[] relativePath = ["path1", "path2"];
 
             // Act
             Uri result = baseUrl.AddRelativePath(relativePath);
