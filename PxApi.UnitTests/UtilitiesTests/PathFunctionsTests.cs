@@ -72,7 +72,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         public void CheckStringsForInvalidPathChars_InvalidStrings_ThrowsArgumentException()
         {
             // Arrange
-            string[] invalidStrings = ["invalid|Path1", "validPath2"];
+            string[] invalidStrings = ["invalid\0Path1", "validPath2"];
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() => PathFunctions.CheckStringsForInvalidPathChars(invalidStrings));
