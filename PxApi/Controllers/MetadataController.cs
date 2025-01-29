@@ -7,7 +7,6 @@ using PxApi.DataSources;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace PxApi.Controllers
 {
