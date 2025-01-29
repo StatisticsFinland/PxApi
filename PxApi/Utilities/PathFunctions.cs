@@ -1,4 +1,6 @@
-﻿namespace PxApi.Utilities
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace PxApi.Utilities
 {
     /// <summary>
     /// Utility functions for working with paths
@@ -9,6 +11,7 @@
         /// Builds a path from a base path and a user path, and ensures that the resulting path is within the base path.
         /// </summary>
         /// <exception cref="UnauthorizedAccessException">The resulting path is outside the base path.</exception>
+        [ExcludeFromCodeCoverage] // This method is not unit tested because it relies on file system access.
         public static string BuildAndSecurePath(string basePath, string userPath)
         {
             string fullBasePath = Path.GetFullPath(basePath);

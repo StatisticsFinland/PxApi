@@ -3,6 +3,7 @@ using NLog;
 using NLog.Web;
 using PxApi.Configuration;
 using PxApi.DataSources;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PxApi
 {
@@ -14,6 +15,7 @@ namespace PxApi
         /// <summary>
         /// Main entry point of the application.
         /// </summary>
+        [ExcludeFromCodeCoverage] // Difficult to test Main method since the app.Run() method is blocking.
         public static void Main()
         {
             Logger logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();

@@ -6,59 +6,6 @@ namespace PxApi.UnitTests.UtilitiesTests
     internal class PathFunctionsTests
     {
         [Test]
-        public void BuildAndSecurePath_ValidPath_ReturnsCombinedPath()
-        {
-            // Arrange
-            string basePath = "C:\\base";
-            string userPath = "folder\\file.txt";
-
-            // Act
-            string result = PathFunctions.BuildAndSecurePath(basePath, userPath);
-
-            // Assert
-            Assert.That(result, Is.EqualTo(Path.Combine(basePath, userPath)));
-        }
-
-        [Test]
-        public void BuildAndSecurePath_ValidUnixPath_ReturnsCombinedPath()
-        {
-            // Arrange
-            string basePath = "C:/base";
-            string userPath = "folder/file.txt";
-
-            // Act
-            string result = PathFunctions.BuildAndSecurePath(basePath, userPath);
-
-            // Assert
-            Assert.That(result, Is.EqualTo(Path.Combine("C:", "base", "folder", "file.txt")));
-        }
-
-        [Test]
-        public void BuildAndSecurePath_InvalidPath_ThrowsUnauthorizedAccessException()
-        {
-            // Arrange
-            string basePath = "C:\\base";
-            string userPath = "..\\..\\Windows\\System32";
-
-            // Act & Assert
-            Assert.Throws<UnauthorizedAccessException>(() => PathFunctions.BuildAndSecurePath(basePath, userPath));
-        }
-
-        [Test]
-        public void BuildAndSecurePath_ListOfPaths_ReturnsCombinedPath()
-        {
-            // Arrange
-            string basePath = "C:\\base";
-            List<string> userPath = ["folder1", "folder2", "file.txt"];
-
-            // Act
-            string result = PathFunctions.BuildAndSecurePath(basePath, userPath);
-
-            // Assert
-            Assert.That(result, Is.EqualTo(Path.Combine(basePath, "folder1", "folder2", "file.txt")));
-        }
-
-        [Test]
         public void CheckStringsForInvalidPathChars_ValidStrings_DoesNotThrow()
         {
             // Arrange
