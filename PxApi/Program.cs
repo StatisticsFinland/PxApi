@@ -71,6 +71,7 @@ namespace PxApi
             }
         }
 
+        [ExcludeFromCodeCoverage] // Not worth it to make public for testing.
         private static void AddServices(IServiceCollection serviceCollection)
         {
             serviceCollection.AddControllers();

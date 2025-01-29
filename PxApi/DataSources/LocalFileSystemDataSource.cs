@@ -3,6 +3,7 @@ using Px.Utils.Models.Metadata;
 using Px.Utils.PxFile.Metadata;
 using PxApi.Configuration;
 using PxApi.ModelBuilders;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace PxApi.DataSources
@@ -10,6 +11,7 @@ namespace PxApi.DataSources
     /// <summary>
     /// Data source for using database on the local file system.
     /// </summary>
+    [ExcludeFromCodeCoverage] // This class is not unit tested because it relies on file system access.
     public class LocalFileSystemDataSource() : IDataSource
     {
 

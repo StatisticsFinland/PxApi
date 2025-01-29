@@ -42,8 +42,7 @@
             DataSource = new DataSourceConfig(section);
             string rootStr = dataSourceConfig.GetValue<string>(nameof(RootUrl))
                 ?? throw new InvalidOperationException("RootUrl is not set in the configuration.");
-            RootUrl = new Uri(rootStr, UriKind.Absolute)
-                ?? throw new InvalidOperationException("RootUrl is not valid absolute url");
+            RootUrl = new Uri(rootStr, UriKind.Absolute);
         }
 
         /// <summary>
