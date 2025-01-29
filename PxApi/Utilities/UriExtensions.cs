@@ -3,8 +3,14 @@ using System.Web;
 
 namespace PxApi.Utilities
 {
+    /// <summary>
+    /// Extension methods for the <see cref="Uri"/> class.
+    /// </summary>
     public static class UriExtensions
     {
+        /// <summary>
+        /// Adds a relative path to the base URL.
+        /// </summary>
         public static Uri AddRelativePath(this Uri baseUrl, params string[] relativePath)
         {
             string basePath = baseUrl.AbsolutePath.TrimEnd('/');
@@ -13,6 +19,10 @@ namespace PxApi.Utilities
             return new UriBuilder(baseUrl) { Path = newPath, Query = baseUrl.Query }.Uri;
         }
 
+        /// <summary>
+        /// Adds query parameters to the URL.
+        /// </summary>
+        /// <typeparam name="T">The type of the query parameter value.</typeparam>
         public static Uri AddQueryParameters<T>(this Uri baseUrl, params (string Key, T Value)[] queryParams)
         {
             UriBuilder uriBuilder = new(baseUrl);
@@ -29,6 +39,9 @@ namespace PxApi.Utilities
             return uriBuilder.Uri;
         }
 
+        /// <summary>
+        /// Removes a query parameter from the URL.
+        /// </summary>
         public static Uri DropQueryParameters(this Uri uri, string paramName)
         {
             NameValueCollection query = HttpUtility.ParseQueryString(uri.Query);

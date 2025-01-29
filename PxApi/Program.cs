@@ -6,8 +6,14 @@ using PxApi.DataSources;
 
 namespace PxApi
 {
+    /// <summary>
+    /// Main entry point of the application.
+    /// </summary>
     public static class Program
     {
+        /// <summary>
+        /// Main entry point of the application.
+        /// </summary>
         public static void Main()
         {
             Logger logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
