@@ -1,6 +1,6 @@
 ﻿namespace PxApi.Models
 {
-    public class VariableBase
+    public abstract class VariableBase
     {
         public required string Code { get; set; }
 

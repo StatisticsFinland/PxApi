@@ -62,7 +62,14 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<ActionResult<TableMeta>>());
             OkObjectResult? okResult = result.Result as OkObjectResult;
             Assert.That(okResult, Is.Not.Null);
-            Assert.That(okResult.Value, Is.InstanceOf<TableMeta>());
+            TableMeta? resultMeta = okResult.Value as TableMeta;
+            Assert.That(resultMeta, Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/example-db/filename?lang=en&showValues=true"));
+                Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
+                Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
+            });
         }
 
         [Test]
@@ -119,11 +126,143 @@ namespace PxApi.UnitTests.ControllerTests
             ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, null, null);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<TableMeta>>());
+            Assert.That(result, Is.InstanceOf<ActionResult<TableMeta>>()); 
             OkObjectResult? okResult = result.Result as OkObjectResult;
-
             Assert.That(okResult, Is.Not.Null);
-            Assert.That(okResult.Value, Is.InstanceOf<TableMeta>());
+            TableMeta? resultMeta = okResult.Value as TableMeta;
+            Assert.That(resultMeta, Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/example-db/filename"));
+                Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
+                Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
+            });
+        }
+
+        [Test]
+        public async Task GetVariableMeta_ContentVariableExists_ReturnsVariableMeta()
+        {
+            // Arrange
+            string database = "example-db";
+            string file = "filename.px";
+            string lang = "en";
+            string varcode = "content-code";
+            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+
+            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
+            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+
+            // Act
+            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, lang);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ActionResult<VariableBase>>());
+            OkObjectResult? okResult = result.Result as OkObjectResult;
+            Assert.That(okResult, Is.Not.Null);
+            ContentVariable? contentVar = okResult.Value as ContentVariable;
+            Assert.That(contentVar, Is.Not.Null);
+        }
+
+        [Test]
+        public async Task GetVariableMeta_TimeVariableExists_ReturnsVariableMeta()
+        {
+            // Arrange
+            string database = "example-db";
+            string file = "filename.px";
+            string lang = "en";
+            string varcode = "time-code";
+            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+
+            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
+            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+
+            // Act
+            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, lang);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ActionResult<VariableBase>>());
+            OkObjectResult? okResult = result.Result as OkObjectResult;
+            Assert.That(okResult, Is.Not.Null);
+            TimeVariable? timeVar = okResult.Value as TimeVariable;
+            Assert.That(timeVar, Is.Not.Null);
+        }
+
+        [Test]
+        public async Task GetVariableMeta_VariableDoesNotExist_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "example-db";
+            string file = "filename.px";
+            string varcode = "nonexistent-varcode";
+            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+
+            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
+            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+
+            // Act
+            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, null);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+        }
+
+        [Test]
+        public async Task GetVariableMeta_LanguageNotAvailable_ReturnsBadRequest()
+        {
+            // Arrange
+            string database = "example-db";
+            string file = "filename.px";
+            string varcode = "varcode";
+            string lang = "de";
+            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+
+            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
+            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+
+            // Act
+            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, lang);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            NotFoundResult? notFoundResult = result.Result as NotFoundResult;
+            Assert.That(notFoundResult, Is.Not.Null);
+        }
+
+        [Test]
+        public async Task GetVariableMeta_NoLanguageSpecified_ReturnsVariableMeta()
+        {
+            // Arrange
+            string database = "example-db";
+            string file = "filename.px";
+            string varcode = "dim0-code";
+            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+
+            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
+            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+
+            // Act
+            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, null);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ActionResult<VariableBase>>());
+            OkObjectResult? okResult = result.Result as OkObjectResult;
+            Assert.That(okResult, Is.Not.Null);
+            Variable? resultMeta = okResult.Value as Variable;
+            Assert.That(resultMeta, Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/example-db/filename/dim0-code"));
+                Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
+                Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
+                Assert.That(resultMeta.Links[1].Href, Is.EqualTo("https://testurl.fi/meta/example-db/filename"));
+                Assert.That(resultMeta.Links[1].Rel, Is.EqualTo("up"));
+                Assert.That(resultMeta.Links[1].Method, Is.EqualTo("GET"));
+            });
         }
     }
 }

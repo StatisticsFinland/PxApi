@@ -128,9 +128,11 @@ namespace PxApi.UnitTests.ModelBuilderTests
             // Arrange
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
             Uri urlRoot = new("https://example.com/meta/example-db/example-table");
-            string lang = "en";
+            const string lang = "en";
+            const string rel = "describedby";
+
             // Act
-            ContentVariable result = ModelBuilder.BuildContentVariable(meta, lang, false, urlRoot);
+            ContentVariable result = ModelBuilder.BuildContentVariable(meta, lang, false, urlRoot, rel);
             // Assert
             Assert.Multiple(() =>
             {
@@ -141,7 +143,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Size, Is.EqualTo(2));
                 Assert.That(result.Values, Is.Null); // showValues is false
                 Assert.That(result.Links, Has.Count.EqualTo(2));
-                Assert.That(result.Links[0].Rel, Is.EqualTo("describedby"));
+                Assert.That(result.Links[0].Rel, Is.EqualTo(rel));
                 Assert.That(result.Links[0].Href, Is.EqualTo("https://example.com/meta/example-db/example-table/content-code"));
                 Assert.That(result.Links[0].Method, Is.EqualTo("GET"));
                 Assert.That(result.Links[1].Rel, Is.EqualTo("up"));
@@ -156,10 +158,11 @@ namespace PxApi.UnitTests.ModelBuilderTests
             // Arrange
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
             Uri urlRoot = new("https://example.com/meta/example-db/example-table/");
-            string lang = "en";
+            const string lang = "en";
+            const string rel = "describedby";
 
             // Act
-            TimeVariable result = ModelBuilder.BuildTimeVariable(meta, lang, false, urlRoot);
+            TimeVariable result = ModelBuilder.BuildTimeVariable(meta, lang, false, urlRoot, rel);
 
             // Assert
             Assert.Multiple(() =>
@@ -172,7 +175,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Size, Is.EqualTo(2));
                 Assert.That(result.Values, Is.Null); // showValues is false
                 Assert.That(result.Links, Has.Count.EqualTo(2));
-                Assert.That(result.Links[0].Rel, Is.EqualTo("describedby"));
+                Assert.That(result.Links[0].Rel, Is.EqualTo(rel));
                 Assert.That(result.Links[0].Href, Is.EqualTo("https://example.com/meta/example-db/example-table/time-code"));
                 Assert.That(result.Links[0].Method, Is.EqualTo("GET"));
                 Assert.That(result.Links[1].Rel, Is.EqualTo("up"));
@@ -187,10 +190,11 @@ namespace PxApi.UnitTests.ModelBuilderTests
             // Arrange
             Dimension dimMeta = TestMockMetaBuilder.GetMockDimension("nominal", DimensionType.Nominal);
             Uri urlRoot = new("https://example.com/meta/example-db/example-table/");
-            string lang = "en";
+            const string lang = "en";
+            const string rel = "describedby";
 
             // Act
-            Variable result = ModelBuilder.BuildVariable(dimMeta, lang, false, urlRoot);
+            Variable result = ModelBuilder.BuildVariable(dimMeta, lang, false, urlRoot, rel);
 
 
             // Assert
@@ -204,7 +208,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Type, Is.EqualTo(DimensionType.Nominal));
                 Assert.That(result.Values, Is.Null);
                 Assert.That(result.Links, Has.Count.EqualTo(2));
-                Assert.That(result.Links[0].Rel, Is.EqualTo("describedby"));
+                Assert.That(result.Links[0].Rel, Is.EqualTo(rel));
                 Assert.That(result.Links[0].Href, Is.EqualTo("https://example.com/meta/example-db/example-table/nominal-code"));
                 Assert.That(result.Links[0].Method, Is.EqualTo("GET"));
                 Assert.That(result.Links[1].Rel, Is.EqualTo("up"));

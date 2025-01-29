@@ -14,10 +14,11 @@ namespace PxApi.ModelBuilders
         {
             lang ??= meta.DefaultLanguage;
             bool includeValues = showValues ?? false;
+            const string rel = "describedby";
 
             List<Variable> dimensions = meta.Dimensions
                 .Where(d => d.Type is not DimensionType.Time or DimensionType.Content)
-                .Select(d => BuildVariable(d, lang, includeValues, baseUrlWithParams))
+                .Select(d => BuildVariable(d, lang, includeValues, baseUrlWithParams, rel))
                 .ToList();
 
             return new TableMeta()
@@ -25,8 +26,8 @@ namespace PxApi.ModelBuilders
                 Contents = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.CONTENTS, lang),
                 Description = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.DESCRIPTION, lang),
                 Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
-                ContentVariable = BuildContentVariable(meta, lang, includeValues, baseUrlWithParams),
-                TimeVariable = BuildTimeVariable(meta, lang, includeValues, baseUrlWithParams),
+                ContentVariable = BuildContentVariable(meta, lang, includeValues, baseUrlWithParams, rel),
+                TimeVariable = BuildTimeVariable(meta, lang, includeValues, baseUrlWithParams, rel),
                 ClassificatoryVariables = dimensions,
                 FirstPeriod = meta.GetTimeDimension().Values[0].Name[lang],
                 LastPeriod = meta.GetTimeDimension().Values[^1].Name[lang],
@@ -44,7 +45,7 @@ namespace PxApi.ModelBuilders
             };
         }
 
-        public static ContentVariable BuildContentVariable(IReadOnlyMatrixMetadata meta, string lang, bool showValues, Uri urlBaseWithParams)
+        public static ContentVariable BuildContentVariable(IReadOnlyMatrixMetadata meta, string lang, bool showValues, Uri urlBaseWithParams, string rel)
         {
             ContentDimension contentDim = meta.GetContentDimension();
             string? tableOrDimSource = GetSourceByLang(meta, lang);
@@ -64,11 +65,11 @@ namespace PxApi.ModelBuilders
                 Note = GetValueByLanguage(contentDim.AdditionalProperties, PxFileConstants.NOTE, lang),
                 Size = contentDim.Values.Count,
                 Values = values,
-                Links = BuildVariableLinks(urlBaseWithParams, contentDim.Code)
+                Links = BuildVariableLinks(urlBaseWithParams, contentDim.Code, rel)
             };
         }
 
-        public static TimeVariable BuildTimeVariable(IReadOnlyMatrixMetadata meta, string lang, bool showValues, Uri urlBaseWithParams)
+        public static TimeVariable BuildTimeVariable(IReadOnlyMatrixMetadata meta, string lang, bool showValues, Uri urlBaseWithParams, string rel)
         {
             TimeDimension timeDim = meta.GetTimeDimension();
 
@@ -80,11 +81,11 @@ namespace PxApi.ModelBuilders
                 Interval = timeDim.Interval,
                 Size = timeDim.Values.Count,
                 Values = showValues ? timeDim.Values.Select(v => BuildValue(v, lang)).ToList() : null,
-                Links = BuildVariableLinks(urlBaseWithParams, timeDim.Code)
+                Links = BuildVariableLinks(urlBaseWithParams, timeDim.Code, rel)
             };
         }
 
-        public static Variable BuildVariable(IReadOnlyDimension meta, string lang, bool showValues, Uri baseUriWithParams)
+        public static Variable BuildVariable(IReadOnlyDimension meta, string lang, bool showValues, Uri baseUriWithParams, string rel)
         {
             return new Variable()
             {
@@ -94,7 +95,7 @@ namespace PxApi.ModelBuilders
                 Size = meta.Values.Count,
                 Type = meta.Type,
                 Values = showValues ? meta.Values.Select(v => BuildValue(v, lang)).ToList() : null,
-                Links = BuildVariableLinks(baseUriWithParams, meta.Code)
+                Links = BuildVariableLinks(baseUriWithParams, meta.Code, rel)
             };
         }
 
@@ -122,12 +123,12 @@ namespace PxApi.ModelBuilders
             };
         }
 
-        private static List<Link> BuildVariableLinks(Uri urlBaseWithParams, string variableCode)
+        private static List<Link> BuildVariableLinks(Uri urlBaseWithParams, string variableCode, string rel)
         {
             return [
                 new Link()
                 {
-                    Rel = "describedby",
+                    Rel = rel,
                     Href = urlBaseWithParams
                     .AddRelativePath(variableCode)
                     .DropQueryParameters("showValues")

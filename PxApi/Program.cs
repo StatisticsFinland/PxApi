@@ -70,6 +70,9 @@ namespace PxApi
             {
                 c.SwaggerDoc("openapi", new OpenApiInfo { Title = "PxApi", Version = "v1" });
                 c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "PxApi.xml"));
+                c.UseOneOfForPolymorphism();
+                c.SelectSubTypesUsing(baseType =>
+                    typeof(Program).Assembly.GetTypes().Where(type => type.IsSubclassOf(baseType)));
             });
             serviceCollection.AddTransient<IDataSource, LocalFileSystemDataSource>();
         }

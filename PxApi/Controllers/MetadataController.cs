@@ -7,6 +7,7 @@ using PxApi.DataSources;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace PxApi.Controllers
 {
@@ -15,6 +16,7 @@ namespace PxApi.Controllers
     public class MetadataController(IDataSource dataSource) : ControllerBase
     {
         [HttpGet("{database}/{file}")]
+        [Produces("application/json")]
         public async Task<ActionResult<TableMeta>> GetTableMetadataById(
             [FromRoute] string database,
             [FromRoute] string file,
@@ -47,8 +49,23 @@ namespace PxApi.Controllers
             return NotFound();
         }
 
+        /// <summary>
+        /// Get variable metadata.
+        /// </summary>
+        /// <param name="database">The name of the database.</param>
+        /// <param name="file">The name of the file.</param>
+        /// <param name="varcode">The code of the variable.</param>
+        /// <param name="lang">The language of the metadata.</param>
+        /// <returns>Returns variable metadata which can be of type Variable, ContentVariable, or TimeVariable.</returns>
+        /// <response code="200">Returns the variable metadata.</response>
+        /// <response code="400">If the content is not available in the specified language.</response>
+        /// <response code="404">If the variable is not found.</response>
         [HttpGet("{database}/{file}/{varcode}")]
-        public async Task<ActionResult<TableMeta>> GetVariableMeta(
+        [Produces("application/json")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<VariableBase>> GetVariableMeta(
             [FromRoute] string database,
             [FromRoute] string file,
             [FromRoute] string varcode,
@@ -63,24 +80,26 @@ namespace PxApi.Controllers
                 IReadOnlyDimension? targetDim = meta.Dimensions.FirstOrDefault(d => d.Code == varcode);
                 if(targetDim is not null)
                 {
-                    string practicalLang = lang ?? meta.DefaultLanguage;
-                    if (meta.AvailableLanguages.Contains(lang))
+                    string actualLang = lang ?? meta.DefaultLanguage;
+                    if (meta.AvailableLanguages.Contains(actualLang))
                     { 
+                        const string rel = "self";
+
                         Uri fileUri = settings.RootUrl
                         .AddRelativePath("meta", database, Path.GetFileNameWithoutExtension(file))
                         .AddQueryParameters(("lang", lang));
 
                         if (targetDim.Type is DimensionType.Content)
                         {
-                            return Ok(ModelBuilder.BuildContentVariable(meta, practicalLang, true, fileUri));
+                            return Ok(ModelBuilder.BuildContentVariable(meta, actualLang, true, fileUri, rel));
                         }
                         else if (targetDim.Type is DimensionType.Time)
                         {
-                            return Ok(ModelBuilder.BuildTimeVariable(meta, practicalLang, true, fileUri));
+                            return Ok(ModelBuilder.BuildTimeVariable(meta, actualLang, true, fileUri, rel));
                         }
                         else
                         {
-                            return Ok(ModelBuilder.BuildVariable(targetDim, practicalLang, true, fileUri));
+                            return Ok(ModelBuilder.BuildVariable(targetDim, actualLang, true, fileUri, rel));
                         }
                     }
                     else
