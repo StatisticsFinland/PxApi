@@ -210,7 +210,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetVariableMeta_LanguageNotAvailable_ReturnsBadRequest()
+        public async Task GetVariableMeta_LanguageNotAvailable_ReturnsNotFound()
         {
             // Arrange
             string database = "example-db";

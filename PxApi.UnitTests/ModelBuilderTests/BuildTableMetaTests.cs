@@ -185,7 +185,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
         }
 
         [Test]
-        public static void BuildDimensionTest()
+        public static void BuildVariableTest()
         {
             // Arrange
             Dimension dimMeta = TestMockMetaBuilder.GetMockDimension("nominal", DimensionType.Nominal);
