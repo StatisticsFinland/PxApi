@@ -51,7 +51,7 @@ namespace PxApi.Controllers
             TablePath? path = await dataSource.GetTablePathAsync(database, table);
             if (path is not null)
             {
-                IReadOnlyMatrixMetadata meta = await dataSource.GetTableMetadataAsync(path);
+                IReadOnlyMatrixMetadata meta = await dataSource.GetMatrixMetadataCachedAsync(path);
 
                 if (lang is null || meta.AvailableLanguages.Contains(lang))
                 {
@@ -102,7 +102,7 @@ namespace PxApi.Controllers
             TablePath? path = await dataSource.GetTablePathAsync(database, table);
             if (path is not null)
             {
-                IReadOnlyMatrixMetadata meta = await dataSource.GetTableMetadataAsync(path);
+                IReadOnlyMatrixMetadata meta = await dataSource.GetMatrixMetadataCachedAsync(path);
                 IReadOnlyDimension? targetDim = meta.Dimensions.FirstOrDefault(d => d.Code == varcode);
                 if(targetDim is not null)
                 {

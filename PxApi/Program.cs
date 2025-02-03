@@ -47,7 +47,7 @@ namespace PxApi
                 });
                 app.UseSwaggerUI(c =>
                 {
-                    c.SwaggerEndpoint("/openapi/document.json", "PxApi");
+                    c.SwaggerEndpoint("/pxapi/openapi/document.json", "PxApi");
                     c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
                 });
 
@@ -83,6 +83,7 @@ namespace PxApi
                 c.SelectSubTypesUsing(baseType =>
                     typeof(Program).Assembly.GetTypes().Where(type => type.IsSubclassOf(baseType)));
             });
+            serviceCollection.AddMemoryCache();
             serviceCollection.AddTransient<IDataSource, LocalFileSystemDataSource>();
         }
     }
