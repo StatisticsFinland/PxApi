@@ -32,7 +32,8 @@ namespace PxApi.UnitTests.ControllerTests
             Dictionary<string, string?> inMemorySettings = new()
             {
                 {"RootUrl", "https://testurl.fi"},
-                {"DataSource:LocalFileSystem:RootPath", "datasource/root/"}
+                {"DataSource:LocalFileSystem:RootPath", "datasource/root/"},
+                {"DataSource:LocalFileSystem:MetadataCache:SlidingExpirationMinutes", "15"}
             };
 
             IConfiguration _configuration = new ConfigurationBuilder()
