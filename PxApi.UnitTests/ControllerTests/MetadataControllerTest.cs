@@ -53,7 +53,7 @@ namespace PxApi.UnitTests.ControllerTests
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
             ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, lang, true);
@@ -99,7 +99,7 @@ namespace PxApi.UnitTests.ControllerTests
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
             ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, lang, true);
@@ -120,7 +120,7 @@ namespace PxApi.UnitTests.ControllerTests
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
             ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, null, null);
@@ -151,7 +151,7 @@ namespace PxApi.UnitTests.ControllerTests
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
             ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, lang);
@@ -176,7 +176,7 @@ namespace PxApi.UnitTests.ControllerTests
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
             ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, lang);
@@ -200,7 +200,7 @@ namespace PxApi.UnitTests.ControllerTests
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
             ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, null);
@@ -221,7 +221,7 @@ namespace PxApi.UnitTests.ControllerTests
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
             ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, lang);
@@ -243,7 +243,7 @@ namespace PxApi.UnitTests.ControllerTests
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetTableMetadataAsync(tablePath)).ReturnsAsync(meta);
+            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
 
             // Act
             ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, null);

@@ -24,7 +24,7 @@
         /// <summary>
         /// Returns true if the cache item is fresh.
         /// </summary>
-        public bool IsFresh => CreationTime < DateTime.Now.Subtract(StaysFresh);
+        public bool IsFresh => CreationTime > DateTime.Now.Subtract(StaysFresh);
 
         /// <summary>
         /// The time that the cache item was created.
