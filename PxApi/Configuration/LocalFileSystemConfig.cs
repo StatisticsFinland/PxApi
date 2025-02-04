@@ -11,6 +11,11 @@
         public string RootPath { get; }
 
         /// <summary>
+        /// Configuration for the metadata caching.
+        /// </summary>
+        public CacheConfig MetadataCache { get; }
+
+        /// <summary>
         /// Default constructor
         /// </summary>
         /// <param name="section"> Configuration section that contains the settings for the local file system datasource.</param>
@@ -19,6 +24,8 @@
         {
             RootPath = section.GetValue<string>(nameof(RootPath))
                 ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(RootPath)}");
+
+            MetadataCache = new CacheConfig(section.GetSection(nameof(MetadataCache)));
         }
     }
 }

@@ -18,7 +18,6 @@ namespace PxApi.DataSources
     public class LocalFileSystemDataSource(IMemoryCache cache) : IDataSource
     {
         private readonly LocalFileSystemConfig config = AppSettings.Active.DataSource.LocalFileSystem;
-        private readonly TimeSpan AbsoluteExpiration = TimeSpan.FromMinutes(15);
 
         /// <inheritdoc/>
         public Task GetDatabasesAsync()
@@ -53,14 +52,14 @@ namespace PxApi.DataSources
                 else if (metaItem.FileModified == GetLastModified(path))
                 {
                     // Since we reset the cache item, we don't need sliding expiration.
-                    cache.Set(key, new CacheItem<IReadOnlyMatrixMetadata>(metaItem), AbsoluteExpiration);
+                    cache.Set(key, new CacheItem<IReadOnlyMatrixMetadata>(metaItem), config.MetadataCache.SlidingExpirationMinutes);
                     return await metaItem.Task;
                 }
             }
             
             Task<IReadOnlyMatrixMetadata> task = GetTableMetadataAsync(path);
             CacheItem<IReadOnlyMatrixMetadata> cacheItem = new(task, TimeSpan.FromSeconds(5), GetLastModified(path));
-            cache.Set(key, cacheItem, AbsoluteExpiration);
+            cache.Set(key, cacheItem, config.MetadataCache.SlidingExpirationMinutes);
             return await task;
         }
 
