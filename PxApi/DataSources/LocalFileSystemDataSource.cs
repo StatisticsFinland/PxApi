@@ -1,12 +1,13 @@
-﻿using Microsoft.Extensions.Caching.Memory;
+﻿using Px.Utils.Language;
 using Px.Utils.ModelBuilders;
 using Px.Utils.Models.Metadata;
+using Px.Utils.Models.Metadata.Dimensions;
+using Px.Utils.Models.Metadata.Enums;
+using Px.Utils.Models.Metadata.MetaProperties;
 using Px.Utils.PxFile.Metadata;
-using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.ModelBuilders;
 using System.Diagnostics.CodeAnalysis;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace PxApi.DataSources
@@ -15,8 +16,9 @@ namespace PxApi.DataSources
     /// Data source for using database on the local file system.
     /// </summary>
     [ExcludeFromCodeCoverage] // This class is not unit tested because it relies on file system access.
-    public class LocalFileSystemDataSource(IMemoryCache cache) : IDataSource
+    public class LocalFileSystemDataSource() : IDataSource
     {
+
         private readonly LocalFileSystemConfig config = AppSettings.Active.DataSource.LocalFileSystem;
 
         /// <inheritdoc/>
@@ -29,7 +31,7 @@ namespace PxApi.DataSources
         public Task<TablePath?> GetTablePathAsync(string database, string filename)
         {
             string rootPath = Path.Combine(config.RootPath, database);
-            if (!filename.EndsWith(PxFileConstants.FILE_ENDING)) filename += PxFileConstants.FILE_ENDING;
+            if(!filename.EndsWith(PxFileConstants.FILE_ENDING)) filename += PxFileConstants.FILE_ENDING;
             return Task.Run(() =>
             {
                 string? filePath = Directory.EnumerateFiles(rootPath, filename, SearchOption.AllDirectories).FirstOrDefault();
@@ -43,28 +45,7 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public async Task<IReadOnlyMatrixMetadata> GetMatrixMetadataCachedAsync(TablePath path)
-        {
-            string key = GetCacheEntryKey(path);
-            if (cache.TryGetValue(key, out CacheItem<IReadOnlyMatrixMetadata>? metaItem) && metaItem is not null)
-            {
-                if (metaItem.IsFresh) return await metaItem.Task;
-                else if (metaItem.FileModified == GetLastModified(path))
-                {
-                    // Since we reset the cache item, we don't need sliding expiration.
-                    cache.Set(key, new CacheItem<IReadOnlyMatrixMetadata>(metaItem), config.MetadataCache.SlidingExpirationMinutes);
-                    return await metaItem.Task;
-                }
-            }
-            
-            Task<IReadOnlyMatrixMetadata> task = GetTableMetadataAsync(path);
-            CacheItem<IReadOnlyMatrixMetadata> cacheItem = new(task, TimeSpan.FromSeconds(5), GetLastModified(path));
-            cache.Set(key, cacheItem, config.MetadataCache.SlidingExpirationMinutes);
-            return await task;
-        }
-
-        /// <inheritdoc/>
-        private async static Task<IReadOnlyMatrixMetadata> GetTableMetadataAsync(TablePath path)
+        public async Task<IReadOnlyMatrixMetadata> GetTableMetadataAsync(TablePath path)
         {
             PxFileMetadataReader reader = new();
             using FileStream fileStream = new(path.ToPathString(), FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -74,23 +55,59 @@ namespace PxApi.DataSources
             else throw new InvalidOperationException("Not able to seek in the filestream");
 
             IAsyncEnumerable<KeyValuePair<string, string>> metaEntries = reader.ReadMetadataAsync(fileStream, encoding);
-
+            
             MatrixMetadataBuilder builder = new();
-            return await builder.BuildAsync(metaEntries);
+            MatrixMetadata meta = await builder.BuildAsync(metaEntries);
+            AssignOrdinalDimensionTypes(meta);
+
+            return meta;
         }
 
-        private static DateTime GetLastModified(TablePath path)
+        // TODO: Move to a separate class for testing
+        /// <summary>
+        /// Assigns ordinal or nominal dimension types to dimensions that are either of unknown or other type based on their meta-id properties.
+        /// </summary>
+        /// <param name="meta">The matrix metadata to assign the dimension types to.</param>
+        private static void AssignOrdinalDimensionTypes(MatrixMetadata meta)
         {
-            return File.GetLastWriteTime(path.ToPathString());
+            for (int i = 0; i < meta.Dimensions.Count; i++)
+            {
+                DimensionType newType = GetDimensionType(meta.Dimensions[i]);
+                if (newType == DimensionType.Ordinal || newType == DimensionType.Nominal)
+                {
+                    meta.Dimensions[i] = new(
+                        meta.Dimensions[i].Code,
+                        meta.Dimensions[i].Name,
+                        meta.Dimensions[i].AdditionalProperties,
+                        meta.Dimensions[i].Values,
+                        newType);
+                }
+            }
         }
 
-        private static string GetCacheEntryKey(TablePath path)
+        // TODO: Move this too
+        /// <summary>
+        /// Assigns a dimension type to the given dimension based on its meta-id property.
+        /// </summary>
+        /// <param name="dimension"></param>
+        /// <returns></returns>
+        private static DimensionType GetDimensionType(Dimension dimension)
         {
-            const string seed = "TABLE_PATH_SEED";
-            byte[] inputBytes = Encoding.UTF8.GetBytes(path.ToPathString() + seed);
-            byte[] hashBytes = MD5.HashData(inputBytes);
-
-            return BitConverter.ToString(hashBytes);
+            // If the dimension already has a defining type, ordinality should not overrun it
+            if (dimension.Type == DimensionType.Unknown ||
+                dimension.Type == DimensionType.Other)
+            {
+                string propertyKey = PxFileConstants.META_ID;
+                if (dimension.AdditionalProperties.TryGetValue(propertyKey, out MetaProperty? prop) &&
+                    prop is MultilanguageStringProperty mlsProp)
+                {
+                    dimension.AdditionalProperties.Remove(propertyKey); // OBS: Remove the property after retrieval
+                    if (mlsProp.Value.UniformValue().Equals(PxFileConstants.ORDINAL_VALUE)) return DimensionType.Ordinal;
+                    else if (mlsProp.Value.UniformValue().Equals(PxFileConstants.NOMINAL_VALUE)) return DimensionType.Nominal;
+                }
+            }
+            return dimension.Type;
         }
+
     }
 }
