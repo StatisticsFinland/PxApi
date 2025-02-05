@@ -20,7 +20,7 @@ namespace PxApi.DataSources
         /// </summary>
         /// <param name="path"><see cref="TablePath"/> object for accessing the table.</param>
         /// <returns><see cref="IReadOnlyMatrixMetadata"/> containing the metadata of the whole table.</returns>
-        public Task<IReadOnlyMatrixMetadata> GetTableMetadataAsync(TablePath path);
+        public Task<IReadOnlyMatrixMetadata> GetMatrixMetadataCachedAsync(TablePath path);
 
         /// <summary>
         /// Get the list of databases available in the data source.

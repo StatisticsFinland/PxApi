@@ -83,6 +83,7 @@ namespace PxApi
                 c.SelectSubTypesUsing(baseType =>
                     typeof(Program).Assembly.GetTypes().Where(type => type.IsSubclassOf(baseType)));
             });
+            serviceCollection.AddMemoryCache();
             serviceCollection.AddTransient<IDataSource, LocalFileSystemDataSource>();
         }
     }
