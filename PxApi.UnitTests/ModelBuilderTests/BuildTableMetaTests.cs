@@ -1,6 +1,8 @@
-﻿using Px.Utils.Models.Metadata;
+﻿using Px.Utils.Language;
+using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.Dimensions;
 using Px.Utils.Models.Metadata.Enums;
+using Px.Utils.Models.Metadata.MetaProperties;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 
@@ -29,7 +31,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Note, Is.EqualTo("table-note.en"));
                 Assert.That(result.ContentVariable, Is.Not.Null);
                 Assert.That(result.TimeVariable, Is.Not.Null);
-                Assert.That(result.ClassificatoryVariables, Has.Count.EqualTo(3));
+                Assert.That(result.ClassificatoryVariables, Has.Count.EqualTo(2));
                 Assert.That(result.FirstPeriod, Is.EqualTo("time-value0-name.en"));
                 Assert.That(result.LastPeriod, Is.EqualTo("time-value1-name.en"));
                 Assert.That(result.LastModified, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
@@ -56,7 +58,6 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.TimeVariable.Values, Has.Count.EqualTo(2));
                 Assert.That(result.ClassificatoryVariables[0].Values, Has.Count.EqualTo(2));
                 Assert.That(result.ClassificatoryVariables[1].Values, Has.Count.EqualTo(2));
-                Assert.That(result.ClassificatoryVariables[2].Values, Has.Count.EqualTo(2));
             });
         }
 
@@ -111,7 +112,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Note, Is.EqualTo("table-note.fi"));
                 Assert.That(result.ContentVariable, Is.Not.Null);
                 Assert.That(result.TimeVariable, Is.Not.Null);
-                Assert.That(result.ClassificatoryVariables, Has.Count.EqualTo(3));
+                Assert.That(result.ClassificatoryVariables, Has.Count.EqualTo(2));
                 Assert.That(result.FirstPeriod, Is.EqualTo("time-value0-name.fi"));
                 Assert.That(result.LastPeriod, Is.EqualTo("time-value1-name.fi"));
                 Assert.That(result.Links, Has.Count.EqualTo(1));
@@ -224,6 +225,11 @@ namespace PxApi.UnitTests.ModelBuilderTests
             string source = "source";
             string lang = "en";
             ContentDimensionValue dimMeta = TestMockMetaBuilder.GetMockContentValue("content");
+            MultilanguageString valueNote = new(new Dictionary<string, string>()
+            {
+                { "en", "content-value-note.en" }
+            });
+            dimMeta.AdditionalProperties.Add(PxFileConstants.VALUENOTE, new MultilanguageStringProperty(valueNote));
 
             // Act
             ContentValue result = ModelBuilder.BuildContentValue(dimMeta, source, lang);
@@ -233,15 +239,40 @@ namespace PxApi.UnitTests.ModelBuilderTests
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result.Code, Is.EqualTo("content-code"));
-                // Assert.That(result.Note, Is.EqualTo("content-note.en")); TODO: Bug in Px.Utils - note is not set
                 Assert.That(result.Name, Is.EqualTo("content-name.en"));
                 Assert.That(result.Source, Is.EqualTo(source));
                 Assert.That(result.Unit, Is.EqualTo("content-unit.en"));
+                Assert.That(result.Note, Is.EqualTo("content-value-note.en"));
             });
         }
 
         [Test]
         public static void BuildValueTest()
+        {
+            // Arrange
+            string lang = "en";
+            DimensionValue dimMeta = TestMockMetaBuilder.GetMockDimensionValue("value");
+            MultilanguageString valueNote = new(new Dictionary<string, string>()
+            {
+                { "en", "custom-value-note.en" }
+            });
+            dimMeta.AdditionalProperties.Add(PxFileConstants.VALUENOTE, new MultilanguageStringProperty(valueNote));
+
+            // Act
+            Value result = ModelBuilder.BuildValue(dimMeta, lang);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result.Code, Is.EqualTo("value-code"));
+                Assert.That(result.Name, Is.EqualTo("value-name.en"));
+                Assert.That(result.Note, Is.EqualTo("custom-value-note.en"));
+            });
+        }
+
+        [Test]
+        public static void BuildValueTest_WithoutValueNote()
         {
             // Arrange
             string lang = "en";

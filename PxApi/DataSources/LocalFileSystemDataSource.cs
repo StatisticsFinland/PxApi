@@ -7,6 +7,7 @@ using Px.Utils.Models.Metadata.MetaProperties;
 using Px.Utils.PxFile.Metadata;
 using PxApi.Configuration;
 using PxApi.ModelBuilders;
+using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
@@ -58,56 +59,9 @@ namespace PxApi.DataSources
             
             MatrixMetadataBuilder builder = new();
             MatrixMetadata meta = await builder.BuildAsync(metaEntries);
-            AssignOrdinalDimensionTypes(meta);
+            MatrixMetadataUtilityFunctions.AssignOrdinalDimensionTypes(meta);
 
             return meta;
         }
-
-        // TODO: Move to a separate class for testing
-        /// <summary>
-        /// Assigns ordinal or nominal dimension types to dimensions that are either of unknown or other type based on their meta-id properties.
-        /// </summary>
-        /// <param name="meta">The matrix metadata to assign the dimension types to.</param>
-        private static void AssignOrdinalDimensionTypes(MatrixMetadata meta)
-        {
-            for (int i = 0; i < meta.Dimensions.Count; i++)
-            {
-                DimensionType newType = GetDimensionType(meta.Dimensions[i]);
-                if (newType == DimensionType.Ordinal || newType == DimensionType.Nominal)
-                {
-                    meta.Dimensions[i] = new(
-                        meta.Dimensions[i].Code,
-                        meta.Dimensions[i].Name,
-                        meta.Dimensions[i].AdditionalProperties,
-                        meta.Dimensions[i].Values,
-                        newType);
-                }
-            }
-        }
-
-        // TODO: Move this too
-        /// <summary>
-        /// Assigns a dimension type to the given dimension based on its meta-id property.
-        /// </summary>
-        /// <param name="dimension"></param>
-        /// <returns></returns>
-        private static DimensionType GetDimensionType(Dimension dimension)
-        {
-            // If the dimension already has a defining type, ordinality should not overrun it
-            if (dimension.Type == DimensionType.Unknown ||
-                dimension.Type == DimensionType.Other)
-            {
-                string propertyKey = PxFileConstants.META_ID;
-                if (dimension.AdditionalProperties.TryGetValue(propertyKey, out MetaProperty? prop) &&
-                    prop is MultilanguageStringProperty mlsProp)
-                {
-                    dimension.AdditionalProperties.Remove(propertyKey); // OBS: Remove the property after retrieval
-                    if (mlsProp.Value.UniformValue().Equals(PxFileConstants.ORDINAL_VALUE)) return DimensionType.Ordinal;
-                    else if (mlsProp.Value.UniformValue().Equals(PxFileConstants.NOMINAL_VALUE)) return DimensionType.Nominal;
-                }
-            }
-            return dimension.Type;
-        }
-
     }
 }

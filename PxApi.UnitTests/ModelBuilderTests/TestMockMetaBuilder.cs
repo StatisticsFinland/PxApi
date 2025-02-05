@@ -9,16 +9,23 @@ namespace PxApi.UnitTests.ModelBuilderTests
 {
     internal static class TestMockMetaBuilder
     {
-        internal static MatrixMetadata GetMockMetadata()
+        internal static MatrixMetadata GetMockMetadata(DimensionType[]? additionalDimensions = null, Dictionary<string, MetaProperty>?[]? dimensionAdditionalProps = null)
         {
             string defaultLang = "fi";
             List<string> availableLangs = ["fi", "sv", "en"];
+
+            List<Dimension> additional = [];
+            for(int i = 0; i < additionalDimensions?.Length; i++)
+            {
+                additional.Add(GetMockDimension($"dim{1 + i}", additionalDimensions[i], dimensionAdditionalProps?[4 + i]));
+            }
 
             List<Dimension> dimensions = [
                 GetMockContentDimension("content"),
                 GetMockTimeDimension("time"),
                 GetMockDimension("dim0", DimensionType.Ordinal),
-                GetMockDimension("dim1", DimensionType.Nominal)
+                GetMockDimension("dim1", DimensionType.Nominal),
+                ..additional
                 ];
 
             MultilanguageString description = new([
@@ -57,7 +64,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             return new(defaultLang, availableLangs, dimensions, props);
         }
 
-        internal static Dimension GetMockDimension(string identifier, DimensionType type)
+        internal static Dimension GetMockDimension(string identifier, DimensionType type, Dictionary<string, MetaProperty>? additionalProps = null)
         {
             MultilanguageString name = new([
                 new("fi", $"{identifier}-name.fi"),
@@ -77,11 +84,19 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 new("en", $"{identifier}-note.en"),
             ]);
 
+
             Dictionary<string, MetaProperty> props = new()
             {
-                { PxFileConstants.NOTE, new MultilanguageStringProperty(note) }
+                { PxFileConstants.NOTE, new MultilanguageStringProperty(note) },
             };
-
+            if (additionalProps != null)
+            {
+                foreach (KeyValuePair<string, MetaProperty> kvp in additionalProps)
+                {
+                    props.TryAdd(kvp.Key, kvp.Value);
+                }
+            }
+            
             return new Dimension($"{identifier}-code", name, props, values, type);
         }
 

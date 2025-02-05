@@ -16,6 +16,11 @@
         public const string NOTE = "NOTE";
 
         /// <summary>
+        /// Key for VALUENOTE in the Px files
+        /// </summary>
+        public const string VALUENOTE = "VALUENOTE";
+
+        /// <summary>
         /// Key for VARIABLE in the Px files
         /// </summary>
         public const string SOURCE = "SOURCE";
