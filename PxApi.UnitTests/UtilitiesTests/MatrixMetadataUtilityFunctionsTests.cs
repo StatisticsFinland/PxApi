@@ -12,7 +12,7 @@ namespace PxApi.UnitTests.UtilitiesTests
     internal class MatrixMetadataUtilityFunctionsTests
     {
         [Test]
-        public void AssignOrdinalDimensionTypes_CalledWithMatrixMetadataWithUnknownDimensionTypes_UpdatesOrdinalAndNominalDimensionTypes()
+        public void AssignOrdinalDimensionTypes_CalledWithMatrixMetadataWithUnknownDimensionTypes_ReturnsMetadataWithExpectedDimensionTypes()
         {
             // Arrange
             MultilanguageString ordinalMls = new(
@@ -30,15 +30,22 @@ namespace PxApi.UnitTests.UtilitiesTests
 
             MultilanguageStringProperty ordinalProperty = new(ordinalMls);
             MultilanguageStringProperty nominalProperty = new(nominalMls);
+
+            // Metadata with three additional dimensions of Unknown type. One of them has ordinal and the other has nominal meta-id property.
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata(
-                [DimensionType.Unknown, DimensionType.Unknown],
+                [
+                    DimensionType.Unknown, 
+                    DimensionType.Unknown, 
+                    DimensionType.Unknown
+                ],
                 [
                     null,
                     null,
                     null,
                     null,
                     new Dictionary<string, MetaProperty> { { PxFileConstants.META_ID, ordinalProperty } },
-                    new Dictionary<string, MetaProperty> { { PxFileConstants.META_ID, nominalProperty } }
+                    new Dictionary<string, MetaProperty> { { PxFileConstants.META_ID, nominalProperty } },
+                    null
                 ]);
 
             // Act
@@ -49,6 +56,7 @@ namespace PxApi.UnitTests.UtilitiesTests
             {
                 Assert.That(meta.Dimensions[4].Type, Is.EqualTo(DimensionType.Ordinal));
                 Assert.That(meta.Dimensions[5].Type, Is.EqualTo(DimensionType.Nominal));
+                Assert.That(meta.Dimensions[6].Type, Is.EqualTo(DimensionType.Unknown));
             });
         }
     }
