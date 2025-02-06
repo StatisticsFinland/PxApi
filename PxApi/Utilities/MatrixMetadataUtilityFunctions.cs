@@ -36,17 +36,14 @@ namespace PxApi.Utilities
         private static DimensionType GetDimensionType(Dimension dimension)
         {
             // If the dimension already has a defining type, ordinality should not overrun it
-            if (dimension.Type == DimensionType.Unknown ||
-                dimension.Type == DimensionType.Other)
+            if ((dimension.Type == DimensionType.Unknown ||
+                dimension.Type == DimensionType.Other) &&
+                dimension.AdditionalProperties.TryGetValue(PxFileConstants.META_ID, out MetaProperty? prop) &&
+                prop is MultilanguageStringProperty mlsProp)
             {
-                string propertyKey = PxFileConstants.META_ID;
-                if (dimension.AdditionalProperties.TryGetValue(propertyKey, out MetaProperty? prop) &&
-                    prop is MultilanguageStringProperty mlsProp)
-                {
-                    dimension.AdditionalProperties.Remove(propertyKey); // OBS: Remove the property after retrieval
-                    if (mlsProp.Value.UniformValue().Equals(PxFileConstants.ORDINAL_VALUE)) return DimensionType.Ordinal;
-                    else if (mlsProp.Value.UniformValue().Equals(PxFileConstants.NOMINAL_VALUE)) return DimensionType.Nominal;
-                }
+                dimension.AdditionalProperties.Remove(PxFileConstants.META_ID); // OBS: Remove the property after retrieval
+                if (mlsProp.Value.UniformValue().Equals(PxFileConstants.ORDINAL_VALUE)) return DimensionType.Ordinal;
+                else if (mlsProp.Value.UniformValue().Equals(PxFileConstants.NOMINAL_VALUE)) return DimensionType.Nominal;
             }
             return dimension.Type;
         }
