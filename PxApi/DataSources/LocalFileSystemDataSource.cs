@@ -5,6 +5,7 @@ using Px.Utils.PxFile.Metadata;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.ModelBuilders;
+using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
@@ -76,7 +77,10 @@ namespace PxApi.DataSources
             IAsyncEnumerable<KeyValuePair<string, string>> metaEntries = reader.ReadMetadataAsync(fileStream, encoding);
 
             MatrixMetadataBuilder builder = new();
-            return await builder.BuildAsync(metaEntries);
+            MatrixMetadata meta = await builder.BuildAsync(metaEntries);
+            MatrixMetadataUtilityFunctions.AssignOrdinalDimensionTypes(meta);
+
+            return meta;
         }
 
         private static DateTime GetLastModified(TablePath path)

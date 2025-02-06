@@ -28,7 +28,7 @@ namespace PxApi.ModelBuilders
             const string rel = "describedby";
 
             List<Variable> dimensions = meta.Dimensions
-                .Where(d => d.Type is not DimensionType.Time or DimensionType.Content)
+                .Where(d => d.Type is not DimensionType.Time and not DimensionType.Content)
                 .Select(d => BuildVariable(d, lang, includeValues, baseUrlWithParams, rel))
                 .ToList();
 
@@ -149,7 +149,7 @@ namespace PxApi.ModelBuilders
             {
                 Code = meta.Code,
                 Name = meta.Name[lang],
-                Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
+                Note = GetValueNoteByLanguage(meta.AdditionalProperties, lang),
             };
         }
 
@@ -166,12 +166,18 @@ namespace PxApi.ModelBuilders
             {
                 Code = meta.Code,
                 Name = meta.Name[lang],
-                Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
+                Note = GetValueNoteByLanguage(meta.AdditionalProperties, lang),
                 LastUpdated = meta.LastUpdated,
                 Unit = meta.Unit[lang],
                 Precision = meta.Precision,
                 Source = source
             };
+        }
+
+        private static string? GetValueNoteByLanguage(IReadOnlyDictionary<string, MetaProperty> additionalProperties, string lang)
+        {
+            return GetValueByLanguage(additionalProperties, PxFileConstants.VALUENOTE, lang)
+                ?? GetValueByLanguage(additionalProperties, PxFileConstants.NOTE, lang);
         }
 
         private static List<Link> BuildVariableLinks(Uri urlBaseWithParams, string variableCode, string rel)

@@ -16,6 +16,11 @@
         public const string NOTE = "NOTE";
 
         /// <summary>
+        /// Key for VALUENOTE in the Px files
+        /// </summary>
+        public const string VALUENOTE = "VALUENOTE";
+
+        /// <summary>
         /// Key for VARIABLE in the Px files
         /// </summary>
         public const string SOURCE = "SOURCE";
@@ -34,5 +39,20 @@
         /// Key for table DESCRIPTION in the Px files
         /// </summary>
         public const string DESCRIPTION = "DESCRIPTION";
+
+        /// <summary>
+        /// Key for table META-ID in the Px files
+        /// </summary>
+        public const string META_ID = "META-ID";
+
+        /// <summary>
+        /// Ordinal value for table META-ID in the Px files
+        /// </summary>
+        public const string ORDINAL_VALUE = "SCALE-TYPE=ordinal";
+
+        /// <summary>
+        /// Nominal value for table META-ID in the Px files
+        /// </summary>
+        public const string NOMINAL_VALUE = "SCALE-TYPE=nominal";
     }
 }
