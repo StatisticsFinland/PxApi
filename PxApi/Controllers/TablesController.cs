@@ -27,56 +27,64 @@ namespace PxApi.Controllers
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE; 
 
             AppSettings settings = AppSettings.Active;
-            ImmutableSortedDictionary<string, PxTable> tableList = await dataSource.GetSortedTableDictCachedAsync(dbId);
-            PagedTableList pagedTableList = new()
+            try
             {
-                Tables = [],
-                PagingInfo = new PagingInfo()
+                ImmutableSortedDictionary<string, PxTable> tableList = await dataSource.GetSortedTableDictCachedAsync(dbId);
+                PagedTableList pagedTableList = new()
                 {
-                    CurrentPage = page,
-                    PageSize = pageSize,
-                    TotalItems = tableList.Count,
-                    MaxPageSize = MAX_PAGE_SIZE
-                }
-            };
-
-            for (int i = pageSize * (page - 1); i < pageSize * page; i++)
-            {
-                try
-                {
-                    if (i >= tableList.Count) break;
-                    KeyValuePair<string, PxTable> table = tableList.ElementAt(i);
-                    IReadOnlyMatrixMetadata tableMeta = await dataSource.GetMatrixMetadataCachedAsync(table.Value);
-
-                    Uri fileUri = settings.RootUrl
-                        .AddRelativePath("meta", dbId, table.Key)
-                        .AddQueryParameters(("lang", lang));
-
-                    pagedTableList.Tables.Add(new TableListingItem()
+                    Tables = [],
+                    PagingInfo = new PagingInfo()
                     {
-                        ID = tableMeta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang) ?? table.Key,
-                        Name = table.Key,
-                        Title = tableMeta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang) ?? "Description not found",
-                        LastUpdated = tableMeta.GetContentDimension().Values.Map(v => v.LastUpdated).Max(),
-                        Links =
-                        [
-                            new()
-                            {
-                                Rel = "describedby",
-                                Href = fileUri.ToString(),
-                                Method = "GET"
-                            }
-                        ]
-                    });
-                }
-                catch (Exception e)
-                {
-                    logger.LogWarning(e, "Failed to get metadata for table: {Table}", tableList.ElementAt(i).Key);
-                    continue;
-                }
-            }
+                        CurrentPage = page,
+                        PageSize = pageSize,
+                        TotalItems = tableList.Count,
+                        MaxPageSize = MAX_PAGE_SIZE
+                    }
+                };
 
-            return Ok(pagedTableList);
+                for (int i = pageSize * (page - 1); i < pageSize * page; i++)
+                {
+                    try
+                    {
+                        if (i >= tableList.Count) break;
+                        KeyValuePair<string, PxTable> table = tableList.ElementAt(i);
+                        IReadOnlyMatrixMetadata tableMeta = await dataSource.GetMatrixMetadataCachedAsync(table.Value);
+
+                        Uri fileUri = settings.RootUrl
+                            .AddRelativePath("meta", dbId, table.Key)
+                            .AddQueryParameters(("lang", lang));
+
+                        pagedTableList.Tables.Add(new TableListingItem()
+                        {
+                            ID = tableMeta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang) ?? table.Key,
+                            Name = table.Key,
+                            Title = tableMeta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang) ?? "Description not found",
+                            LastUpdated = tableMeta.GetContentDimension().Values.Map(v => v.LastUpdated).Max(),
+                            Links =
+                            [
+                                new()
+                                {
+                                    Rel = "describedby",
+                                    Href = fileUri.ToString(),
+                                    Method = "GET"
+                                }
+                            ]
+                        });
+                    }
+                    catch (Exception e)
+                    {
+                        logger.LogWarning(e, "Failed to get metadata for table: {Table}", tableList.ElementAt(i).Key);
+                        continue;
+                    }
+                }
+
+                return Ok(pagedTableList);
+            }
+            catch (DirectoryNotFoundException dnfe)
+            {
+                logger.LogInformation(dnfe, "Failed to get tables for database: {Database}", dbId);
+                return NotFound();
+            }
         }
     }
 }

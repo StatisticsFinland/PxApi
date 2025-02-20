@@ -47,10 +47,9 @@ namespace PxApi.Controllers
         {
             AppSettings settings = AppSettings.Active;
             PathFunctions.CheckStringsForInvalidPathChars(database, table);
-
-            PxTable? path = await dataSource.GetTablePathAsync(database, table);
-            if (path is not null)
+            try
             {
+                PxTable path = await dataSource.GetTablePathAsync(database, table);
                 IReadOnlyMatrixMetadata meta = await dataSource.GetMatrixMetadataCachedAsync(path);
 
                 if (lang is null || meta.AvailableLanguages.Contains(lang))
@@ -68,8 +67,10 @@ namespace PxApi.Controllers
                     return BadRequest($"The content is not available in language: {lang}");
                 }
             }
-
-            return NotFound();
+            catch (FileNotFoundException)
+            {
+                return NotFound();
+            }
         }
 
         /// <summary>
@@ -100,16 +101,17 @@ namespace PxApi.Controllers
         {
             AppSettings settings = AppSettings.Active;
             PathFunctions.CheckStringsForInvalidPathChars(database, table);
-            PxTable? path = await dataSource.GetTablePathAsync(database, table);
-            if (path is not null)
+
+            try
             {
+                PxTable? path = await dataSource.GetTablePathAsync(database, table);
                 IReadOnlyMatrixMetadata meta = await dataSource.GetMatrixMetadataCachedAsync(path);
                 IReadOnlyDimension? targetDim = meta.Dimensions.FirstOrDefault(d => d.Code == varcode);
-                if(targetDim is not null)
+                if (targetDim is not null)
                 {
                     string actualLang = lang ?? meta.DefaultLanguage;
                     if (meta.AvailableLanguages.Contains(actualLang))
-                    { 
+                    {
                         const string rel = "self";
 
                         Uri fileUri = settings.RootUrl
@@ -134,9 +136,15 @@ namespace PxApi.Controllers
                         return BadRequest($"The content is not available in language: {lang}");
                     }
                 }
+                else
+                {
+                    return NotFound();
+                }
             }
-
-            return NotFound();
+            catch (FileNotFoundException)
+            {
+                return NotFound();
+            }
         }
     }
 }
