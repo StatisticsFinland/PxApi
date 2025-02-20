@@ -17,6 +17,7 @@ namespace PxApi.ModelBuilders
         /// Build the <see cref="TableMeta"/> objects.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyMatrixMetadata"/></param>
+        /// <param name="groups">List of groups that the table is part of.</param>
         /// <param name="baseUrlWithParams">Url used to costruct the <see cref="Link"/> objests in the response.</param>
         /// <param name="lang">Language of the response, if not provided the default language of the input <paramref name="meta"/> will be used.</param>
         /// <param name="showValues">If true the variable values will be included. If not provided, defaults to false.</param>
