@@ -48,7 +48,7 @@ namespace PxApi.Controllers
             AppSettings settings = AppSettings.Active;
             PathFunctions.CheckStringsForInvalidPathChars(database, table);
 
-            TablePath? path = await dataSource.GetTablePathAsync(database, table);
+            PxTable? path = await dataSource.GetTablePathAsync(database, table);
             if (path is not null)
             {
                 IReadOnlyMatrixMetadata meta = await dataSource.GetMatrixMetadataCachedAsync(path);
@@ -60,7 +60,8 @@ namespace PxApi.Controllers
                         .AddQueryParameters(("lang", lang))
                         .AddQueryParameters(("showValues", showValues));
 
-                    return Ok(ModelBuilder.BuildTableMeta(meta, fileUri, lang, showValues));
+                    List<TableGroup> groups = await dataSource.GetTableGroupingCachedAsync(path, lang ?? "fi");
+                    return Ok(ModelBuilder.BuildTableMeta(meta, groups, fileUri, lang, showValues));
                 }
                 else
                 {
@@ -99,7 +100,7 @@ namespace PxApi.Controllers
         {
             AppSettings settings = AppSettings.Active;
             PathFunctions.CheckStringsForInvalidPathChars(database, table);
-            TablePath? path = await dataSource.GetTablePathAsync(database, table);
+            PxTable? path = await dataSource.GetTablePathAsync(database, table);
             if (path is not null)
             {
                 IReadOnlyMatrixMetadata meta = await dataSource.GetMatrixMetadataCachedAsync(path);

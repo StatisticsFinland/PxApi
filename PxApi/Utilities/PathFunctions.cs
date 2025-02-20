@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using PxApi.DataSources;
 
 namespace PxApi.Utilities
 {
@@ -8,28 +8,28 @@ namespace PxApi.Utilities
     public static class PathFunctions
     {
         /// <summary>
-        /// Builds a path from a base path and a user path, and ensures that the resulting path is within the base path.
+        /// Builds a table reference from paths.
         /// </summary>
-        /// <exception cref="UnauthorizedAccessException">The resulting path is outside the base path.</exception>
-        [ExcludeFromCodeCoverage] // This method is not unit tested because it relies on file system access.
-        public static string BuildAndSecurePath(string basePath, string userPath)
+        /// <param name="fullPath">Full path to the table.</param>
+        /// <param name="rootPath">Path to the root of the data source.</param>
+        /// <exception cref="UnauthorizedAccessException">Thrown if the table is not located under the root path.</exception>
+        public static PxTable BuildTableReferenceFromPath(string fullPath, string rootPath)
         {
-            string fullBasePath = Path.GetFullPath(basePath);
-            string combinedPath = Path.Combine(fullBasePath, userPath);
-            combinedPath = Path.GetFullPath(combinedPath);
-            if (!combinedPath.StartsWith(fullBasePath))
+            if(!fullPath.StartsWith(rootPath))
             {
                 throw new UnauthorizedAccessException("Access to the path is denied.");
             }
-            return combinedPath;
+
+            string[] relativePath = fullPath[rootPath.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+            return new PxTable(relativePath[^1], [.. relativePath[1 ..^1]], relativePath[0]);
         }
 
         /// <summary>
-        /// Builds a path from a base path and a list of user path parts, and ensures that the resulting path is within the base path.
+        /// Construct the full path to a table based on the root path.
         /// </summary>
-        public static string BuildAndSecurePath(string basePath, List<string> userPath)
+        public static string GetFullPathToTable(this PxTable table, string rootPath)
         {
-            return BuildAndSecurePath(basePath, Path.Combine([.. userPath]));
+            return Path.Combine(rootPath, table.DatabaseId, Path.Combine([.. table.Hierarchy]), table.TableId);
         }
 
         /// <summary>

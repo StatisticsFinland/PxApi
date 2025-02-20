@@ -47,5 +47,25 @@ namespace PxApi.Utilities
             }
             return dimension.Type;
         }
+
+        /// <summary>
+        /// Gets a value from an additional property collection by language.
+        /// </summary>
+        public static string? GetValueByLanguage(this IReadOnlyDictionary<string, MetaProperty> propertyCollection, string key, string lang)
+        {
+            if (propertyCollection.TryGetValue(key, out MetaProperty? property))
+            {
+                if (property is MultilanguageStringProperty multilanguageStringProperty)
+                {
+                    return multilanguageStringProperty.Value[lang];
+                }
+                else if (property is StringProperty stringProperty)
+                {
+                    return stringProperty.Value;
+                }
+            }
+
+            return null;
+        }
     }
 }

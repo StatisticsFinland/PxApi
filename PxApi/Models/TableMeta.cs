@@ -56,6 +56,11 @@
         public required List<Variable> ClassificatoryVariables { get; set; }
 
         /// <summary>
+        /// List of groups that the table is part of.
+        /// </summary>
+        public required List<TableGroup> Groupings { get; set; }
+
+        /// <summary>
         /// Links to resources related to this table.
         /// </summary>
         public required List<Link> Links { get; set; }

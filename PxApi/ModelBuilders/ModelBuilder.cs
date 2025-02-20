@@ -21,7 +21,7 @@ namespace PxApi.ModelBuilders
         /// <param name="lang">Language of the response, if not provided the default language of the input <paramref name="meta"/> will be used.</param>
         /// <param name="showValues">If true the variable values will be included. If not provided, defaults to false.</param>
         /// <returns><see cref="TableMeta"/> based on the input meta.</returns>
-        public static TableMeta BuildTableMeta(IReadOnlyMatrixMetadata meta, Uri baseUrlWithParams, string? lang = null, bool? showValues = null)
+        public static TableMeta BuildTableMeta(IReadOnlyMatrixMetadata meta, List<TableGroup> groups, Uri baseUrlWithParams, string? lang = null, bool? showValues = null)
         {
             lang ??= meta.DefaultLanguage;
             bool includeValues = showValues ?? false;
@@ -34,16 +34,17 @@ namespace PxApi.ModelBuilders
 
             return new TableMeta()
             {
-                Contents = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.CONTENTS, lang),
-                Description = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.DESCRIPTION, lang),
-                Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
+                Contents = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.CONTENTS, lang),
+                Description = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang),
+                Note = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang),
                 ContentVariable = BuildContentVariable(meta, lang, includeValues, baseUrlWithParams, rel),
                 TimeVariable = BuildTimeVariable(meta, lang, includeValues, baseUrlWithParams, rel),
                 ClassificatoryVariables = dimensions,
                 FirstPeriod = meta.GetTimeDimension().Values[0].Name[lang],
                 LastPeriod = meta.GetTimeDimension().Values[^1].Name[lang],
-                ID = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.TABLEID, lang),
+                ID = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang),
                 LastModified = meta.GetContentDimension().Values.Map(v => v.LastUpdated).Max(),
+                Groupings = groups,
                 Links =
                 [
                     new Link()
@@ -73,7 +74,7 @@ namespace PxApi.ModelBuilders
             List<ContentValue>? values = showValues
                 ? contentDim.Values.Map(v =>
                 {
-                    string? source = GetValueByLanguage(v.AdditionalProperties, PxFileConstants.SOURCE, lang) ?? tableOrDimSource;
+                    string? source = v.AdditionalProperties.GetValueByLanguage(PxFileConstants.SOURCE, lang) ?? tableOrDimSource;
                     return BuildContentValue(v, source, lang);
                 }).ToList()
                 : null;
@@ -82,7 +83,7 @@ namespace PxApi.ModelBuilders
             {
                 Code = contentDim.Code,
                 Name = contentDim.Name[lang],
-                Note = GetValueByLanguage(contentDim.AdditionalProperties, PxFileConstants.NOTE, lang),
+                Note = contentDim.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang),
                 Size = contentDim.Values.Count,
                 Values = values,
                 Links = BuildVariableLinks(baseUrlWithParams, contentDim.Code, rel)
@@ -106,7 +107,7 @@ namespace PxApi.ModelBuilders
             {
                 Code = timeDim.Code,
                 Name = timeDim.Name[lang],
-                Note = GetValueByLanguage(timeDim.AdditionalProperties, PxFileConstants.NOTE, lang),
+                Note = timeDim.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang),
                 Interval = timeDim.Interval,
                 Size = timeDim.Values.Count,
                 Values = showValues ? timeDim.Values.Select(v => BuildValue(v, lang)).ToList() : null,
@@ -129,7 +130,7 @@ namespace PxApi.ModelBuilders
             {
                 Code = meta.Code,
                 Name = meta.Name[lang],
-                Note = GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.NOTE, lang),
+                Note = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang),
                 Size = meta.Values.Count,
                 Type = meta.Type,
                 Values = showValues ? meta.Values.Select(v => BuildValue(v, lang)).ToList() : null,
@@ -176,8 +177,8 @@ namespace PxApi.ModelBuilders
 
         private static string? GetValueNoteByLanguage(IReadOnlyDictionary<string, MetaProperty> additionalProperties, string lang)
         {
-            return GetValueByLanguage(additionalProperties, PxFileConstants.VALUENOTE, lang)
-                ?? GetValueByLanguage(additionalProperties, PxFileConstants.NOTE, lang);
+            return additionalProperties.GetValueByLanguage(PxFileConstants.VALUENOTE, lang)
+                ?? additionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang);
         }
 
         private static List<Link> BuildVariableLinks(Uri urlBaseWithParams, string variableCode, string rel)
@@ -201,27 +202,10 @@ namespace PxApi.ModelBuilders
             ];
         }
 
-        private static string? GetValueByLanguage(IReadOnlyDictionary<string, MetaProperty> propertyCollection, string key, string lang)
-        {
-            if (propertyCollection.TryGetValue(key, out MetaProperty? property))
-            {
-                if (property is MultilanguageStringProperty multilanguageStringProperty)
-                {
-                    return multilanguageStringProperty.Value[lang];
-                }
-                else if (property is StringProperty stringProperty)
-                {
-                    return stringProperty.Value;
-                }
-            }
-
-            return null;
-        }
-
         private static string GetSourceByLang(IReadOnlyMatrixMetadata meta, string lang)
         {
-            return GetValueByLanguage(meta.AdditionalProperties, PxFileConstants.SOURCE, lang)
-                ?? GetValueByLanguage(meta.GetContentDimension().AdditionalProperties, PxFileConstants.SOURCE, lang)
+            return meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.SOURCE, lang)
+                ?? meta.GetContentDimension().AdditionalProperties.GetValueByLanguage(PxFileConstants.SOURCE, lang)
                 ?? "";
         }
     }
