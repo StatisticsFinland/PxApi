@@ -1,7 +1,7 @@
 ﻿namespace PxApi.DataSources
 {
     /// <summary>
-    /// Cosntants for the filesystem datasource.
+    /// Constants for the filesystem datasource.
     /// </summary>
     public static class FilesystemDatasourceConstants
     {
