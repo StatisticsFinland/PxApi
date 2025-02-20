@@ -33,7 +33,8 @@ namespace PxApi.UnitTests.ControllerTests
             {
                 {"RootUrl", "https://testurl.fi"},
                 {"DataSource:LocalFileSystem:RootPath", "datasource/root/"},
-                {"DataSource:LocalFileSystem:MetadataCache:SlidingExpirationMinutes", "15"}
+                {"DataSource:LocalFileSystem:MetadataCache:SlidingExpirationMinutes", "15"},
+                {"DataSource:LocalFileSystem:MetadataCache:AbsoluteExpirationMinutes", "15"}
             };
 
             IConfiguration _configuration = new ConfigurationBuilder()
@@ -50,7 +51,7 @@ namespace PxApi.UnitTests.ControllerTests
             string database = "example-db";
             string file = "filename.px";
             string lang = "en";
-            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
@@ -80,7 +81,7 @@ namespace PxApi.UnitTests.ControllerTests
             string database = "example-db";
             string file = "filename.px";
 
-            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync((TablePath?)null);
+            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ThrowsAsync(new FileNotFoundException());
 
             // Act
             ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, null, true);
@@ -96,7 +97,7 @@ namespace PxApi.UnitTests.ControllerTests
             string database = "example-db";
             string file = "filename.px";
             string lang = "de";
-            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
@@ -117,7 +118,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "example-db";
             string file = "filename.px";
-            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
@@ -148,7 +149,7 @@ namespace PxApi.UnitTests.ControllerTests
             string file = "filename.px";
             string lang = "en";
             string varcode = "content-code";
-            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
@@ -173,7 +174,7 @@ namespace PxApi.UnitTests.ControllerTests
             string file = "filename.px";
             string lang = "en";
             string varcode = "time-code";
-            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
@@ -197,7 +198,7 @@ namespace PxApi.UnitTests.ControllerTests
             string database = "example-db";
             string file = "filename.px";
             string varcode = "nonexistent-varcode";
-            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
@@ -218,7 +219,7 @@ namespace PxApi.UnitTests.ControllerTests
             string file = "filename.px";
             string varcode = "varcode";
             string lang = "de";
-            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
@@ -240,7 +241,7 @@ namespace PxApi.UnitTests.ControllerTests
             string database = "example-db";
             string file = "filename.px";
             string varcode = "dim0-code";
-            TablePath tablePath = new($"datasource/root/{database}/{file}");
+            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);

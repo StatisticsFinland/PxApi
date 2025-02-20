@@ -18,8 +18,25 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Uri urlRoot = new("https://example.com/meta/example-db/example-table?lang=en");
             string lang = "en";
 
+            TableGroup tableGroup = new()
+            {
+                Code = "table-group-code",
+                Name = "table-group-name",
+                GroupingCode = "grouping-code",
+                GroupingName = "grouping-name",
+                Links =
+                [
+                    new Link()
+                    {
+                        Rel = "self",
+                        Href = "test-url",
+                        Method = "GET"
+                    }
+                ]
+            };
+
             // Act
-            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot, lang);
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, [tableGroup], urlRoot, lang);
 
             // Assert
             Assert.Multiple(() =>
@@ -35,6 +52,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.FirstPeriod, Is.EqualTo("time-value0-name.en"));
                 Assert.That(result.LastPeriod, Is.EqualTo("time-value1-name.en"));
                 Assert.That(result.LastModified, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
+                Assert.That(result.Groupings, Has.Count.EqualTo(1));
                 Assert.That(result.Links, Has.Count.EqualTo(1));
                 Assert.That(result.Links[0].Rel, Is.EqualTo("self"));
                 Assert.That(result.Links[0].Href, Is.EqualTo("https://example.com/meta/example-db/example-table?lang=en"));
@@ -50,7 +68,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Uri urlRoot = new("https://example.com/meta/example-db/example-table?lang=en&showValues=true");
             string lang = "en";
             // Act
-            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot, lang, true);
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, [], urlRoot, lang, true);
             // Assert
             Assert.Multiple(() =>
             {
@@ -69,7 +87,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Uri urlRoot = new("https://example.com/meta/example-db/example-table?lang=en&showValues=true");
             string lang = "en";
             // Act
-            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot, lang, true);
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, [], urlRoot, lang, true);
             // Assert
             Assert.Multiple(() =>
             {
@@ -100,7 +118,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Uri urlRoot = new("https://example.com/meta/example-db/example-table");
 
             // Act
-            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot);
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, [], urlRoot);
 
             // Assert
             Assert.That(result, Is.Not.Null);

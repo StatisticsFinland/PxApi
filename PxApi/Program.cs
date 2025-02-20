@@ -1,9 +1,11 @@
+using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using NLog;
 using NLog.Web;
 using PxApi.Configuration;
 using PxApi.DataSources;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 
 namespace PxApi
 {
@@ -74,7 +76,12 @@ namespace PxApi
         [ExcludeFromCodeCoverage] // Not worth it to make public for testing.
         private static void AddServices(IServiceCollection serviceCollection)
         {
-            serviceCollection.AddControllers();
+            serviceCollection.AddControllers().AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.PropertyNamingPolicy = GlobalJsonConverterOptions.Default.PropertyNamingPolicy;
+                options.JsonSerializerOptions.PropertyNameCaseInsensitive = GlobalJsonConverterOptions.Default.PropertyNameCaseInsensitive;
+                options.JsonSerializerOptions.AllowTrailingCommas = GlobalJsonConverterOptions.Default.AllowTrailingCommas;
+            });
             serviceCollection.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("openapi", new OpenApiInfo { Title = "PxApi", Version = "v1" });
@@ -84,7 +91,7 @@ namespace PxApi
                     typeof(Program).Assembly.GetTypes().Where(type => type.IsSubclassOf(baseType)));
             });
             serviceCollection.AddMemoryCache();
-            serviceCollection.AddTransient<IDataSource, LocalFileSystemDataSource>();
+            serviceCollection.AddSingleton<IDataSource, LocalFileSystemDataSource>();
         }
     }
 }
