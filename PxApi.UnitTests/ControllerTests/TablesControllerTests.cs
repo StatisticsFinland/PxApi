@@ -149,5 +149,55 @@ namespace PxApi.UnitTests.ControllerTests
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
         }
+
+        [Test]
+        public async Task GetTablesAsync_PagingWorksCorrectly()
+        {
+            // Arrange
+            string dbId = "example-db";
+            string lang = "en";
+            int pageSize = 3;
+            List<PxTable> tables =
+            [
+                new PxTable("table1.px", ["hierarchy1"], dbId),
+                new PxTable("table2.px", ["hierarchy1"], dbId),
+                new PxTable("table3.px", ["hierarchy1"], dbId),
+                new PxTable("table4.px", ["hierarchy2"], dbId),
+                new PxTable("table5.px", ["hierarchy2"], dbId),
+                new PxTable("table6.px", ["hierarchy3"], dbId),
+                new PxTable("table7.px", ["hierarchy4"], dbId),
+            ];
+            ImmutableSortedDictionary<string, PxTable> tableList = ImmutableSortedDictionary.CreateRange(tables.ToDictionary(t => t.TableId));
+            _mockDataSource.Setup(ds => ds.GetSortedTableDictCachedAsync(dbId)).ReturnsAsync(tableList);
+            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(It.IsAny<PxTable>())).ReturnsAsync(TestMockMetaBuilder.GetMockMetadata());
+
+            int tableIndex = 0;
+
+            // Act & Assert
+            for (int page = 1; page <= 3; page++)
+            {
+                ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
+                Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
+                OkObjectResult? okResult = result.Result as OkObjectResult;
+                Assert.That(okResult, Is.Not.Null);
+                PagedTableList? pagedTableList = okResult.Value as PagedTableList;
+                Assert.That(pagedTableList, Is.Not.Null);
+
+                if(page == 3) Assert.That(pagedTableList.Tables, Has.Count.EqualTo(1));
+                else Assert.That(pagedTableList.Tables, Has.Count.EqualTo(3));
+
+                Assert.Multiple(() =>
+                {
+                    for (int i = 0; i < (page == 3 ? 1 : pageSize); i++)
+                    {
+                        Assert.That(pagedTableList.Tables[i].Name, Is.EqualTo(tables[tableIndex++].TableId));
+                    }
+                });
+
+                Assert.That(pagedTableList.PagingInfo.CurrentPage, Is.EqualTo(page));
+            }
+
+            Assert.That(tableIndex, Is.EqualTo(tables.Count));
+        }
     }
 }
