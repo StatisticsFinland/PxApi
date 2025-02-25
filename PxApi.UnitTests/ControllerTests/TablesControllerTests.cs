@@ -193,7 +193,11 @@ namespace PxApi.UnitTests.ControllerTests
                         Assert.That(pagedTableList.Tables[i].Name, Is.EqualTo(tables[tableIndex++].TableId));
                     }
                 });
+
+                Assert.That(pagedTableList.PagingInfo.CurrentPage, Is.EqualTo(page));
             }
+
+            Assert.That(tableIndex, Is.EqualTo(tables.Count));
         }
     }
 }
