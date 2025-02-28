@@ -21,9 +21,8 @@ namespace PxApi.Models
         public required string Name { get; set; }
 
         /// <summary>
-        /// The status of the table.
+        /// The status of the table. If the <see cref="TableStatus.Error"/>, <see cref="Title"/> and <see cref="LastUpdated"/> are null.
         /// </summary>
-        [JsonConverter(typeof(JsonStringEnumConverter))]
         public required TableStatus Status { get; set; }
 
         /// <summary>

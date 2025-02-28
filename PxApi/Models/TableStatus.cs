@@ -1,8 +1,11 @@
-﻿namespace PxApi.Models
+﻿using System.Text.Json.Serialization;
+
+namespace PxApi.Models
 {
     /// <summary>
     /// State of a table.
     /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum TableStatus
     {
         /// <summary>
