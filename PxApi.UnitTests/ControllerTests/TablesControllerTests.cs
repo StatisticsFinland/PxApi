@@ -11,6 +11,7 @@ using PxApi.DataSources;
 using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
 using System.Collections.Immutable;
+using PxApi.ModelBuilders;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -198,6 +199,90 @@ namespace PxApi.UnitTests.ControllerTests
             }
 
             Assert.That(tableIndex, Is.EqualTo(tables.Count));
+        }
+
+        [Test]
+        public async Task GetTablesAsync_BuildingMetadataIsNotPossible_ReturnsTableObjectWithErrorState_ReadIdFromTable()
+        {
+            // Arrange
+            string dbId = "example-db";
+            string lang = "en";
+            int page = 1;
+            int pageSize = 50;
+            PxTable table1 = new("table1.px", ["hierarchy1"], dbId);
+            ImmutableSortedDictionary<string, PxTable> tableList = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxTable>
+            {
+                { "table1.px", table1 }
+            });
+
+            _mockDataSource.Setup(ds => ds.GetSortedTableDictCachedAsync(dbId)).ReturnsAsync(tableList);
+            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(table1)).ThrowsAsync(new Exception("Metaobject build error!"));
+            _mockDataSource.Setup(ds => ds.GetSingleStringValueFromTable(PxFileConstants.TABLEID, table1)).ReturnsAsync("\"table-tableid\"");
+
+            // Act
+            ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
+            OkObjectResult? objectResult = result.Result as OkObjectResult;
+            Assert.That(objectResult, Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+                if (objectResult.Value is not PagedTableList pageTableList)
+                {
+                    Assert.Fail("PagedTableList is null");
+                }
+                else
+                {
+                    Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
+                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
+                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1.px"));
+                    Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
+                }
+            });
+        }
+
+        [Test]
+        public async Task GetTablesAsync_BuildingMetadataIsNotPossible_TableNotReadable_ReturnsTableObjectWithErrorState_TableIdIsName()
+        {
+            // Arrange
+            string dbId = "example-db";
+            string lang = "en";
+            int page = 1;
+            int pageSize = 50;
+            PxTable table1 = new("table1.px", ["hierarchy1"], dbId);
+            ImmutableSortedDictionary<string, PxTable> tableList = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxTable>
+            {
+                { "table1.px", table1 }
+            });
+
+            _mockDataSource.Setup(ds => ds.GetSortedTableDictCachedAsync(dbId)).ReturnsAsync(tableList);
+            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(table1)).ThrowsAsync(new Exception("Metaobject build error!"));
+            _mockDataSource.Setup(ds => ds.GetSingleStringValueFromTable(PxFileConstants.TABLEID, table1)).ThrowsAsync(new Exception("Table not readable!"));
+
+            // Act
+            ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
+            OkObjectResult? objectResult = result.Result as OkObjectResult;
+            Assert.That(objectResult, Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+                if (objectResult.Value is not PagedTableList pageTableList)
+                {
+                    Assert.Fail("PagedTableList is null");
+                }
+                else
+                {
+                    Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
+                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table1.px"));
+                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1.px"));
+                    Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
+                }
+            });
         }
     }
 }
