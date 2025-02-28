@@ -28,22 +28,23 @@ namespace PxApi.ModelBuilders
             bool includeValues = showValues ?? false;
             const string rel = "describedby";
 
-            List<Variable> dimensions = meta.Dimensions
+            List<Variable> dimensions = [.. meta.Dimensions
                 .Where(d => d.Type is not DimensionType.Time and not DimensionType.Content)
-                .Select(d => BuildVariable(d, lang, includeValues, baseUrlWithParams, rel))
-                .ToList();
+                .Select(d => BuildVariable(d, lang, includeValues, baseUrlWithParams, rel))];
 
             return new TableMeta()
             {
                 Contents = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.CONTENTS, lang),
-                Title = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang),
+                Title = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang)
+                    ?? throw new ArgumentException($"No {PxFileConstants.DESCRIPTION} found in table level metadata."),
                 Note = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang),
                 ContentVariable = BuildContentVariable(meta, lang, includeValues, baseUrlWithParams, rel),
                 TimeVariable = BuildTimeVariable(meta, lang, includeValues, baseUrlWithParams, rel),
                 ClassificatoryVariables = dimensions,
                 FirstPeriod = meta.GetTimeDimension().Values[0].Name[lang],
                 LastPeriod = meta.GetTimeDimension().Values[^1].Name[lang],
-                ID = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang),
+                ID = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang)
+                    ?? throw new ArgumentException($"No {PxFileConstants.TABLEID} found in table level metadata."),
                 LastModified = meta.GetContentDimension().Values.Map(v => v.LastUpdated).Max(),
                 Groupings = groups,
                 Links =
@@ -73,11 +74,11 @@ namespace PxApi.ModelBuilders
             string? tableOrDimSource = GetSourceByLang(meta, lang);
 
             List<ContentValue>? values = showValues
-                ? contentDim.Values.Map(v =>
+                ? [.. contentDim.Values.Map(v =>
                 {
                     string? source = v.AdditionalProperties.GetValueByLanguage(PxFileConstants.SOURCE, lang) ?? tableOrDimSource;
                     return BuildContentValue(v, source, lang);
-                }).ToList()
+                })]
                 : null;
 
             return new ContentVariable()
@@ -111,7 +112,7 @@ namespace PxApi.ModelBuilders
                 Note = timeDim.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang),
                 Interval = timeDim.Interval,
                 Size = timeDim.Values.Count,
-                Values = showValues ? timeDim.Values.Select(v => BuildValue(v, lang)).ToList() : null,
+                Values = showValues ? [.. timeDim.Values.Select(v => BuildValue(v, lang))] : null,
                 Links = BuildVariableLinks(baseUrlWithParams, timeDim.Code, rel)
             };
         }
@@ -134,7 +135,7 @@ namespace PxApi.ModelBuilders
                 Note = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang),
                 Size = meta.Values.Count,
                 Type = meta.Type,
-                Values = showValues ? meta.Values.Select(v => BuildValue(v, lang)).ToList() : null,
+                Values = showValues ? [.. meta.Values.Select(v => BuildValue(v, lang))] : null,
                 Links = BuildVariableLinks(baseUrlWithParams, meta.Code, rel)
             };
         }
