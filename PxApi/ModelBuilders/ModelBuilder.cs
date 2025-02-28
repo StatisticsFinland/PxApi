@@ -36,7 +36,7 @@ namespace PxApi.ModelBuilders
             return new TableMeta()
             {
                 Contents = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.CONTENTS, lang),
-                Description = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang),
+                Title = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang),
                 Note = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang),
                 ContentVariable = BuildContentVariable(meta, lang, includeValues, baseUrlWithParams, rel),
                 TimeVariable = BuildTimeVariable(meta, lang, includeValues, baseUrlWithParams, rel),

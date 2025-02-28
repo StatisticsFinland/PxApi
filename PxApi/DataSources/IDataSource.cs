@@ -32,6 +32,14 @@ namespace PxApi.DataSources
         public Task<IReadOnlyMatrixMetadata> GetMatrixMetadataCachedAsync(PxTable path);
 
         /// <summary>
+        /// Get a single string value from a table.
+        /// Used to read meta entries if the metadata does now allow for constructing a matrix metadata object.
+        /// </summary>
+        /// <param name="key">Key that contains all spesifiers and language code if needed.</param>
+        /// <param name="path">Path to the table.</param>
+        public Task<string> GetSingleStringValueFromTable(string key, PxTable path);
+
+        /// <summary>
         /// Get all the groupings for a table.
         /// </summary>
         public Task<List<TableGroup>> GetTableGroupingCachedAsync(PxTable table, string lang);

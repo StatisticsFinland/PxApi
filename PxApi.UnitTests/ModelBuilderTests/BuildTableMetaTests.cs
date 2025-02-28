@@ -44,7 +44,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result.ID, Is.EqualTo("table-tableid"));
                 Assert.That(result.Contents, Is.EqualTo("table-contents.en"));
-                Assert.That(result.Description, Is.EqualTo("table-description.en"));
+                Assert.That(result.Title, Is.EqualTo("table-description.en"));
                 Assert.That(result.Note, Is.EqualTo("table-note.en"));
                 Assert.That(result.ContentVariable, Is.Not.Null);
                 Assert.That(result.TimeVariable, Is.Not.Null);
@@ -126,7 +126,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             {
                 Assert.That(result.ID, Is.EqualTo("table-tableid"));
                 Assert.That(result.Contents, Is.EqualTo("table-contents.fi"));
-                Assert.That(result.Description, Is.EqualTo("table-description.fi"));
+                Assert.That(result.Title, Is.EqualTo("table-description.fi"));
                 Assert.That(result.Note, Is.EqualTo("table-note.fi"));
                 Assert.That(result.ContentVariable, Is.Not.Null);
                 Assert.That(result.TimeVariable, Is.Not.Null);
