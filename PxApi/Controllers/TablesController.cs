@@ -7,6 +7,7 @@ using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Collections.Immutable;
+using System.ComponentModel.DataAnnotations;
 
 namespace PxApi.Controllers
 {
@@ -15,7 +16,7 @@ namespace PxApi.Controllers
     /// </summary>
     /// <param name="dataSource">Connection to the databases</param>
     /// <param name="logger">Logger</param>
-    [Route("[controller]")]
+    [Route("tables")]
     [ApiController]
     public class TablesController(IDataSource dataSource, ILogger<TablesController> logger) : ControllerBase
     {
@@ -37,7 +38,11 @@ namespace PxApi.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult<PagedTableList>> GetTablesAsync([FromRoute] string databaseId, [FromQuery] string lang = "fi", [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        public async Task<ActionResult<PagedTableList>> GetTablesAsync(
+            [FromRoute] string databaseId,
+            [FromQuery] string lang = "fi",
+            [FromQuery][Range(1, int.MaxValue)] int page = 1,
+            [FromQuery][Range(1, 100)] int pageSize = 50)
         {
             if (page < 1 || pageSize < 1) return BadRequest();
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE; 
@@ -54,43 +59,37 @@ namespace PxApi.Controllers
                         CurrentPage = page,
                         PageSize = pageSize,
                         TotalItems = tableList.Count,
-                        MaxPageSize = MAX_PAGE_SIZE
                     }
                 };
 
                 for (int i = pageSize * (page - 1); i < pageSize * page; i++)
                 {
+                    if (i >= tableList.Count) break;
+                    KeyValuePair<string, PxTable> table = tableList.ElementAt(i);
+
                     try
                     {
-                        if (i >= tableList.Count) break;
-                        KeyValuePair<string, PxTable> table = tableList.ElementAt(i);
-                        IReadOnlyMatrixMetadata tableMeta = await dataSource.GetMatrixMetadataCachedAsync(table.Value);
-
-                        Uri fileUri = settings.RootUrl
-                            .AddRelativePath("meta", databaseId, table.Key)
-                            .AddQueryParameters(("lang", lang));
-
-                        pagedTableList.Tables.Add(new TableListingItem()
+                        try
                         {
-                            ID = tableMeta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang) ?? table.Key,
-                            Name = table.Key,
-                            Title = tableMeta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang) ?? "Description not found",
-                            LastUpdated = tableMeta.GetContentDimension().Values.Map(v => v.LastUpdated).Max(),
-                            Links =
-                            [
-                                new()
-                                {
-                                    Rel = "describedby",
-                                    Href = fileUri.ToString(),
-                                    Method = "GET"
-                                }
-                            ]
-                        });
+                            IReadOnlyMatrixMetadata tableMeta = await dataSource.GetMatrixMetadataCachedAsync(table.Value);
+
+                            Uri fileUri = settings.RootUrl
+                                .AddRelativePath("meta", databaseId, table.Key)
+                                .AddQueryParameters(("lang", lang));
+                            pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, lang, tableMeta, fileUri));
+                        }
+                        catch (Exception buildEx) // If the metaobject build failed, try to get the table ID from the table itself
+                        {
+                            logger.LogWarning(buildEx, "Building the structured metadata object for table {Table} failed, constructing error list entry.", tableList.ElementAt(i).Key);
+                            string id = (await dataSource.GetSingleStringValueFromTable(PxFileConstants.TABLEID, table.Value))
+                                .Trim('"', ' ', '\r', '\n', '\t');
+                            pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, id));
+                        }
                     }
-                    catch (Exception e)
+                    catch (Exception idReadEx)
                     {
-                        logger.LogWarning(e, "Failed to get metadata for table: {Table}", tableList.ElementAt(i).Key);
-                        continue;
+                        pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, table.Key));
+                        logger.LogWarning(idReadEx, "Failed to get metadata for table: {Table}", tableList.ElementAt(i).Key);
                     }
                 }
 
@@ -102,5 +101,42 @@ namespace PxApi.Controllers
                 return NotFound();
             }
         }
+
+        private static TableListingItem BuildTableListingItemFromMeta(string tableName, string lang, IReadOnlyMatrixMetadata meta, Uri uri)
+        {
+            string id = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang) ?? tableName;
+
+            return new TableListingItem()
+            {
+                ID = id,
+                Name = tableName,
+                Status = TableStatus.Current,
+                Title = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang) ?? null,
+                LastUpdated = meta.GetContentDimension().Values.Map(v => v.LastUpdated).Max(),
+                Links =
+                [
+                    new()
+                    {
+                        Rel = "describedby",
+                        Href = uri.ToString(),
+                        Method = "GET"
+                    }
+                ]
+            };
+        }
+
+        private static TableListingItem BuildErrorTableListingItem(string tableName, string id)
+        {
+            return new TableListingItem()
+            {
+                ID = id,
+                Name = tableName,
+                Status = TableStatus.Error,
+                Title = null,
+                LastUpdated = null,
+                Links = []
+            };
+        }
+
     }
 }

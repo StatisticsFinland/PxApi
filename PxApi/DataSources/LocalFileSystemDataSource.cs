@@ -83,6 +83,21 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
+        public async Task<string> GetSingleStringValueFromTable(string key, PxTable path)
+        {
+            PxFileMetadataReader reader = new();
+            using FileStream fileStream = new(path.GetFullPathToTable(config.RootPath), FileMode.Open, FileAccess.Read, FileShare.Read);
+            Encoding encoding = await reader.GetEncodingAsync(fileStream);
+
+            if (fileStream.CanSeek) fileStream.Seek(0, SeekOrigin.Begin);
+            else throw new InvalidOperationException("Not able to seek in the filestream");
+
+            IAsyncEnumerable<KeyValuePair<string, string>> metaEntries = reader.ReadMetadataAsync(fileStream, encoding);
+
+            return (await metaEntries.FirstAsync(pair => pair.Key == key)).Value;
+        }
+
+        /// <inheritdoc/>
         public async Task<ImmutableSortedDictionary<string, PxTable>> GetSortedTableDictCachedAsync(string dbId)
         {
             string key = GenerateDatabaseListingCacheKey(dbId);

@@ -1,4 +1,7 @@
-﻿namespace PxApi.Models
+﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
+
+namespace PxApi.Models
 {
     /// <summary>
     /// Reresents a table and its essential metadata meant for listing.
@@ -8,26 +11,36 @@
         /// <summary>
         /// The unique identifier for the table.
         /// </summary>
-        public required string ID { get; set; }
+        [Required]
+        public required string ID { get; set;  }
 
         /// <summary>
         /// The name of the table.
         /// </summary>
+        [Required]
         public required string Name { get; set; }
 
         /// <summary>
-        /// The title of the table.
+        /// The status of the table. If the <see cref="TableStatus.Error"/>, <see cref="Title"/> and <see cref="LastUpdated"/> are null.
         /// </summary>
-        public required string Title { get; set; }
+        public required TableStatus Status { get; set; }
 
         /// <summary>
-        /// When was the table last updated.
+        /// The title of the table, if available.
         /// </summary>
-        public required DateTime LastUpdated { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Title { get; set; }
+
+        /// <summary>
+        /// When was the table last updated, null if the information is not available.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public DateTime? LastUpdated { get; set; }
 
         /// <summary>
         /// Links to additional resources related to this table.
         /// </summary>
+        [Required]
         public required List<Link> Links { get; set; }
     }
 }
