@@ -78,18 +78,18 @@ namespace PxApi.Controllers
                                 .AddQueryParameters(("lang", lang));
                             pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, lang, tableMeta, fileUri));
                         }
-                        catch // If the metaobject build failed, try to get the table ID from the table itself
+                        catch (Exception buildEx) // If the metaobject build failed, try to get the table ID from the table itself
                         {
-                            logger.LogWarning("Building the structured metadata object for table {Table} failed, constructing error list entry.", tableList.ElementAt(i).Key);
+                            logger.LogWarning(buildEx, "Building the structured metadata object for table {Table} failed, constructing error list entry.", tableList.ElementAt(i).Key);
                             string id = (await dataSource.GetSingleStringValueFromTable(PxFileConstants.TABLEID, table.Value))
                                 .Trim('"', ' ', '\r', '\n', '\t');
                             pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, id));
                         }
                     }
-                    catch (Exception e)
+                    catch (Exception idReadEx)
                     {
                         pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, table.Key));
-                        logger.LogWarning(e, "Failed to get metadata for table: {Table}", tableList.ElementAt(i).Key);
+                        logger.LogWarning(idReadEx, "Failed to get metadata for table: {Table}", tableList.ElementAt(i).Key);
                     }
                 }
 
