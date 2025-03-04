@@ -19,6 +19,11 @@
         public Uri RootUrl { get; }
 
         /// <summary>
+        /// Path to the OpenApi JSON document.
+        /// </summary>
+        public string OpenApiPath { get; }
+
+        /// <summary>
         /// The currently active configuration for the application.
         /// </summary>
         public static AppSettings Active
@@ -43,6 +48,7 @@
             string rootStr = dataSourceConfig.GetValue<string>(nameof(RootUrl))
                 ?? throw new InvalidOperationException("RootUrl is not set in the configuration.");
             RootUrl = new Uri(rootStr, UriKind.Absolute);
+            OpenApiPath = dataSourceConfig.GetSection(nameof(OpenApiPath)).Value ?? "/openapi/document.json";
         }
 
         /// <summary>
