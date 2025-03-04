@@ -1,11 +1,9 @@
-using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using NLog;
 using NLog.Web;
 using PxApi.Configuration;
 using PxApi.DataSources;
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
 
 namespace PxApi
 {
@@ -49,7 +47,7 @@ namespace PxApi
                 });
                 app.UseSwaggerUI(c =>
                 {
-                    c.SwaggerEndpoint(AppSettings.Active.OpenApiPath, "PxApi");
+                    c.SwaggerEndpoint("openapi/document.json", "PxApi");
                     c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
                 });
 
