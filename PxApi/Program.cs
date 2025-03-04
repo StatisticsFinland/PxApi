@@ -49,7 +49,7 @@ namespace PxApi
                 });
                 app.UseSwaggerUI(c =>
                 {
-                    c.SwaggerEndpoint("/openapi/document.json", "PxApi");
+                    c.SwaggerEndpoint(AppSettings.Active.OpenApiPath, "PxApi");
                     c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
                 });
 
