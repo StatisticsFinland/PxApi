@@ -18,8 +18,25 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Uri urlRoot = new("https://example.com/meta/example-db/example-table?lang=en");
             string lang = "en";
 
+            TableGroup tableGroup = new()
+            {
+                Code = "table-group-code",
+                Name = "table-group-name",
+                GroupingCode = "grouping-code",
+                GroupingName = "grouping-name",
+                Links =
+                [
+                    new Link()
+                    {
+                        Rel = "self",
+                        Href = "test-url",
+                        Method = "GET"
+                    }
+                ]
+            };
+
             // Act
-            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot, lang);
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, [tableGroup], urlRoot, lang);
 
             // Assert
             Assert.Multiple(() =>
@@ -27,7 +44,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result.ID, Is.EqualTo("table-tableid"));
                 Assert.That(result.Contents, Is.EqualTo("table-contents.en"));
-                Assert.That(result.Description, Is.EqualTo("table-description.en"));
+                Assert.That(result.Title, Is.EqualTo("table-description.en"));
                 Assert.That(result.Note, Is.EqualTo("table-note.en"));
                 Assert.That(result.ContentVariable, Is.Not.Null);
                 Assert.That(result.TimeVariable, Is.Not.Null);
@@ -35,6 +52,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.FirstPeriod, Is.EqualTo("time-value0-name.en"));
                 Assert.That(result.LastPeriod, Is.EqualTo("time-value1-name.en"));
                 Assert.That(result.LastModified, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
+                Assert.That(result.Groupings, Has.Count.EqualTo(1));
                 Assert.That(result.Links, Has.Count.EqualTo(1));
                 Assert.That(result.Links[0].Rel, Is.EqualTo("self"));
                 Assert.That(result.Links[0].Href, Is.EqualTo("https://example.com/meta/example-db/example-table?lang=en"));
@@ -50,7 +68,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Uri urlRoot = new("https://example.com/meta/example-db/example-table?lang=en&showValues=true");
             string lang = "en";
             // Act
-            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot, lang, true);
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, [], urlRoot, lang, true);
             // Assert
             Assert.Multiple(() =>
             {
@@ -69,7 +87,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Uri urlRoot = new("https://example.com/meta/example-db/example-table?lang=en&showValues=true");
             string lang = "en";
             // Act
-            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot, lang, true);
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, [], urlRoot, lang, true);
             // Assert
             Assert.Multiple(() =>
             {
@@ -100,7 +118,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Uri urlRoot = new("https://example.com/meta/example-db/example-table");
 
             // Act
-            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot);
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, [], urlRoot);
 
             // Assert
             Assert.That(result, Is.Not.Null);
@@ -108,7 +126,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             {
                 Assert.That(result.ID, Is.EqualTo("table-tableid"));
                 Assert.That(result.Contents, Is.EqualTo("table-contents.fi"));
-                Assert.That(result.Description, Is.EqualTo("table-description.fi"));
+                Assert.That(result.Title, Is.EqualTo("table-description.fi"));
                 Assert.That(result.Note, Is.EqualTo("table-note.fi"));
                 Assert.That(result.ContentVariable, Is.Not.Null);
                 Assert.That(result.TimeVariable, Is.Not.Null);
