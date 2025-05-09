@@ -1,0 +1,6 @@
+@PxApi_HostAddress = http://localhost:5240
+
+GET {{PxApi_HostAddress}}/api/v1/meta
+Accept: application/json
+
+###
