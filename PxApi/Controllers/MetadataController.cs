@@ -2,8 +2,8 @@
 using Px.Utils.Models.Metadata.Dimensions;
 using Px.Utils.Models.Metadata.Enums;
 using Px.Utils.Models.Metadata;
+using PxApi.Caching;
 using PxApi.Configuration;
-using PxApi.DataSources;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
@@ -14,10 +14,9 @@ namespace PxApi.Controllers
     /// Controller for /meta endpoint.
     /// Contains methods for getting metadata about tables and variables.
     /// </summary>
-    /// <param name="dataSource">Interface for accessing the database.</param>
     [Route("meta")]
     [ApiController]
-    public class MetadataController(IDataSource dataSource) : ControllerBase
+    public class MetadataController(ICachedDataBaseConnector cachedConnector) : ControllerBase
     {
         /// <summary>
         /// Get metadata for a single table.
@@ -46,11 +45,14 @@ namespace PxApi.Controllers
             [FromQuery] bool? showValues)
         {
             AppSettings settings = AppSettings.Active;
-            PathFunctions.CheckStringsForInvalidPathChars(database, table);
             try
             {
-                PxTable path = await dataSource.GetTablePathAsync(database, table);
-                IReadOnlyMatrixMetadata meta = await dataSource.GetMatrixMetadataCachedAsync(path);
+                DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
+                if(dbRef is null) return NotFound();
+                PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
+                if (fileRef is null) return NotFound();
+
+                IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
 
                 if (lang is null || meta.AvailableLanguages.Contains(lang))
                 {
@@ -59,12 +61,12 @@ namespace PxApi.Controllers
                         .AddQueryParameters(("lang", lang))
                         .AddQueryParameters(("showValues", showValues));
 
-                    List<TableGroup> groups = await dataSource.GetTableGroupingCachedAsync(path, lang ?? "fi");
-                    return Ok(ModelBuilder.BuildTableMeta(meta, groups, fileUri, lang, showValues));
+                    return Ok(ModelBuilder.BuildTableMeta(meta, fileUri, lang, showValues));
                 }
                 else
                 {
-                    return BadRequest($"The content is not available in language: {lang}");
+                    return BadRequest("The content is not available in the requested language.");
+
                 }
             }
             catch (FileNotFoundException)
@@ -100,12 +102,14 @@ namespace PxApi.Controllers
             [FromQuery] string? lang)
         {
             AppSettings settings = AppSettings.Active;
-            PathFunctions.CheckStringsForInvalidPathChars(database, table);
-
             try
             {
-                PxTable? path = await dataSource.GetTablePathAsync(database, table);
-                IReadOnlyMatrixMetadata meta = await dataSource.GetMatrixMetadataCachedAsync(path);
+                DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
+                if(dbRef is null) return NotFound("Database not found.");
+                PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
+                if (fileRef is null) return NotFound("Table not found.");
+
+                IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
                 IReadOnlyDimension? targetDim = meta.Dimensions.FirstOrDefault(d => d.Code == varcode);
                 if (targetDim is not null)
                 {

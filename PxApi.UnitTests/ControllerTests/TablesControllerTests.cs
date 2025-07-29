@@ -5,29 +5,29 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
+using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
-using PxApi.DataSources;
+using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
 using System.Collections.Immutable;
-using PxApi.ModelBuilders;
 
 namespace PxApi.UnitTests.ControllerTests
 {
     [TestFixture]
     public class TablesControllerTests
     {
-        private Mock<IDataSource> _mockDataSource;
+        private Mock<ICachedDataBaseConnector> _cachedDbConnector;
         private Mock<ILogger<TablesController>> _mockLogger;
         private TablesController _controller;
 
         [SetUp]
         public void SetUp()
         {
-            _mockDataSource = new Mock<IDataSource>();
+            _cachedDbConnector = new Mock<ICachedDataBaseConnector>();
             _mockLogger = new Mock<ILogger<TablesController>>();
-            _controller = new TablesController(_mockDataSource.Object, _mockLogger.Object)
+            _controller = new TablesController(_cachedDbConnector.Object, _mockLogger.Object)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -40,7 +40,11 @@ namespace PxApi.UnitTests.ControllerTests
                     {"RootUrl", "https://testurl.fi"},
                     {"DataSource:LocalFileSystem:RootPath", "datasource/root/"},
                     {"DataSource:LocalFileSystem:MetadataCache:SlidingExpirationMinutes", "15"},
-                    {"DataSource:LocalFileSystem:MetadataCache:AbsoluteExpirationMinutes", "15"}
+                    {"DataSource:LocalFileSystem:MetadataCache:AbsoluteExpirationMinutes", "15"},
+                    {"DataSource:LocalFileSystem:ModifiedCheckIntervalMs", "1000"},
+                    {"DataSource:LocalFileSystem:FileListingCacheDurationMs", "10000"},
+                    {"DataSource:LocalFileSystem:DataCache:SlidingExpirationMinutes", "10"},
+                    {"DataSource:LocalFileSystem:DataCache:AbsoluteExpirationMinutes", "10" }
                 };
 
             IConfiguration _configuration = new ConfigurationBuilder()
@@ -54,26 +58,27 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetTablesAsync_TwoTables_ReturnsExpectedMetadata()
         {
             // Arrange
-            string dbId = "example-db";
+            DataBaseRef db = DataBaseRef.Create("exampledb");
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            PxTable table1 = new("table1.px", ["hierarchy1"], dbId);
-            PxTable table2 = new("table2.px", ["hierarchy2"], dbId);
-            ImmutableSortedDictionary<string, PxTable> tableList = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxTable>
+            PxFileRef file1 = PxFileRef.Create("file1", db);
+            PxFileRef file2 = PxFileRef.Create("file2", db);
+            ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxFileRef>
             {
-                { "table1.px", table1 },
-                { "table2.px", table2 }
+                { "file1", file1 },
+                { "file2", file2 }
             });
             MatrixMetadata meta1 = TestMockMetaBuilder.GetMockMetadata();
             MatrixMetadata meta2 = TestMockMetaBuilder.GetMockMetadata();
 
-            _mockDataSource.Setup(ds => ds.GetSortedTableDictCachedAsync(dbId)).ReturnsAsync(tableList);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(table1)).ReturnsAsync(meta1);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(table2)).ReturnsAsync(meta2);
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(db.Id)).Returns(db);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file1)).ReturnsAsync(meta1);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file2)).ReturnsAsync(meta2);
 
             // Act
-            ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
+            ActionResult<PagedTableList> result = await _controller.GetTablesAsync(db.Id, lang, page, pageSize);
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
@@ -86,11 +91,11 @@ namespace PxApi.UnitTests.ControllerTests
             {
                 Assert.That(pagedTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
                 Assert.That(pagedTableList.Tables[0].Title, Is.EqualTo("table-description.en"));
-                Assert.That(pagedTableList.Tables[0].Name, Is.EqualTo("table1.px"));
+                Assert.That(pagedTableList.Tables[0].Name, Is.EqualTo("file1"));
                 Assert.That(pagedTableList.Tables[0].LastUpdated, Is.EqualTo(meta1.GetContentDimension().Values.Map(v => v.LastUpdated).Max()));
                 Assert.That(pagedTableList.Tables[0].Links, Has.Count.EqualTo(1));
                 Assert.That(pagedTableList.Tables[0].Links[0].Rel, Is.EqualTo("describedby"));
-                Assert.That(pagedTableList.Tables[0].Links[0].Href, Is.EqualTo("https://testurl.fi/meta/example-db/table1.px?lang=en"));
+                Assert.That(pagedTableList.Tables[0].Links[0].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/file1?lang=en"));
                 Assert.That(pagedTableList.Tables[0].Links[0].Method, Is.EqualTo("GET"));
             });
         }
@@ -99,7 +104,7 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetTablesAsync_InvalidPage_ReturnsBadRequest()
         {
             // Arrange
-            string dbId = "example-db";
+            string dbId = "exampledb";
             string lang = "en";
             int page = 0;
             int pageSize = 50;
@@ -115,12 +120,15 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetTablesAsync_PageSizeExceedsMax_ReturnsPagedTableListWithMaxPageSize()
         {
             // Arrange
-            string dbId = "example-db";
+            string dbId = "exampledb";
             string lang = "en";
             int page = 1;
             int pageSize = 200;
-            ImmutableSortedDictionary<string, PxTable> tableList = ImmutableSortedDictionary<string, PxTable>.Empty;
-            _mockDataSource.Setup(ds => ds.GetSortedTableDictCachedAsync(dbId)).ReturnsAsync(tableList);
+            DataBaseRef db = DataBaseRef.Create(dbId);
+            ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary<string, PxFileRef>.Empty;
+            
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
 
             // Act
             ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
@@ -138,39 +146,50 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetTablesAsync_DatabaseNotFound_ReturnsNotFound()
         {
             // Arrange
-            string dbId = "nonexistent-db";
+            string dbId = "nonexistentdb";
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            _mockDataSource.Setup(ds => ds.GetSortedTableDictCachedAsync(dbId)).ThrowsAsync(new DirectoryNotFoundException());
+            
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns((DataBaseRef?)null);
 
             // Act
             ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
 
             // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
         }
 
         [Test]
         public async Task GetTablesAsync_PagingWorksCorrectly()
         {
             // Arrange
-            string dbId = "example-db";
+            string dbId = "exampledb";
+            DataBaseRef db = DataBaseRef.Create(dbId);
             string lang = "en";
             int pageSize = 3;
-            List<PxTable> tables =
+            
+            List<PxFileRef> files =
             [
-                new PxTable("table1.px", ["hierarchy1"], dbId),
-                new PxTable("table2.px", ["hierarchy1"], dbId),
-                new PxTable("table3.px", ["hierarchy1"], dbId),
-                new PxTable("table4.px", ["hierarchy2"], dbId),
-                new PxTable("table5.px", ["hierarchy2"], dbId),
-                new PxTable("table6.px", ["hierarchy3"], dbId),
-                new PxTable("table7.px", ["hierarchy4"], dbId),
+                PxFileRef.Create("file1", db),
+                PxFileRef.Create("file2", db),
+                PxFileRef.Create("file3", db),
+                PxFileRef.Create("file4", db),
+                PxFileRef.Create("file5", db),
+                PxFileRef.Create("file6", db),
+                PxFileRef.Create("file7", db),
             ];
-            ImmutableSortedDictionary<string, PxTable> tableList = ImmutableSortedDictionary.CreateRange(tables.ToDictionary(t => t.TableId));
-            _mockDataSource.Setup(ds => ds.GetSortedTableDictCachedAsync(dbId)).ReturnsAsync(tableList);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(It.IsAny<PxTable>())).ReturnsAsync(TestMockMetaBuilder.GetMockMetadata());
+            
+            ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
+                files.ToDictionary(f => f.Id));
+            
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
+            
+            foreach (PxFileRef file in files)
+            {
+                _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(TestMockMetaBuilder.GetMockMetadata());
+            }
 
             int tableIndex = 0;
 
@@ -191,33 +210,34 @@ namespace PxApi.UnitTests.ControllerTests
                 {
                     for (int i = 0; i < (page == 3 ? 1 : pageSize); i++)
                     {
-                        Assert.That(pagedTableList.Tables[i].Name, Is.EqualTo(tables[tableIndex++].TableId));
+                        Assert.That(pagedTableList.Tables[i].Name, Is.EqualTo(files[tableIndex++].Id));
                     }
                 });
 
                 Assert.That(pagedTableList.PagingInfo.CurrentPage, Is.EqualTo(page));
             }
 
-            Assert.That(tableIndex, Is.EqualTo(tables.Count));
+            Assert.That(tableIndex, Is.EqualTo(files.Count));
         }
 
         [Test]
         public async Task GetTablesAsync_BuildingMetadataIsNotPossible_ReturnsTableObjectWithErrorState_ReadIdFromTable()
         {
             // Arrange
-            string dbId = "example-db";
+            string dbId = "exampledb";
+            DataBaseRef db = DataBaseRef.Create(dbId);
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            PxTable table1 = new("table1.px", ["hierarchy1"], dbId);
-            ImmutableSortedDictionary<string, PxTable> tableList = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxTable>
-            {
-                { "table1.px", table1 }
-            });
+            
+            PxFileRef file = PxFileRef.Create("table1", db);
+            ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
+                new Dictionary<string, PxFileRef> { { file.Id, file } });
 
-            _mockDataSource.Setup(ds => ds.GetSortedTableDictCachedAsync(dbId)).ReturnsAsync(tableList);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(table1)).ThrowsAsync(new Exception("Metaobject build error!"));
-            _mockDataSource.Setup(ds => ds.GetSingleStringValueFromTable(PxFileConstants.TABLEID, table1)).ReturnsAsync("\"table-tableid\"");
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ThrowsAsync(new Exception("Metaobject build error!"));
+            _cachedDbConnector.Setup(ds => ds.GetSingleStringValueAsync(PxFileConstants.TABLEID, file)).ReturnsAsync("\"table-tableid\"");
 
             // Act
             ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
@@ -237,7 +257,7 @@ namespace PxApi.UnitTests.ControllerTests
                 {
                     Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
                     Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
-                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1.px"));
+                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1"));
                     Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
                 }
             });
@@ -247,19 +267,20 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetTablesAsync_BuildingMetadataIsNotPossible_TableNotReadable_ReturnsTableObjectWithErrorState_TableIdIsName()
         {
             // Arrange
-            string dbId = "example-db";
+            string dbId = "exampledb";
+            DataBaseRef db = DataBaseRef.Create(dbId);
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            PxTable table1 = new("table1.px", ["hierarchy1"], dbId);
-            ImmutableSortedDictionary<string, PxTable> tableList = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxTable>
-            {
-                { "table1.px", table1 }
-            });
+            
+            PxFileRef file = PxFileRef.Create("table1", db);
+            ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
+                new Dictionary<string, PxFileRef> { { file.Id, file } });
 
-            _mockDataSource.Setup(ds => ds.GetSortedTableDictCachedAsync(dbId)).ReturnsAsync(tableList);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(table1)).ThrowsAsync(new Exception("Metaobject build error!"));
-            _mockDataSource.Setup(ds => ds.GetSingleStringValueFromTable(PxFileConstants.TABLEID, table1)).ThrowsAsync(new Exception("Table not readable!"));
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ThrowsAsync(new Exception("Metaobject build error!"));
+            _cachedDbConnector.Setup(ds => ds.GetSingleStringValueAsync(PxFileConstants.TABLEID, file)).ThrowsAsync(new Exception("Table not readable!"));
 
             // Act
             ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
@@ -278,8 +299,8 @@ namespace PxApi.UnitTests.ControllerTests
                 else
                 {
                     Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
-                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table1.px"));
-                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1.px"));
+                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table1"));
+                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1"));
                     Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
                 }
             });

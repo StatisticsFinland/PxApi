@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using Px.Utils.Models.Metadata;
+using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
-using PxApi.DataSources;
 using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
 
@@ -14,14 +14,14 @@ namespace PxApi.UnitTests.ControllerTests
     [TestFixture]
     internal class MetadataControllerTest
     {
-        private Mock<IDataSource> _mockDataSource;
+        private Mock<ICachedDataBaseConnector> _mockDbConnector;
         private MetadataController _controller;
 
         [SetUp]
         public void SetUp()
         {
-            _mockDataSource = new Mock<IDataSource>();
-            _controller = new MetadataController(_mockDataSource.Object)
+            _mockDbConnector = new Mock<ICachedDataBaseConnector>();
+            _controller = new MetadataController(_mockDbConnector.Object)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -34,7 +34,11 @@ namespace PxApi.UnitTests.ControllerTests
                 {"RootUrl", "https://testurl.fi"},
                 {"DataSource:LocalFileSystem:RootPath", "datasource/root/"},
                 {"DataSource:LocalFileSystem:MetadataCache:SlidingExpirationMinutes", "15"},
-                {"DataSource:LocalFileSystem:MetadataCache:AbsoluteExpirationMinutes", "15"}
+                {"DataSource:LocalFileSystem:MetadataCache:AbsoluteExpirationMinutes", "15"},
+                {"DataSource:LocalFileSystem:ModifiedCheckIntervalMs", "1000"},
+                {"DataSource:LocalFileSystem:FileListingCacheDurationMs", "10000"},
+                {"DataSource:LocalFileSystem:DataCache:SlidingExpirationMinutes", "10"},
+                {"DataSource:LocalFileSystem:DataCache:AbsoluteExpirationMinutes", "10" }
             };
 
             IConfiguration _configuration = new ConfigurationBuilder()
@@ -48,17 +52,17 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetMetadataById_FileExists_ReturnsTableMeta()
         {
             // Arrange
-            string database = "example-db";
-            string file = "filename.px";
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.Create("filename", database);
             string lang = "en";
-            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
-            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, lang, true);
+            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang, true);
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<TableMeta>>());
@@ -68,7 +72,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(resultMeta, Is.Not.Null);
             Assert.Multiple(() =>
             {
-                Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/example-db/filename?lang=en&showValues=true"));
+                Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/filename?lang=en&showValues=true"));
                 Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
                 Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
             });
@@ -78,13 +82,13 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetMetadataById_FileDoesNotExist_ReturnsNotFound()
         {
             // Arrange
-            string database = "example-db";
-            string file = "filename.px";
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.Create("filename", database);
 
-            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ThrowsAsync(new FileNotFoundException());
+            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ThrowsAsync(new FileNotFoundException());
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, null, true);
+            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database.Id, file.Id, null, true);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -94,38 +98,38 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetMetadataById_LanguageNotAvailable_ReturnsBadRequest()
         {
             // Arrange
-            string database = "example-db";
-            string file = "filename.px";
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.Create("filename", database);
             string lang = "de";
-            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
-            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, lang, true);
+            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang, true);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
             BadRequestObjectResult? badRequestResult = result.Result as BadRequestObjectResult;
-            Assert.That(badRequestResult?.Value, Is.EqualTo($"The content is not available in language: {lang}"));
+            Assert.That(badRequestResult?.Value, Is.EqualTo("The content is not available in the requested language."));
         }
 
         [Test]
         public async Task GetMetadataById_NoLanguageSpecified_ReturnsTableMeta()
         {
             // Arrange
-            string database = "example-db";
-            string file = "filename.px";
-            PxTable tablePath = new(file, [], database);
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.Create("filename", database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
-            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database, file, null, null);
+            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database.Id, file.Id, null, null);
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<TableMeta>>()); 
@@ -135,7 +139,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(resultMeta, Is.Not.Null);
             Assert.Multiple(() =>
             {
-                Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/example-db/filename"));
+                Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/filename"));
                 Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
                 Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
             });
@@ -145,18 +149,18 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetVariableMeta_ContentVariableExists_ReturnsVariableMeta()
         {
             // Arrange
-            string database = "example-db";
-            string file = "filename.px";
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.Create("filename", database);
             string lang = "en";
             string varcode = "content-code";
-            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
-            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, lang);
+            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database.Id, file.Id, varcode, lang);
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<VariableBase>>());
@@ -170,18 +174,18 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetVariableMeta_TimeVariableExists_ReturnsVariableMeta()
         {
             // Arrange
-            string database = "example-db";
-            string file = "filename.px";
+            DataBaseRef database = DataBaseRef.Create("exampleb");
+            PxFileRef file = PxFileRef.Create("filename", database);
             string lang = "en";
             string varcode = "time-code";
-            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
-            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, lang);
+            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database.Id, file.Id, varcode, lang);
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<VariableBase>>());
@@ -195,17 +199,17 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetVariableMeta_VariableDoesNotExist_ReturnsNotFound()
         {
             // Arrange
-            string database = "example-db";
-            string file = "filename.px";
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.Create("filename", database);
             string varcode = "nonexistent-varcode";
-            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
-            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, null);
+            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database.Id, file.Id, varcode, null);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -215,18 +219,18 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetVariableMeta_LanguageNotAvailable_ReturnsNotFound()
         {
             // Arrange
-            string database = "example-db";
-            string file = "filename.px";
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.Create("filename", database);
             string varcode = "varcode";
             string lang = "de";
-            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
-            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, lang);
+            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database.Id, file.Id, varcode, lang);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -238,17 +242,17 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetVariableMeta_NoLanguageSpecified_ReturnsVariableMeta()
         {
             // Arrange
-            string database = "example-db";
-            string file = "filename.px";
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.Create("filename", database);
             string varcode = "dim0-code";
-            PxTable tablePath = new(file, [], database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
-            _mockDataSource.Setup(ds => ds.GetTablePathAsync(database, file)).ReturnsAsync(tablePath);
-            _mockDataSource.Setup(ds => ds.GetMatrixMetadataCachedAsync(tablePath)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database, file, varcode, null);
+            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database.Id, file.Id, varcode, null);
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<VariableBase>>());
@@ -258,10 +262,10 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(resultMeta, Is.Not.Null);
             Assert.Multiple(() =>
             {
-                Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/example-db/filename/dim0-code"));
+                Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/filename/dim0-code"));
                 Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
                 Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
-                Assert.That(resultMeta.Links[1].Href, Is.EqualTo("https://testurl.fi/meta/example-db/filename"));
+                Assert.That(resultMeta.Links[1].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/filename"));
                 Assert.That(resultMeta.Links[1].Rel, Is.EqualTo("up"));
                 Assert.That(resultMeta.Links[1].Method, Is.EqualTo("GET"));
             });

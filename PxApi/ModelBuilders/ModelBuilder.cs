@@ -17,12 +17,11 @@ namespace PxApi.ModelBuilders
         /// Build the <see cref="TableMeta"/> objects.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyMatrixMetadata"/></param>
-        /// <param name="groups">List of groups that the table is part of.</param>
         /// <param name="baseUrlWithParams">Url used to costruct the <see cref="Link"/> objests in the response.</param>
         /// <param name="lang">Language of the response, if not provided the default language of the input <paramref name="meta"/> will be used.</param>
         /// <param name="showValues">If true the variable values will be included. If not provided, defaults to false.</param>
         /// <returns><see cref="TableMeta"/> based on the input meta.</returns>
-        public static TableMeta BuildTableMeta(IReadOnlyMatrixMetadata meta, List<TableGroup> groups, Uri baseUrlWithParams, string? lang = null, bool? showValues = null)
+        public static TableMeta BuildTableMeta(IReadOnlyMatrixMetadata meta, Uri baseUrlWithParams, string? lang = null, bool? showValues = null)
         {
             lang ??= meta.DefaultLanguage;
             bool includeValues = showValues ?? false;
@@ -31,6 +30,16 @@ namespace PxApi.ModelBuilders
             List<Variable> dimensions = [.. meta.Dimensions
                 .Where(d => d.Type is not DimensionType.Time and not DimensionType.Content)
                 .Select(d => BuildVariable(d, lang, includeValues, baseUrlWithParams, rel))];
+
+            string? subjectArea = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.SUBJECT_AREA, lang);
+            List<TableGroup> groups = subjectArea is not null
+                ? [new TableGroup()
+                    {
+                        Code = subjectArea,
+                        GroupingCode = "subjectarea",
+                        Links = []
+                    }]
+                : [];
 
             return new TableMeta()
             {

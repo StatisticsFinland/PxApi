@@ -52,13 +52,16 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 new("en", "table-note.en"),
             ]);
 
+            string subjectArea = "subjcode";
+
             Dictionary<string, MetaProperty> props = new()
             {
                 { PxFileConstants.TABLEID, new StringProperty("table-tableid") },
                 { PxFileConstants.DESCRIPTION, new MultilanguageStringProperty(description) },
                 { PxFileConstants.CONTENTS, new MultilanguageStringProperty(contents) },
                 { PxFileConstants.SOURCE, new MultilanguageStringProperty(source) },
-                { PxFileConstants.NOTE, new MultilanguageStringProperty(note) }
+                { PxFileConstants.NOTE, new MultilanguageStringProperty(note) },
+                { PxFileConstants.SUBJECT_AREA, new StringProperty(subjectArea)   }
             };
 
             return new(defaultLang, availableLangs, dimensions, props);

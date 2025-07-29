@@ -8,12 +8,12 @@
         /// <summary>
         /// If the cache entry is not accessed for this amount of time, it will be removed from the cache.
         /// </summary>
-        public TimeSpan SlidingExpirationMinutes { get; }
+        public TimeSpan SlidingExpirationSeconds { get; }
 
         /// <summary>
         /// The absolute maximum age of the cache entry.
         /// </summary>
-        public TimeSpan AbsoluteExpirationMinutes { get; }
+        public TimeSpan AbsoluteExpirationSeconds { get; }
 
         /// <summary>
         /// Default constructor
@@ -22,15 +22,15 @@
         /// <exception cref="InvalidOperationException">Thrown if the required configuration value is missing.</exception>
         public CacheConfig(IConfigurationSection section)
         {
-            int slidingMinutes = section.GetValue<int?>(nameof(SlidingExpirationMinutes))
-                ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(SlidingExpirationMinutes)}");
+            int slidingMinutes = section.GetValue<int?>(nameof(SlidingExpirationSeconds))
+                ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(SlidingExpirationSeconds)}");
 
-            SlidingExpirationMinutes = TimeSpan.FromMinutes(slidingMinutes);
+            SlidingExpirationSeconds = TimeSpan.FromMinutes(slidingMinutes);
 
-            int absoluteMinutes = section.GetValue<int?>(nameof(AbsoluteExpirationMinutes))
-                ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(AbsoluteExpirationMinutes)}");
+            int absoluteMinutes = section.GetValue<int?>(nameof(AbsoluteExpirationSeconds))
+                ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(AbsoluteExpirationSeconds)}");
 
-            AbsoluteExpirationMinutes = TimeSpan.FromMinutes(absoluteMinutes);
+            AbsoluteExpirationSeconds = TimeSpan.FromMinutes(absoluteMinutes);
         }
     }
 }

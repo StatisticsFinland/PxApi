@@ -1,8 +1,8 @@
 ﻿using Px.Utils.Language;
-using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.Dimensions;
 using Px.Utils.Models.Metadata.Enums;
 using Px.Utils.Models.Metadata.MetaProperties;
+using Px.Utils.Models.Metadata;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 
@@ -18,25 +18,8 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Uri urlRoot = new("https://example.com/meta/example-db/example-table?lang=en");
             string lang = "en";
 
-            TableGroup tableGroup = new()
-            {
-                Code = "table-group-code",
-                Name = "table-group-name",
-                GroupingCode = "grouping-code",
-                GroupingName = "grouping-name",
-                Links =
-                [
-                    new Link()
-                    {
-                        Rel = "self",
-                        Href = "test-url",
-                        Method = "GET"
-                    }
-                ]
-            };
-
             // Act
-            TableMeta result = ModelBuilder.BuildTableMeta(meta, [tableGroup], urlRoot, lang);
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot, lang);
 
             // Assert
             Assert.Multiple(() =>
@@ -68,7 +51,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Uri urlRoot = new("https://example.com/meta/example-db/example-table?lang=en&showValues=true");
             string lang = "en";
             // Act
-            TableMeta result = ModelBuilder.BuildTableMeta(meta, [], urlRoot, lang, true);
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot, lang, true);
             // Assert
             Assert.Multiple(() =>
             {
@@ -87,7 +70,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Uri urlRoot = new("https://example.com/meta/example-db/example-table?lang=en&showValues=true");
             string lang = "en";
             // Act
-            TableMeta result = ModelBuilder.BuildTableMeta(meta, [], urlRoot, lang, true);
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot, lang, true);
             // Assert
             Assert.Multiple(() =>
             {
@@ -118,7 +101,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Uri urlRoot = new("https://example.com/meta/example-db/example-table");
 
             // Act
-            TableMeta result = ModelBuilder.BuildTableMeta(meta, [], urlRoot);
+            TableMeta result = ModelBuilder.BuildTableMeta(meta, urlRoot);
 
             // Assert
             Assert.That(result, Is.Not.Null);

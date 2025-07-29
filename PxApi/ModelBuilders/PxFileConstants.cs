@@ -1,4 +1,6 @@
-﻿namespace PxApi.ModelBuilders
+﻿using System.Globalization;
+
+namespace PxApi.ModelBuilders
 {
     /// <summary>
     /// String constant for the Px file format
@@ -24,6 +26,11 @@
         /// Key for VARIABLE in the Px files
         /// </summary>
         public const string SOURCE = "SOURCE";
+
+        /// <summary>
+        /// Key for SUBJECT-AREA in the Px files
+        /// </summary>
+        public const string SUBJECT_AREA = "SUBJECT-AREA";
 
         /// <summary>
         /// Key for TABLEID in the Px files

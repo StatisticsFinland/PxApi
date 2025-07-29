@@ -3,7 +3,9 @@ using NLog;
 using NLog.Web;
 using PxApi.Configuration;
 using PxApi.DataSources;
+using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
 
 namespace PxApi
 {
@@ -16,7 +18,7 @@ namespace PxApi
         /// Main entry point of the application.
         /// </summary>
         [ExcludeFromCodeCoverage] // Difficult to test Main method since the app.Run() method is blocking.
-        public static void Main()
+        public static async Task Main()
         {
             Logger logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
             try
@@ -39,6 +41,11 @@ namespace PxApi
                 AddServices(builder.Services);
 
                 WebApplication app = builder.Build();
+
+                // Validate database connections before starting the application
+                logger.Info("Validating database connections before starting application");
+                await app.ValidateDatabaseConnectionsAsync();
+                logger.Info("All database connections are valid");
 
                 // Configure the HTTP request pipeline.
                 app.UseSwagger(c =>
@@ -64,6 +71,8 @@ namespace PxApi
             catch (Exception ex)
             {
                 logger.Error(ex, "Stopped program because of exception");
+                // Make sure to exit with non-zero code to indicate failure
+                Environment.ExitCode = 1;
             }
             finally
             {
@@ -79,6 +88,13 @@ namespace PxApi
                 options.JsonSerializerOptions.PropertyNamingPolicy = GlobalJsonConverterOptions.Default.PropertyNamingPolicy;
                 options.JsonSerializerOptions.PropertyNameCaseInsensitive = GlobalJsonConverterOptions.Default.PropertyNameCaseInsensitive;
                 options.JsonSerializerOptions.AllowTrailingCommas = GlobalJsonConverterOptions.Default.AllowTrailingCommas;
+                options.JsonSerializerOptions.Encoder = GlobalJsonConverterOptions.Default.Encoder;
+                
+                // Copy all converters from the global options
+                foreach (JsonConverter converter in GlobalJsonConverterOptions.Default.Converters)
+                {
+                    options.JsonSerializerOptions.Converters.Add(converter);
+                }
             });
             serviceCollection.AddSwaggerGen(c =>
             {
@@ -89,7 +105,12 @@ namespace PxApi
                     typeof(Program).Assembly.GetTypes().Where(type => type.IsSubclassOf(baseType)));
             });
             serviceCollection.AddMemoryCache();
-            serviceCollection.AddSingleton<IDataSource, LocalFileSystemDataSource>();
+            
+            // Register database connectors as keyed services
+            serviceCollection.AddDataBaseConnectors();
+            
+            // Register the database connector factory
+            serviceCollection.AddScoped<IDataBaseConnectorFactory, DataBaseConnectorFactoryImpl>();
         }
     }
 }

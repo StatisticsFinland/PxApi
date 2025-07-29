@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
+using PxApi.Caching;
 using PxApi.Configuration;
-using PxApi.DataSources;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
@@ -12,13 +12,13 @@ using System.ComponentModel.DataAnnotations;
 namespace PxApi.Controllers
 {
     /// <summary>
-    /// Controller for listing tables in a database.
+    /// Provides endpoints for retrieving tables and their metadata from a specified database.
     /// </summary>
-    /// <param name="dataSource">Connection to the databases</param>
-    /// <param name="logger">Logger</param>
+    /// <remarks>This controller is responsible for handling requests related to table listings in a database.
+    /// It supports pagination and optional language-based metadata retrieval.</remarks>
     [Route("tables")]
     [ApiController]
-    public class TablesController(IDataSource dataSource, ILogger<TablesController> logger) : ControllerBase
+    public class TablesController(ICachedDataBaseConnector cachedConnector, ILogger<TablesController> logger) : ControllerBase
     {
         private const int MAX_PAGE_SIZE = 100;
 
@@ -50,7 +50,9 @@ namespace PxApi.Controllers
             AppSettings settings = AppSettings.Active;
             try
             {
-                ImmutableSortedDictionary<string, PxTable> tableList = await dataSource.GetSortedTableDictCachedAsync(databaseId);
+                DataBaseRef? dataBase = cachedConnector.GetDataBaseReference(databaseId);
+                if (dataBase is null) return NotFound("Database not found.");
+                ImmutableSortedDictionary<string, PxFileRef> tableList = await cachedConnector.GetFileListCachedAsync(dataBase.Value);
                 PagedTableList pagedTableList = new()
                 {
                     Tables = [],
@@ -65,13 +67,13 @@ namespace PxApi.Controllers
                 for (int i = pageSize * (page - 1); i < pageSize * page; i++)
                 {
                     if (i >= tableList.Count) break;
-                    KeyValuePair<string, PxTable> table = tableList.ElementAt(i);
+                    KeyValuePair<string, PxFileRef> table = tableList.ElementAt(i);
 
                     try
                     {
                         try
                         {
-                            IReadOnlyMatrixMetadata tableMeta = await dataSource.GetMatrixMetadataCachedAsync(table.Value);
+                            IReadOnlyMatrixMetadata tableMeta = await cachedConnector.GetMetadataCachedAsync(table.Value);
 
                             Uri fileUri = settings.RootUrl
                                 .AddRelativePath("meta", databaseId, table.Key)
@@ -81,7 +83,7 @@ namespace PxApi.Controllers
                         catch (Exception buildEx) // If the metaobject build failed, try to get the table ID from the table itself
                         {
                             logger.LogWarning(buildEx, "Building the structured metadata object for table {Table} failed, constructing error list entry.", tableList.ElementAt(i).Key);
-                            string id = (await dataSource.GetSingleStringValueFromTable(PxFileConstants.TABLEID, table.Value))
+                            string id = (await cachedConnector.GetSingleStringValueAsync(PxFileConstants.TABLEID, table.Value))
                                 .Trim('"', ' ', '\r', '\n', '\t');
                             pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, id));
                         }
