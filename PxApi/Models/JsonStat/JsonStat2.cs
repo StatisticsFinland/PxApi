@@ -1,3 +1,4 @@
+using Px.Utils.Models.Data.DataValue;
 using System.Text.Json.Serialization;
 
 namespace PxApi.Models.JsonStat
@@ -54,7 +55,7 @@ namespace PxApi.Models.JsonStat
         /// The actual data values.
         /// </summary>
         [JsonPropertyName("value")]
-        public required List<object> Value { get; set; }
+        public required DoubleDataValue[] Value { get; set; }
 
         /// <summary>
         /// The status information for the data values.

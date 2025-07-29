@@ -4,6 +4,7 @@ using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using PxApi.Caching;
 using PxApi.Models;
+using PxApi.ModelBuilders;
 using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Utilities;
@@ -76,14 +77,37 @@ namespace PxApi.Controllers
         public async Task<ActionResult<JsonStat2>> GetJsonStatAsync(
             [FromRoute] string database,
             [FromRoute] string table,
-            [FromQuery] Dictionary<string, string> parameters
+            [FromQuery] Dictionary<string, string> parameters,
+            [FromQuery] string? lang = null
             )
         {
-            // Convert URL parameters to Filter objects
-            Dictionary<string, Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
-            
-            // Now process the request with filters
-            return Ok();
+            try
+            {
+                DataBaseRef dataBase = DataBaseRef.Create(database);
+                PxFileRef pxFile = PxFileRef.Create(table, dataBase);
+                Dictionary<string, Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+                IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(pxFile);
+                
+                string actualLang = lang ?? meta.DefaultLanguage;
+                if (!meta.AvailableLanguages.Contains(actualLang))
+                {
+                    return BadRequest($"The content is not available in language: {lang}");
+                }
+                
+                MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, filters);
+                DoubleDataValue[] data = await dataSource.GetDataCachedAsync(pxFile, requestMap);
+                JsonStat2 jsonStat = ModelBuilder.BuildJsonStat2(meta, data, actualLang);
+                
+                return Ok(jsonStat);
+            }
+            catch (FileNotFoundException)
+            {
+                return NotFound("Table or database not found");
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPost]
@@ -95,10 +119,37 @@ namespace PxApi.Controllers
         public async Task<ActionResult<JsonStat2>> PostJsonStatAsync(
             [FromRoute] string database,
             [FromRoute] string table,
-            [FromBody] Dictionary<string, Filter> query
+            [FromBody] Dictionary<string, Filter> query,
+            [FromQuery] string? lang = null
             )
         {
-            return Ok();
+            try
+            {
+                DataBaseRef dataBase = DataBaseRef.Create(database);
+                PxFileRef pxFile = PxFileRef.Create(table, dataBase);
+                IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(pxFile);
+                
+                // Validate language
+                string actualLang = lang ?? meta.DefaultLanguage;
+                if (!meta.AvailableLanguages.Contains(actualLang))
+                {
+                    return BadRequest($"The content is not available in language: {lang}");
+                }
+                
+                MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
+                DoubleDataValue[] data = await dataSource.GetDataCachedAsync(pxFile, requestMap);
+                JsonStat2 jsonStat = ModelBuilder.BuildJsonStat2(meta, data, actualLang);
+                
+                return Ok(jsonStat);
+            }
+            catch (FileNotFoundException)
+            {
+                return NotFound("Table or database not found");
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }
