@@ -11,6 +11,10 @@ using PxApi.Utilities;
 
 namespace PxApi.Controllers
 {
+    /// <summary>
+    /// Provides endpoints for retrieving and querying data in various formats, such as JSON and JSON-stat.
+    /// </summary>
+    /// <param name="dataSource"></param>
     [ApiController]
     [Route("data")]
     public class DataController(ICachedDataBaseConnector dataSource) : ControllerBase
@@ -27,12 +31,15 @@ namespace PxApi.Controllers
             [FromQuery] Dictionary<string, string> parameters
             )
         {
-            DataBaseRef dataBase = DataBaseRef.Create(database);
-            PxFileRef pxFile = PxFileRef.Create(table, dataBase);
+            DataBaseRef? dbRef = dataSource.GetDataBaseReference(database);
+            if (dbRef is null) return NotFound();
+            PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
+            if (fileRef is null) return NotFound();
+
             Dictionary<string, Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
-            IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(pxFile);
+            IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
             MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, filters);
-            DoubleDataValue[] data = await dataSource.GetDataCachedAsync(pxFile, requestMap);
+            DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
 
             return Ok(new DataResponse
             {
@@ -54,11 +61,14 @@ namespace PxApi.Controllers
             [FromBody] Dictionary<string, Filter> query
             )
         {
-            DataBaseRef dataBase = DataBaseRef.Create(database);
-            PxFileRef pxFile = PxFileRef.Create(table, dataBase);
-            IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(pxFile);
+            DataBaseRef? dbRef = dataSource.GetDataBaseReference(database);
+            if (dbRef is null) return NotFound();
+            PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
+            if (fileRef is null) return NotFound();
+
+            IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
             MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
-            DoubleDataValue[] data = await dataSource.GetDataCachedAsync(pxFile, requestMap);
+            DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
 
             return Ok(new DataResponse
             {
@@ -83,21 +93,24 @@ namespace PxApi.Controllers
         {
             try
             {
-                DataBaseRef dataBase = DataBaseRef.Create(database);
-                PxFileRef pxFile = PxFileRef.Create(table, dataBase);
+                DataBaseRef? dbRef = dataSource.GetDataBaseReference(database);
+                if (dbRef is null) return NotFound();
+                PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
+                if (fileRef is null) return NotFound();
+
                 Dictionary<string, Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
-                IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(pxFile);
-                
+                IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
+
                 string actualLang = lang ?? meta.DefaultLanguage;
                 if (!meta.AvailableLanguages.Contains(actualLang))
                 {
-                    return BadRequest($"The content is not available in language: {lang}");
+                    return BadRequest("The content is not available in the requested language.");
                 }
-                
+
                 MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, filters);
-                DoubleDataValue[] data = await dataSource.GetDataCachedAsync(pxFile, requestMap);
+                DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
                 JsonStat2 jsonStat = ModelBuilder.BuildJsonStat2(meta, data, actualLang);
-                
+
                 return Ok(jsonStat);
             }
             catch (FileNotFoundException)
@@ -125,19 +138,22 @@ namespace PxApi.Controllers
         {
             try
             {
-                DataBaseRef dataBase = DataBaseRef.Create(database);
-                PxFileRef pxFile = PxFileRef.Create(table, dataBase);
-                IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(pxFile);
+                DataBaseRef? dbRef = dataSource.GetDataBaseReference(database);
+                if (dbRef is null) return NotFound();
+                PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
+                if (fileRef is null) return NotFound();
+
+                IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
                 
                 // Validate language
                 string actualLang = lang ?? meta.DefaultLanguage;
                 if (!meta.AvailableLanguages.Contains(actualLang))
                 {
-                    return BadRequest($"The content is not available in language: {lang}");
+                    return BadRequest("The content is not available in the requested language.");
                 }
                 
                 MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
-                DoubleDataValue[] data = await dataSource.GetDataCachedAsync(pxFile, requestMap);
+                DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
                 JsonStat2 jsonStat = ModelBuilder.BuildJsonStat2(meta, data, actualLang);
                 
                 return Ok(jsonStat);
