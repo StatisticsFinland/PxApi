@@ -5,9 +5,9 @@ namespace PxApi.Models.QueryFilters
     /// <summary>
     /// A filter that returns all elements from the input collection.
     /// </summary>
-    public class AllFilter : Filter
+    public class AllFilter : IFilter
     {
         /// <inheritdoc/>
-        public override DimensionMap Apply(IDimensionMap input) => new(input);
+        public DimensionMap Apply(IDimensionMap input) => new(input);
     }
 }

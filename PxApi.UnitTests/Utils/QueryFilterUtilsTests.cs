@@ -19,7 +19,7 @@ namespace PxApi.UnitTests.Utils
             };
 
             // Act
-            Dictionary<string, Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+            Dictionary<string, IFilter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
 
             // Assert
             Assert.Multiple(() =>
@@ -46,7 +46,7 @@ namespace PxApi.UnitTests.Utils
             };
 
             // Act
-            Dictionary<string, Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+            Dictionary<string, IFilter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
 
             // Assert
             Assert.Multiple(() =>
@@ -71,7 +71,7 @@ namespace PxApi.UnitTests.Utils
             };
 
             // Act
-            Dictionary<string,Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+            Dictionary<string,IFilter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
 
             // Assert
             Assert.Multiple(() =>
@@ -95,7 +95,7 @@ namespace PxApi.UnitTests.Utils
             };
 
             // Act
-            Dictionary<string,Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+            Dictionary<string,IFilter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
 
             // Assert
             Assert.Multiple(() =>
@@ -119,7 +119,7 @@ namespace PxApi.UnitTests.Utils
             };
 
             // Act
-            Dictionary<string,Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+            Dictionary<string,IFilter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
 
             // Assert
             Assert.Multiple(() =>
@@ -143,7 +143,7 @@ namespace PxApi.UnitTests.Utils
             };
 
             // Act
-            Dictionary<string, Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+            Dictionary<string, IFilter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
 
             // Assert
             Assert.Multiple(() =>
@@ -196,7 +196,7 @@ namespace PxApi.UnitTests.Utils
             };
 
             // Act
-            Dictionary<string, Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+            Dictionary<string, IFilter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
 
             // Assert
             Assert.Multiple(() =>
@@ -228,7 +228,7 @@ namespace PxApi.UnitTests.Utils
             // Act & Assert
             Assert.Throws<ArgumentException>(() =>
             {
-                Dictionary<string, Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+                Dictionary<string, IFilter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
             });
         }
 
@@ -244,7 +244,7 @@ namespace PxApi.UnitTests.Utils
             };
 
             // Act
-            Dictionary<string, Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+            Dictionary<string, IFilter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
 
             // Assert
             Assert.Multiple(() =>
@@ -262,7 +262,7 @@ namespace PxApi.UnitTests.Utils
             Dictionary<string, string> parameters = [];
 
             // Act
-            Dictionary<string, Filter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+            Dictionary<string, IFilter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
 
             // Assert
             Assert.That(filters, Is.Empty);

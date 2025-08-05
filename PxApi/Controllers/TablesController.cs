@@ -78,7 +78,7 @@ namespace PxApi.Controllers
                             Uri fileUri = settings.RootUrl
                                 .AddRelativePath("meta", databaseId, table.Key)
                                 .AddQueryParameters(("lang", lang));
-                            pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, lang, tableMeta, fileUri));
+                            pagedTableList.Tables.Add( BuildTableListingItemFromMeta(table.Key, lang, tableMeta, fileUri));
                         }
                         catch (Exception buildEx) // If the metaobject build failed, try to get the table ID from the table itself
                         {

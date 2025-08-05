@@ -4,10 +4,10 @@ using System.Text.Json.Serialization;
 namespace PxApi.Models.QueryFilters
 {
     /// <summary>
-    /// Provides custom JSON serialization and deserialization for objects implementing the <see cref="Filter"/>
+    /// Provides custom JSON serialization and deserialization for objects implementing the <see cref="IFilter"/>
     /// interface.
     /// </summary>
-    public class FilterJsonConverter : JsonConverter<Filter>
+    public class FilterJsonConverter : JsonConverter<IFilter>
     {
         /// <summary>
         /// Specifies the type of filter to use when serializing and deserializing.
@@ -41,16 +41,26 @@ namespace PxApi.Models.QueryFilters
             Last
         }
 
+        /// <summary>
+        /// JSON model used for serializing and deserializing filter objects.
+        /// </summary>
         public class FilterJsonModel
         {
+            /// <summary>
+            /// Enumeration type of the filter.
+            /// <see cref="FilterType"/>
+            /// </summary>
             [JsonPropertyName("type")]
             public FilterType Type { get; set; }
+            /// <summary>
+            /// Value of the filter query. Can be a string, list of strings, or an integer depending on the filter type.
+            /// </summary>
             [JsonPropertyName("query")]
             public JsonElement Query { get; set; }
         }
 
         /// <inheritdoc/>
-        public override void Write(Utf8JsonWriter writer, Filter value, JsonSerializerOptions options)
+        public override void Write(Utf8JsonWriter writer, IFilter value, JsonSerializerOptions options)
         {
             if (value is CodeFilter codeFilter)
             {
@@ -88,7 +98,7 @@ namespace PxApi.Models.QueryFilters
         }
 
         /// <inheritdoc/>
-        public override Filter Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override IFilter Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             FilterJsonModel? filterWrapper = JsonSerializer.Deserialize<FilterJsonModel>(ref reader, options);
 

@@ -99,7 +99,7 @@ namespace PxApi.Caching
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
             MetaCacheContainer metaContainer = await GetMetaContainer(pxFile);
-            PxfileReader reader = new(dbConnector);
+            PxFileReader reader = new(dbConnector);
             metaContainer.DataSectionOffset ??= await reader.GetDataSectionOffset(pxFile);
 
             Task<DoubleDataValue[]> dataTask = reader.ReadDataAsync(pxFile, metaContainer.DataSectionOffset.Value, map, await metaContainer.Metadata);
@@ -109,13 +109,14 @@ namespace PxApi.Caching
 
         private async Task<MetaCacheContainer> GetMetaContainer(PxFileRef pxFile)
         {
-            if (matrixCache.TryGetMetadata(pxFile, out MetaCacheContainer? metaContainer))
+            if (matrixCache.TryGetMetadata(pxFile, out MetaCacheContainer? metaContainer) &&
+                (metaContainer!.CachedUtc > await GetLastModified(pxFile)))
             {
-                if (metaContainer!.CachedUtc > await GetLastModified(pxFile)) return metaContainer!;
+                return metaContainer!;
             }
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
-            PxfileReader reader = new(dbConnector);
+            PxFileReader reader = new(dbConnector);
             Task<IReadOnlyMatrixMetadata> meta = reader.ReadMetadata(pxFile);
             metaContainer = new(meta);
             matrixCache.SetMetadata(pxFile, metaContainer);

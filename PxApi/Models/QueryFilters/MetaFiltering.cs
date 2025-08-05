@@ -7,13 +7,23 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PxApi.Models.QueryFilters
 {
+    /// <summary>
+    /// Contains methods for filtering metadata dimensions
+    /// </summary>
     public static class MetaFiltering
     {
-        public static MatrixMap ApplyToMatrixMeta(IReadOnlyMatrixMetadata meta, Dictionary<string, Filter> filters)
+        /// <summary>
+        /// Applies filters to the metadata dimensions and returns a new <see cref="MatrixMap"/> with the filtered dimensions.
+        /// If a filter is not provided for a dimension, it applies default filtering based on the dimension type.
+        /// </summary>
+        /// <param name="meta">The matrix metadata to filter.</param>
+        /// <param name="filters">A dictionary of filters to apply to the dimensions.</param>
+        /// <returns>A new <see cref="MatrixMap"/> with the filtered dimensions.</returns>
+        public static MatrixMap ApplyToMatrixMeta(IReadOnlyMatrixMetadata meta, Dictionary<string, IFilter> filters)
         {
             return new([.. meta.Dimensions.Select(dim =>
             {
-                if (filters.TryGetValue(dim.Code, out Filter? filter))
+                if (filters.TryGetValue(dim.Code, out IFilter? filter))
                 {
                     return filter.Apply(dim);
                 }

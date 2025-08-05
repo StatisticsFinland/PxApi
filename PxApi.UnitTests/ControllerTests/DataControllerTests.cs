@@ -13,6 +13,7 @@ using PxApi.Models.QueryFilters;
 using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
 using System.Globalization;
+using Microsoft.Extensions.Logging;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -26,7 +27,7 @@ namespace PxApi.UnitTests.ControllerTests
         public void SetUp()
         {
             _cachedDbConnector = new Mock<ICachedDataBaseConnector>();
-            _controller = new DataController(_cachedDbConnector.Object)
+            _controller = new DataController(_cachedDbConnector.Object, new Mock<ILogger<DataController>>().Object)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -103,7 +104,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
@@ -186,7 +187,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
             string lang = "en";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
@@ -259,7 +260,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
             string lang = "invalid";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
@@ -311,7 +312,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
@@ -362,7 +363,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
             string errorMessage = "Invalid argument";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);

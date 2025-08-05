@@ -26,11 +26,10 @@ namespace PxApi.Utilities
         /// </summary>
         /// <param name="queryParameters">Dictionary of URL query parameters</param>
         /// <returns>Dictionary of dimension codes and corresponding Filter objects</returns>
-        public static Dictionary<string, Filter> ConvertUrlParametersToFilters(Dictionary<string, string> queryParameters)
+        public static Dictionary<string, IFilter> ConvertUrlParametersToFilters(Dictionary<string, string> queryParameters)
         {
-            Dictionary<string, Filter> filters = [];
-            string[] validFilterTypes = { "code", "from", "to", "first", "last" };
-
+            Dictionary<string, IFilter> filters = [];
+            string[] validFilterTypes = ["code", "from", "to", "first", "last"];
 
             IEnumerable<KeyValuePair<string, string>> filterByDimAndType = queryParameters
                 .Where(p => validFilterTypes.Any(ft => p.Key.EndsWith($".{ft}", StringComparison.OrdinalIgnoreCase)));
