@@ -92,7 +92,7 @@ namespace PxApi.Caching
                     int index = 0;
                     do result[index++] = superDataArray[indexer.CurrentIndex];
                     while (indexer.Next());
-                    return superDataArray;
+                    return result;
                 }
                 matrixCache.TryRemoveMeta(pxFile);
             }
