@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Data;
@@ -13,7 +14,6 @@ using PxApi.Models.QueryFilters;
 using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
 using System.Globalization;
-using Microsoft.Extensions.Logging;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -21,13 +21,15 @@ namespace PxApi.UnitTests.ControllerTests
     public class DataControllerTests
     {
         private Mock<ICachedDataBaseConnector> _cachedDbConnector = null!;
+        private Mock<ILogger<DataController>> _mockLogger = null!;
         private DataController _controller = null!;
 
         [SetUp]
         public void SetUp()
         {
             _cachedDbConnector = new Mock<ICachedDataBaseConnector>();
-            _controller = new DataController(_cachedDbConnector.Object, new Mock<ILogger<DataController>>().Object)
+            _mockLogger = new Mock<ILogger<DataController>>();
+            _controller = new DataController(_cachedDbConnector.Object, _mockLogger.Object)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -60,6 +62,8 @@ namespace PxApi.UnitTests.ControllerTests
 
             AppSettings.Load(_configuration);
         }
+
+        #region GetJsonAsync Tests
 
         [Test]
         public async Task GetJsonAsync_ValidRequest_ReturnsOkWithDataResponse()
@@ -99,13 +103,66 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task GetJsonAsync_MissingDatabase_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, parameters);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            _mockLogger.Verify(x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Test]
+        public async Task GetJsonAsync_MissingTable_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "nonexistent";
+            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, parameters);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            _mockLogger.Verify(x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        #endregion
+
+        #region PostJsonAsync Tests
+
+        [Test]
         public async Task PostJsonAsync_ValidRequest_ReturnsOkWithDataResponse()
         {
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
-            
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };            
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
@@ -136,6 +193,60 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task PostJsonAsync_MissingDatabase_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            ActionResult<DataResponse> result = await _controller.PostJsonAsync(database, table, query);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            _mockLogger.Verify(x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Test]
+        public async Task PostJsonAsync_MissingTable_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "nonexistent";
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            ActionResult<DataResponse> result = await _controller.PostJsonAsync(database, table, query);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            _mockLogger.Verify(x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        #endregion
+
+        #region GetJsonStatAsync Tests
+
+        [Test]
         public async Task GetJsonStatAsync_ValidRequest_ReturnsOkWithJsonStat2()
         {
             // Arrange
@@ -159,52 +270,6 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, parameters, lang);
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
-            OkObjectResult? okResult = result.Result as OkObjectResult;
-            Assert.That(okResult, Is.Not.Null);
-            JsonStat2? jsonStat = okResult.Value as JsonStat2;
-            Assert.That(jsonStat, Is.Not.Null);
-            Assert.Multiple(() =>
-            {
-                Assert.That(jsonStat.Version, Is.EqualTo("2.0"));
-                Assert.That(jsonStat.Class, Is.EqualTo("dataset"));
-                Assert.That(jsonStat.Id, Is.EqualTo("table-tableid"));
-                Assert.That(jsonStat.Label, Is.EqualTo("table-description.en"));
-                Assert.That(jsonStat.Source, Is.EqualTo("table-source.en"));
-                Assert.That(jsonStat.Value, Is.SameAs(mockData));
-                
-                DateTime expectedLastUpdated = new(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc);
-                string expectedUpdated = expectedLastUpdated.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
-                Assert.That(jsonStat.Updated, Is.EqualTo(expectedUpdated));
-            });
-        }
-
-        [Test]
-        public async Task PostJsonStatAsync_ValidRequest_ReturnsOkWithJsonStat2()
-        {
-            // Arrange
-            string database = "testdb";
-            string table = "testtable";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
-            string lang = "en";
-            
-            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
-            IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
-            DoubleDataValue[] mockData = [
-                new DoubleDataValue(1.0, DataValueType.Exists),
-                new DoubleDataValue(2.0, DataValueType.Exists)
-            ];
-
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
-            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(mockMetadata);
-            _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>())).ReturnsAsync(mockData);
-
-            // Act
-            ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query, lang);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
@@ -255,33 +320,6 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task PostJsonStatAsync_InvalidLanguage_ReturnsBadRequest()
-        {
-            // Arrange
-            string database = "testdb";
-            string table = "testtable";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
-            string lang = "invalid";
-            
-            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
-            IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
-
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(fileRef)).ReturnsAsync(mockMetadata);
-
-            // Act
-            ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query, lang);
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
-            BadRequestObjectResult? badRequest = result.Result as BadRequestObjectResult;
-            Assert.That(badRequest, Is.Not.Null);
-            Assert.That(badRequest.Value, Is.EqualTo("The content is not available in the requested language."));
-        }
-
-        [Test]
         public async Task GetJsonStatAsync_FileNotFound_ReturnsNotFound()
         {
             // Arrange
@@ -298,31 +336,6 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, parameters);
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
-            NotFoundObjectResult? notFound = result.Result as NotFoundObjectResult;
-            Assert.That(notFound, Is.Not.Null);
-            Assert.That(notFound.Value, Is.EqualTo("Table or database not found"));
-        }
-
-        [Test]
-        public async Task PostJsonStatAsync_FileNotFound_ReturnsNotFound()
-        {
-            // Arrange
-            string database = "testdb";
-            string table = "testtable";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
-            
-            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
-
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(fileRef)).ThrowsAsync(new FileNotFoundException("File not found"));
-
-            // Act
-            ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
@@ -356,6 +369,158 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(badRequest, Is.Not.Null);
             Assert.That(badRequest.Value, Is.EqualTo(errorMessage));
         }
+        
+        [Test]
+        public async Task GetJsonStatAsync_MissingDatabase_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, parameters);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            _mockLogger.Verify(x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Test]
+        public async Task GetJsonStatAsync_MissingTable_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "nonexistent";
+            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, parameters);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            _mockLogger.Verify(x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        #endregion
+
+        #region PostJsonStatAsync Tests
+
+        [Test]
+        public async Task PostJsonStatAsync_ValidRequest_ReturnsOkWithJsonStat2()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            string lang = "en";
+            
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
+            IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
+            DoubleDataValue[] mockData = [
+                new DoubleDataValue(1.0, DataValueType.Exists),
+                new DoubleDataValue(2.0, DataValueType.Exists)
+            ];
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
+            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(mockMetadata);
+            _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>())).ReturnsAsync(mockData);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query, lang);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+            OkObjectResult? okResult = result.Result as OkObjectResult;
+            Assert.That(okResult, Is.Not.Null);
+            JsonStat2? jsonStat = okResult.Value as JsonStat2;
+            Assert.That(jsonStat, Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(jsonStat.Version, Is.EqualTo("2.0"));
+                Assert.That(jsonStat.Class, Is.EqualTo("dataset"));
+                Assert.That(jsonStat.Id, Is.EqualTo("table-tableid"));
+                Assert.That(jsonStat.Label, Is.EqualTo("table-description.en"));
+                Assert.That(jsonStat.Source, Is.EqualTo("table-source.en"));
+                Assert.That(jsonStat.Value, Is.SameAs(mockData));
+                
+                DateTime expectedLastUpdated = new(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc);
+                string expectedUpdated = expectedLastUpdated.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
+                Assert.That(jsonStat.Updated, Is.EqualTo(expectedUpdated));
+            });
+        }
+
+        [Test]
+        public async Task PostJsonStatAsync_InvalidLanguage_ReturnsBadRequest()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            string lang = "invalid";
+            
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
+            IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(fileRef)).ReturnsAsync(mockMetadata);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query, lang);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+            BadRequestObjectResult? badRequest = result.Result as BadRequestObjectResult;
+            Assert.That(badRequest, Is.Not.Null);
+            Assert.That(badRequest.Value, Is.EqualTo("The content is not available in the requested language."));
+        }
+
+        [Test]
+        public async Task PostJsonStatAsync_FileNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(fileRef)).ThrowsAsync(new FileNotFoundException("File not found"));
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
+            NotFoundObjectResult? notFound = result.Result as NotFoundObjectResult;
+            Assert.That(notFound, Is.Not.Null);
+            Assert.That(notFound.Value, Is.EqualTo("Table or database not found"));
+        }
 
         [Test]
         public async Task PostJsonStatAsync_ArgumentException_ReturnsBadRequest()
@@ -382,5 +547,57 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(badRequest, Is.Not.Null);
             Assert.That(badRequest.Value, Is.EqualTo(errorMessage));
         }
+
+        [Test]
+        public async Task PostJsonStatAsync_MissingDatabase_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            _mockLogger.Verify(x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Test]
+        public async Task PostJsonStatAsync_MissingTable_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "nonexistent";
+            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            _mockLogger.Verify(x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        #endregion
     }
 }
