@@ -22,7 +22,7 @@ namespace PxApi.Caching
         /// </summary>
         /// <param name="file"><see cref="PxFileRef"/> reference to the Px file.</param>
         /// <returns><see cref="IReadOnlyMatrixMetadata"/> object containing the px file metadata.</returns>
-        public async Task<IReadOnlyMatrixMetadata> ReadMetadata(PxFileRef file)
+        public async Task<IReadOnlyMatrixMetadata> ReadMetadataAsync(PxFileRef file)
         {
             PxFileMetadataReader metaReader = new();
             using Stream stream = fileSystem.ReadPxFile(file);
@@ -38,7 +38,7 @@ namespace PxApi.Caching
         /// </summary>
         /// <param name="file"><see cref="PxFileRef"/> reference to the Px file.</param>"/>
         /// <returns>Long value representing the offset of the data section</returns>
-        public async Task<long?> GetDataSectionOffset(PxFileRef file)
+        public async Task<long?> GetDataSectionOffsetAsync(PxFileRef file)
         {
             using Stream stream = fileSystem.ReadPxFile(file);
             PxFileConfiguration conf = PxFileConfiguration.Default;
