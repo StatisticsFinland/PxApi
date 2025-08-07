@@ -1,8 +1,6 @@
-﻿using Px.Utils.Language;
-using Px.Utils.Models.Metadata;
-using Px.Utils.Models.Metadata.Dimensions;
-using Px.Utils.Models.Metadata.Enums;
+﻿using Px.Utils.Models.Metadata;
 using PxApi.Models.QueryFilters;
+using PxApi.UnitTests.Utils;
 
 namespace PxApi.UnitTests.Models.QueryFilters
 {
@@ -13,7 +11,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
         public void FilterDimensions_WithOneFilterPerDimension_ReturnsFilteredDimensions()
         {
             // Arrange
-            IReadOnlyMatrixMetadata meta = CreateMetadata([4, 4, 4], ["fi", "en"]);
+            IReadOnlyMatrixMetadata meta = MatrixMetadataUtils.CreateMetadata([4, 4, 4], ["fi", "en"]);
             Dictionary<string, List<IFilter>> filters = new()
             {
                 { "dim0", new List<IFilter> { new CodeFilter(["dim0-val1"]) } },
@@ -31,7 +29,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
                 Assert.That(filtered.DimensionMaps[0].ValueCodes[0], Is.EqualTo("dim0-val1"));
                 Assert.That(filtered.DimensionMaps[1].ValueCodes, Has.Count.EqualTo(4));
                 Assert.That(filtered.DimensionMaps[2].ValueCodes, Has.Count.EqualTo(2));
-                Assert.That(filtered.DimensionMaps[2].ValueCodes, Is.EqualTo(new List<string>(){ "dim2-val2", "dim2-val3"}));
+                Assert.That(filtered.DimensionMaps[2].ValueCodes, Is.EqualTo(new List<string>() { "dim2-val2", "dim2-val3" }));
             });
         }
 
@@ -39,7 +37,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
         public void FilterDimensions_WithNoFilters_ReturnsAllDimensions()
         {
             // Arrange
-            IReadOnlyMatrixMetadata meta = CreateMetadata([4, 4, 4], ["fi", "en"]);
+            IReadOnlyMatrixMetadata meta = MatrixMetadataUtils.CreateMetadata([4, 4, 4], ["fi", "en"]);
             Dictionary<string, List<IFilter>> filters = [];
             // Act
             MatrixMap filtered = FilterUtils.FilterDimensions(meta, filters);
@@ -56,7 +54,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
         public void FilterDimension_WithMultipleFilters_ReturnsFilteredDimensions()
         {
             // Arrange
-            IReadOnlyMatrixMetadata meta = CreateMetadata([4], ["fi", "en"]);
+            IReadOnlyMatrixMetadata meta = MatrixMetadataUtils.CreateMetadata([4], ["fi", "en"]);
             Dictionary<string, List<IFilter>> filters = new()
             {
                 { "dim0", new List<IFilter> {
@@ -80,7 +78,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
         public void FilterDimension_WithConflictingFilters_ReturnsFilteredDimensions()
         {
             // Arrange
-            IReadOnlyMatrixMetadata meta = CreateMetadata([4], ["fi", "en"]);
+            IReadOnlyMatrixMetadata meta = MatrixMetadataUtils.CreateMetadata([4], ["fi", "en"]);
             Dictionary<string, List<IFilter>> filters = new()
             {
                 { "dim0", new List<IFilter> {
@@ -97,71 +95,6 @@ namespace PxApi.UnitTests.Models.QueryFilters
             {
                 Assert.That(filtered.DimensionMaps[0].ValueCodes, Has.Count.EqualTo(0));
             });
-        }
-
-        private static IReadOnlyMatrixMetadata CreateMetadata(int[] valueAmounts, string[] languages)
-        {
-            List<Dimension> dimensions = [];
-            for (int i = 0; i < valueAmounts.Length; i++)
-            {
-                dimensions.Add(CreateDimension(i, valueAmounts[i], languages));
-            }
-
-            return new MatrixMetadata(
-                languages[0],
-                languages,
-                dimensions,
-                []
-            );
-        }
-
-        private static Dimension CreateDimension(int index, int valuesCount, string[] languages)
-        {
-            string code = $"dim{index}";
-
-            DimensionType type = index switch
-            {
-                0 => DimensionType.Content,
-                1 => DimensionType.Time,
-                _ => DimensionType.Other
-            };
-
-            return new Dimension(
-                code,
-                CreateMultilanguageString(code, languages),
-                [],
-                CreateDimensionValues(code, valuesCount, languages),
-                type  
-            );
-        }
-
-        private static ValueList CreateDimensionValues(string dimensionName, int amount, string[] languages)
-        {
-            List<DimensionValue> values = [];
-            for (int i = 0; i < amount; i++)
-            {
-                values.Add(CreateDimensionValue(dimensionName, i, languages));
-            }
-            return new(values);
-        }
-
-        private static DimensionValue CreateDimensionValue(string dimensionName, int index, string[] languages)
-        {
-            string code = $"{dimensionName}-val{index}";
-            return new DimensionValue(
-                code,
-                CreateMultilanguageString(code, languages)
-            );
-        }
-
-        private static MultilanguageString CreateMultilanguageString(string text, string[] languages)
-        {
-            Dictionary<string, string> langsAndTranslations = [];
-            foreach (string lang in languages)
-            {
-                langsAndTranslations.Add(lang, $"{text}.{lang}");
-            }
-            return new(langsAndTranslations);
         }
     }
 }
