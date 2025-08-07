@@ -6,7 +6,6 @@ namespace PxApi.Models.QueryFilters
     /// <summary>
     /// A filter that returns the last N elements from the input collection.
     /// </summary>
-    // TODO: Needs to be tested if count is larger than the input value amount. This should return all values.
     public class LastFilter(int count) : IFilter
     {
         /// <summary>

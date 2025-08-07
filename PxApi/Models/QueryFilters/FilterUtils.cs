@@ -6,7 +6,7 @@ namespace PxApi.Models.QueryFilters
     /// <summary>
     /// Collection of utility methods used in the various query filters.
     /// </summary>
-    public class FilterUtils
+    public static class FilterUtils
     {
         /// <summary>
         /// Determines whether the input string matches the given filter pattern, where '*' in the filter matches zero or more characters.
@@ -65,9 +65,17 @@ namespace PxApi.Models.QueryFilters
             
             foreach(IReadOnlyDimension dim in meta.Dimensions)
             {
-
+                IDimensionMap dimensionMap = new DimensionMap(dim.Code, [..dim.ValueCodes]);
+                if (filters.TryGetValue(dim.Code, out List<IFilter>? filterList))
+                {
+                    foreach (IFilter filter in filterList)
+                    {
+                        dimensionMap = filter.Apply(dimensionMap);
+                    }
+                }
+                dimMaps.Add(dimensionMap);
             }
-            
+
             return new MatrixMap(dimMaps);
         }
     }
