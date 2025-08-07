@@ -11,6 +11,7 @@ using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Models;
 using PxApi.UnitTests.Models;
+using PxApi.UnitTests.Utils;
 using System.Collections.Immutable;
 using System.Reflection.PortableExecutable;
 using System.Text;
@@ -206,7 +207,7 @@ namespace PxApi.UnitTests.Caching
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
             PxFileRef fileRef = PxFileRef.Create("file1", dataBase);
-            IReadOnlyMatrixMetadata metadata = await GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
             DatabaseCache dbCache = new(memoryCache);
@@ -357,7 +358,7 @@ namespace PxApi.UnitTests.Caching
             DoubleDataValue[] expectedData = [new DoubleDataValue(2, DataValueType.Exists)];
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
-            IReadOnlyMatrixMetadata metadata = await GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
             dbCache.SetMetadata(pxFile, metaContainer);
             dbCache.SetData(pxFile, map, Task.FromResult(expectedData));
@@ -399,7 +400,7 @@ namespace PxApi.UnitTests.Caching
             ];
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
-            IReadOnlyMatrixMetadata metadata = await GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
             dbCache.SetMetadata(pxFile, metaContainer);
             dbCache.SetData(pxFile, supersetMap, Task.FromResult(supersetData));
@@ -457,15 +458,6 @@ namespace PxApi.UnitTests.Caching
         private class UnseekableMemoryStream(byte[] buffer) : MemoryStream(buffer)
         {
             public override bool CanSeek => false;
-        }
-
-        private async Task<IReadOnlyMatrixMetadata> GetMetadataFromFixture(string fixture)
-        {
-            PxFileMetadataReader reader = new();
-            MemoryStream metadataStream = new(Encoding.UTF8.GetBytes(fixture));
-            IAsyncEnumerable<KeyValuePair<string, string>> entries = reader.ReadMetadataAsync(metadataStream, Encoding.UTF8);
-            MatrixMetadataBuilder builder = new();
-            return await builder.BuildAsync(entries);
         }
     }
 }
