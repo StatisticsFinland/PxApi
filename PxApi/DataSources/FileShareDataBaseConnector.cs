@@ -129,7 +129,7 @@ namespace PxApi.DataSources
                 {
                     ShareDirectoryClient directoryClient = _shareClient.GetRootDirectoryClient();
                     ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id);
-                    if (fileClient == null || !fileClient.Exists())
+                    if (fileClient == null || !await fileClient.ExistsAsync())
                     {
                         _logger.LogError("PX file {FileId} not found in file share", file.Id);
                         throw new FileNotFoundException($"File {file.Id} not found in file share {_sharePath}");

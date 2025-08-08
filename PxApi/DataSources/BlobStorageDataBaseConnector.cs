@@ -1,3 +1,7 @@
+using Azure;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
@@ -7,13 +11,14 @@ namespace PxApi.DataSources
     /// <summary>
     /// Data source for using database in Azure Blob Storage.
     /// </summary>
-    [ExcludeFromCodeCoverage] // This class is not implemented yet.
+    [ExcludeFromCodeCoverage]
     public class BlobStorageDataBaseConnector : IDataBaseConnector
     {
         private readonly DataBaseRef _dataBase; 
         private readonly string _connectionString;
         private readonly string _containerName;
         private readonly ILogger<BlobStorageDataBaseConnector> _logger;
+        private readonly BlobContainerClient _containerClient;
 
         /// <inheritdoc/>
         public DataBaseRef DataBase => _dataBase;
@@ -31,10 +36,11 @@ namespace PxApi.DataSources
             _connectionString = connectionString;
             _containerName = containerName;
             _logger = logger;
+            _containerClient = new BlobContainerClient(_connectionString, _containerName);
         }
 
         /// <inheritdoc/>
-        public Task<string[]> GetAllFilesAsync()
+        public async Task<string[]> GetAllFilesAsync()
         {
             using (_logger.BeginScope(
                 new Dictionary<string, object>
@@ -44,8 +50,32 @@ namespace PxApi.DataSources
                     [LoggerConsts.METHOD_NAME] = nameof(GetAllFilesAsync)
                 }))
             {
-                _logger.LogDebug("GetAllFilesAsync not implemented yet");
-                throw new NotImplementedException("BlobStorage database connector is not implemented yet.");
+                _logger.LogDebug("Getting all files from blob storage container {ContainerName}", _containerName);
+                
+                List<string> fileNames = [];
+                
+                try
+                {
+                    await _containerClient.CreateIfNotExistsAsync();
+                    
+                    AsyncPageable<BlobItem> blobs = _containerClient.GetBlobsAsync();
+                    
+                    await foreach (BlobItem blob in blobs)
+                    {
+                        if (blob.Name.EndsWith(PxFileConstants.FILE_ENDING, StringComparison.OrdinalIgnoreCase))
+                        {
+                            fileNames.Add(blob.Name);
+                        }
+                    }
+                    
+                    _logger.LogDebug("Found {Count} PX files in container {ContainerName}", fileNames.Count, _containerName);
+                    return [.. fileNames];
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error getting files from blob storage container {ContainerName}", _containerName);
+                    throw;
+                }
             }
         }
 
@@ -61,13 +91,40 @@ namespace PxApi.DataSources
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
-                _logger.LogDebug("ReadPxFile not implemented yet");
-                throw new NotImplementedException("BlobStorage database connector is not implemented yet.");
+                _logger.LogDebug("Reading PX file {FileId} from blob storage", file.Id);
+                
+                try
+                {
+                    if (file.DataBase.Id != DataBase.Id)
+                    {
+                        _logger.LogWarning("The file does not belong to the database.");
+                        throw new InvalidOperationException("The file does not belong to the database.");
+                    }
+
+                    BlobClient blobClient = _containerClient.GetBlobClient(file.Id);
+                    
+                    if (!blobClient.Exists())
+                    {
+                        _logger.LogError("PX file {FileId} not found in blob storage", file.Id);
+                        throw new FileNotFoundException($"File {file.Id} not found in blob storage container {_containerName}");
+                    }
+                    
+                    MemoryStream memoryStream = new();
+                    blobClient.DownloadTo(memoryStream);
+                    memoryStream.Position = 0;
+                    
+                    return memoryStream;
+                }
+                catch (Exception ex) when (ex is not FileNotFoundException)
+                {
+                    _logger.LogError(ex, "Error reading PX file {FileId} from blob storage", file.Id);
+                    throw;
+                }
             }
         }
 
         /// <inheritdoc/>
-        public Task<DateTime> GetLastWriteTimeAsync(PxFileRef file)
+        public async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file)
         {
             using (_logger.BeginScope(
                 new Dictionary<string, object>
@@ -78,8 +135,26 @@ namespace PxApi.DataSources
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
-                _logger.LogDebug("GetLastWriteTimeAsync not implemented yet");
-                throw new NotImplementedException("BlobStorage database connector is not implemented yet.");
+                _logger.LogDebug("Getting last write time for PX file {FileId} from blob storage", file.Id);
+                
+                try
+                {
+                    BlobClient blobClient = _containerClient.GetBlobClient(file.Id);
+                    
+                    if (!await blobClient.ExistsAsync())
+                    {
+                        _logger.LogError("PX file {FileId} not found in blob storage", file.Id);
+                        throw new FileNotFoundException($"File {file.Id} not found in blob storage container {_containerName}");
+                    }
+                    
+                    BlobProperties properties = await blobClient.GetPropertiesAsync();
+                    return properties.LastModified.DateTime;
+                }
+                catch (Exception ex) when (ex is not FileNotFoundException)
+                {
+                    _logger.LogError(ex, "Error getting last write time for PX file {FileId} from blob storage", file.Id);
+                    throw;
+                }
             }
         }
     }
