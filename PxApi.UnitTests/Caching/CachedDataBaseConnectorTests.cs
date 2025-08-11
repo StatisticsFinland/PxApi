@@ -1,11 +1,9 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Moq;
-using Px.Utils.ModelBuilders;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Metadata;
-using Px.Utils.PxFile.Metadata;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.DataSources;
@@ -13,7 +11,6 @@ using PxApi.Models;
 using PxApi.UnitTests.Models;
 using PxApi.UnitTests.Utils;
 using System.Collections.Immutable;
-using System.Reflection.PortableExecutable;
 using System.Text;
 
 namespace PxApi.UnitTests.Caching
