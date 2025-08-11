@@ -46,7 +46,10 @@
             Meta = new CacheConfig(section.GetSection(nameof(Meta)));
             Data = new CacheConfig(section.GetSection(nameof(Data)));
             Modifiedtime = new CacheConfig(section.GetSection(nameof(Modifiedtime)));
-            HierarchyConfig = new CacheConfig(section.GetSection(nameof(HierarchyConfig)));
+            IConfigurationSection hierarchySection = section.GetSection(nameof(HierarchyConfig));
+            HierarchyConfig = hierarchySection.Exists() && hierarchySection.GetChildren().Any()
+                ? new CacheConfig(hierarchySection)
+                : null;
 
             MaxCacheSize = section.GetValue<long?>(nameof(MaxCacheSize))
                 ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(MaxCacheSize)}");

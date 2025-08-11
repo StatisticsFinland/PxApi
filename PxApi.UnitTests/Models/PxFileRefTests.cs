@@ -1,6 +1,6 @@
-using System;
-using NUnit.Framework;
 using PxApi.Models;
+using PxApi.Configuration;
+using Microsoft.Extensions.Configuration;
 
 namespace PxApi.UnitTests.Models
 {
@@ -37,6 +37,104 @@ namespace PxApi.UnitTests.Models
         {
             DataBaseRef db = DataBaseRef.Create(dbId);
             Assert.Throws<ArgumentException>(() => PxFileRef.Create(id!, db), "Id cannot be null, whitespace or too long.");
+        }
+
+        [Test]
+        public void Create_WithFilePathAndConfig_StoresPropertiesCorrectly_NoSeparator()
+        {
+            // Arrange
+            string filePath = "C:/data/abc123.px";
+            string fileName = "abc123";
+            DataBaseRef db = DataBaseRef.Create("db1");
+            DataBaseConfig config = GetConfig(null, null, null);
+
+            // Act
+            PxFileRef pxFileRef = PxFileRef.Create(filePath, db, config);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(pxFileRef.Id, Is.EqualTo(fileName));
+                Assert.That(pxFileRef.FilePath, Is.EqualTo(filePath));
+                Assert.That(pxFileRef.GroupingId, Is.Null);
+                Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
+            });
+        }
+
+        [Test]
+        public void Create_WithFilePathAndConfig_StoresPropertiesCorrectly_WithSeparatorAndIndexes()
+        {
+            // Arrange
+            string filePath = "C:/data/database-grouping-id.px";
+            DataBaseRef db = DataBaseRef.Create("db2");
+            DataBaseConfig config = GetConfig('-', 2, 1);
+
+            // Act
+            PxFileRef pxFileRef = PxFileRef.Create(filePath, db, config);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(pxFileRef.Id, Is.EqualTo("id"));
+                Assert.That(pxFileRef.FilePath, Is.EqualTo(filePath));
+                Assert.That(pxFileRef.GroupingId, Is.EqualTo("grouping"));
+                Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
+            });
+        }
+
+        [Test]
+        public void Create_WithFilePathAndConfig_StoresPropertiesCorrectly_LastPartIndexes()
+        {
+            // Arrange
+            string filePath = "C:/data/database-grouping-id.px";
+            DataBaseRef db = DataBaseRef.Create("db3");
+            DataBaseConfig config = GetConfig('-', -1, 1);
+
+            // Act
+            PxFileRef pxFileRef = PxFileRef.Create(filePath, db, config);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(pxFileRef.Id, Is.EqualTo("id"));
+                Assert.That(pxFileRef.FilePath, Is.EqualTo(filePath));
+                Assert.That(pxFileRef.GroupingId, Is.EqualTo("grouping"));
+                Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
+            });
+        }
+
+        private static DataBaseConfig GetConfig(char? separator, int? idIndex, int? groupIndex)
+        {
+            Dictionary<string, string?> settings = new()
+            {
+                {"RootUrl", "https://testurl.fi"},
+                {"DataBases:0:Type", "Mounted"},
+                {"DataBases:0:Id", "testdb"},
+                {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"}, // 15 minutes
+                {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"}, // 15 minutes
+                {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"}, // 10 minutes
+                {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"}, // 10 minutes
+                {"DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},
+                {"DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds", "60"},
+                {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
+                {"DataBases:0:Custom:RootPath", "datasource/root/"},
+                {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
+                {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"},
+            };
+            if (separator.HasValue)
+                settings.Add("Databases:0:FilenameSeparator", separator.Value.ToString());
+            if (idIndex.HasValue)
+                settings.Add("Databases:0:FilenameIdPartIndex", idIndex.Value.ToString());
+            if (groupIndex.HasValue)
+                settings.Add("Databases:0:FilenameGroupingPartIndex", groupIndex.Value.ToString());
+
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(settings)
+                .Build();
+            IConfigurationSection section = config.GetSection("DataBases:0");
+            return new DataBaseConfig(section);
         }
 
         #endregion
