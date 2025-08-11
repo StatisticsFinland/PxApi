@@ -26,6 +26,11 @@
         public CacheConfig Modifiedtime { get; }
 
         /// <summary>
+        /// Optional configuration for database hierarchy caching.
+        /// </summary>
+        public CacheConfig? HierarchyConfig { get; }
+
+        /// <summary>
         /// The maximum size of the cache in bytes.
         /// </summary>
         public long MaxCacheSize { get; }
@@ -41,6 +46,7 @@
             Meta = new CacheConfig(section.GetSection(nameof(Meta)));
             Data = new CacheConfig(section.GetSection(nameof(Data)));
             Modifiedtime = new CacheConfig(section.GetSection(nameof(Modifiedtime)));
+            HierarchyConfig = new CacheConfig(section.GetSection(nameof(HierarchyConfig)));
 
             MaxCacheSize = section.GetValue<long?>(nameof(MaxCacheSize))
                 ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(MaxCacheSize)}");

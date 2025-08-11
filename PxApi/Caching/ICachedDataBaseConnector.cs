@@ -1,5 +1,6 @@
 ﻿using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Metadata;
+using PxApi.DataSources;
 using PxApi.Models;
 using System.Collections.Immutable;
 
@@ -69,5 +70,20 @@ namespace PxApi.Caching
         /// <returns>A task that represents the asynchronous operation. The task result contains the string value associated with
         /// the specified key.</returns>
         Task<string> GetSingleStringValueAsync(string key, PxFileRef file);
+
+        /// <summary>
+        /// Tries to get <see cref="Dictionary<string, List<string>>"/> for a specified database if it exists
+        /// </summary>
+        /// <param name="dbRef">Reference to the database that the hierarchy is requested for</param>
+        /// <param name="hierarchy">The hierarchy if found, otherwise null</param>
+        /// <returns>True if hierarchy for the given database is found, otherwise false</returns>
+        bool TryGetDataBaseHierarchy(DataBaseRef dbRef, out Dictionary<string, List<string>>? hierarchy);
+
+        /// <summary>
+        /// Sets the <see cref="Dictionary<string, List<string>>"/> for a specified database
+        /// </summary>
+        /// <param name="dbRef">Reference to the database to set the hierarchy for</param>
+        /// <param name="hierarchy">The hierarchy to set for the database</param>
+        void SetDataBaseHierarchy(DataBaseRef dbRef, Dictionary<string, List<string>> hierarchy);
     }
 }

@@ -8,6 +8,7 @@ using PxApi.Models;
 using PxApi.Utilities;
 using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
+using Px.Utils.Models.Metadata.Dimensions;
 
 namespace PxApi.Controllers
 {
@@ -107,6 +108,10 @@ namespace PxApi.Controllers
         private static TableListingItem BuildTableListingItemFromMeta(string tableName, string lang, IReadOnlyMatrixMetadata meta, Uri uri)
         {
             string id = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang) ?? tableName;
+           
+            DateTime lastUpdated = meta.TryGetContentDimension(out ContentDimension? contentDimension)
+                ? contentDimension.Values.Map(v => v.LastUpdated).Max()
+                : DateTime.MinValue; // TODO: This is a local development workaround
 
             return new TableListingItem()
             {
@@ -114,7 +119,7 @@ namespace PxApi.Controllers
                 Name = tableName,
                 Status = TableStatus.Current,
                 Title = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang) ?? null,
-                LastUpdated = meta.GetContentDimension().Values.Map(v => v.LastUpdated).Max(),
+                LastUpdated = lastUpdated,
                 Links =
                 [
                     new()

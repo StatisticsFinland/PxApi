@@ -2,6 +2,7 @@
 using Px.Utils.Models.Metadata;
 using Px.Utils.PxFile.Data;
 using Px.Utils.PxFile.Metadata;
+using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Models;
 using System.Collections.Immutable;
@@ -16,7 +17,7 @@ namespace PxApi.Caching
         public DataBaseRef? GetDataBaseReference(string dbId)
         {
             IReadOnlyCollection<DataBaseRef> databases = dbConnectorFactory.GetAvailableDatabases();
-            if(databases.Any(db => db.Id.Equals(dbId, StringComparison.OrdinalIgnoreCase)))
+            if (databases.Any(db => db.Id.Equals(dbId, StringComparison.OrdinalIgnoreCase)))
             {
                 return databases.First(db => db.Id.Equals(dbId, StringComparison.OrdinalIgnoreCase));
             }
@@ -32,11 +33,22 @@ namespace PxApi.Caching
             }
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(dataBase);
-            Task<ImmutableSortedDictionary<string, PxFileRef>> fileListTask = 
-                dbConnector.GetAllFilesAsync()
-                .ContinueWith(t => t.Result.ToImmutableSortedDictionary(
-                    file => Path.GetFileNameWithoutExtension(file),
-                    file => PxFileRef.Create(Path.GetFileNameWithoutExtension(file), dbConnector.DataBase)));
+            
+            DataBaseConfig? dbConfig = AppSettings.Active.DataBases.FirstOrDefault(db => db.Id == dataBase.Id);
+            Task<ImmutableSortedDictionary<string, PxFileRef>> fileListTask = dbConnector.GetAllFilesAsync().ContinueWith(t =>
+            {
+                Dictionary<string, PxFileRef> fileDict = [];
+                foreach (string file in t.Result)
+                {
+                    PxFileRef fileRef = dbConfig != null
+                        ? PxFileRef.Create(file, dbConnector.DataBase, dbConfig)
+                        : PxFileRef.Create(Path.GetFileNameWithoutExtension(file), dbConnector.DataBase);
+
+                    fileDict.TryAdd(fileRef.Id, fileRef); // TODO: This is local development workaround
+                }
+                return fileDict.ToImmutableSortedDictionary();
+            });
+
             matrixCache.SetFileList(dataBase, fileListTask);
             return await fileListTask;
         }
@@ -107,6 +119,19 @@ namespace PxApi.Caching
             return await dataTask;
         }
 
+        /// <inheritdoc/>
+        public bool TryGetDataBaseHierarchy(DataBaseRef dbRef, out Dictionary<string, List<string>>? hierarchy)
+        {
+            return matrixCache.TryGetHierarchy(dbRef, out hierarchy);
+
+        }
+
+        /// <inheritdoc/>
+        public void SetDataBaseHierarchy(DataBaseRef dbRef, Dictionary<string, List<string>> hierarchy)
+        {
+            matrixCache.SetHierarchy(dbRef, hierarchy);
+        }
+
         private async Task<MetaCacheContainer> GetMetaContainer(PxFileRef pxFile)
         {
             if (matrixCache.TryGetMetadata(pxFile, out MetaCacheContainer? metaContainer) &&
@@ -136,4 +161,4 @@ namespace PxApi.Caching
             return await lastModified;
         }
     }
-} 
+}

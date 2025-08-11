@@ -1,6 +1,7 @@
 using Microsoft.OpenApi.Models;
 using NLog;
 using NLog.Web;
+using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Utilities;
@@ -108,7 +109,10 @@ namespace PxApi
             
             // Register database connectors as keyed services
             serviceCollection.AddDataBaseConnectors();
-            
+
+            serviceCollection.AddSingleton<DatabaseCache>();
+            serviceCollection.AddScoped<ICachedDataBaseConnector, CachedDataBaseConnector>();
+
             // Register the database connector factory
             serviceCollection.AddScoped<IDataBaseConnectorFactory, DataBaseConnectorFactoryImpl>();
         }
