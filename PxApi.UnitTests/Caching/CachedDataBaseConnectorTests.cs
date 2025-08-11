@@ -37,6 +37,8 @@ namespace PxApi.UnitTests.Caching
                     {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"}, // 10 minutes
                     {"DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},
                     {"DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds", "60"},
+                    {"DataBases:0:CacheConfig:HierarchyConfig:SlidingExpirationSeconds", "1800"}, // 30 minutes
+                    {"DataBases:0:CacheConfig:HierarchyConfig:AbsoluteExpirationSeconds", "1800"}, // 30 minutes
                     {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
                     {"DataBases:0:Custom:RootPath", "datasource/root/"},
                     {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
@@ -450,6 +452,107 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
+            });
+        }
+
+        #endregion
+
+        #region TryGetDataBaseHierarchy
+
+        [Test]
+        public void TryGetDataBaseHierarchy_WithCacheHit_ReturnsTrueWithHierarchy()
+        {
+            // Arrange
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            Dictionary<string, List<string>> expectedHierarchy = new()
+            {
+                { "group1", new List<string> { "file1", "file2" } },
+                { "group2", new List<string> { "file3", "file4" } }
+            };
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache matrixCache = new(memoryCache);
+            matrixCache.SetHierarchy(dataBase, expectedHierarchy);
+            
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            CachedDataBaseConnector connector = new(mockFactory.Object, matrixCache);
+            string[] expectedGroup1 = ["file1", "file2"];
+            string[] expectedGroup2 = ["file3", "file4"];
+
+            // Act
+            bool result = connector.TryGetDataBaseHierarchy(dataBase, out Dictionary<string, List<string>>? actualHierarchy);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(actualHierarchy, Is.Not.Null);
+                Assert.That(actualHierarchy, Is.SameAs(expectedHierarchy));
+                Assert.That(actualHierarchy!.Count, Is.EqualTo(2));
+                Assert.That(actualHierarchy["group1"], Is.EquivalentTo(expectedGroup1));
+                Assert.That(actualHierarchy["group2"], Is.EquivalentTo(expectedGroup2));
+            });
+        }
+
+        [Test]
+        public void TryGetDataBaseHierarchy_WithCacheMiss_ReturnsFalse()
+        {
+            // Arrange
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache matrixCache = new(memoryCache);
+            
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            CachedDataBaseConnector connector = new(mockFactory.Object, matrixCache);
+
+            // Act
+            bool result = connector.TryGetDataBaseHierarchy(dataBase, out Dictionary<string, List<string>>? hierarchy);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(hierarchy, Is.Null);
+            });
+        }
+
+        #endregion
+
+        #region SetDataBaseHierarchy
+
+        [Test]
+        public void SetDataBaseHierarchy_WithValidHierarchy_StoresHierarchyInCache()
+        {
+            // Arrange
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            Dictionary<string, List<string>> hierarchyToStore = new()
+            {
+                { "group1", new List<string> { "file1", "file2" } },
+                { "group2", new List<string> { "file3", "file4" } }
+            };
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache matrixCache = new(memoryCache);
+            
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            CachedDataBaseConnector connector = new(mockFactory.Object, matrixCache);
+
+            string[] expectedGroup1 = ["file1", "file2"];
+            string[] expectedGroup2 = ["file3", "file4"];
+
+            // Act
+            connector.SetDataBaseHierarchy(dataBase, hierarchyToStore);
+
+            // Assert
+            bool result = matrixCache.TryGetHierarchy(dataBase, out Dictionary<string, List<string>>? retrievedHierarchy);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(retrievedHierarchy, Is.Not.Null);
+                Assert.That(retrievedHierarchy, Is.SameAs(hierarchyToStore));
+                Assert.That(retrievedHierarchy!.Count, Is.EqualTo(2));
+                Assert.That(retrievedHierarchy["group1"], Is.EquivalentTo(expectedGroup1));
+                Assert.That(retrievedHierarchy["group2"], Is.EquivalentTo(expectedGroup2));
             });
         }
 
