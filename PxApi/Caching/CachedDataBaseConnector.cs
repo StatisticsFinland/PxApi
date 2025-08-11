@@ -123,7 +123,6 @@ namespace PxApi.Caching
         public bool TryGetDataBaseHierarchy(DataBaseRef dbRef, out Dictionary<string, List<string>>? hierarchy)
         {
             return matrixCache.TryGetHierarchy(dbRef, out hierarchy);
-
         }
 
         /// <inheritdoc/>
