@@ -20,6 +20,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{02EA
 		.github\copilot-instructions.md = .github\copilot-instructions.md
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{9FD4A85B-517A-4CB4-B363-F9ABEFDCD5A0}"
+	ProjectSection(SolutionItems) = preProject
+		docs\LICENSE.md = docs\LICENSE.md
+		docs\README.md = docs\README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

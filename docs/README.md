@@ -1,12 +1,16 @@
 # PxApi
 
-PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px files stored in a local file system. It is built with extensibility and performance in mind, leveraging caching.
+PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px files stored in various storage types, including local file systems, Azure File Shares, and Azure Blob Storage. It is built with extensibility and performance in mind, leveraging caching mechanisms.
 
 ## Features
 
 - **Table Metadata**: Fetch detailed metadata about Px tables, including content, time variables, and classificatory variables.
 - **Variable Metadata**: Retrieve metadata for specific variables, including content and time variables.
 - **Table Listing**: List available tables in a database with essential metadata and paging support.
+- **Data Retrieval**: Query px table data with filtering options, supporting both minimal JSON and JSON-stat2 response formats.
+- **Hierarchy Management**: Retrieve and update database hierarchical structures to organize tables into logical groups.
+- **Advanced Caching**: Comprehensive caching system with configurable settings for metadata, data, file lists, and hierarchies.
+- **Multiple Storage Types**: Support for local file system, Azure File Share, and Azure Blob Storage as data sources.
 - **Swagger Integration**: Includes Swagger UI for API documentation and testing.
 
 ## API Endpoints
@@ -21,18 +25,97 @@ PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px 
    - Retrieve metadata for a specific variable in a table.
    - Example: `/meta/{database}/{table}/{varcode}?lang=en`
 
+3. **Data Endpoint** (`/data`):
+   - GET and POST endpoints to retrieve data in minimal JSON format.
+   - Examples: 
+     - GET: `/data/json/{database}/{table}?dimension1.filter=value1,value2`
+     - POST: `/data/json/{database}/{table}` with filter body
+   - GET and POST endpoints to retrieve data in JSON-stat2 format.
+   - Examples:
+     - GET: `/{database}/{table}/json-stat?dimension1.filter=value1,value2&lang=en`
+     - POST: `/{database}/{table}/json-stat?lang=en` with filter body
+
+4. **Hierarchy Endpoint** (`/hierarchy`):
+   - Retrieve hierarchical structure of a database.
+   - Example: `/hierarchy/{database}`
+   - Update hierarchical structure of a database.
+   - Example: POST to `/hierarchy/{database}` with hierarchy body
+
+5. **Cache Endpoint** (`/cache`):
+   - Clear file list cache for a database.
+   - Example: DELETE `/cache/files`
+   - Clear metadata cache for a database.
+   - Example: DELETE `/cache/{database}/metadata`
+   - Clear data cache for a database.
+   - Example: DELETE `/cache/{database}/data`
+   - Clear hierarchy cache for a database.
+   - Example: DELETE `/cache/{database}/hierarchy`
+   - Clear all cache entries for a database.
+   - Example: DELETE `/cache/{database}`
+   - Clear all cache entries across all databases.
+   - Example: DELETE `/cache`
+
 ## Configuration
 
 The application uses `appsettings.json` for configuration. Key settings include:
+
 - `RootUrl`: The base URL for the API.
-- `DataSource`: Configuration for the local file system data source, including root path and caching options.
+- `DataBases`: Array of database configurations with the following properties:
+  - `Type`: Type of database storage (`Mounted`, `FileShare`, or `BlobStorage`).
+  - `Id`: Unique identifier for the database.
+  - `CacheConfig`: Configuration for database caching:
+    - `TableList`: Cache settings for table lists.
+    - `Meta`: Cache settings for metadata.
+    - `Data`: Cache settings for data.
+    - `Modifiedtime`: Cache settings for file modification times.
+    - `HierarchyConfig`: Optional cache settings for hierarchies.
+    - `MaxCacheSize`: Maximum cache size in bytes.
+  - `Custom`: Custom settings specific to the database type:
+    - For `Mounted`: `RootPath` to the local file system.
+    - For `FileShare`: Connection parameters for Azure File Share.
+    - For `BlobStorage`: Connection parameters for Azure Blob Storage.
+  - `FilenameSeparator`: Optional character to split filenames into parts.
+  - `FilenameIdPartIndex`: Optional index of the part to use as the file ID.
+  - `FilenameGroupingPartIndex`: Optional index of the part to use for grouping.
+
+## Database Connectors
+
+PxApi supports multiple types of database storage through specialized connectors:
+
+### MountedDataBaseConnector
+
+For accessing Px files stored on a local or network file system. Provides direct file access with minimal overhead.
+
+### FileShareDataBaseConnector
+
+For accessing Px files stored in Azure File Shares. Uses Azure Storage SDK.
+
+### BlobStorageDataBaseConnector
+
+For accessing Px files stored in Azure Blob Storage. Uses Azure Storage SDK.
+
+## Caching System
+
+PxApi implements a caching system to optimize performance:
+
+- **File List Caching**: Caches lists of available files in each database to reduce file system or cloud storage access.
+- **Metadata Caching**: Stores metadata for tables to avoid repeated parsing of Px files.
+- **Data Caching**: Caches query results to speed up frequently accessed data views.
+- **Last Modified Caching**: Tracks file modification times to invalidate cache entries when files change.
+- **Hierarchy Caching**: Stores database hierarchical structures for faster navigation.
+
+Each cache type can be configured independently with:
+- Sliding expiration time: Cache entries expire after a period of non-use.
+- Absolute expiration time: Cache entries expire after a fixed time regardless of usage.
 
 ## Technologies Used
 
 - **.NET 9.0**: Modern framework for building web APIs.
+- **Azure SDK**: Libraries for Azure File Share and Blob Storage access.
 - **NLog**: Logging framework for error and debug logging.
-- **Swagger**: API documentation and testing.
+- **Swagger/OpenAPI**: API documentation and testing.
 - **Px.Utils**: Utility library for handling Px file metadata.
+- **Memory Cache**: Built-in .NET caching for optimized performance.
 
 ## Getting Started
 
