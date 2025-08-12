@@ -66,11 +66,11 @@ namespace PxApi.UnitTests.Caching
                     .Add("file1", PxFileRef.Create("file1", database))
                     .Add("file2", PxFileRef.Create("file2", database)));
             string fileListSeed = GetSeedForKeyword(FILE_LIST_SEED_VARNAME);
-            memoryCache.Set(HashCode.Combine(fileListSeed), expectedFiles);
+            memoryCache.Set(HashCode.Combine(fileListSeed, database), expectedFiles);
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetFileList(out Task<ImmutableSortedDictionary<string, PxFileRef>>? actualFiles);
+            bool result = dbCache.TryGetFileList(database, out Task<ImmutableSortedDictionary<string, PxFileRef>>? actualFiles);
 
             // Assert
             Assert.Multiple(() =>
@@ -86,9 +86,10 @@ namespace PxApi.UnitTests.Caching
             // Arrange
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
 
             // Act
-            bool result = dbCache.TryGetFileList(out Task<ImmutableSortedDictionary<string, PxFileRef>>? actualFiles);
+            bool result = dbCache.TryGetFileList(database, out Task<ImmutableSortedDictionary<string, PxFileRef>>? actualFiles);
 
             // Assert
             Assert.Multiple(() =>
@@ -114,7 +115,6 @@ namespace PxApi.UnitTests.Caching
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
-
             string fileListSeed = GetSeedForKeyword(FILE_LIST_SEED_VARNAME);
 
             // Act
@@ -124,7 +124,7 @@ namespace PxApi.UnitTests.Caching
             Assert.Multiple(() =>
             {
                 Assert.That(memoryCache.TryGetValue(
-                    HashCode.Combine(fileListSeed),
+                    HashCode.Combine(fileListSeed, database),
                     out Task<ImmutableSortedDictionary<string, PxFileRef>>? cachedFiles),
                     Is.True);
                 Assert.That(cachedFiles, Is.SameAs(files));
@@ -744,6 +744,247 @@ namespace PxApi.UnitTests.Caching
                     Is.True);
                 Assert.That(cachedHierarchy, Is.SameAs(hierarchy));
             });
+        }
+
+        #endregion
+
+        #region ClearFileListCache
+
+        [Test]
+        public void ClearFileListCache_RemovesCachedFileList()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string fileListSeed = GetSeedForKeyword(FILE_LIST_SEED_VARNAME);
+            int cacheKey = HashCode.Combine(fileListSeed, database);
+            
+            Task<ImmutableSortedDictionary<string, PxFileRef>> fileList = Task.FromResult(
+                ImmutableSortedDictionary<string, PxFileRef>.Empty
+                    .Add("file1", PxFileRef.Create("file1", database)));
+            
+            memoryCache.Set(cacheKey, fileList);
+            DatabaseCache dbCache = new(memoryCache);
+            
+            // Verify that cache has the file list
+            Assert.That(memoryCache.TryGetValue(cacheKey, out _), Is.True);
+
+            // Act
+            dbCache.ClearFileListCache(database);
+
+            // Assert
+            Assert.That(memoryCache.TryGetValue(cacheKey, out _), Is.False);
+        }
+
+        #endregion
+
+        #region ClearMetadataCache
+
+        [Test]
+        public void ClearMetadataCache_ClearsMetadataAndLastUpdatedForFiles()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef file1 = PxFileRef.Create("file1", database);
+            PxFileRef file2 = PxFileRef.Create("file2", database);
+            List<PxFileRef> fileList = [file1, file2];
+
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
+            string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);
+            
+            Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
+            MetaCacheContainer metaContainer1 = new(Task.FromResult(mockMetadata.Object));
+            MetaCacheContainer metaContainer2 = new(Task.FromResult(mockMetadata.Object));
+            
+            // Add metadata to cache for both files
+            memoryCache.Set(HashCode.Combine(metaSeed, file1), metaContainer1);
+            memoryCache.Set(HashCode.Combine(metaSeed, file2), metaContainer2);
+            
+            // Add last updated timestamps to cache for both files
+            memoryCache.Set(HashCode.Combine(lastUpdatedSeed, file1), Task.FromResult(DateTime.UtcNow));
+            memoryCache.Set(HashCode.Combine(lastUpdatedSeed, file2), Task.FromResult(DateTime.UtcNow));
+            
+            DatabaseCache dbCache = new(memoryCache);
+            
+            // Verify that cache has the metadata and timestamps
+            Assert.Multiple(() =>
+            {
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(metaSeed, file1), out _), Is.True);
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(metaSeed, file2), out _), Is.True);
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, file1), out _), Is.True);
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, file2), out _), Is.True);
+            });
+
+            // Act
+            dbCache.ClearMetadataCache(fileList);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(metaSeed, file1), out _), Is.False);
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(metaSeed, file2), out _), Is.False);
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, file1), out _), Is.False);
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, file2), out _), Is.False);
+            });
+        }
+
+        [Test]
+        public void ClearMetadataCache_WithEmptyFileList_DoesNothing()
+        {
+            // Arrange
+            List<PxFileRef> emptyFileList = [];
+            Mock<IMemoryCache> mockCache = new();
+            DatabaseCache dbCache = new(mockCache.Object);
+
+            // Act
+            dbCache.ClearMetadataCache(emptyFileList);
+
+            // Assert - verify that cache Remove method was not called
+            mockCache.Verify(c => c.Remove(It.IsAny<object>()), Times.Never);
+        }
+
+        #endregion
+
+        #region ClearDataCache
+
+        [Test]
+        public void ClearDataCache_RemovesDataContainersForFiles()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef file1 = PxFileRef.Create("file1", database);
+            PxFileRef file2 = PxFileRef.Create("file2", database);
+            List<PxFileRef> fileList = [file1, file2];
+
+            MatrixMap map1 = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2024"])
+            ]);
+            MatrixMap map2 = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
+            string dataSeed = GetSeedForKeyword(DATA_SEED_VARNAME);
+            
+            Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
+            MetaCacheContainer metaContainer1 = new(Task.FromResult(mockMetadata.Object));
+            MetaCacheContainer metaContainer2 = new(Task.FromResult(mockMetadata.Object));
+
+            DataCacheContainer<DoubleDataValue> dataContainer1 = new(
+                map1,
+                Task.FromResult<DoubleDataValue[]>([new DoubleDataValue(1, DataValueType.Exists)])
+            );
+            DataCacheContainer<DoubleDataValue> dataContainer2 = new(
+                map2,
+                Task.FromResult<DoubleDataValue[]>([new DoubleDataValue(2, DataValueType.Exists)])
+            );
+
+            metaContainer1.AddDataContainer(dataContainer1);
+            metaContainer2.AddDataContainer(dataContainer2);
+            
+            // Add metadata containers to cache
+            memoryCache.Set(HashCode.Combine(metaSeed, file1), metaContainer1);
+            memoryCache.Set(HashCode.Combine(metaSeed, file2), metaContainer2);
+            
+            // Add data containers to cache
+            memoryCache.Set(HashCode.Combine(dataSeed, GetMapHash(map1)), dataContainer1);
+            memoryCache.Set(HashCode.Combine(dataSeed, GetMapHash(map2)), dataContainer2);
+            
+            DatabaseCache dbCache = new(memoryCache);
+            
+            // Verify that cache has the data containers
+            Assert.Multiple(() =>
+            {
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(dataSeed, GetMapHash(map1)), out _), Is.True);
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(dataSeed, GetMapHash(map2)), out _), Is.True);
+            });
+
+            // Act
+            dbCache.ClearDataCache(fileList);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(dataSeed, GetMapHash(map1)), out _), Is.False);
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(dataSeed, GetMapHash(map2)), out _), Is.False);
+            });
+        }
+
+        [Test]
+        public void ClearDataCache_WithNoMetadataContainer_SkipsFile()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef file = PxFileRef.Create("file1", database);
+            List<PxFileRef> fileList = [file];
+
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            
+            // No metadata container in cache, so nothing should happen
+
+            // Act
+            dbCache.ClearDataCache(fileList);
+
+            // Assert - no exception should be thrown
+            Assert.Pass("Method completed without exception");
+        }
+
+        [Test]
+        public void ClearDataCache_WithMetadataContainerButNoRelatedMaps_DoesNotThrow()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef file = PxFileRef.Create("file1", database);
+            List<PxFileRef> fileList = [file];
+
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
+            
+            Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
+            MetaCacheContainer metaContainer = new(Task.FromResult(mockMetadata.Object));
+            // No related maps added to this meta container
+            
+            memoryCache.Set(HashCode.Combine(metaSeed, file), metaContainer);
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act & Assert - no exception should be thrown
+            Assert.DoesNotThrow(() => dbCache.ClearDataCache(fileList));
+        }
+
+        #endregion
+
+        #region ClearHierarchyCache
+
+        [Test]
+        public void ClearHierarchyCache_RemovesHierarchyForDatabase()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            Dictionary<string, List<string>> hierarchy = new()
+            {
+                { "group1", ["file1", "file2"] }
+            };
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string hierarchySeed = GetSeedForKeyword(HIERARCHY_SEED_VARNAME);
+            int cacheKey = HashCode.Combine(hierarchySeed, database);
+            
+            memoryCache.Set(cacheKey, hierarchy);
+            DatabaseCache dbCache = new(memoryCache);
+            
+            // Verify that cache has the hierarchy
+            Assert.That(memoryCache.TryGetValue(cacheKey, out _), Is.True);
+
+            // Act
+            dbCache.ClearHierarchyCache(database);
+
+            // Assert
+            Assert.That(memoryCache.TryGetValue(cacheKey, out _), Is.False);
         }
 
         #endregion

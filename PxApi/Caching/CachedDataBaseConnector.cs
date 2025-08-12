@@ -25,9 +25,15 @@ namespace PxApi.Caching
         }
 
         /// <inheritdoc/>
+        public IReadOnlyCollection<DataBaseRef> GetAllDataBaseReferences()
+        {
+            return dbConnectorFactory.GetAvailableDatabases();
+        }
+
+        /// <inheritdoc/>
         public async Task<ImmutableSortedDictionary<string, PxFileRef>> GetFileListCachedAsync(DataBaseRef dataBase)
         {
-            if (matrixCache.TryGetFileList(out Task<ImmutableSortedDictionary<string, PxFileRef>>? files))
+            if (matrixCache.TryGetFileList(dataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? files))
             {
                 return await files!;
             }
@@ -129,6 +135,68 @@ namespace PxApi.Caching
         public void SetDataBaseHierarchy(DataBaseRef dbRef, Dictionary<string, List<string>> hierarchy)
         {
             matrixCache.SetHierarchy(dbRef, hierarchy);
+        }
+
+        /// <inheritdoc/>
+        public void ClearFileListCache(DataBaseRef dbRef)
+        {
+            matrixCache.ClearFileListCache(dbRef);
+        }
+
+        /// <inheritdoc/>
+        public async Task ClearMetadataCacheAsync(DataBaseRef dataBase)
+        {
+            // Get all files for the database and clear their metadata cache
+            ImmutableSortedDictionary<string, PxFileRef> files = await GetFileListCachedAsync(dataBase);
+            foreach (PxFileRef file in files.Values)
+            {
+                matrixCache.TryRemoveMeta(file);
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task ClearDataCacheAsync(DataBaseRef dataBase)
+        {
+            // Get all files for the database and clear their data cache
+            ImmutableSortedDictionary<string, PxFileRef> files = await GetFileListCachedAsync(dataBase);
+            foreach (PxFileRef file in files.Values)
+            {
+                if (matrixCache.TryGetMetadata(file, out MetaCacheContainer? metaContainer) && metaContainer is not null)
+                {
+                    // Clear data cache for this file by removing the metadata, which will trigger the removal of associated data
+                    matrixCache.TryRemoveMeta(file);
+                    
+                    // Re-add the metadata without the data references
+                    Task<IReadOnlyMatrixMetadata> meta = metaContainer.Metadata;
+                    MetaCacheContainer newContainer = new(meta);
+                    matrixCache.SetMetadata(file, newContainer);
+                }
+            }
+        }
+
+        /// <inheritdoc/>
+        public void ClearHierarchyCache(DataBaseRef dataBase)
+        {
+            matrixCache.ClearHierarchyCache(dataBase);
+        }
+
+        /// <inheritdoc/>
+        public async Task ClearAllCache(DataBaseRef dataBase)
+        {
+            await ClearDataCacheAsync(dataBase);
+            await ClearMetadataCacheAsync(dataBase);
+            ClearHierarchyCache(dataBase);
+            ClearFileListCache(dataBase);
+        }
+
+        /// <inheritdoc/>
+        public async Task ClearAllCachesAsync()
+        {
+            IReadOnlyCollection<DataBaseRef> allDatabases = GetAllDataBaseReferences();
+            foreach (DataBaseRef dbRef in allDatabases)
+            {
+                await ClearAllCache(dbRef);
+            }
         }
 
         private async Task<MetaCacheContainer> GetMetaContainer(PxFileRef pxFile)

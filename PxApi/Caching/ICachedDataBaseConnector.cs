@@ -43,6 +43,12 @@ namespace PxApi.Caching
         DataBaseRef? GetDataBaseReference(string dbId);
 
         /// <summary>
+        /// Retrieves references to all available databases.
+        /// </summary>
+        /// <returns>A read-only collection of all available databases.</returns>
+        IReadOnlyCollection<DataBaseRef> GetAllDataBaseReferences();
+
+        /// <summary>
         /// Retrieves a cached reference to a file based on its unique identifier.
         /// </summary>
         /// <remarks>This method retrieves the file reference from a cache if available; otherwise, it
@@ -85,5 +91,41 @@ namespace PxApi.Caching
         /// <param name="dbRef">Reference to the database to set the hierarchy for</param>
         /// <param name="hierarchy">The hierarchy to set for the database</param>
         void SetDataBaseHierarchy(DataBaseRef dbRef, Dictionary<string, List<string>> hierarchy);
+        
+        /// <summary>
+        /// Clears all file list cache entries.
+        /// </summary>
+        /// <param name="dbRef">Reference to the database to clear the file list cache for</param>
+        void ClearFileListCache(DataBaseRef dbRef);
+
+        /// <summary>
+        /// Clears all metadata cache entries for the specified database.
+        /// </summary>
+        /// <param name="dataBase">The database for which to clear metadata cache entries.</param>
+        Task ClearMetadataCacheAsync(DataBaseRef dataBase);
+
+        /// <summary>
+        /// Clears all data cache entries for the specified database.
+        /// </summary>
+        /// <param name="dataBase">The database for which to clear data cache entries.</param>
+        Task ClearDataCacheAsync(DataBaseRef dataBase);
+
+        /// <summary>
+        /// Clears hierarchy cache for the specified database.
+        /// </summary>
+        /// <param name="dataBase">The database for which to clear the hierarchy cache.</param>
+        void ClearHierarchyCache(DataBaseRef dataBase);
+
+        /// <summary>
+        /// Clears all cache entries for the specified database, including file lists, metadata, data, and hierarchies.
+        /// </summary>
+        /// <param name="dataBase">The database for which to clear all cache entries.</param>
+        Task ClearAllCache(DataBaseRef dataBase);
+
+        /// <summary>
+        /// Clears all cache entries for all databases.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        Task ClearAllCachesAsync();
     }
 }

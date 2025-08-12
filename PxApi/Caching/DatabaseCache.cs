@@ -2,7 +2,6 @@
 using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using PxApi.Configuration;
-using PxApi.DataSources;
 using PxApi.Models;
 using System.Collections.Immutable;
 
@@ -33,13 +32,14 @@ namespace PxApi.Caching
         /// <summary>
         /// Attempts to retrieve a list of files associated with the specified database.
         /// </summary>
+        /// <param name="dataBase">The database for which the file list is being retrieved. Cannot be null.</param>
         /// <param name="files">When this method returns, contains a task that resolves to an immutable list of files if the operation
         /// succeeds;  otherwise, <see langword="null"/>.</param>
         /// <returns><see langword="true"/> if the file list was successfully retrieved from the cache; otherwise, <see
         /// langword="false"/>.</returns>
-        public bool TryGetFileList(out Task<ImmutableSortedDictionary<string, PxFileRef>>? files)
+        public bool TryGetFileList(DataBaseRef dataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? files)
         {
-            return _cache.TryGetValue(HashCode.Combine(FILE_LIST_SEED), out files);
+            return _cache.TryGetValue(HashCode.Combine(FILE_LIST_SEED, dataBase), out files);
         }
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace PxApi.Caching
                 SlidingExpiration = config.SlidingExpirationSeconds,
                 AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds
             };
-            _cache.Set(HashCode.Combine(FILE_LIST_SEED), files, options);
+            _cache.Set(HashCode.Combine(FILE_LIST_SEED, dataBase), files, options);
         }
 
         /// <summary>
@@ -181,7 +181,7 @@ namespace PxApi.Caching
                 List<IMatrixMap> subMaps = [..metaContainer!.GetSubMaps(map)];
                 foreach (IMatrixMap subMap in subMaps)
                 { 
-                    // Triggers eviction callback
+                    // Triggers eviction
                     _cache.Remove(HashCode.Combine(DATA_SEED, MapHash(subMap)));
                 }
 
@@ -233,6 +233,52 @@ namespace PxApi.Caching
             };
             _cache.Set(HashCode.Combine(HIERARCHY_SEED, dataBase), 
                 hierarchy, options);
+        }
+
+        /// <summary>
+        /// Clears the file list cache.
+        /// </summary>
+        public void ClearFileListCache(DataBaseRef dbRef)
+        {
+            _cache.Remove(HashCode.Combine(FILE_LIST_SEED, dbRef));
+        }
+
+        /// <summary>
+        /// Clears the metadata cache for the specified files.
+        /// </summary>
+        /// <param name="fileList">List of files for which to clear metadata cache.</param>
+        public void ClearMetadataCache(IEnumerable<PxFileRef> fileList)
+        {
+            foreach (PxFileRef file in fileList)
+            {
+                TryRemoveMeta(file);
+                _cache.Remove(HashCode.Combine(LAST_UPDATED_SEED, file));
+            }
+        }
+
+        /// <summary>
+        /// Clears the data cache for the specified files.
+        /// </summary>
+        /// <param name="fileList">List of files for which to clear data cache.</param>
+        public void ClearDataCache(IEnumerable<PxFileRef> fileList)
+        {
+            foreach (PxFileRef file in fileList)
+            {
+                if (_cache.TryGetValue(HashCode.Combine(META_SEED, file), out MetaCacheContainer? metaContainer) && metaContainer != null)
+                {
+                    metaContainer.GetRelatedMaps().ForEach(map =>
+                        _cache.Remove(HashCode.Combine(DATA_SEED, MapHash(map))));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clears the hierarchy cache for the specified database.
+        /// </summary>
+        /// <param name="dataBase">Database for which to clear hierarchy cache.</param>
+        public void ClearHierarchyCache(DataBaseRef dataBase)
+        {
+            _cache.Remove(HashCode.Combine(HIERARCHY_SEED, dataBase));
         }
 
         /// <summary>
