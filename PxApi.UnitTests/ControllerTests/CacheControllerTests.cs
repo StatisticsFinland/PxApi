@@ -347,5 +347,90 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(statusCodeResult, Is.Not.Null);
             Assert.That(statusCodeResult!.StatusCode, Is.EqualTo(500));
         }
+
+        [Test]
+        public async Task ClearLastUpdatedCache_DatabaseExists_CallsClearLastUpdatedCacheMethod_ReturnsOk()
+        {
+            // Arrange
+            string database = "testdb";
+            DataBaseRef dbRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
+            _cachedDbConnector.Setup(x => x.ClearLastUpdatedCacheAsync(dbRef)).Returns(Task.CompletedTask);
+
+            // Act
+            ActionResult result = await _controller.ClearLastUpdatedCache(database);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            _cachedDbConnector.Verify(x => x.ClearLastUpdatedCacheAsync(dbRef), Times.Once);
+        }
+
+        [Test]
+        public async Task ClearLastUpdatedCache_DatabaseDoesNotExist_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "nonexistentdb";
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
+
+            // Act
+            ActionResult result = await _controller.ClearLastUpdatedCache(database);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+            _cachedDbConnector.Verify(x => x.ClearLastUpdatedCacheAsync(It.IsAny<DataBaseRef>()), Times.Never);
+        }
+
+        [Test]
+        public async Task ClearLastUpdatedCache_ExceptionThrown_ReturnsStatusCode500()
+        {
+            // Arrange
+            string database = "testdb";
+            DataBaseRef dbRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
+            _cachedDbConnector.Setup(x => x.ClearLastUpdatedCacheAsync(dbRef)).Throws(new Exception("Test exception"));
+
+            // Act
+            ActionResult result = await _controller.ClearLastUpdatedCache(database);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ObjectResult>());
+            ObjectResult? statusCodeResult = result as ObjectResult;
+            Assert.That(statusCodeResult, Is.Not.Null);
+            Assert.That(statusCodeResult!.StatusCode, Is.EqualTo(500));
+        }
+
+        [Test]
+        public async Task ClearAllLastUpdatedCaches_CallsGetAllDataBaseReferencesAndClearLastUpdatedCache_ReturnsOk()
+        {
+            // Arrange
+            DataBaseRef[] dbRefs = {DataBaseRef.Create("testdb1"), DataBaseRef.Create("testdb2")};
+            _cachedDbConnector.Setup(x => x.GetAllDataBaseReferences()).Returns(dbRefs);
+            _cachedDbConnector.Setup(x => x.ClearLastUpdatedCacheAsync(It.IsAny<DataBaseRef>())).Returns(Task.CompletedTask);
+
+            // Act
+            ActionResult result = await _controller.ClearAllLastUpdatedCaches();
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            _cachedDbConnector.Verify(x => x.GetAllDataBaseReferences(), Times.Once);
+            _cachedDbConnector.Verify(x => x.ClearLastUpdatedCacheAsync(dbRefs[0]), Times.Once);
+            _cachedDbConnector.Verify(x => x.ClearLastUpdatedCacheAsync(dbRefs[1]), Times.Once);
+        }
+
+        [Test]
+        public async Task ClearAllLastUpdatedCaches_ExceptionThrown_ReturnsStatusCode500()
+        {
+            // Arrange
+            _cachedDbConnector.Setup(x => x.GetAllDataBaseReferences()).Throws(new Exception("Test exception"));
+
+            // Act
+            ActionResult result = await _controller.ClearAllLastUpdatedCaches();
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ObjectResult>());
+            ObjectResult? statusCodeResult = result as ObjectResult;
+            Assert.That(statusCodeResult, Is.Not.Null);
+            Assert.That(statusCodeResult!.StatusCode, Is.EqualTo(500));
+        }
     }
 }

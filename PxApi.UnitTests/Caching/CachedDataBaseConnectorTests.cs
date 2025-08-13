@@ -884,6 +884,46 @@ namespace PxApi.UnitTests.Caching
 
         #endregion
 
+        #region ClearLastUpdatedCacheAsync
+
+        [Test]
+        public async Task ClearLastUpdatedCacheAsync_ClearsLastUpdatedCacheForDatabase()
+        {
+            // Arrange
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            PxFileRef pxRef = PxFileRef.Create("testfile", dataBase);
+            Task<DateTime> lastUpdatedTask = Task.FromResult(DateTime.UtcNow);
+            dbCache.SetFileList(dataBase, Task.FromResult(
+                ImmutableSortedDictionary<string, PxFileRef>.Empty
+                    .Add("testfile", pxRef)));
+            dbCache.SetLastUpdated(pxRef, lastUpdatedTask);
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+
+            // Pre-assert: last updated is present
+            bool hasLastUpdated = dbCache.TryGetLastUpdated(pxRef, out Task<DateTime>? beforeLastUpdated);
+            Assert.Multiple(() =>
+            {
+                Assert.That(hasLastUpdated, Is.True);
+                Assert.That(beforeLastUpdated, Is.Not.Null);
+            });
+
+            // Act
+            await connector.ClearLastUpdatedCacheAsync(dataBase);
+
+            // Assert: last updated is removed
+            bool afterHasLastUpdated = dbCache.TryGetLastUpdated(pxRef, out Task<DateTime>? afterLastUpdated);
+            Assert.Multiple(() =>
+            {
+                Assert.That(afterHasLastUpdated, Is.False);
+                Assert.That(afterLastUpdated, Is.Null);
+            });
+        }
+
+        #endregion
+
         private class UnseekableMemoryStream(byte[] buffer) : MemoryStream(buffer)
         {
             public override bool CanSeek => false;

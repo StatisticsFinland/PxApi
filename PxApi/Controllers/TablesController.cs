@@ -107,17 +107,23 @@ namespace PxApi.Controllers
 
         private static TableListingItem BuildTableListingItemFromMeta(string tableName, string lang, IReadOnlyMatrixMetadata meta, Uri uri)
         {
+            TableStatus status = TableStatus.Current;
             string id = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang) ?? tableName;
-           
-            DateTime lastUpdated = meta.TryGetContentDimension(out ContentDimension? contentDimension)
-                ? contentDimension.Values.Map(v => v.LastUpdated).Max()
-                : DateTime.MinValue; // TODO: This is a local development workaround
+            DateTime lastUpdated = DateTime.MinValue;
+            if (meta.TryGetContentDimension(out ContentDimension? contDim))
+            {
+                lastUpdated = contDim.Values.Map(v => v.LastUpdated).Max();
+            }
+            else
+            {
+                status = TableStatus.Error;
+            }
 
             return new TableListingItem()
             {
                 ID = id,
                 Name = tableName,
-                Status = TableStatus.Current,
+                Status = status,
                 Title = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang) ?? null,
                 LastUpdated = lastUpdated,
                 Links =

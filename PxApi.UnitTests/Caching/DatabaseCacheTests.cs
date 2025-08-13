@@ -989,6 +989,45 @@ namespace PxApi.UnitTests.Caching
 
         #endregion
 
+        #region ClearLastUpdatedCache
+
+        [Test]
+        public async Task ClearLastUpdatedCache_ClearsLastUpdatedForFiles()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef file1 = PxFileRef.Create("file1", database);
+            PxFileRef file2 = PxFileRef.Create("file2", database);
+            List<PxFileRef> fileList = [file1, file2];
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);
+            
+            DateTime now = DateTime.UtcNow;
+            await memoryCache.Set(HashCode.Combine(lastUpdatedSeed, file1), Task.FromResult(now));
+            await memoryCache.Set(HashCode.Combine(lastUpdatedSeed, file2), Task.FromResult(now));
+            
+            DatabaseCache dbCache = new(memoryCache);
+            
+            // Verify that cache has the last updated timestamps
+            Assert.Multiple(() =>
+            {
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, file1), out _), Is.True);
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, file2), out _), Is.True);
+            });
+
+            // Act
+            dbCache.ClearLastUpdatedCache(fileList);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, file1), out _), Is.False);
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, file2), out _), Is.False);
+            });
+        }
+
+        #endregion
+
         private static string GetSeedForKeyword(string keyword)
         {
             // Use reflection to get the private field for the keyword hash seed

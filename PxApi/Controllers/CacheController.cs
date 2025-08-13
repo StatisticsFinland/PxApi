@@ -354,5 +354,80 @@ namespace PxApi.Controllers
                 }
             }
         }
+
+        /// <summary>
+        /// Clears last updated timestamp cache for a specific database.
+        /// </summary>
+        /// <param name="database">Name of the database for which to clear last updated timestamp cache.</param>
+        /// <returns>A message indicating the result of the operation.</returns>
+        /// <response code="200">Last updated timestamp cache was successfully cleared.</response>
+        /// <response code="404">If the database was not found.</response>
+        [HttpDelete("{database}/lastupdated")]
+        [Produces("application/json")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult> ClearLastUpdatedCache([FromRoute] string database)
+        {
+            using (_logger.BeginScope(new Dictionary<string, object>
+            {
+                { LoggerConsts.CLASS_NAME, nameof(CacheController) },
+                { LoggerConsts.METHOD_NAME, nameof(ClearLastUpdatedCache) },
+                { LoggerConsts.DB_ID, database }
+            }))
+            {
+                DataBaseRef? dbRef = _cachedConnector.GetDataBaseReference(database);
+                if (dbRef == null)
+                {
+                    _logger.LogWarning("Database not found");
+                    return NotFound(new { message = "Database not found" });
+                }
+
+                try
+                {
+                    await _cachedConnector.ClearLastUpdatedCacheAsync(dbRef.Value);
+                    _logger.LogInformation("Last updated timestamp cache for database {DatabaseId} cleared successfully", dbRef.Value.Id);
+                    return Ok(new { message = $"Last updated timestamp cache for database '{dbRef.Value.Id}' cleared successfully" });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error clearing last updated timestamp cache for database {DatabaseId}", dbRef.Value.Id);
+                    return StatusCode(500, new { message = $"Error clearing last updated timestamp cache for database '{dbRef.Value.Id}'", error = ex.Message });
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clears last updated timestamp cache for all databases.
+        /// </summary>
+        /// <returns>A message indicating the result of the operation.</returns>
+        /// <response code="200">All last updated timestamp caches were successfully cleared.</response>
+        [HttpDelete("lastupdated")]
+        [Produces("application/json")]
+        [ProducesResponseType(typeof(object), 200)]
+        public async Task<ActionResult> ClearAllLastUpdatedCaches()
+        {
+            using (_logger.BeginScope(new Dictionary<string, object>
+            {
+                { LoggerConsts.CLASS_NAME, nameof(CacheController) },
+                { LoggerConsts.METHOD_NAME, nameof(ClearAllLastUpdatedCaches) }
+            }))
+            {
+                try
+                {
+                    IReadOnlyCollection<DataBaseRef> allDatabases = _cachedConnector.GetAllDataBaseReferences();
+                    foreach (DataBaseRef dbRef in allDatabases)
+                    {
+                        await _cachedConnector.ClearLastUpdatedCacheAsync(dbRef);
+                    }
+                    _logger.LogInformation("All last updated timestamp caches cleared successfully");
+                    return Ok(new { message = "All last updated timestamp caches cleared successfully" });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error clearing all last updated timestamp caches");
+                    return StatusCode(500, new { message = "Error clearing all last updated timestamp caches", error = ex.Message });
+                }
+            }
+        }
     }
 }

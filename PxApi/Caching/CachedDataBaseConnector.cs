@@ -50,7 +50,7 @@ namespace PxApi.Caching
                         ? PxFileRef.Create(file, dbConnector.DataBase, dbConfig)
                         : PxFileRef.Create(Path.GetFileNameWithoutExtension(file), dbConnector.DataBase);
 
-                    fileDict.TryAdd(fileRef.Id, fileRef); // TODO: This is local development workaround
+                    fileDict.TryAdd(fileRef.Id, fileRef);
                 }
                 return fileDict.ToImmutableSortedDictionary();
             });
@@ -197,6 +197,13 @@ namespace PxApi.Caching
             {
                 await ClearAllCache(dbRef);
             }
+        }
+
+        /// <inheritdoc/>
+        public async Task ClearLastUpdatedCacheAsync(DataBaseRef dataBase)
+        {
+            ImmutableSortedDictionary<string, PxFileRef> files = await GetFileListCachedAsync(dataBase);
+            matrixCache.ClearLastUpdatedCache(files.Values);
         }
 
         private async Task<MetaCacheContainer> GetMetaContainer(PxFileRef pxFile)

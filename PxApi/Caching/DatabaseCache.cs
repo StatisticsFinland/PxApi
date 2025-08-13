@@ -257,6 +257,18 @@ namespace PxApi.Caching
         }
 
         /// <summary>
+        /// Clears the last updated timestamp cache for the specified files.
+        /// </summary>
+        /// <param name="fileList">List of files for which to clear last updated timestamp cache.</param>
+        public void ClearLastUpdatedCache(IEnumerable<PxFileRef> fileList)
+        {
+            foreach (PxFileRef file in fileList)
+            {
+                _cache.Remove(HashCode.Combine(LAST_UPDATED_SEED, file));
+            }
+        }
+
+        /// <summary>
         /// Clears the data cache for the specified files.
         /// </summary>
         /// <param name="fileList">List of files for which to clear data cache.</param>

@@ -111,6 +111,12 @@ namespace PxApi.Caching
         Task ClearDataCacheAsync(DataBaseRef dataBase);
 
         /// <summary>
+        /// Clears last updated timestamp cache entries for the specified database.
+        /// </summary>
+        /// <param name="dataBase">The database for which to clear last updated timestamp cache entries.</param>
+        Task ClearLastUpdatedCacheAsync(DataBaseRef dataBase);
+
+        /// <summary>
         /// Clears hierarchy cache for the specified database.
         /// </summary>
         /// <param name="dataBase">The database for which to clear the hierarchy cache.</param>
