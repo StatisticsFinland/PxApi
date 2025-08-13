@@ -28,11 +28,11 @@ PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px 
 3. **Data Endpoint** (`/data`):
    - GET and POST endpoints to retrieve data in minimal JSON format.
    - Examples: 
-     - GET: `/data/json/{database}/{table}?dimension1.filter=value1,value2`
+     - GET: `/data/json/{database}/{table}?dimension1:filter=value1,value2`
      - POST: `/data/json/{database}/{table}` with filter body
    - GET and POST endpoints to retrieve data in JSON-stat2 format.
    - Examples:
-     - GET: `/{database}/{table}/json-stat?dimension1.filter=value1,value2&lang=en`
+     - GET: `/{database}/{table}/json-stat?dimension1:filter=value1,value2&lang=en`
      - POST: `/{database}/{table}/json-stat?lang=en` with filter body
 
 4. **Hierarchy Endpoint** (`/hierarchy`):

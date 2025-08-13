@@ -15,7 +15,7 @@ namespace PxApi.UnitTests.Utils
             // Arrange
             Dictionary<string, string> parameters = new()
             {
-                { "gender.code", "1,2,3" }
+                { "gender:code", "1,2,3" }
             };
 
             // Act
@@ -42,7 +42,7 @@ namespace PxApi.UnitTests.Utils
             // Arrange
             Dictionary<string, string> parameters = new()
             {
-                { "year.code", "*" }
+                { "year:code", "*" }
             };
 
             // Act
@@ -67,7 +67,7 @@ namespace PxApi.UnitTests.Utils
             // Arrange
             Dictionary<string, string> parameters = new()
             {
-                { "year.from", "2020" }
+                { "year:from", "2020" }
             };
 
             // Act
@@ -91,7 +91,7 @@ namespace PxApi.UnitTests.Utils
             // Arrange
             Dictionary<string, string> parameters = new()
             {
-                { "year.to", "2023" }
+                { "year:to", "2023" }
             };
 
             // Act
@@ -115,7 +115,7 @@ namespace PxApi.UnitTests.Utils
             // Arrange
             Dictionary<string, string> parameters = new()
             {
-                { "year.first", "5" }
+                { "year:first", "5" }
             };
 
             // Act
@@ -139,7 +139,7 @@ namespace PxApi.UnitTests.Utils
             // Arrange
             Dictionary<string, string> parameters = new()
             {
-                { "year.last", "3" }
+                { "year:last", "3" }
             };
 
             // Act
@@ -163,7 +163,7 @@ namespace PxApi.UnitTests.Utils
             // Arrange
             Dictionary<string, string> parameters = new()
             {
-                { "year.first", "invalid" }
+                { "year:first", "invalid" }
             };
 
             // Act & Assert
@@ -176,7 +176,7 @@ namespace PxApi.UnitTests.Utils
             // Arrange
             Dictionary<string, string> parameters = new()
             {
-                { "year.last", "-5" }
+                { "year:last", "-5" }
             };
 
             // Act & Assert
@@ -189,10 +189,10 @@ namespace PxApi.UnitTests.Utils
             // Arrange
             Dictionary<string, string> parameters = new()
             {
-                { "gender.code", "1,2" },
-                { "year.from", "2020" },
-                { "region.code", "*" },
-                { "age.first", "10" }
+                { "gender:code", "1,2" },
+                { "year:from", "2020" },
+                { "region:code", "*" },
+                { "age:first", "10" }
             };
 
             // Act
@@ -220,9 +220,9 @@ namespace PxApi.UnitTests.Utils
             // Arrange
             Dictionary<string, string> parameters = new()
             {
-                { "year.from", "2020" },
-                { "year.to", "2023" },
-                { "year.code", "2022" }
+                { "year:from", "2020" },
+                { "year:to", "2023" },
+                { "year:code", "2022" }
             };
 
             // Act & Assert
@@ -238,9 +238,9 @@ namespace PxApi.UnitTests.Utils
             // Arrange
             Dictionary<string, string> parameters = new()
             {
-                { "gender.code", "1,2" },
+                { "gender:code", "1,2" },
                 { "invalid", "value" },
-                { "invalid.format.extra", "value" }
+                { "invalid:format:extra", "value" }
             };
 
             // Act
