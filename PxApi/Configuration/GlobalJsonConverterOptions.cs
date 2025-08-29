@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Px.Utils.Models.Data.DataValue;
+using PxApi.Models.QueryFilters;
 
 namespace PxApi.Configuration
 {
@@ -20,8 +21,9 @@ namespace PxApi.Configuration
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
 
-            // Add the DoubleDataValue converter
+            // Add the DoubleDataValue converter and IFilter converter
             Default.Converters.Add(new DoubleDataValueJsonConverter());
+            Default.Converters.Add(new FilterJsonConverter());
         }
 
         /// <summary>

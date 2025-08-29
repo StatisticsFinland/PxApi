@@ -147,9 +147,11 @@ namespace PxApi.Models.QueryFilters
                 throw new ArgumentException("Filter string exceeds maximum length of 50 characters");
             }
 
+            char[] allowedSpecialChars = ['*', '_'];
+
             foreach (char c in input)
             {
-                if (!char.IsLetterOrDigit(c) || c == '*')
+                if (!char.IsLetterOrDigit(c) && !allowedSpecialChars.Contains(c))
                 {
                     throw new ArgumentException("Input string contains characters other than letters and numbers");
                 }
