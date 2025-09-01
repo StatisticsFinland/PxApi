@@ -16,7 +16,7 @@ namespace PxApi.Controllers
     /// </summary>
     [Route("meta")]
     [ApiController]
-    public class MetadataController(ICachedDataBaseConnector cachedConnector) : ControllerBase
+    public class MetadataController(ICachedDataSource cachedConnector) : ControllerBase
     {
         /// <summary>
         /// Get metadata for a single table.

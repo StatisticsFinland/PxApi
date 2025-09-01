@@ -28,9 +28,9 @@ namespace PxApi.ModelBuilders
         public const string SOURCE = "SOURCE";
 
         /// <summary>
-        /// Key for SUBJECT-AREA in the Px files
+        /// Key for SUBJECT-CODE in the Px files
         /// </summary>
-        public const string SUBJECT_AREA = "SUBJECT-AREA";
+        public const string SUBJECT_CODE = "SUBJECT-CODE";
 
         /// <summary>
         /// Key for TABLEID in the Px files

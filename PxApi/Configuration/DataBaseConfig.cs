@@ -39,13 +39,6 @@
         public int? FilenameIdPartIndex { get; }
 
         /// <summary>
-        /// The index of the part in the split filename to use as a grouping ID.
-        /// A value of -1 means use the last part.
-        /// This is only used if FilenameSeparator is not null.
-        /// </summary>
-        public int? FilenameGroupingPartIndex { get; }
-
-        /// <summary>
         /// Default constructor
         /// </summary>
         /// <param name="section">Section of the application configuration that contains settings for the data source.</param>
@@ -76,7 +69,6 @@
 
             FilenameSeparator = section.GetValue<char?>(nameof(FilenameSeparator));
             FilenameIdPartIndex = section.GetValue<int?>(nameof(FilenameIdPartIndex));
-            FilenameGroupingPartIndex = section.GetValue<int?>(nameof(FilenameGroupingPartIndex));
         }
     }
 }

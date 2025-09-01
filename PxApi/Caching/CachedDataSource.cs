@@ -11,7 +11,7 @@ using System.Text;
 namespace PxApi.Caching
 {
     /// <inheritdoc/>
-    public class CachedDataBaseConnector(IDataBaseConnectorFactory dbConnectorFactory, DatabaseCache matrixCache) : ICachedDataBaseConnector
+    public class CachedDataSource(IDataBaseConnectorFactory dbConnectorFactory, DatabaseCache matrixCache) : ICachedDataSource
     {
         /// <inheritdoc/>
         public DataBaseRef? GetDataBaseReference(string dbId)
@@ -126,18 +126,6 @@ namespace PxApi.Caching
         }
 
         /// <inheritdoc/>
-        public bool TryGetDataBaseHierarchy(DataBaseRef dbRef, out Dictionary<string, List<string>>? hierarchy)
-        {
-            return matrixCache.TryGetHierarchy(dbRef, out hierarchy);
-        }
-
-        /// <inheritdoc/>
-        public void SetDataBaseHierarchy(DataBaseRef dbRef, Dictionary<string, List<string>> hierarchy)
-        {
-            matrixCache.SetHierarchy(dbRef, hierarchy);
-        }
-
-        /// <inheritdoc/>
         public void ClearFileListCache(DataBaseRef dbRef)
         {
             matrixCache.ClearFileListCache(dbRef);
@@ -175,17 +163,10 @@ namespace PxApi.Caching
         }
 
         /// <inheritdoc/>
-        public void ClearHierarchyCache(DataBaseRef dataBase)
-        {
-            matrixCache.ClearHierarchyCache(dataBase);
-        }
-
-        /// <inheritdoc/>
         public async Task ClearAllCache(DataBaseRef dataBase)
         {
             await ClearDataCacheAsync(dataBase);
             await ClearMetadataCacheAsync(dataBase);
-            ClearHierarchyCache(dataBase);
             ClearFileListCache(dataBase);
         }
 

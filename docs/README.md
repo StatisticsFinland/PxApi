@@ -8,8 +8,7 @@ PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px 
 - **Variable Metadata**: Retrieve metadata for specific variables, including content and time variables.
 - **Table Listing**: List available tables in a database with essential metadata and paging support.
 - **Data Retrieval**: Query px table data with filtering options, supporting both minimal JSON and JSON-stat2 response formats.
-- **Hierarchy Management**: Retrieve and update database hierarchical structures to organize tables into logical groups.
-- **Advanced Caching**: Comprehensive caching system with configurable settings for metadata, data, file lists, and hierarchies.
+- **Advanced Caching**: Comprehensive caching system with configurable settings for metadata, data and file lists.
 - **Multiple Storage Types**: Support for local file system, Azure File Share, and Azure Blob Storage as data sources.
 - **Swagger Integration**: Includes Swagger UI for API documentation and testing.
 
@@ -35,12 +34,6 @@ PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px 
      - GET: `/{database}/{table}/json-stat?dimension1:filter=value1,value2&lang=en`
      - POST: `/{database}/{table}/json-stat?lang=en` with filter body
 
-4. **Hierarchy Endpoint** (`/hierarchy`):
-   - Retrieve hierarchical structure of a database.
-   - Example: `/hierarchy/{database}`
-   - Update hierarchical structure of a database.
-   - Example: POST to `/hierarchy/{database}` with hierarchy body
-
 5. **Cache Endpoint** (`/cache`):
    - Clear file list cache for a database.
    - Example: DELETE `/cache/files`
@@ -48,10 +41,6 @@ PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px 
    - Example: DELETE `/cache/{database}/metadata`
    - Clear data cache for a database.
    - Example: DELETE `/cache/{database}/data`
-   - Clear hierarchy cache for a database.
-   - Example: DELETE `/cache/{database}/hierarchy`
-   - Clear all cache entries for a database.
-   - Example: DELETE `/cache/{database}`
    - Clear all cache entries across all databases.
    - Example: DELETE `/cache`
 
@@ -68,7 +57,6 @@ The application uses `appsettings.json` for configuration. Key settings include:
     - `Meta`: Cache settings for metadata.
     - `Data`: Cache settings for data.
     - `Modifiedtime`: Cache settings for file modification times.
-    - `HierarchyConfig`: Optional cache settings for hierarchies.
     - `MaxCacheSize`: Maximum cache size in bytes.
   - `Custom`: Custom settings specific to the database type:
     - For `Mounted`: `RootPath` to the local file system.
@@ -76,7 +64,6 @@ The application uses `appsettings.json` for configuration. Key settings include:
     - For `BlobStorage`: Connection parameters for Azure Blob Storage.
   - `FilenameSeparator`: Optional character to split filenames into parts.
   - `FilenameIdPartIndex`: Optional index of the part to use as the file ID.
-  - `FilenameGroupingPartIndex`: Optional index of the part to use for grouping.
 
 ## Database Connectors
 
@@ -102,7 +89,6 @@ PxApi implements a caching system to optimize performance:
 - **Metadata Caching**: Stores metadata for tables to avoid repeated parsing of Px files.
 - **Data Caching**: Caches query results to speed up frequently accessed data views.
 - **Last Modified Caching**: Tracks file modification times to invalidate cache entries when files change.
-- **Hierarchy Caching**: Stores database hierarchical structures for faster navigation.
 
 Each cache type can be configured independently with:
 - Sliding expiration time: Cache entries expire after a period of non-use.

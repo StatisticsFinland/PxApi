@@ -35,12 +35,12 @@ namespace PxApi.ModelBuilders
                 .Where(d => d.Type is not DimensionType.Time and not DimensionType.Content)
                 .Select(d => BuildVariable(d, lang, includeValues, baseUrlWithParams, rel))];
 
-            string? subjectArea = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.SUBJECT_AREA, lang);
-            List<TableGroup> groups = subjectArea is not null
+            string? subjectCode = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.SUBJECT_CODE, lang);
+            List<TableGroup> groups = subjectCode is not null
                 ? [new TableGroup()
                     {
-                        Code = subjectArea,
-                        GroupingCode = "subjectarea",
+                        Code = subjectCode,
+                        GroupingCode = "subjectcode",
                         Links = []
                     }]
                 : [];

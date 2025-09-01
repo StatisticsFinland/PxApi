@@ -10,7 +10,7 @@ namespace PxApi.Caching
     /// Defines methods for retrieving data, file lists, and metadata from a PX file data source,  with built-in caching
     /// to optimize performance for repeated requests.
     /// </summary>
-    public interface ICachedDataBaseConnector
+    public interface ICachedDataSource
     {
         /// <summary>
         /// Retrieves an array of <see cref="DoubleDataValue"/> objects based on the specified PX file and matrix map, 
@@ -78,21 +78,6 @@ namespace PxApi.Caching
         Task<string> GetSingleStringValueAsync(string key, PxFileRef file);
 
         /// <summary>
-        /// Tries to get <see cref="Dictionary<string, List<string>>"/> for a specified database if it exists
-        /// </summary>
-        /// <param name="dbRef">Reference to the database that the hierarchy is requested for</param>
-        /// <param name="hierarchy">The hierarchy if found, otherwise null</param>
-        /// <returns>True if hierarchy for the given database is found, otherwise false</returns>
-        bool TryGetDataBaseHierarchy(DataBaseRef dbRef, out Dictionary<string, List<string>>? hierarchy);
-
-        /// <summary>
-        /// Sets the <see cref="Dictionary<string, List<string>>"/> for a specified database
-        /// </summary>
-        /// <param name="dbRef">Reference to the database to set the hierarchy for</param>
-        /// <param name="hierarchy">The hierarchy to set for the database</param>
-        void SetDataBaseHierarchy(DataBaseRef dbRef, Dictionary<string, List<string>> hierarchy);
-        
-        /// <summary>
         /// Clears all file list cache entries.
         /// </summary>
         /// <param name="dbRef">Reference to the database to clear the file list cache for</param>
@@ -117,13 +102,7 @@ namespace PxApi.Caching
         Task ClearLastUpdatedCacheAsync(DataBaseRef dataBase);
 
         /// <summary>
-        /// Clears hierarchy cache for the specified database.
-        /// </summary>
-        /// <param name="dataBase">The database for which to clear the hierarchy cache.</param>
-        void ClearHierarchyCache(DataBaseRef dataBase);
-
-        /// <summary>
-        /// Clears all cache entries for the specified database, including file lists, metadata, data, and hierarchies.
+        /// Clears all cache entries for the specified database, including file lists, metadata, and data.
         /// </summary>
         /// <param name="dataBase">The database for which to clear all cache entries.</param>
         Task ClearAllCache(DataBaseRef dataBase);

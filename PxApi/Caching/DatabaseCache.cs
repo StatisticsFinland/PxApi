@@ -27,7 +27,6 @@ namespace PxApi.Caching
         private const string LAST_UPDATED_SEED = "553313ea";
         private const string META_SEED = "c4d8ee8f";
         private const string DATA_SEED = "398baf7d";
-        private const string HIERARCHY_SEED = "fea26694";
 
         /// <summary>
         /// Attempts to retrieve a list of files associated with the specified database.
@@ -206,36 +205,6 @@ namespace PxApi.Caching
         }
 
         /// <summary>
-        /// Attempts to retrieve the hierarchy cache for the specified database.
-        /// </summary>
-        /// <param name="dataBase">The database for which to retrieve the hierarchy cache</param>
-        /// <param name="hierarchyContainer">When this method returns, contains a dictionary of groupings and their associated file codes if the operation was successful, or null if not found.</param>
-        /// <returns>True if the hierarchy was successfully retrieved from the cache, otherwise false.</returns>
-        public bool TryGetHierarchy(DataBaseRef dataBase, out Dictionary<string, List<string>>? hierarchyContainer)
-        {
-            return _cache.TryGetValue(HashCode.Combine(HIERARCHY_SEED, dataBase), out hierarchyContainer);
-        }
-
-        /// <summary>
-        /// Stores the hierarchy cache container for the specified database based on a dictionary of groupings and the files they contain.
-        /// </summary>
-        /// <param name="dataBase">Database to which the hierarchy belongs.</param>
-        /// <param name="hierarchy">Dictionary of groupings and their associated file codes.</param>
-        public void SetHierarchy(DataBaseRef dataBase, Dictionary<string, List<string>> hierarchy)
-        {
-            CacheConfig? config = cacheConfigs[dataBase.Id].HierarchyConfig ?? throw new InvalidOperationException($"Hierarchy configuration not found for database: {dataBase.Id}");
-            MemoryCacheEntryOptions options = new()
-            {
-                SlidingExpiration = config.SlidingExpirationSeconds,
-                AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds,
-                Size = hierarchy.Count,
-                Priority = CacheItemPriority.Normal
-            };
-            _cache.Set(HashCode.Combine(HIERARCHY_SEED, dataBase), 
-                hierarchy, options);
-        }
-
-        /// <summary>
         /// Clears the file list cache.
         /// </summary>
         public void ClearFileListCache(DataBaseRef dbRef)
@@ -284,22 +253,6 @@ namespace PxApi.Caching
             }
         }
 
-        /// <summary>
-        /// Clears the hierarchy cache for the specified database.
-        /// </summary>
-        /// <param name="dataBase">Database for which to clear hierarchy cache.</param>
-        public void ClearHierarchyCache(DataBaseRef dataBase)
-        {
-            _cache.Remove(HashCode.Combine(HIERARCHY_SEED, dataBase));
-        }
-
-        /// <summary>
-        /// Stores the hierarchy cache for the specified database.
-        /// </summary>
-        /// <param name="key"></param>
-        /// <param name="value"></param>
-        /// <param name="reason"></param>
-        /// <param name="state"></param>
         private void OnMetaCacheEvicted(object? key, object? value, EvictionReason reason, object? state)
         {
             if (value is MetaCacheContainer metaContainder)

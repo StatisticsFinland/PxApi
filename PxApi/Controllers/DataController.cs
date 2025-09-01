@@ -14,11 +14,11 @@ namespace PxApi.Controllers
     /// <summary>
     /// Provides endpoints for retrieving and querying data in various formats, such as JSON and JSON-stat.
     /// </summary>
-    /// <param name="dataSource"><see cref="ICachedDataBaseConnector"/> instance for accessing data and metadata.</param>"/>
+    /// <param name="dataSource"><see cref="ICachedDataSource"/> instance for accessing data and metadata.</param>"/>
     /// <param name="logger">Logger instance for logging warnings and errors.</param>
     [ApiController]
     [Route("data")]
-    public class DataController(ICachedDataBaseConnector dataSource, ILogger<DataController> logger) : ControllerBase
+    public class DataController(ICachedDataSource dataSource, ILogger<DataController> logger) : ControllerBase
     {
         /// <summary>
         /// GET endpoint to recieve px cube data in <see cref="DataResponse"/> JSON format.

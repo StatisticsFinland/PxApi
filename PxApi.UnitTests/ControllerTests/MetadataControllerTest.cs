@@ -14,13 +14,13 @@ namespace PxApi.UnitTests.ControllerTests
     [TestFixture]
     internal class MetadataControllerTest
     {
-        private Mock<ICachedDataBaseConnector> _mockDbConnector;
+        private Mock<ICachedDataSource> _mockDbConnector;
         private MetadataController _controller;
 
         [SetUp]
         public void SetUp()
         {
-            _mockDbConnector = new Mock<ICachedDataBaseConnector>();
+            _mockDbConnector = new Mock<ICachedDataSource>();
             _controller = new MetadataController(_mockDbConnector.Object)
             {
                 ControllerContext = new ControllerContext

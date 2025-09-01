@@ -19,7 +19,7 @@ namespace PxApi.Controllers
     /// It supports pagination and optional language-based metadata retrieval.</remarks>
     [Route("tables")]
     [ApiController]
-    public class TablesController(ICachedDataBaseConnector cachedConnector, ILogger<TablesController> logger) : ControllerBase
+    public class TablesController(ICachedDataSource cachedConnector, ILogger<TablesController> logger) : ControllerBase
     {
         private const int MAX_PAGE_SIZE = 100;
 

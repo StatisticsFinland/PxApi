@@ -18,14 +18,14 @@ namespace PxApi.UnitTests.ControllerTests
     [TestFixture]
     public class TablesControllerTests
     {
-        private Mock<ICachedDataBaseConnector> _cachedDbConnector;
+        private Mock<ICachedDataSource> _cachedDbConnector;
         private Mock<ILogger<TablesController>> _mockLogger;
         private TablesController _controller;
 
         [SetUp]
         public void SetUp()
         {
-            _cachedDbConnector = new Mock<ICachedDataBaseConnector>();
+            _cachedDbConnector = new Mock<ICachedDataSource>();
             _mockLogger = new Mock<ILogger<TablesController>>();
             _controller = new TablesController(_cachedDbConnector.Object, _mockLogger.Object)
             {

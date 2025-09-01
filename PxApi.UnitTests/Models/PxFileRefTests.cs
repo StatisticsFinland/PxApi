@@ -46,7 +46,7 @@ namespace PxApi.UnitTests.Models
             string filePath = "C:/data/abc123.px";
             string fileName = "abc123";
             DataBaseRef db = DataBaseRef.Create("db1");
-            DataBaseConfig config = GetConfig(null, null, null);
+            DataBaseConfig config = GetConfig(null, null);
 
             // Act
             PxFileRef pxFileRef = PxFileRef.Create(filePath, db, config);
@@ -56,7 +56,6 @@ namespace PxApi.UnitTests.Models
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(fileName));
                 Assert.That(pxFileRef.FilePath, Is.EqualTo(filePath));
-                Assert.That(pxFileRef.GroupingId, Is.Null);
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
             });
         }
@@ -67,7 +66,7 @@ namespace PxApi.UnitTests.Models
             // Arrange
             string filePath = "C:/data/database-grouping-id.px";
             DataBaseRef db = DataBaseRef.Create("db2");
-            DataBaseConfig config = GetConfig('-', 2, 1);
+            DataBaseConfig config = GetConfig('-', 2);
 
             // Act
             PxFileRef pxFileRef = PxFileRef.Create(filePath, db, config);
@@ -77,7 +76,6 @@ namespace PxApi.UnitTests.Models
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo("id"));
                 Assert.That(pxFileRef.FilePath, Is.EqualTo(filePath));
-                Assert.That(pxFileRef.GroupingId, Is.EqualTo("grouping"));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
             });
         }
@@ -88,7 +86,7 @@ namespace PxApi.UnitTests.Models
             // Arrange
             string filePath = "C:/data/database-grouping-id.px";
             DataBaseRef db = DataBaseRef.Create("db3");
-            DataBaseConfig config = GetConfig('-', -1, 1);
+            DataBaseConfig config = GetConfig('-', -1);
 
             // Act
             PxFileRef pxFileRef = PxFileRef.Create(filePath, db, config);
@@ -98,12 +96,11 @@ namespace PxApi.UnitTests.Models
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo("id"));
                 Assert.That(pxFileRef.FilePath, Is.EqualTo(filePath));
-                Assert.That(pxFileRef.GroupingId, Is.EqualTo("grouping"));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
             });
         }
 
-        private static DataBaseConfig GetConfig(char? separator, int? idIndex, int? groupIndex)
+        private static DataBaseConfig GetConfig(char? separator, int? idIndex)
         {
             Dictionary<string, string?> settings = new()
             {
@@ -127,8 +124,6 @@ namespace PxApi.UnitTests.Models
                 settings.Add("Databases:0:FilenameSeparator", separator.Value.ToString());
             if (idIndex.HasValue)
                 settings.Add("Databases:0:FilenameIdPartIndex", idIndex.Value.ToString());
-            if (groupIndex.HasValue)
-                settings.Add("Databases:0:FilenameGroupingPartIndex", groupIndex.Value.ToString());
 
             IConfiguration config = new ConfigurationBuilder()
                 .AddInMemoryCollection(settings)

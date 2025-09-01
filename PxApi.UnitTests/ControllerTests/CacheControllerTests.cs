@@ -13,14 +13,14 @@ namespace PxApi.UnitTests.ControllerTests
     [TestFixture]
     public class CacheControllerTests
     {
-        private Mock<ICachedDataBaseConnector> _cachedDbConnector = null!;
+        private Mock<ICachedDataSource> _cachedDbConnector = null!;
         private Mock<ILogger<CacheController>> _mockLogger = null!;
         private CacheController _controller = null!;
 
         [SetUp]
         public void SetUp()
         {
-            _cachedDbConnector = new Mock<ICachedDataBaseConnector>();
+            _cachedDbConnector = new Mock<ICachedDataSource>();
             _mockLogger = new Mock<ILogger<CacheController>>();
             _controller = new CacheController(_cachedDbConnector.Object, _mockLogger.Object)
             {
@@ -135,38 +135,6 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public void ClearHierarchyCache_DatabaseExists_CallsClearHierarchyCacheMethod_ReturnsOk()
-        {
-            // Arrange
-            string database = "testdb";
-            DataBaseRef dbRef = DataBaseRef.Create(database);
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
-            _cachedDbConnector.Setup(x => x.ClearHierarchyCache(dbRef));
-
-            // Act
-            ActionResult result = _controller.ClearHierarchyCache(database);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkObjectResult>());
-            _cachedDbConnector.Verify(x => x.ClearHierarchyCache(dbRef), Times.Once);
-        }
-
-        [Test]
-        public void ClearHierarchyCache_DatabaseDoesNotExist_ReturnsNotFound()
-        {
-            // Arrange
-            string database = "nonexistentdb";
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
-
-            // Act
-            ActionResult result = _controller.ClearHierarchyCache(database);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
-            _cachedDbConnector.Verify(x => x.ClearHierarchyCache(It.IsAny<DataBaseRef>()), Times.Never);
-        }
-
-        [Test]
         public void ClearAllCache_DatabaseExists_CallsClearAllCacheMethod_ReturnsOk()
         {
             // Arrange
@@ -253,24 +221,6 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public void ClearAllHierarchyCaches_CallsGetAllDataBaseReferencesAndClearHierarchyCache_ReturnsOk()
-        {
-            // Arrange
-            DataBaseRef[] dbRefs = {DataBaseRef.Create("testdb1"), DataBaseRef.Create("testdb2")};
-            _cachedDbConnector.Setup(x => x.GetAllDataBaseReferences()).Returns(dbRefs);
-            _cachedDbConnector.Setup(x => x.ClearHierarchyCache(It.IsAny<DataBaseRef>()));
-
-            // Act
-            ActionResult result = _controller.ClearAllHierarchyCaches();
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkObjectResult>());
-            _cachedDbConnector.Verify(x => x.GetAllDataBaseReferences(), Times.Once);
-            _cachedDbConnector.Verify(x => x.ClearHierarchyCache(dbRefs[0]), Times.Once);
-            _cachedDbConnector.Verify(x => x.ClearHierarchyCache(dbRefs[1]), Times.Once);
-        }
-
-        [Test]
         public async Task ClearAllCaches_CallsClearAllCachesAsync_ReturnsOk()
         {
             // Arrange
@@ -308,22 +258,6 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Act
             ActionResult result = await _controller.ClearAllDataCaches();
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ObjectResult>());
-            ObjectResult? statusCodeResult = result as ObjectResult;
-            Assert.That(statusCodeResult, Is.Not.Null);
-            Assert.That(statusCodeResult!.StatusCode, Is.EqualTo(500));
-        }
-
-        [Test]
-        public void ClearAllHierarchyCaches_ExceptionThrown_ReturnsStatusCode500()
-        {
-            // Arrange
-            _cachedDbConnector.Setup(x => x.GetAllDataBaseReferences()).Throws(new Exception("Test exception"));
-
-            // Act
-            ActionResult result = _controller.ClearAllHierarchyCaches();
 
             // Assert
             Assert.That(result, Is.InstanceOf<ObjectResult>());

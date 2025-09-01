@@ -17,9 +17,9 @@ namespace PxApi.Controllers
     /// <param name="logger">Logger for logging information, warnings and errors.</param>
     [Route("cache")]
     [ApiController]
-    public class CacheController(ICachedDataBaseConnector cachedConnector, ILogger<CacheController> logger) : ControllerBase
+    public class CacheController(ICachedDataSource cachedConnector, ILogger<CacheController> logger) : ControllerBase
     {
-        private readonly ICachedDataBaseConnector _cachedConnector = cachedConnector;
+        private readonly ICachedDataSource _cachedConnector = cachedConnector;
         private readonly ILogger<CacheController> _logger = logger;
 
         /// <summary>
@@ -142,47 +142,6 @@ namespace PxApi.Controllers
         }
 
         /// <summary>
-        /// Clears hierarchy cache for a specific database.
-        /// </summary>
-        /// <param name="database">Name of the database for which to clear hierarchy cache.</param>
-        /// <returns>A message indicating the result of the operation.</returns>
-        /// <response code="200">Hierarchy cache was successfully cleared.</response>
-        /// <response code="404">If the database was not found.</response>
-        [HttpDelete("{database}/hierarchy")]
-        [Produces("application/json")]
-        [ProducesResponseType(typeof(object), 200)]
-        [ProducesResponseType(404)]
-        public ActionResult ClearHierarchyCache([FromRoute] string database)
-        {
-            using (_logger.BeginScope(new Dictionary<string, object>
-            {
-                { LoggerConsts.CLASS_NAME, nameof(CacheController) },
-                { LoggerConsts.METHOD_NAME, nameof(ClearHierarchyCache) },
-                { LoggerConsts.DB_ID, database }
-            }))
-            {
-                DataBaseRef? dbRef = _cachedConnector.GetDataBaseReference(database);
-                if (dbRef == null)
-                {
-                    _logger.LogWarning("Database not found");
-                    return NotFound(new { message = "Database not found" });
-                }
-
-                try
-                {
-                    _cachedConnector.ClearHierarchyCache(dbRef.Value);
-                    _logger.LogInformation("Hierarchy cache for database {DatabaseId} cleared successfully", dbRef.Value.Id);
-                    return Ok(new { message = $"Hierarchy cache for database '{dbRef.Value.Id}' cleared successfully" });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error clearing hierarchy cache for database {DatabaseId}", dbRef.Value.Id);
-                    return StatusCode(500, new { message = $"Error clearing hierarchy cache for database '{dbRef.Value.Id}'", error = ex.Message });
-                }
-            }
-        }
-
-        /// <summary>
         /// Clears all cache entries for a specific database.
         /// </summary>
         /// <param name="database">Name of the database for which to clear all cache entries.</param>
@@ -287,40 +246,6 @@ namespace PxApi.Controllers
                 {
                     _logger.LogError(ex, "Error clearing all data caches");
                     return StatusCode(500, new { message = "Error clearing all data caches", error = ex.Message });
-                }
-            }
-        }
-
-        /// <summary>
-        /// Clears hierarchy cache for all databases.
-        /// </summary>
-        /// <returns>A message indicating the result of the operation.</returns>
-        /// <response code="200">All hierarchy caches were successfully cleared.</response>
-        [HttpDelete("hierarchy")]
-        [Produces("application/json")]
-        [ProducesResponseType(typeof(object), 200)]
-        public ActionResult ClearAllHierarchyCaches()
-        {
-            using (_logger.BeginScope(new Dictionary<string, object>
-            {
-                { LoggerConsts.CLASS_NAME, nameof(CacheController) },
-                { LoggerConsts.METHOD_NAME, nameof(ClearAllHierarchyCaches) }
-            }))
-            {
-                try
-                {
-                    IReadOnlyCollection<DataBaseRef> allDatabases = _cachedConnector.GetAllDataBaseReferences();
-                    foreach (DataBaseRef dbRef in allDatabases)
-                    {
-                        _cachedConnector.ClearHierarchyCache(dbRef);
-                    }
-                    _logger.LogInformation("All hierarchy caches cleared successfully");
-                    return Ok(new { message = "All hierarchy caches cleared successfully" });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error clearing all hierarchy caches");
-                    return StatusCode(500, new { message = "Error clearing all hierarchy caches", error = ex.Message });
                 }
             }
         }

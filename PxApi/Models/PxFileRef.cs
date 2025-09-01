@@ -18,20 +18,14 @@ namespace PxApi.Models
         public string FilePath { get; init; }
         
         /// <summary>
-        /// Optional grouping identifier extracted from the filename.
-        /// </summary>
-        public string? GroupingId { get; init; }
-
-        /// <summary>
         /// <see cref="DataBaseRef"/> reference to the database that the Px file belongs to.
         /// </summary>
         public DataBaseRef DataBase { get; init; }
 
-        private PxFileRef(string id, string filePath, string? groupingId, DataBaseRef dataBase)
+        private PxFileRef(string id, string filePath, DataBaseRef dataBase)
         {
             Id = id;
             FilePath = filePath;
-            GroupingId = groupingId;
             DataBase = dataBase;
         }
 
@@ -51,7 +45,7 @@ namespace PxApi.Models
             {
                 throw new ArgumentException("PxFile id must containt only letters or numbers.");
             }
-            return new PxFileRef(id, id, null, database);
+            return new PxFileRef(id, id, database);
         }
 
         /// <summary>
@@ -66,16 +60,9 @@ namespace PxApi.Models
         {
             string fileName = Path.GetFileNameWithoutExtension(fullFilePath);
             
-            // Parse the ID and grouping ID from the filename
+            // Parse the ID from the filename
             string id = ParseFilename(fileName, config, config.FilenameIdPartIndex);
-            string? groupingId = null;
             
-            // Only try to get grouping ID if the configuration specifies it
-            if (config.FilenameGroupingPartIndex.HasValue)
-            {
-                groupingId = ParseFilename(fileName, config, config.FilenameGroupingPartIndex);
-            }
-
             if (string.IsNullOrWhiteSpace(id) || id.Length > 50)
                 throw new ArgumentException("Parsed Id cannot be null, whitespace or too long.");
 
@@ -83,7 +70,7 @@ namespace PxApi.Models
             {
                 throw new ArgumentException("PxFile id must containt only letters or numbers.");
             }
-            return new PxFileRef(id, fullFilePath, groupingId, database);
+            return new PxFileRef(id, fullFilePath, database);
         }
 
         /// <summary>

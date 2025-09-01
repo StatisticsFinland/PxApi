@@ -47,7 +47,7 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
             mockFactory.Setup(mf => mf.GetAvailableDatabases()).Returns([dataBase]);
-            CachedDataBaseConnector dataBaseConnector = new(mockFactory.Object, new DatabaseCache(new Mock<IMemoryCache>().Object));
+            CachedDataSource dataBaseConnector = new(mockFactory.Object, new DatabaseCache(new Mock<IMemoryCache>().Object));
 
             // Act
             DataBaseRef? result = dataBaseConnector.GetDataBaseReference("PxApiUnitTestsDb");
@@ -66,7 +66,7 @@ namespace PxApi.UnitTests.Caching
             // Arrange
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(mf => mf.GetAvailableDatabases()).Returns([]);
-            CachedDataBaseConnector dataBaseConnector = new(mockFactory.Object, new DatabaseCache(new Mock<IMemoryCache>().Object));
+            CachedDataSource dataBaseConnector = new(mockFactory.Object, new DatabaseCache(new Mock<IMemoryCache>().Object));
 
             // Act
             DataBaseRef? result = dataBaseConnector.GetDataBaseReference("missingdatabase");
@@ -90,7 +90,7 @@ namespace PxApi.UnitTests.Caching
                 DataBaseRef.Create("db3")
             ];
             mockFactory.Setup(mf => mf.GetAvailableDatabases()).Returns(databases);
-            CachedDataBaseConnector dataBaseConnector = new(mockFactory.Object, new DatabaseCache(new Mock<IMemoryCache>().Object));
+            CachedDataSource dataBaseConnector = new(mockFactory.Object, new DatabaseCache(new Mock<IMemoryCache>().Object));
 
             // Act
             IReadOnlyCollection<DataBaseRef> result = dataBaseConnector.GetAllDataBaseReferences();
@@ -122,7 +122,7 @@ namespace PxApi.UnitTests.Caching
                     .Add("file1", PxFileRef.Create("file1", dataBase))
                     .Add("file2", PxFileRef.Create("file2", dataBase))));
             string[] expected = ["file1", "file2"];
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Act
             ImmutableSortedDictionary<string, PxFileRef> result = await connector.GetFileListCachedAsync(dataBase);
@@ -150,7 +150,7 @@ namespace PxApi.UnitTests.Caching
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             mockConnector.Setup(c => c.GetAllFilesAsync()).ReturnsAsync(fileNames);
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
             string[] expected = ["file1", "file2"];
 
             // Act
@@ -181,7 +181,7 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
             dbCache.SetFileList(dataBase, Task.FromResult(files));
             Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Act
             PxFileRef? result = await connector.GetFileReferenceCachedAsync("file1", dataBase);
@@ -206,7 +206,7 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
             dbCache.SetFileList(dataBase, Task.FromResult(files));
             Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Act & Assert
             Assert.ThrowsAsync<KeyNotFoundException>(async () =>
@@ -234,7 +234,7 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnector> mockConnector = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             mockConnector.Setup(c => c.DataBase).Returns(dataBase);
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Act
             IReadOnlyMatrixMetadata result = await connector.GetMetadataCachedAsync(fileRef);
@@ -263,7 +263,7 @@ namespace PxApi.UnitTests.Caching
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
             string[] expectedLanguages = ["fi", "en"];
 
             // Act
@@ -304,7 +304,7 @@ namespace PxApi.UnitTests.Caching
             mockConnector.Setup(c => c.ReadPxFile(fileRef)).Returns(pxStream);
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dbRef)).Returns(mockConnector.Object);
-            CachedDataBaseConnector dbConnector = new(mockFactory.Object, new DatabaseCache(new MemoryCache(new MemoryCacheOptions())));
+            CachedDataSource dbConnector = new(mockFactory.Object, new DatabaseCache(new MemoryCache(new MemoryCacheOptions())));
 
             // Act
             string result = await dbConnector.GetSingleStringValueAsync(key, fileRef);
@@ -327,7 +327,7 @@ namespace PxApi.UnitTests.Caching
             mockConnector.Setup(c => c.ReadPxFile(fileRef)).Returns(unseekableStream);
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dbRef)).Returns(mockConnector.Object);
-            CachedDataBaseConnector dbConnector = new(mockFactory.Object, new DatabaseCache(new MemoryCache(new MemoryCacheOptions())));
+            CachedDataSource dbConnector = new(mockFactory.Object, new DatabaseCache(new MemoryCache(new MemoryCacheOptions())));
 
             // Act & Assert
             Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -350,7 +350,7 @@ namespace PxApi.UnitTests.Caching
             mockConnector.Setup(c => c.ReadPxFile(fileRef)).Returns(pxStream);
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dbRef)).Returns(mockConnector.Object);
-            CachedDataBaseConnector dbConnector = new(mockFactory.Object, new DatabaseCache(new MemoryCache(new MemoryCacheOptions())));
+            CachedDataSource dbConnector = new(mockFactory.Object, new DatabaseCache(new MemoryCache(new MemoryCacheOptions())));
 
             // Act & Assert
             Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -383,7 +383,7 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             Mock<IDataBaseConnector> mockConnector = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Act
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
@@ -425,7 +425,7 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             Mock<IDataBaseConnector> mockConnector = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Act
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, subsetMap);
@@ -457,7 +457,7 @@ namespace PxApi.UnitTests.Caching
                 .Returns(() => new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Act
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
@@ -468,107 +468,6 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
-            });
-        }
-
-        #endregion
-
-        #region TryGetDataBaseHierarchy
-
-        [Test]
-        public void TryGetDataBaseHierarchy_WithCacheHit_ReturnsTrueWithHierarchy()
-        {
-            // Arrange
-            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            Dictionary<string, List<string>> expectedHierarchy = new()
-            {
-                { "group1", new List<string> { "file1", "file2" } },
-                { "group2", new List<string> { "file3", "file4" } }
-            };
-            
-            MemoryCache memoryCache = new(new MemoryCacheOptions());
-            DatabaseCache matrixCache = new(memoryCache);
-            matrixCache.SetHierarchy(dataBase, expectedHierarchy);
-            
-            Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataBaseConnector connector = new(mockFactory.Object, matrixCache);
-            string[] expectedGroup1 = ["file1", "file2"];
-            string[] expectedGroup2 = ["file3", "file4"];
-
-            // Act
-            bool result = connector.TryGetDataBaseHierarchy(dataBase, out Dictionary<string, List<string>>? actualHierarchy);
-
-            // Assert
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.True);
-                Assert.That(actualHierarchy, Is.Not.Null);
-                Assert.That(actualHierarchy, Is.SameAs(expectedHierarchy));
-                Assert.That(actualHierarchy!.Count, Is.EqualTo(2));
-                Assert.That(actualHierarchy["group1"], Is.EquivalentTo(expectedGroup1));
-                Assert.That(actualHierarchy["group2"], Is.EquivalentTo(expectedGroup2));
-            });
-        }
-
-        [Test]
-        public void TryGetDataBaseHierarchy_WithCacheMiss_ReturnsFalse()
-        {
-            // Arrange
-            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            MemoryCache memoryCache = new(new MemoryCacheOptions());
-            DatabaseCache matrixCache = new(memoryCache);
-            
-            Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataBaseConnector connector = new(mockFactory.Object, matrixCache);
-
-            // Act
-            bool result = connector.TryGetDataBaseHierarchy(dataBase, out Dictionary<string, List<string>>? hierarchy);
-
-            // Assert
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.False);
-                Assert.That(hierarchy, Is.Null);
-            });
-        }
-
-        #endregion
-
-        #region SetDataBaseHierarchy
-
-        [Test]
-        public void SetDataBaseHierarchy_WithValidHierarchy_StoresHierarchyInCache()
-        {
-            // Arrange
-            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            Dictionary<string, List<string>> hierarchyToStore = new()
-            {
-                { "group1", new List<string> { "file1", "file2" } },
-                { "group2", new List<string> { "file3", "file4" } }
-            };
-            
-            MemoryCache memoryCache = new(new MemoryCacheOptions());
-            DatabaseCache matrixCache = new(memoryCache);
-            
-            Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataBaseConnector connector = new(mockFactory.Object, matrixCache);
-
-            string[] expectedGroup1 = ["file1", "file2"];
-            string[] expectedGroup2 = ["file3", "file4"];
-
-            // Act
-            connector.SetDataBaseHierarchy(dataBase, hierarchyToStore);
-
-            // Assert
-            bool result = matrixCache.TryGetHierarchy(dataBase, out Dictionary<string, List<string>>? retrievedHierarchy);
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.True);
-                Assert.That(retrievedHierarchy, Is.Not.Null);
-                Assert.That(retrievedHierarchy, Is.SameAs(hierarchyToStore));
-                Assert.That(retrievedHierarchy!.Count, Is.EqualTo(2));
-                Assert.That(retrievedHierarchy["group1"], Is.EquivalentTo(expectedGroup1));
-                Assert.That(retrievedHierarchy["group2"], Is.EquivalentTo(expectedGroup2));
             });
         }
 
@@ -589,7 +488,7 @@ namespace PxApi.UnitTests.Caching
             dbCache.SetFileList(dataBase, Task.FromResult(files));
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Pre-assert: file list is present
             bool hasFileList = dbCache.TryGetFileList(dataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? beforeFiles);
@@ -639,7 +538,7 @@ namespace PxApi.UnitTests.Caching
             dbCache.SetMetadata(file2, metaContainer);
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Pre-assert: metadata is present
             bool hasMeta1 = dbCache.TryGetMetadata(file1, out MetaCacheContainer? beforeMeta1);
@@ -704,7 +603,7 @@ namespace PxApi.UnitTests.Caching
             dbCache.SetData(file2, map2, Task.FromResult(dataArray2));
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Pre-assert: metadata and data are present
             bool hasMeta1 = dbCache.TryGetMetadata(file1, out MetaCacheContainer? beforeMeta1);
@@ -726,6 +625,7 @@ namespace PxApi.UnitTests.Caching
 
             // Act
             await connector.ClearDataCacheAsync(dataBase);
+            await Task.Delay(50);
 
             // Assert: metadata is replaced, data is removed
             bool afterHasMeta1 = dbCache.TryGetMetadata(file1, out MetaCacheContainer? afterMeta1);
@@ -750,49 +650,6 @@ namespace PxApi.UnitTests.Caching
 
         #endregion
 
-        #region ClearHierarchyCache
-
-        [Test]
-        public void ClearHierarchyCache_CallsDatabaseCacheClearHierarchyCache()
-        {
-            // Arrange
-            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            MemoryCache memoryCache = new(new MemoryCacheOptions());
-            DatabaseCache dbCache = new(memoryCache);
-
-            // Add a hierarchy to the cache
-            Dictionary<string, List<string>> hierarchy = new()
-            {
-                { "group1", new List<string> { "file1", "file2" } },
-                { "group2", new List<string> { "file3" } }
-            };
-            dbCache.SetHierarchy(dataBase, hierarchy);
-
-            Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
-
-            // Pre-assert: hierarchy is present
-            bool hasHierarchy = dbCache.TryGetHierarchy(dataBase, out Dictionary<string, List<string>>? beforeHierarchy);
-            Assert.Multiple(() =>
-            {
-                Assert.That(hasHierarchy, Is.True);
-                Assert.That(beforeHierarchy, Is.Not.Null);
-            });
-
-            // Act
-            connector.ClearHierarchyCache(dataBase);
-
-            // Assert: hierarchy is removed
-            bool afterHasHierarchy = dbCache.TryGetHierarchy(dataBase, out Dictionary<string, List<string>>? afterHierarchy);
-            Assert.Multiple(() =>
-            {
-                Assert.That(afterHasHierarchy, Is.False);
-                Assert.That(afterHierarchy, Is.Null);
-            });
-        }
-
-        #endregion
-
         #region ClearAllCache
 
         [Test]
@@ -812,7 +669,7 @@ namespace PxApi.UnitTests.Caching
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
             mockConnector.Setup(c => c.GetAllFilesAsync()).ReturnsAsync([]);
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Act
             await connector.ClearAllCache(dataBase);
@@ -858,27 +715,19 @@ namespace PxApi.UnitTests.Caching
                 ImmutableSortedDictionary<string, PxFileRef>.Empty
                     .Add("fileA", PxFileRef.Create("fileA", db1))
                     .Add("fileB", PxFileRef.Create("fileB", db1))));
-            dbCache.SetHierarchy(db2, new Dictionary<string, List<string>>
-            {
-                { "group1", new List<string> { "fileX", "fileY" } },
-                { "group2", new List<string> { "fileZ" } }
-            });
 
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Act
             await connector.ClearAllCachesAsync();
 
             // Assert
             bool result1 = dbCache.TryGetFileList(db1, out Task<ImmutableSortedDictionary<string, PxFileRef>>? files1);
-            bool result2 = dbCache.TryGetHierarchy(db2, out Dictionary<string, List<string>>? hierarchy2);
 
             Assert.Multiple(() =>
             {
                 Assert.That(result1, Is.False);
                 Assert.That(files1, Is.Null);
-                Assert.That(result2, Is.False);
-                Assert.That(hierarchy2, Is.Null);
             });
         }
 
@@ -900,7 +749,7 @@ namespace PxApi.UnitTests.Caching
                     .Add("testfile", pxRef)));
             dbCache.SetLastUpdated(pxRef, lastUpdatedTask);
             Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataBaseConnector connector = new(mockFactory.Object, dbCache);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Pre-assert: last updated is present
             bool hasLastUpdated = dbCache.TryGetLastUpdated(pxRef, out Task<DateTime>? beforeLastUpdated);
@@ -943,8 +792,6 @@ namespace PxApi.UnitTests.Caching
                 {$"DataBases:{index}:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
                 {$"DataBases:{index}:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},
                 {$"DataBases:{index}:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds", "60"},
-                {$"DataBases:{index}:CacheConfig:HierarchyConfig:SlidingExpirationSeconds", "1800"},
-                {$"DataBases:{index}:CacheConfig:HierarchyConfig:AbsoluteExpirationSeconds", "1800"},
                 {$"DataBases:{index}:CacheConfig:MaxCacheSize", "1073741824"},
                 {$"DataBases:{index}:Custom:RootPath", "datasource/root/"},
                 {$"DataBases:{index}:Custom:ModifiedCheckIntervalMs", "1000"},

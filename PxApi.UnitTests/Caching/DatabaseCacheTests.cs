@@ -20,7 +20,6 @@ namespace PxApi.UnitTests.Caching
         private const string LAST_UPDATED_SEED_VARNAME = "LAST_UPDATED_SEED";
         private const string DATA_SEED_VARNAME = "DATA_SEED";
         private const string META_SEED_VARNAME = "META_SEED";
-        private const string HIERARCHY_SEED_VARNAME = "HIERARCHY_SEED";
 
         [SetUp]
         public void SetUp()
@@ -38,8 +37,6 @@ namespace PxApi.UnitTests.Caching
                     {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"}, // 10 minutes
                     {"DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},
                     {"DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds", "60"},
-                    {"DataBases:0:CacheConfig:HierarchyConfig:SlidingExpirationSeconds", "1800"}, // 30 minutes
-                    {"DataBases:0:CacheConfig:HierarchyConfig:AbsoluteExpirationSeconds", "1800"}, // 30 minutes
                     {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
                     {"DataBases:0:Custom:RootPath", "datasource/root/"},
                     {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
@@ -665,89 +662,6 @@ namespace PxApi.UnitTests.Caching
 
         #endregion
 
-        #region TryGetHierarchy
-
-        [Test]
-        public void TryGetHierarchy_WithCacheHit_ReturnsTrueWithHierarchyContainer()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            Dictionary<string, List<string>> expectedHierarchy = new()
-            {
-                { "group1", ["file1", "file2"] },
-                { "group2", ["file3", "file4"] }
-            };
-            
-            MemoryCache memoryCache = new(new MemoryCacheOptions());
-            string hierarchySeed = GetSeedForKeyword(HIERARCHY_SEED_VARNAME);
-            memoryCache.Set(HashCode.Combine(hierarchySeed, database), expectedHierarchy);
-            DatabaseCache dbCache = new(memoryCache);
-
-            // Act
-            bool result = dbCache.TryGetHierarchy(database, out Dictionary<string, List<string>>? actualHierarchy);
-
-            // Assert
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.True);
-                Assert.That(actualHierarchy, Is.SameAs(expectedHierarchy));
-            });
-        }
-
-        [Test]
-        public void TryGetHierarchy_WithCacheMiss_ReturnsFalse()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            MemoryCache memoryCache = new(new MemoryCacheOptions());
-            DatabaseCache dbCache = new(memoryCache);
-
-            // Act
-            bool result = dbCache.TryGetHierarchy(database, out Dictionary<string, List<string>>? actualHierarchy);
-
-            // Assert
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.False);
-                Assert.That(actualHierarchy, Is.Null);
-            });
-        }
-
-        #endregion
-
-        #region SetHierarchy
-
-        [Test]
-        public void SetHierarchy_WithValidConfig_SetsCacheWithExpectedValues()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            Dictionary<string, List<string>> hierarchy = new()
-            {
-                { "group1", ["file1", "file2"] },
-                { "group2", ["file3", "file4"] }
-            };
-            
-            MemoryCache memoryCache = new(new MemoryCacheOptions());
-            DatabaseCache dbCache = new(memoryCache);
-            string hierarchySeed = GetSeedForKeyword(HIERARCHY_SEED_VARNAME);
-
-            // Act
-            dbCache.SetHierarchy(database, hierarchy);
-
-            // Assert
-            Assert.Multiple(() =>
-            {
-                Assert.That(memoryCache.TryGetValue(
-                    HashCode.Combine(hierarchySeed, database),
-                    out Dictionary<string, List<string>>? cachedHierarchy),
-                    Is.True);
-                Assert.That(cachedHierarchy, Is.SameAs(hierarchy));
-            });
-        }
-
-        #endregion
-
         #region ClearFileListCache
 
         [Test]
@@ -954,37 +868,6 @@ namespace PxApi.UnitTests.Caching
 
             // Act & Assert - no exception should be thrown
             Assert.DoesNotThrow(() => dbCache.ClearDataCache(fileList));
-        }
-
-        #endregion
-
-        #region ClearHierarchyCache
-
-        [Test]
-        public void ClearHierarchyCache_RemovesHierarchyForDatabase()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            Dictionary<string, List<string>> hierarchy = new()
-            {
-                { "group1", ["file1", "file2"] }
-            };
-            
-            MemoryCache memoryCache = new(new MemoryCacheOptions());
-            string hierarchySeed = GetSeedForKeyword(HIERARCHY_SEED_VARNAME);
-            int cacheKey = HashCode.Combine(hierarchySeed, database);
-            
-            memoryCache.Set(cacheKey, hierarchy);
-            DatabaseCache dbCache = new(memoryCache);
-            
-            // Verify that cache has the hierarchy
-            Assert.That(memoryCache.TryGetValue(cacheKey, out _), Is.True);
-
-            // Act
-            dbCache.ClearHierarchyCache(database);
-
-            // Assert
-            Assert.That(memoryCache.TryGetValue(cacheKey, out _), Is.False);
         }
 
         #endregion

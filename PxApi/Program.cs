@@ -111,7 +111,7 @@ namespace PxApi
             serviceCollection.AddDataBaseConnectors();
 
             serviceCollection.AddSingleton<DatabaseCache>();
-            serviceCollection.AddScoped<ICachedDataBaseConnector, CachedDataBaseConnector>();
+            serviceCollection.AddScoped<ICachedDataSource, CachedDataSource>();
 
             // Register the database connector factory
             serviceCollection.AddScoped<IDataBaseConnectorFactory, DataBaseConnectorFactoryImpl>();
