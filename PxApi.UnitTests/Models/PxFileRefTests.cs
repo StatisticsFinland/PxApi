@@ -46,7 +46,7 @@ namespace PxApi.UnitTests.Models
             string filePath = "C:/data/abc123.px";
             string fileName = "abc123";
             DataBaseRef db = DataBaseRef.Create("db1");
-            DataBaseConfig config = GetConfig(null, null);
+            DataBaseConfig config = GetConfig();
 
             // Act
             PxFileRef pxFileRef = PxFileRef.Create(filePath, db, config);
@@ -66,7 +66,7 @@ namespace PxApi.UnitTests.Models
             // Arrange
             string filePath = "C:/data/database-grouping-id.px";
             DataBaseRef db = DataBaseRef.Create("db2");
-            DataBaseConfig config = GetConfig('-', 2);
+            DataBaseConfig config = GetConfig();
 
             // Act
             PxFileRef pxFileRef = PxFileRef.Create(filePath, db, config);
@@ -74,7 +74,7 @@ namespace PxApi.UnitTests.Models
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(pxFileRef.Id, Is.EqualTo("id"));
+                Assert.That(pxFileRef.Id, Is.EqualTo("database-grouping-id"));
                 Assert.That(pxFileRef.FilePath, Is.EqualTo(filePath));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
             });
@@ -86,7 +86,7 @@ namespace PxApi.UnitTests.Models
             // Arrange
             string filePath = "C:/data/database-grouping-id.px";
             DataBaseRef db = DataBaseRef.Create("db3");
-            DataBaseConfig config = GetConfig('-', -1);
+            DataBaseConfig config = GetConfig();
 
             // Act
             PxFileRef pxFileRef = PxFileRef.Create(filePath, db, config);
@@ -94,13 +94,13 @@ namespace PxApi.UnitTests.Models
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(pxFileRef.Id, Is.EqualTo("id"));
+                Assert.That(pxFileRef.Id, Is.EqualTo("database-grouping-id"));
                 Assert.That(pxFileRef.FilePath, Is.EqualTo(filePath));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
             });
         }
 
-        private static DataBaseConfig GetConfig(char? separator, int? idIndex)
+        private static DataBaseConfig GetConfig()
         {
             Dictionary<string, string?> settings = new()
             {
@@ -111,6 +111,8 @@ namespace PxApi.UnitTests.Models
                 {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
                 {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"}, // 15 minutes
                 {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"}, // 15 minutes
+                {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
                 {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"}, // 10 minutes
                 {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"}, // 10 minutes
                 {"DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},
@@ -120,10 +122,6 @@ namespace PxApi.UnitTests.Models
                 {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
                 {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"},
             };
-            if (separator.HasValue)
-                settings.Add("Databases:0:FilenameSeparator", separator.Value.ToString());
-            if (idIndex.HasValue)
-                settings.Add("Databases:0:FilenameIdPartIndex", idIndex.Value.ToString());
 
             IConfiguration config = new ConfigurationBuilder()
                 .AddInMemoryCollection(settings)

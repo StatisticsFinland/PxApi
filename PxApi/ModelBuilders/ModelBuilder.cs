@@ -36,14 +36,6 @@ namespace PxApi.ModelBuilders
                 .Select(d => BuildVariable(d, lang, includeValues, baseUrlWithParams, rel))];
 
             string? subjectCode = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.SUBJECT_CODE, lang);
-            List<TableGroup> groups = subjectCode is not null
-                ? [new TableGroup()
-                    {
-                        Code = subjectCode,
-                        GroupingCode = "subjectcode",
-                        Links = []
-                    }]
-                : [];
 
             return new TableMeta()
             {
@@ -59,7 +51,7 @@ namespace PxApi.ModelBuilders
                 ID = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang)
                     ?? throw new ArgumentException($"No {PxFileConstants.TABLEID} found in table level metadata."),
                 LastModified = meta.GetContentDimension().Values.Map(v => v.LastUpdated).Max(),
-                Groupings = groups,
+                Groupings = [],
                 Links =
                 [
                     new Link()

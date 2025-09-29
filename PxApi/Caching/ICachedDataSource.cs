@@ -69,6 +69,14 @@ namespace PxApi.Caching
         Task<IReadOnlyMatrixMetadata> GetMetadataCachedAsync(PxFileRef pxFile);
 
         /// <summary>
+        /// Retrieves cached groupings for a table. The group membership is currently determined by the folder that contains the PX file.
+        /// Placeholder values are used for translated names and grouping metadata until the actual file-based implementation is added.
+        /// </summary>
+        /// <param name="pxFile">The PX file for which to get the cached groupings.</param>
+        /// <returns>A task resolving to a read-only list of <see cref="TableGroup"/> objects the table belongs to.</returns>
+        Task<IReadOnlyList<TableGroup>> GetGroupingsCachedAsync(PxFileRef pxFile);
+
+        /// <summary>
         /// Asynchronously retrieves a single string value associated with the specified key from the provided file.
         /// </summary>
         /// <param name="key">The key used to locate the string value within the file. Cannot be null or empty.</param>

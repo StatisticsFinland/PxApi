@@ -26,6 +26,11 @@
         public CacheConfig Modifiedtime { get; }
 
         /// <summary>
+        /// Configuration for grouping metadata caching.
+        /// </summary>
+        public CacheConfig Groupings { get; }
+
+        /// <summary>
         /// The maximum size of the cache in bytes.
         /// </summary>
         public long MaxCacheSize { get; }
@@ -41,6 +46,7 @@
             Meta = new CacheConfig(section.GetSection(nameof(Meta)));
             Data = new CacheConfig(section.GetSection(nameof(Data)));
             Modifiedtime = new CacheConfig(section.GetSection(nameof(Modifiedtime)));
+            Groupings = new CacheConfig(section.GetSection(nameof(Groupings)));
 
             MaxCacheSize = section.GetValue<long?>(nameof(MaxCacheSize))
                 ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(MaxCacheSize)}");

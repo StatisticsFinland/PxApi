@@ -1,9 +1,9 @@
 ﻿namespace PxApi.DataSources
 {
     /// <summary>
-    /// Constants for the filesystem datasource.
+    /// Constants for px datasource.
     /// </summary>
-    public static class FilesystemDatasourceConstants
+    public static class DatasourceConstants
     {
         /// <summary>
         /// The name prefix for the alias files.

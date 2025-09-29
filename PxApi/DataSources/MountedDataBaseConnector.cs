@@ -116,5 +116,33 @@ namespace PxApi.DataSources
                 return await Task.Run(() => File.GetLastWriteTimeUtc(path));
             }
         }
+
+        /// <inheritdoc/>
+        public Task<Stream> TryReadAuxiliaryFileAsync(string relativePath)
+        {
+            using (logger.BeginScope(new Dictionary<string, object>
+            {
+                [LoggerConsts.DB_ID] = DataBase.Id,
+                [LoggerConsts.CLASS_NAME] = nameof(MountedDataBaseConnector),
+                [LoggerConsts.METHOD_NAME] = nameof(TryReadAuxiliaryFileAsync),
+                [LoggerConsts.AUXILIARY_PATH] = relativePath
+            }))
+            {
+                string dbRoot = Path.Combine(rootPath, DataBase.Id);
+                string fullPath = Path.GetFullPath(Path.Combine(dbRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+                if (!fullPath.StartsWith(dbRoot))
+                {
+                    logger.LogWarning("Aux file path escaped database root");
+                    throw new UnauthorizedAccessException("Auxiliary file path escaped database root.");
+                }
+                if (!File.Exists(fullPath))
+                {
+                    logger.LogWarning("Aux file {AuxFile} not found", fullPath);
+                    throw new FileNotFoundException("Auxiliary file not found", fullPath);
+                }
+                Stream s = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                return Task.FromResult(s);
+            }
+        }
     }
 }

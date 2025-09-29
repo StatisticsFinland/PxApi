@@ -2,12 +2,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Moq;
+using Px.Utils.Language;
 using Px.Utils.Models.Metadata;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
+using PxApi.UnitTests.Utils;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -32,13 +34,23 @@ namespace PxApi.UnitTests.ControllerTests
             Dictionary<string, string?> inMemorySettings = new()
             {
                 {"RootUrl", "https://testurl.fi"},
-                {"DataSource:LocalFileSystem:RootPath", "datasource/root/"},
-                {"DataSource:LocalFileSystem:MetadataCache:SlidingExpirationMinutes", "15"},
-                {"DataSource:LocalFileSystem:MetadataCache:AbsoluteExpirationMinutes", "15"},
-                {"DataSource:LocalFileSystem:ModifiedCheckIntervalMs", "1000"},
-                {"DataSource:LocalFileSystem:FileListingCacheDurationMs", "10000"},
-                {"DataSource:LocalFileSystem:DataCache:SlidingExpirationMinutes", "10"},
-                {"DataSource:LocalFileSystem:DataCache:AbsoluteExpirationMinutes", "10" }
+                {"DataBases:0:Type", "Mounted"},
+                {"DataBases:0:Id", "testdb"},
+                {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"}, // 15 minutes
+                {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"}, // 15 minutes 
+                {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"}, // 10 minutes
+                {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"}, // 10 minutes
+                {"DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},
+                {"DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds", "60"},
+                {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
+                {"DataBases:0:Custom:RootPath", "datasource/root/"},
+                {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
+                {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"},
+
             };
 
             IConfiguration _configuration = new ConfigurationBuilder()
@@ -56,10 +68,12 @@ namespace PxApi.UnitTests.ControllerTests
             PxFileRef file = PxFileRef.Create("filename", database);
             string lang = "en";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+            List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
             _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
             _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file)).ReturnsAsync(groups);
 
             // Act
             ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang, true);
@@ -75,6 +89,9 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/filename?lang=en&showValues=true"));
                 Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
                 Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
+                Assert.That(resultMeta.Groupings, Is.Not.Null);
+                Assert.That(resultMeta.Groupings, Has.Count.EqualTo(1));
+                Assert.That(resultMeta.Groupings[0].Code, Is.EqualTo("group-code-1"));
             });
         }
 
@@ -123,10 +140,12 @@ namespace PxApi.UnitTests.ControllerTests
             DataBaseRef database = DataBaseRef.Create("exampledb");
             PxFileRef file = PxFileRef.Create("filename", database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+            List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
             _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
             _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file)).ReturnsAsync(groups);
 
             // Act
             ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database.Id, file.Id, null, null);
@@ -142,6 +161,9 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/filename"));
                 Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
                 Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
+                Assert.That(resultMeta.Groupings, Is.Not.Null);
+                Assert.That(resultMeta.Groupings, Has.Count.EqualTo(1));
+                Assert.That(resultMeta.Groupings[0].Code, Is.EqualTo("group-code-1"));
             });
         }
 

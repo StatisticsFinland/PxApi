@@ -34,6 +34,8 @@ namespace PxApi.UnitTests.Caching
                     {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
                     {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"}, // 15 minutes
                     {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"}, // 15 minutes
+                    {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
+                    {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
                     {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"}, // 10 minutes
                     {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"}, // 10 minutes
                     {"DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},

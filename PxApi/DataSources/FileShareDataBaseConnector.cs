@@ -146,6 +146,44 @@ namespace PxApi.DataSources
             }
         }
 
+        /// <inheritdoc/>
+        public async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath)
+        {
+            using (_logger.BeginScope(new Dictionary<string, object>
+            {
+                [LoggerConsts.DB_ID] = DataBase.Id,
+                [LoggerConsts.CLASS_NAME] = nameof(FileShareDataBaseConnector),
+                [LoggerConsts.METHOD_NAME] = nameof(TryReadAuxiliaryFileAsync),
+                [LoggerConsts.AUXILIARY_PATH] = relativePath
+            }))
+            {
+                string normalized = relativePath.Replace('\\', '/');
+                ShareDirectoryClient root = _shareClient.GetRootDirectoryClient();
+                if (string.IsNullOrEmpty(normalized))
+                {
+                    _logger.LogWarning("Auxiliary path empty");
+                    throw new FileNotFoundException("Auxiliary path empty", normalized);
+                }
+                string[] parts = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                ShareDirectoryClient currentDir = root;
+                for (int i = 0; i < parts.Length - 1; i++)
+                {
+                    currentDir = currentDir.GetSubdirectoryClient(parts[i]);
+                }
+                ShareFileClient fileClient = currentDir.GetFileClient(parts[^1]);
+                if (!await fileClient.ExistsAsync())
+                {
+                    _logger.LogWarning("Aux file {AuxFile} not found", normalized);
+                    throw new FileNotFoundException("Auxiliary file not found", normalized);
+                }
+                MemoryStream ms = new MemoryStream();
+                ShareFileDownloadInfo dl = (await fileClient.DownloadAsync()).Value;
+                await dl.Content.CopyToAsync(ms);
+                ms.Position = 0;
+                return ms;
+            }
+        }
+
         private static async Task<ShareFileClient?> FindPxFileAsync(ShareDirectoryClient directory, string fileId)
         {
             await foreach (ShareFileItem item in directory.GetFilesAndDirectoriesAsync())

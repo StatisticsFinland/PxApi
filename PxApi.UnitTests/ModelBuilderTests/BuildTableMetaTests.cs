@@ -35,7 +35,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.FirstPeriod, Is.EqualTo("time-value0-name.en"));
                 Assert.That(result.LastPeriod, Is.EqualTo("time-value1-name.en"));
                 Assert.That(result.LastModified, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
-                Assert.That(result.Groupings, Has.Count.EqualTo(1));
+                Assert.That(result.Groupings, Has.Count.EqualTo(0));
                 Assert.That(result.Links, Has.Count.EqualTo(1));
                 Assert.That(result.Links[0].Rel, Is.EqualTo("self"));
                 Assert.That(result.Links[0].Href, Is.EqualTo("https://example.com/meta/example-db/example-table?lang=en"));

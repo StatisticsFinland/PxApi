@@ -21,5 +21,9 @@
         /// Used to identify a Px file identifier in logging.
         /// </summary>
         public const string PX_FILE = "PxFile";
+        /// <summary>
+        /// Used to identify an auxiliary file path (e.g. groupings.json, Alias_<lang>.txt) in logging scopes.
+        /// </summary>
+        public const string AUXILIARY_PATH = "AuxPath";
     }
 }

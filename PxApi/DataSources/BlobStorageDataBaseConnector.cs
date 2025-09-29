@@ -157,5 +157,31 @@ namespace PxApi.DataSources
                 }
             }
         }
+
+        /// <inheritdoc/>
+        public async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath)
+        {
+            using (_logger.BeginScope(new Dictionary<string, object>
+            {
+                [LoggerConsts.DB_ID] = DataBase.Id,
+                [LoggerConsts.CLASS_NAME] = nameof(BlobStorageDataBaseConnector),
+                [LoggerConsts.METHOD_NAME] = nameof(TryReadAuxiliaryFileAsync),
+                [LoggerConsts.AUXILIARY_PATH] = relativePath
+            }))
+            {
+                await _containerClient.CreateIfNotExistsAsync();
+                string blobName = relativePath.Replace('\\', '/');
+                BlobClient blob = _containerClient.GetBlobClient(blobName);
+                if (!await blob.ExistsAsync())
+                {
+                    _logger.LogWarning("Aux file {AuxFile} not found", blobName);
+                    throw new FileNotFoundException("Auxiliary file not found", blobName);
+                }
+                MemoryStream ms = new MemoryStream();
+                await blob.DownloadToAsync(ms);
+                ms.Position = 0;
+                return ms;
+            }
+        }
     }
 }

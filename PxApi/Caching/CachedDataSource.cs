@@ -7,12 +7,20 @@ using PxApi.DataSources;
 using PxApi.Models;
 using System.Collections.Immutable;
 using System.Text;
+using Px.Utils.Language;
+using System.Text.Json;
 
 namespace PxApi.Caching
 {
     /// <inheritdoc/>
     public class CachedDataSource(IDataBaseConnectorFactory dbConnectorFactory, DatabaseCache matrixCache) : ICachedDataSource
     {
+        private const string GROUPINGS_FILE = "groupings.json"; // Root level file listing groupings meta
+        private const string GROUP_ALIAS_PREFIX = "Alias_"; // Files like Alias_fi.txt inside group folder
+        private const string GROUP_ALIAS_SUFFIX = ".txt";
+
+        private sealed record GroupingFileModel(string code, Dictionary<string, string> name);
+
         /// <inheritdoc/>
         public DataBaseRef? GetDataBaseReference(string dbId)
         {
@@ -39,7 +47,6 @@ namespace PxApi.Caching
             }
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(dataBase);
-            
             DataBaseConfig? dbConfig = AppSettings.Active.DataBases.FirstOrDefault(db => db.Id == dataBase.Id);
             Task<ImmutableSortedDictionary<string, PxFileRef>> fileListTask = dbConnector.GetAllFilesAsync().ContinueWith(t =>
             {
@@ -64,7 +71,7 @@ namespace PxApi.Caching
         {
             ImmutableSortedDictionary<string, PxFileRef> files = await GetFileListCachedAsync(db);
             if (files.TryGetValue(fileId, out PxFileRef file)) return file;
-            else throw new KeyNotFoundException("File with not found in database.");
+            throw new KeyNotFoundException("File with not found in database.");
         }
 
         /// <inheritdoc/>
@@ -72,6 +79,20 @@ namespace PxApi.Caching
         {
             MetaCacheContainer container = await GetMetaContainer(pxFile);
             return await container.Metadata;
+        }
+
+        /// <inheritdoc/>
+        public async Task<IReadOnlyList<TableGroup>> GetGroupingsCachedAsync(PxFileRef pxFile)
+        {
+            if (matrixCache.TryGetGroupings(pxFile, out Task<IReadOnlyList<TableGroup>>? cachedTask))
+            {
+                return await cachedTask!;
+            }
+
+            IDataBaseConnector connector = dbConnectorFactory.GetConnector(pxFile.DataBase);
+            Task<IReadOnlyList<TableGroup>> buildTask = BuildGroupingsAsync(pxFile, connector);
+            matrixCache.SetGroupings(pxFile, buildTask);
+            return await buildTask;
         }
 
         /// <inheritdoc/>
@@ -134,7 +155,6 @@ namespace PxApi.Caching
         /// <inheritdoc/>
         public async Task ClearMetadataCacheAsync(DataBaseRef dataBase)
         {
-            // Get all files for the database and clear their metadata cache
             ImmutableSortedDictionary<string, PxFileRef> files = await GetFileListCachedAsync(dataBase);
             foreach (PxFileRef file in files.Values)
             {
@@ -145,16 +165,12 @@ namespace PxApi.Caching
         /// <inheritdoc/>
         public async Task ClearDataCacheAsync(DataBaseRef dataBase)
         {
-            // Get all files for the database and clear their data cache
             ImmutableSortedDictionary<string, PxFileRef> files = await GetFileListCachedAsync(dataBase);
             foreach (PxFileRef file in files.Values)
             {
                 if (matrixCache.TryGetMetadata(file, out MetaCacheContainer? metaContainer) && metaContainer is not null)
                 {
-                    // Clear data cache for this file by removing the metadata, which will trigger the removal of associated data
                     matrixCache.TryRemoveMeta(file);
-                    
-                    // Re-add the metadata without the data references
                     Task<IReadOnlyMatrixMetadata> meta = metaContainer.Metadata;
                     MetaCacheContainer newContainer = new(meta);
                     matrixCache.SetMetadata(file, newContainer);
@@ -214,6 +230,50 @@ namespace PxApi.Caching
             Task<DateTime> lastModified = dbConnector.GetLastWriteTimeAsync(file);
             matrixCache.SetLastUpdated(file, lastModified);
             return await lastModified;
+        }
+
+        private static async Task<IReadOnlyList<TableGroup>> BuildGroupingsAsync(PxFileRef pxFile, IDataBaseConnector connector)
+        {
+            try
+            {
+                using Stream groupingStream = await connector.TryReadAuxiliaryFileAsync(GROUPINGS_FILE);
+                GroupingFileModel? groupingModel = await JsonSerializer.DeserializeAsync<GroupingFileModel>(groupingStream);
+                if (groupingModel is null) return [];
+
+                string? fileDirPath = string.IsNullOrEmpty(pxFile.FilePath) ? null : Path.GetDirectoryName(pxFile.FilePath);
+                string? groupFolderName = fileDirPath is null ? null : new DirectoryInfo(fileDirPath).Name;
+                if (groupFolderName is null) return [];
+
+                Dictionary<string, string> aliasTranslations = new(StringComparer.OrdinalIgnoreCase);
+                foreach (string lang in groupingModel.name.Keys)
+                {
+                    string aliasFileRelPath = groupFolderName + "/" + GROUP_ALIAS_PREFIX + lang + GROUP_ALIAS_SUFFIX;
+                    using Stream aliasStream = await connector.TryReadAuxiliaryFileAsync(aliasFileRelPath);
+                    using StreamReader sr = new(aliasStream, Encoding.UTF8, true);
+                    string? alias = await sr.ReadLineAsync();
+                    if (!string.IsNullOrWhiteSpace(alias))
+                    {
+                        aliasTranslations[lang] = alias.Trim();
+                    }
+                }
+
+                MultilanguageString groupingName = new(groupingModel.name);
+                TableGroup group = new()
+                {
+                    Code = groupFolderName,
+                    Name = new(aliasTranslations),
+                    GroupingCode = groupingModel.code,
+                    GroupingName = groupingName,
+                    Links = []
+                };
+
+                List<TableGroup> groups = [group];
+                return groups;
+            }
+            catch (FileNotFoundException)
+            {
+                return [];
+            }
         }
     }
 }

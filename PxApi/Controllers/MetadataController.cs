@@ -61,7 +61,12 @@ namespace PxApi.Controllers
                         .AddQueryParameters(("lang", lang))
                         .AddQueryParameters(("showValues", showValues));
 
-                    return Ok(ModelBuilder.BuildTableMeta(meta, fileUri, lang, showValues));
+                    TableMeta tableMeta = ModelBuilder.BuildTableMeta(meta, fileUri, lang, showValues);
+
+                    // Populate groupings from cached grouping provider
+                    IReadOnlyList<TableGroup> groupings = await cachedConnector.GetGroupingsCachedAsync(fileRef.Value);
+                    tableMeta.Groupings.AddRange(groupings);
+                    return Ok(tableMeta);
                 }
                 else
                 {

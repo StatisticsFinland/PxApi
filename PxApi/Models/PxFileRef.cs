@@ -58,56 +58,13 @@ namespace PxApi.Models
         /// <exception cref="ArgumentException">If the parsed id is null, whitespace, contains invalid characters or exceeds 50 characters.</exception>
         public static PxFileRef Create(string fullFilePath, DataBaseRef database, DataBaseConfig config)
         {
+            char[] allowed = ['_', '-'];
             string fileName = Path.GetFileNameWithoutExtension(fullFilePath);
-            
-            // Parse the ID from the filename
-            string id = ParseFilename(fileName, config, config.FilenameIdPartIndex);
-            
-            if (string.IsNullOrWhiteSpace(id) || id.Length > 50)
-                throw new ArgumentException("Parsed Id cannot be null, whitespace or too long.");
-
-            if(id.Any(s => !char.IsLetterOrDigit(s)))
+            if(!fileName.All(s => char.IsLetterOrDigit(s) || allowed.Contains(s)))
             {
                 throw new ArgumentException("PxFile id must containt only letters or numbers.");
             }
-            return new PxFileRef(id, fullFilePath, database);
-        }
-
-        /// <summary>
-        /// Parses a filename using the database configuration to extract a part based on the specified index.
-        /// </summary>
-        /// <param name="fileName">The filename to parse.</param>
-        /// <param name="config">The database configuration.</param>
-        /// <param name="partIndex">The index of the part to extract or null to use the whole filename.</param>
-        /// <returns>The parsed part from the filename.</returns>
-        private static string ParseFilename(string fileName, DataBaseConfig config, int? partIndex)
-        {
-            if (config.FilenameSeparator == null || !partIndex.HasValue)
-            {
-                return fileName;
-            }
-
-            string[] parts = fileName.Split(config.FilenameSeparator.Value);
-            
-            if (parts.Length == 0)
-            {
-                return fileName;
-            }
-
-            int index = partIndex.Value;
-            // If index is -1, use the last part
-            if (index == -1)
-            {
-                index = parts.Length - 1;
-            }
-            
-            if (index >= 0 && index < parts.Length)
-            {
-                return parts[index];
-            }
-            
-            // If index is out of range, return the original name
-            return fileName;
+            return new PxFileRef(fileName, fullFilePath, database);
         }
 
         /// <summary>
