@@ -473,187 +473,10 @@ namespace PxApi.UnitTests.Caching
 
         #endregion
 
-        #region ClearFileListCache
-        [Test]
-        public void ClearFileListCache_RemovesCacheEntry()
-        {
-            // Arrange
-            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            MemoryCache memoryCache = new(new MemoryCacheOptions());
-            DatabaseCache dbCache = new(memoryCache);
-
-            ImmutableSortedDictionary<string, PxFileRef> files = ImmutableSortedDictionary<string, PxFileRef>.Empty
-                .Add("file1", PxFileRef.Create("file1", dataBase))
-                .Add("file2", PxFileRef.Create("file2", dataBase));
-            dbCache.SetFileList(dataBase, Task.FromResult(files));
-
-            Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
-
-            // Pre-assert: file list is present
-            bool hasFileList = dbCache.TryGetFileList(dataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? beforeFiles);
-            
-            Assert.Multiple(() =>
-            {
-                Assert.That(hasFileList, Is.True);
-                Assert.That(beforeFiles, Is.Not.Null);
-            });
-
-            // Act
-            connector.ClearFileListCache(dataBase);
-
-            // Assert: file list is removed
-            bool afterHasFileList = dbCache.TryGetFileList(dataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? afterFiles);
-            Assert.Multiple(() =>
-            {
-                Assert.That(afterHasFileList, Is.False);
-                Assert.That(afterFiles, Is.Null);
-            });
-        }
-
-        #endregion
-
-        #region ClearMetadataCacheAsync
+        #region ClearDatabaseCacheAsync
 
         [Test]
-        public async Task ClearMetadataCacheAsync_ClearsMetadataForAllFilesInDatabase()
-        {
-            // Arrange
-            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef file1 = PxFileRef.Create("file1", dataBase);
-            PxFileRef file2 = PxFileRef.Create("file2", dataBase);
-
-            ImmutableSortedDictionary<string, PxFileRef> files = ImmutableSortedDictionary<string, PxFileRef>.Empty
-                .Add("file1", file1)
-                .Add("file2", file2);
-
-            MemoryCache memoryCache = new(new MemoryCacheOptions());
-            DatabaseCache dbCache = new(memoryCache);
-
-            dbCache.SetFileList(dataBase, Task.FromResult(files));
-
-            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
-            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
-            dbCache.SetMetadata(file1, metaContainer);
-            dbCache.SetMetadata(file2, metaContainer);
-
-            Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
-
-            // Pre-assert: metadata is present
-            bool hasMeta1 = dbCache.TryGetMetadata(file1, out MetaCacheContainer? beforeMeta1);
-            bool hasMeta2 = dbCache.TryGetMetadata(file2, out MetaCacheContainer? beforeMeta2);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(hasMeta1, Is.True);
-                Assert.That(beforeMeta1, Is.SameAs(metaContainer));
-                Assert.That(hasMeta2, Is.True);
-                Assert.That(beforeMeta2, Is.SameAs(metaContainer));
-            });
-
-            // Act
-            await connector.ClearMetadataCacheAsync(dataBase);
-
-            // Assert: metadata is removed
-            bool afterHasMeta1 = dbCache.TryGetMetadata(file1, out MetaCacheContainer? afterMeta1);
-            bool afterHasMeta2 = dbCache.TryGetMetadata(file2, out MetaCacheContainer? afterMeta2);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(afterHasMeta1, Is.False);
-                Assert.That(afterMeta1, Is.Null);
-                Assert.That(afterHasMeta2, Is.False);
-                Assert.That(afterMeta2, Is.Null);
-            });
-        }
-
-        #endregion
-
-        #region ClearDataCacheAsync
-
-        [Test]
-        public async Task ClearDataCacheAsync_ClearsDataCacheForAllFilesInDatabase()
-        {
-            // Arrange
-            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef file1 = PxFileRef.Create("file1", dataBase);
-            PxFileRef file2 = PxFileRef.Create("file2", dataBase);
-
-            ImmutableSortedDictionary<string, PxFileRef> files = ImmutableSortedDictionary<string, PxFileRef>.Empty
-                .Add("file1", file1)
-                .Add("file2", file2);
-
-            MemoryCache memoryCache = new(new MemoryCacheOptions());
-            DatabaseCache dbCache = new(memoryCache);
-
-            dbCache.SetFileList(dataBase, Task.FromResult(files));
-
-            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
-            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
-            dbCache.SetMetadata(file1, metaContainer);
-            dbCache.SetMetadata(file2, metaContainer);
-
-            // Store data for both files
-            MatrixMap map1 = new([new DimensionMap("dim1", ["value1"]), new DimensionMap("dim2", ["2025"])]);
-            MatrixMap map2 = new([new DimensionMap("dim1", ["value1"]), new DimensionMap("dim2", ["2024"])]);
-            DoubleDataValue[] dataArray1 = [new DoubleDataValue(2, DataValueType.Exists)];
-            DoubleDataValue[] dataArray2 = [new DoubleDataValue(1, DataValueType.Exists)];
-            dbCache.SetData(file1, map1, Task.FromResult(dataArray1));
-            dbCache.SetData(file2, map2, Task.FromResult(dataArray2));
-
-            Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
-
-            // Pre-assert: metadata and data are present
-            bool hasMeta1 = dbCache.TryGetMetadata(file1, out MetaCacheContainer? beforeMeta1);
-            bool hasMeta2 = dbCache.TryGetMetadata(file2, out MetaCacheContainer? beforeMeta2);
-            bool hasData1 = dbCache.TryGetData(map1, out Task<DoubleDataValue[]>? beforeData1, out DateTime? _);
-            bool hasData2 = dbCache.TryGetData(map2, out Task<DoubleDataValue[]>? beforeData2, out DateTime? _);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(hasMeta1, Is.True);
-                Assert.That(beforeMeta1, Is.SameAs(metaContainer));
-                Assert.That(hasMeta2, Is.True);
-                Assert.That(beforeMeta2, Is.SameAs(metaContainer));
-                Assert.That(hasData1, Is.True);
-                Assert.That(beforeData1, Is.Not.Null);
-                Assert.That(hasData2, Is.True);
-                Assert.That(beforeData2, Is.Not.Null);
-            });
-
-            // Act
-            await connector.ClearDataCacheAsync(dataBase);
-            await Task.Delay(50);
-
-            // Assert: metadata is replaced, data is removed
-            bool afterHasMeta1 = dbCache.TryGetMetadata(file1, out MetaCacheContainer? afterMeta1);
-            bool afterHasMeta2 = dbCache.TryGetMetadata(file2, out MetaCacheContainer? afterMeta2);
-            bool afterHasData1 = dbCache.TryGetData(map1, out Task<DoubleDataValue[]>? afterData1, out DateTime? _);
-            bool afterHasData2 = dbCache.TryGetData(map2, out Task<DoubleDataValue[]>? afterData2, out DateTime? _);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(afterHasMeta1, Is.True);
-                Assert.That(afterMeta1, Is.Not.Null);
-                Assert.That(afterMeta1, Is.Not.SameAs(metaContainer));
-                Assert.That(afterHasMeta2, Is.True);
-                Assert.That(afterMeta2, Is.Not.Null);
-                Assert.That(afterMeta2, Is.Not.SameAs(metaContainer));
-                Assert.That(afterHasData1, Is.False);
-                Assert.That(afterData1, Is.Null);
-                Assert.That(afterHasData2, Is.False);
-                Assert.That(afterData2, Is.Null);
-            });
-        }
-
-        #endregion
-
-        #region ClearAllCache
-
-        [Test]
-        public async Task ClearAllCache_ClearsDatabaseSpecificCaches()
+        public async Task ClearDatabaseCacheAsync_ClearsDatabaseSpecificCaches()
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
@@ -672,7 +495,7 @@ namespace PxApi.UnitTests.Caching
             CachedDataSource connector = new(mockFactory.Object, dbCache);
 
             // Act
-            await connector.ClearAllCache(dataBase);
+            await connector.ClearDatabaseCacheAsync(dataBase);
             bool result = dbCache.TryGetFileList(dataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? files);
 
             // Assert
@@ -685,74 +508,26 @@ namespace PxApi.UnitTests.Caching
 
         #endregion
 
-        #region ClearAllCachesAsync
-        [Test]
-        public async Task ClearAllCachesAsync_ClearsAllCachesForAllDatabases()
-        {
-            // Arrange
-            DataBaseRef db1 = DataBaseRef.Create("PxApiUnitTestsDb");
-            DataBaseRef db2 = DataBaseRef.Create("AnotherPxApiUnitTestsDb");
-            DataBaseRef[] databases = [db1, db2];
-
-            Mock<IDataBaseConnectorFactory> mockFactory = new();
-            mockFactory.Setup(f => f.GetAvailableDatabases()).Returns(databases);
-
-            Mock<IDataBaseConnector> mockConnector1 = new();
-            mockConnector1.SetupGet(c => c.DataBase).Returns(db1);
-            mockConnector1.Setup(c => c.GetAllFilesAsync()).ReturnsAsync([]);
-            Mock<IDataBaseConnector> mockConnector2 = new();
-            mockConnector2.SetupGet(c => c.DataBase).Returns(db2);
-            mockConnector2.Setup(c => c.GetAllFilesAsync()).ReturnsAsync([]);
-
-            mockFactory.Setup(f => f.GetConnector(db1)).Returns(mockConnector1.Object);
-            mockFactory.Setup(f => f.GetConnector(db2)).Returns(mockConnector2.Object);
-
-            MemoryCache memoryCache = new(new MemoryCacheOptions());
-            DatabaseCache dbCache = new(memoryCache);
-
-            // Add file lists to cache for both databases
-            dbCache.SetFileList(db1, Task.FromResult(
-                ImmutableSortedDictionary<string, PxFileRef>.Empty
-                    .Add("fileA", PxFileRef.Create("fileA", db1))
-                    .Add("fileB", PxFileRef.Create("fileB", db1))));
-
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
-
-            // Act
-            await connector.ClearAllCachesAsync();
-
-            // Assert
-            bool result1 = dbCache.TryGetFileList(db1, out Task<ImmutableSortedDictionary<string, PxFileRef>>? files1);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result1, Is.False);
-                Assert.That(files1, Is.Null);
-            });
-        }
-
-        #endregion
-
-        #region ClearLastUpdatedCacheAsync
+        #region ClearTableCacheAsync
 
         [Test]
-        public async Task ClearLastUpdatedCacheAsync_ClearsLastUpdatedCacheForDatabase()
+        public void ClearTableCacheAsync_ClearsTableSpecificCaches()
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef file = PxFileRef.Create("testfile", dataBase);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
-            PxFileRef pxRef = PxFileRef.Create("testfile", dataBase);
+            
+            // Add last updated timestamp to cache
             Task<DateTime> lastUpdatedTask = Task.FromResult(DateTime.UtcNow);
-            dbCache.SetFileList(dataBase, Task.FromResult(
-                ImmutableSortedDictionary<string, PxFileRef>.Empty
-                    .Add("testfile", pxRef)));
-            dbCache.SetLastUpdated(pxRef, lastUpdatedTask);
+            dbCache.SetLastUpdated(file, lastUpdatedTask);
+            
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             CachedDataSource connector = new(mockFactory.Object, dbCache);
-
+            
             // Pre-assert: last updated is present
-            bool hasLastUpdated = dbCache.TryGetLastUpdated(pxRef, out Task<DateTime>? beforeLastUpdated);
+            bool hasLastUpdated = dbCache.TryGetLastUpdated(file, out Task<DateTime>? beforeLastUpdated);
             Assert.Multiple(() =>
             {
                 Assert.That(hasLastUpdated, Is.True);
@@ -760,14 +535,51 @@ namespace PxApi.UnitTests.Caching
             });
 
             // Act
-            await connector.ClearLastUpdatedCacheAsync(dataBase);
+            connector.ClearTableCache(file);
 
             // Assert: last updated is removed
-            bool afterHasLastUpdated = dbCache.TryGetLastUpdated(pxRef, out Task<DateTime>? afterLastUpdated);
+            bool afterHasLastUpdated = dbCache.TryGetLastUpdated(file, out Task<DateTime>? afterLastUpdated);
             Assert.Multiple(() =>
             {
                 Assert.That(afterHasLastUpdated, Is.False);
                 Assert.That(afterLastUpdated, Is.Null);
+            });
+        }
+
+        [Test]
+        public async Task ClearTableCacheAsync_ClearsMetadataForFile()
+        {
+            // Arrange
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef file = PxFileRef.Create("testfile", dataBase);
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            
+            // Add metadata to cache
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
+            dbCache.SetMetadata(file, metaContainer);
+            
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            
+            // Pre-assert: metadata is present
+            bool hasMeta = dbCache.TryGetMetadata(file, out MetaCacheContainer? beforeMeta);
+            Assert.Multiple(() =>
+            {
+                Assert.That(hasMeta, Is.True);
+                Assert.That(beforeMeta, Is.SameAs(metaContainer));
+            });
+
+            // Act
+            connector.ClearTableCache(file);
+
+            // Assert: metadata is removed
+            bool afterHasMeta = dbCache.TryGetMetadata(file, out MetaCacheContainer? afterMeta);
+            Assert.Multiple(() =>
+            {
+                Assert.That(afterHasMeta, Is.False);
+                Assert.That(afterMeta, Is.Null);
             });
         }
 

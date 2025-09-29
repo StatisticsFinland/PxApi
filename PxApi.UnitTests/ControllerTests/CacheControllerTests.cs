@@ -7,6 +7,7 @@ using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.Models;
+using System.Collections.Immutable;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -57,310 +58,127 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public void ClearFileListCache_CallsClearFileListCacheMethod_ReturnsOk()
+        public async Task ClearTableCache_DatabaseExists_CallsClearTableCacheMethod_ReturnsOk()
+        {
+            // Arrange
+            string database = "testdb";
+            string id = "table1";
+            DataBaseRef dbRef = DataBaseRef.Create(database);
+            PxFileRef fileRef = PxFileRef.Create(id, dbRef);
+            
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
+            _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef))
+                .ReturnsAsync(ImmutableSortedDictionary<string, PxFileRef>.Empty.Add(id, fileRef));
+            _cachedDbConnector.Setup(x => x.ClearTableCache(fileRef));
+
+            // Act
+            ActionResult result = await _controller.ClearTableCacheAsync(database, id);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            _cachedDbConnector.Verify(x => x.ClearTableCache(fileRef), Times.Once);
+        }
+
+        [Test]
+        public async Task ClearTableCache_DatabaseDoesNotExist_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "nonexistentdb";
+            string id = "table1";
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
+
+            // Act
+            ActionResult result = await _controller.ClearTableCacheAsync(database, id);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+            _cachedDbConnector.Verify(x => x.ClearTableCache(It.IsAny<PxFileRef>()), Times.Never);
+        }
+
+        [Test]
+        public async Task ClearTableCache_FileDoesNotExist_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "testdb";
+            string id = "nonexistentfile";
+            DataBaseRef dbRef = DataBaseRef.Create(database);
+            
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
+            _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef))
+                .ReturnsAsync(ImmutableSortedDictionary<string, PxFileRef>.Empty);
+
+            // Act
+            ActionResult result = await _controller.ClearTableCacheAsync(database, id);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+            _cachedDbConnector.Verify(x => x.ClearTableCache(It.IsAny<PxFileRef>()), Times.Never);
+        }
+
+        [Test]
+        public async Task ClearTableCache_ExceptionThrown_ReturnsStatusCode500()
+        {
+            // Arrange
+            string database = "testdb";
+            string id = "table1";
+            DataBaseRef dbRef = DataBaseRef.Create(database);
+            
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
+            _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef))
+                .ThrowsAsync(new Exception("Test exception"));
+
+            // Act
+            ActionResult result = await _controller.ClearTableCacheAsync(database, id);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ObjectResult>());
+            ObjectResult? statusCodeResult = result as ObjectResult;
+            Assert.That(statusCodeResult, Is.Not.Null);
+            Assert.That(statusCodeResult!.StatusCode, Is.EqualTo(500));
+        }
+
+        [Test]
+        public async Task ClearAllCache_DatabaseExists_CallsClearDatabaseCacheAsyncMethod_ReturnsOk()
+        {
+            // Arrange
+            string database = "testdb";
+            DataBaseRef dbRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
+            _cachedDbConnector.Setup(x => x.ClearDatabaseCacheAsync(dbRef));
+
+            // Act
+            ActionResult result = await _controller.ClearAllCacheAsync(database);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            _cachedDbConnector.Verify(x => x.ClearDatabaseCacheAsync(dbRef), Times.Once);
+        }
+
+        [Test]
+        public async Task ClearAllCache_DatabaseDoesNotExist_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "nonexistentdb";
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
+
+            // Act
+            ActionResult result = await _controller.ClearAllCacheAsync(database);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+            _cachedDbConnector.Verify(x => x.ClearDatabaseCacheAsync(It.IsAny<DataBaseRef>()), Times.Never);
+        }
+
+        [Test]
+        public async Task ClearAllCache_ExceptionThrown_ReturnsStatusCode500()
         {
             // Arrange
             DataBaseRef dbRef = DataBaseRef.Create("testdb");
             _cachedDbConnector.Setup(x => x.GetDataBaseReference("testdb")).Returns(dbRef);
-            _cachedDbConnector.Setup(x => x.ClearFileListCache(dbRef));
+            _cachedDbConnector.Setup(x => x.ClearDatabaseCacheAsync(dbRef)).Throws(new Exception("Test exception"));
 
             // Act
-            ActionResult result = _controller.ClearFileListCache("testdb");
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkObjectResult>());
-            _cachedDbConnector.Verify(x => x.ClearFileListCache(dbRef), Times.Once);
-        }
-
-        [Test]
-        public void ClearMetadataCache_DatabaseExists_CallsClearMetadataCacheMethod_ReturnsOk()
-        {
-            // Arrange
-            string database = "testdb";
-            DataBaseRef dbRef = DataBaseRef.Create(database);
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
-            _cachedDbConnector.Setup(x => x.ClearMetadataCacheAsync(dbRef));
-
-            // Act
-            ActionResult result = _controller.ClearMetadataCache(database);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkObjectResult>());
-            _cachedDbConnector.Verify(x => x.ClearMetadataCacheAsync(dbRef), Times.Once);
-        }
-
-        [Test]
-        public void ClearMetadataCache_DatabaseDoesNotExist_ReturnsNotFound()
-        {
-            // Arrange
-            string database = "nonexistentdb";
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
-
-            // Act
-            ActionResult result = _controller.ClearMetadataCache(database);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
-            _cachedDbConnector.Verify(x => x.ClearMetadataCacheAsync(It.IsAny<DataBaseRef>()), Times.Never);
-        }
-
-        [Test]
-        public void ClearDataCache_DatabaseExists_CallsClearDataCacheMethod_ReturnsOk()
-        {
-            // Arrange
-            string database = "testdb";
-            DataBaseRef dbRef = DataBaseRef.Create(database);
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
-            _cachedDbConnector.Setup(x => x.ClearDataCacheAsync(dbRef));
-
-            // Act
-            ActionResult result = _controller.ClearDataCache(database);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkObjectResult>());
-            _cachedDbConnector.Verify(x => x.ClearDataCacheAsync(dbRef), Times.Once);
-        }
-
-        [Test]
-        public void ClearDataCache_DatabaseDoesNotExist_ReturnsNotFound()
-        {
-            // Arrange
-            string database = "nonexistentdb";
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
-
-            // Act
-            ActionResult result = _controller.ClearDataCache(database);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
-            _cachedDbConnector.Verify(x => x.ClearDataCacheAsync(It.IsAny<DataBaseRef>()), Times.Never);
-        }
-
-        [Test]
-        public void ClearAllCache_DatabaseExists_CallsClearAllCacheMethod_ReturnsOk()
-        {
-            // Arrange
-            string database = "testdb";
-            DataBaseRef dbRef = DataBaseRef.Create(database);
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
-            _cachedDbConnector.Setup(x => x.ClearAllCache(dbRef));
-
-            // Act
-            ActionResult result = _controller.ClearAllCache(database);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkObjectResult>());
-            _cachedDbConnector.Verify(x => x.ClearAllCache(dbRef), Times.Once);
-        }
-
-        [Test]
-        public void ClearAllCache_DatabaseDoesNotExist_ReturnsNotFound()
-        {
-            // Arrange
-            string database = "nonexistentdb";
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
-
-            // Act
-            ActionResult result = _controller.ClearAllCache(database);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
-            _cachedDbConnector.Verify(x => x.ClearAllCache(It.IsAny<DataBaseRef>()), Times.Never);
-        }
-
-        [Test]
-        public void ClearFileListCache_ExceptionThrown_ReturnsStatusCode500()
-        {
-            // Arrange
-            DataBaseRef dbRef = DataBaseRef.Create("testdb");
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference("testdb")).Returns(dbRef);
-            _cachedDbConnector.Setup(x => x.ClearFileListCache(dbRef)).Throws(new Exception("Test exception"));
-
-            // Act
-            ActionResult result = _controller.ClearFileListCache("testdb");
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ObjectResult>());
-            ObjectResult? statusCodeResult = result as ObjectResult;
-            Assert.That(statusCodeResult, Is.Not.Null);
-            Assert.That(statusCodeResult!.StatusCode, Is.EqualTo(500));
-        }
-
-        [Test]
-        public async Task ClearAllMetadataCaches_CallsGetAllDataBaseReferencesAndClearMetadataCache_ReturnsOk()
-        {
-            // Arrange
-            DataBaseRef[] dbRefs = {DataBaseRef.Create("testdb1"), DataBaseRef.Create("testdb2")};
-            _cachedDbConnector.Setup(x => x.GetAllDataBaseReferences()).Returns(dbRefs);
-            _cachedDbConnector.Setup(x => x.ClearMetadataCacheAsync(It.IsAny<DataBaseRef>())).Returns(Task.CompletedTask);
-
-            // Act
-            ActionResult result = await _controller.ClearAllMetadataCaches();
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkObjectResult>());
-            _cachedDbConnector.Verify(x => x.GetAllDataBaseReferences(), Times.Once);
-            _cachedDbConnector.Verify(x => x.ClearMetadataCacheAsync(dbRefs[0]), Times.Once);
-            _cachedDbConnector.Verify(x => x.ClearMetadataCacheAsync(dbRefs[1]), Times.Once);
-        }
-
-        [Test]
-        public async Task ClearAllDataCaches_CallsGetAllDataBaseReferencesAndClearDataCache_ReturnsOk()
-        {
-            // Arrange
-            DataBaseRef[] dbRefs = {DataBaseRef.Create("testdb1"), DataBaseRef.Create("testdb2")};
-            _cachedDbConnector.Setup(x => x.GetAllDataBaseReferences()).Returns(dbRefs);
-            _cachedDbConnector.Setup(x => x.ClearDataCacheAsync(It.IsAny<DataBaseRef>())).Returns(Task.CompletedTask);
-
-            // Act
-            ActionResult result = await _controller.ClearAllDataCaches();
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkObjectResult>());
-            _cachedDbConnector.Verify(x => x.GetAllDataBaseReferences(), Times.Once);
-            _cachedDbConnector.Verify(x => x.ClearDataCacheAsync(dbRefs[0]), Times.Once);
-            _cachedDbConnector.Verify(x => x.ClearDataCacheAsync(dbRefs[1]), Times.Once);
-        }
-
-        [Test]
-        public async Task ClearAllCaches_CallsClearAllCachesAsync_ReturnsOk()
-        {
-            // Arrange
-            _cachedDbConnector.Setup(x => x.ClearAllCachesAsync()).Returns(Task.CompletedTask);
-
-            // Act
-            ActionResult result = await _controller.ClearAllCaches();
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkObjectResult>());
-            _cachedDbConnector.Verify(x => x.ClearAllCachesAsync(), Times.Once);
-        }
-
-        [Test]
-        public async Task ClearAllMetadataCaches_ExceptionThrown_ReturnsStatusCode500()
-        {
-            // Arrange
-            _cachedDbConnector.Setup(x => x.GetAllDataBaseReferences()).Throws(new Exception("Test exception"));
-
-            // Act
-            ActionResult result = await _controller.ClearAllMetadataCaches();
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ObjectResult>());
-            ObjectResult? statusCodeResult = result as ObjectResult;
-            Assert.That(statusCodeResult, Is.Not.Null);
-            Assert.That(statusCodeResult!.StatusCode, Is.EqualTo(500));
-        }
-
-        [Test]
-        public async Task ClearAllDataCaches_ExceptionThrown_ReturnsStatusCode500()
-        {
-            // Arrange
-            _cachedDbConnector.Setup(x => x.GetAllDataBaseReferences()).Throws(new Exception("Test exception"));
-
-            // Act
-            ActionResult result = await _controller.ClearAllDataCaches();
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ObjectResult>());
-            ObjectResult? statusCodeResult = result as ObjectResult;
-            Assert.That(statusCodeResult, Is.Not.Null);
-            Assert.That(statusCodeResult!.StatusCode, Is.EqualTo(500));
-        }
-
-        [Test]
-        public async Task ClearAllCaches_ExceptionThrown_ReturnsStatusCode500()
-        {
-            // Arrange
-            _cachedDbConnector.Setup(x => x.ClearAllCachesAsync()).Throws(new Exception("Test exception"));
-
-            // Act
-            ActionResult result = await _controller.ClearAllCaches();
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ObjectResult>());
-            ObjectResult? statusCodeResult = result as ObjectResult;
-            Assert.That(statusCodeResult, Is.Not.Null);
-            Assert.That(statusCodeResult!.StatusCode, Is.EqualTo(500));
-        }
-
-        [Test]
-        public async Task ClearLastUpdatedCache_DatabaseExists_CallsClearLastUpdatedCacheMethod_ReturnsOk()
-        {
-            // Arrange
-            string database = "testdb";
-            DataBaseRef dbRef = DataBaseRef.Create(database);
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
-            _cachedDbConnector.Setup(x => x.ClearLastUpdatedCacheAsync(dbRef)).Returns(Task.CompletedTask);
-
-            // Act
-            ActionResult result = await _controller.ClearLastUpdatedCache(database);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkObjectResult>());
-            _cachedDbConnector.Verify(x => x.ClearLastUpdatedCacheAsync(dbRef), Times.Once);
-        }
-
-        [Test]
-        public async Task ClearLastUpdatedCache_DatabaseDoesNotExist_ReturnsNotFound()
-        {
-            // Arrange
-            string database = "nonexistentdb";
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
-
-            // Act
-            ActionResult result = await _controller.ClearLastUpdatedCache(database);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
-            _cachedDbConnector.Verify(x => x.ClearLastUpdatedCacheAsync(It.IsAny<DataBaseRef>()), Times.Never);
-        }
-
-        [Test]
-        public async Task ClearLastUpdatedCache_ExceptionThrown_ReturnsStatusCode500()
-        {
-            // Arrange
-            string database = "testdb";
-            DataBaseRef dbRef = DataBaseRef.Create(database);
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
-            _cachedDbConnector.Setup(x => x.ClearLastUpdatedCacheAsync(dbRef)).Throws(new Exception("Test exception"));
-
-            // Act
-            ActionResult result = await _controller.ClearLastUpdatedCache(database);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ObjectResult>());
-            ObjectResult? statusCodeResult = result as ObjectResult;
-            Assert.That(statusCodeResult, Is.Not.Null);
-            Assert.That(statusCodeResult!.StatusCode, Is.EqualTo(500));
-        }
-
-        [Test]
-        public async Task ClearAllLastUpdatedCaches_CallsGetAllDataBaseReferencesAndClearLastUpdatedCache_ReturnsOk()
-        {
-            // Arrange
-            DataBaseRef[] dbRefs = {DataBaseRef.Create("testdb1"), DataBaseRef.Create("testdb2")};
-            _cachedDbConnector.Setup(x => x.GetAllDataBaseReferences()).Returns(dbRefs);
-            _cachedDbConnector.Setup(x => x.ClearLastUpdatedCacheAsync(It.IsAny<DataBaseRef>())).Returns(Task.CompletedTask);
-
-            // Act
-            ActionResult result = await _controller.ClearAllLastUpdatedCaches();
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkObjectResult>());
-            _cachedDbConnector.Verify(x => x.GetAllDataBaseReferences(), Times.Once);
-            _cachedDbConnector.Verify(x => x.ClearLastUpdatedCacheAsync(dbRefs[0]), Times.Once);
-            _cachedDbConnector.Verify(x => x.ClearLastUpdatedCacheAsync(dbRefs[1]), Times.Once);
-        }
-
-        [Test]
-        public async Task ClearAllLastUpdatedCaches_ExceptionThrown_ReturnsStatusCode500()
-        {
-            // Arrange
-            _cachedDbConnector.Setup(x => x.GetAllDataBaseReferences()).Throws(new Exception("Test exception"));
-
-            // Act
-            ActionResult result = await _controller.ClearAllLastUpdatedCaches();
+            ActionResult result = await _controller.ClearAllCacheAsync("testdb");
 
             // Assert
             Assert.That(result, Is.InstanceOf<ObjectResult>());

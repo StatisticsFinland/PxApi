@@ -256,31 +256,12 @@ namespace PxApi.Caching
         }
 
         /// <summary>
-        /// Clears the last updated timestamp cache for the specified files.
+        /// Clears the last updated timestamp cache for the specified file.
         /// </summary>
-        /// <param name="fileList">List of files for which to clear last updated timestamp cache.</param>
-        public void ClearLastUpdatedCache(IEnumerable<PxFileRef> fileList)
+        /// <param name="file">File for which to clear last updated timestamp cache.</param>
+        public void ClearLastUpdatedCache(PxFileRef file)
         {
-            foreach (PxFileRef file in fileList)
-            {
-                _cache.Remove(HashCode.Combine(LAST_UPDATED_SEED, file));
-            }
-        }
-
-        /// <summary>
-        /// Clears the data cache for the specified files.
-        /// </summary>
-        /// <param name="fileList">List of files for which to clear data cache.</param>
-        public void ClearDataCache(IEnumerable<PxFileRef> fileList)
-        {
-            foreach (PxFileRef file in fileList)
-            {
-                if (_cache.TryGetValue(HashCode.Combine(META_SEED, file), out MetaCacheContainer? metaContainer) && metaContainer != null)
-                {
-                    metaContainer.GetRelatedMaps().ForEach(map =>
-                        _cache.Remove(HashCode.Combine(DATA_SEED, MapHash(map))));
-                }
-            }
+            _cache.Remove(HashCode.Combine(LAST_UPDATED_SEED, file));
         }
 
         private void OnMetaCacheEvicted(object? key, object? value, EvictionReason reason, object? state)
