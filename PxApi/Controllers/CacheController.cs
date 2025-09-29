@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.FeatureManagement.Mvc;
 using PxApi.Caching;
-using PxApi.DataSources;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Collections.Immutable;
@@ -15,6 +15,7 @@ namespace PxApi.Controllers
     /// </remarks>
     /// <param name="cachedConnector">Cache connector for accessing cache operations.</param>
     /// <param name="logger">Logger for logging information, warnings and errors.</param>
+    [FeatureGate(nameof(CacheController))]
     [Route("cache")]
     [ApiController]
     public class CacheController(ICachedDataSource cachedConnector, ILogger<CacheController> logger) : ControllerBase
