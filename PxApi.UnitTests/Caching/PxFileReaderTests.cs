@@ -17,7 +17,7 @@ namespace PxApi.UnitTests.Caching
         public async Task ReadMetadata_WhenCalledWithValidFile_ReturnsMetadata()
         {
             // Arrange
-            PxFileRef fileRef = PxFileRef.Create("test", DataBaseRef.Create("testDatabase"));
+            PxFileRef fileRef = PxFileRef.CreateFromId("test", DataBaseRef.Create("testDatabase"));
             Mock<IDataBaseConnector> mockFileSystem = new();
             mockFileSystem.Setup(fs => fs.ReadPxFile(It.IsAny<PxFileRef>())).Returns(new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
             PxFileReader reader = new(mockFileSystem.Object);
@@ -46,7 +46,7 @@ namespace PxApi.UnitTests.Caching
         {
 
             // Arrange
-            PxFileRef fileRef = PxFileRef.Create("test", DataBaseRef.Create("testDatabase"));
+            PxFileRef fileRef = PxFileRef.CreateFromId("test", DataBaseRef.Create("testDatabase"));
             Mock<IDataBaseConnector> mockFileSystem = new();
             mockFileSystem.Setup(fs => fs.ReadPxFile(It.IsAny<PxFileRef>())).Returns(new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
             PxFileReader reader = new(mockFileSystem.Object);
@@ -64,7 +64,7 @@ namespace PxApi.UnitTests.Caching
         public async Task ReadDataAsync_WhenCalledWithValidFile_ReturnsData()
         {
             // Arrange
-            PxFileRef fileRef = PxFileRef.Create("test", DataBaseRef.Create("testDatabase"));
+            PxFileRef fileRef = PxFileRef.CreateFromId("test", DataBaseRef.Create("testDatabase"));
             Mock<IDataBaseConnector> mockFileSystem = new();
             mockFileSystem
                 .Setup(fs => fs.ReadPxFile(It.IsAny<PxFileRef>()))

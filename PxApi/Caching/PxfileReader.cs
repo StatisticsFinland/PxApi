@@ -14,8 +14,8 @@ namespace PxApi.Caching
     /// <summary>
     /// Class for reading Px files and extracting metadata and data.
     /// </summary>
-    /// <param name="fileSystem">File system connector to read Px files.</param>
-    public class PxFileReader(IDataBaseConnector fileSystem)
+    /// <param name="dbConnector">Database connector to read Px files.</param>
+    public class PxFileReader(IDataBaseConnector dbConnector)
     {
         /// <summary>
         /// Reads and returns the metadata from a Px file.
@@ -25,7 +25,7 @@ namespace PxApi.Caching
         public async Task<IReadOnlyMatrixMetadata> ReadMetadataAsync(PxFileRef file)
         {
             PxFileMetadataReader metaReader = new();
-            using Stream stream = fileSystem.ReadPxFile(file);
+            using Stream stream = dbConnector.ReadPxFile(file);
             Encoding encoding = await metaReader.GetEncodingAsync(stream);
             if (stream.CanSeek) stream.Seek(0, SeekOrigin.Begin);
             IAsyncEnumerable<KeyValuePair<string, string>> entries = metaReader.ReadMetadataAsync(stream, encoding);
@@ -40,7 +40,7 @@ namespace PxApi.Caching
         /// <returns>Long value representing the offset of the data section</returns>
         public async Task<long?> GetDataSectionOffsetAsync(PxFileRef file)
         {
-            using Stream stream = fileSystem.ReadPxFile(file);
+            using Stream stream = dbConnector.ReadPxFile(file);
             PxFileConfiguration conf = PxFileConfiguration.Default;
             string dataKey = conf.Tokens.KeyWords.Data;
             long offset = await StreamUtilities.FindKeywordPositionAsync(stream, dataKey, conf);
@@ -57,7 +57,7 @@ namespace PxApi.Caching
         /// <returns>Array of <see cref="DoubleDataValue"/> containing the data values.</returns>
         public async Task<DoubleDataValue[]> ReadDataAsync(PxFileRef file, long dataOffset, IMatrixMap targetMap, IMatrixMap fileMap)
         {
-            using Stream stream = fileSystem.ReadPxFile(file);
+            using Stream stream = dbConnector.ReadPxFile(file);
             using PxFileStreamDataReader dataReader = new(stream);
             DoubleDataValue[] result = new DoubleDataValue[targetMap.GetSize()];
             await dataReader.ReadDoubleDataValuesAsync(result, 0, targetMap, fileMap);

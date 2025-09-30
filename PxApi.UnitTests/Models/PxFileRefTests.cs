@@ -1,6 +1,4 @@
 using PxApi.Models;
-using PxApi.Configuration;
-using Microsoft.Extensions.Configuration;
 
 namespace PxApi.UnitTests.Models
 {
@@ -17,7 +15,7 @@ namespace PxApi.UnitTests.Models
         public void Create_WithValidIdAndDatabase_ReturnsPxFileRef(string id, string dbId)
         {
             DataBaseRef db = DataBaseRef.Create(dbId);
-            PxFileRef pxFileRef = PxFileRef.Create(id, db);
+            PxFileRef pxFileRef = PxFileRef.CreateFromId(id, db);
             Assert.Multiple(() =>
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(id));
@@ -26,7 +24,7 @@ namespace PxApi.UnitTests.Models
         }
 
         [Test]
-        [TestCase("file-1", "database")]
+        [TestCase("file#1", "database")]
         [TestCase("file 1", "database")]
         [TestCase("", "database")]
         [TestCase("   ", "database")]
@@ -36,7 +34,7 @@ namespace PxApi.UnitTests.Models
         public void Create_WithInvalidId_ThrowsArgumentException(string? id, string dbId)
         {
             DataBaseRef db = DataBaseRef.Create(dbId);
-            Assert.Throws<ArgumentException>(() => PxFileRef.Create(id!, db), "Id cannot be null, whitespace or too long.");
+            Assert.Throws<ArgumentException>(() => PxFileRef.CreateFromId(id!, db), "Id cannot be null, whitespace or too long.");
         }
 
         [Test]
@@ -46,10 +44,9 @@ namespace PxApi.UnitTests.Models
             string filePath = "C:/data/abc123.px";
             string fileName = "abc123";
             DataBaseRef db = DataBaseRef.Create("db1");
-            DataBaseConfig config = GetConfig();
 
             // Act
-            PxFileRef pxFileRef = PxFileRef.Create(filePath, db, config);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(filePath, db);
 
             // Assert
             Assert.Multiple(() =>
@@ -66,10 +63,9 @@ namespace PxApi.UnitTests.Models
             // Arrange
             string filePath = "C:/data/database-grouping-id.px";
             DataBaseRef db = DataBaseRef.Create("db2");
-            DataBaseConfig config = GetConfig();
 
             // Act
-            PxFileRef pxFileRef = PxFileRef.Create(filePath, db, config);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(filePath, db);
 
             // Assert
             Assert.Multiple(() =>
@@ -86,10 +82,9 @@ namespace PxApi.UnitTests.Models
             // Arrange
             string filePath = "C:/data/database-grouping-id.px";
             DataBaseRef db = DataBaseRef.Create("db3");
-            DataBaseConfig config = GetConfig();
 
             // Act
-            PxFileRef pxFileRef = PxFileRef.Create(filePath, db, config);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(filePath, db);
 
             // Assert
             Assert.Multiple(() =>
@@ -98,36 +93,6 @@ namespace PxApi.UnitTests.Models
                 Assert.That(pxFileRef.FilePath, Is.EqualTo(filePath));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
             });
-        }
-
-        private static DataBaseConfig GetConfig()
-        {
-            Dictionary<string, string?> settings = new()
-            {
-                {"RootUrl", "https://testurl.fi"},
-                {"DataBases:0:Type", "Mounted"},
-                {"DataBases:0:Id", "testdb"},
-                {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"}, // 15 minutes
-                {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"}, // 15 minutes
-                {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"}, // 10 minutes
-                {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"}, // 10 minutes
-                {"DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},
-                {"DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds", "60"},
-                {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
-                {"DataBases:0:Custom:RootPath", "datasource/root/"},
-                {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
-                {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"},
-            };
-
-            IConfiguration config = new ConfigurationBuilder()
-                .AddInMemoryCollection(settings)
-                .Build();
-            IConfigurationSection section = config.GetSection("DataBases:0");
-            return new DataBaseConfig(section);
         }
 
         #endregion
@@ -140,8 +105,8 @@ namespace PxApi.UnitTests.Models
             const string id = "file1";
             const string dbId = "database";
             DataBaseRef db = DataBaseRef.Create(dbId);
-            PxFileRef ref1 = PxFileRef.Create(id, db);
-            PxFileRef ref2 = PxFileRef.Create(id, db);
+            PxFileRef ref1 = PxFileRef.CreateFromId(id, db);
+            PxFileRef ref2 = PxFileRef.CreateFromId(id, db);
             Assert.That(ref1.GetHashCode(), Is.EqualTo(ref2.GetHashCode()));
         }
 
@@ -152,8 +117,8 @@ namespace PxApi.UnitTests.Models
             const string id2 = "file2";
             const string dbId = "database";
             DataBaseRef db = DataBaseRef.Create(dbId);
-            PxFileRef ref1 = PxFileRef.Create(id1, db);
-            PxFileRef ref2 = PxFileRef.Create(id2, db);
+            PxFileRef ref1 = PxFileRef.CreateFromId(id1, db);
+            PxFileRef ref2 = PxFileRef.CreateFromId(id2, db);
             Assert.That(ref1.GetHashCode(), Is.Not.EqualTo(ref2.GetHashCode()));
         }
 
@@ -165,8 +130,8 @@ namespace PxApi.UnitTests.Models
             const string dbId2 = "database2";
             DataBaseRef db1 = DataBaseRef.Create(dbId1);
             DataBaseRef db2 = DataBaseRef.Create(dbId2);
-            PxFileRef ref1 = PxFileRef.Create(id, db1);
-            PxFileRef ref2 = PxFileRef.Create(id, db2);
+            PxFileRef ref1 = PxFileRef.CreateFromId(id, db1);
+            PxFileRef ref2 = PxFileRef.CreateFromId(id, db2);
             Assert.That(ref1.GetHashCode(), Is.Not.EqualTo(ref2.GetHashCode()));
         }
 

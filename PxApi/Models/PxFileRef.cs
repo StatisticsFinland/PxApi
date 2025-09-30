@@ -22,6 +22,8 @@ namespace PxApi.Models
         /// </summary>
         public DataBaseRef DataBase { get; init; }
 
+        private readonly static char[] _allowedIdChars = ['_', '-'];
+
         private PxFileRef(string id, string filePath, DataBaseRef dataBase)
         {
             Id = id;
@@ -36,15 +38,16 @@ namespace PxApi.Models
         /// <param name="database"><see cref="DataBaseRef"/> reference to the database that the Px file belongs to.</param>
         /// <returns>A new instance of <see cref="PxFileRef"/>.</returns>
         /// <exception cref="ArgumentException">If the id is null, whitespace, contains invalid characters or exceeds 50 characters.</exception>
-        public static PxFileRef Create(string id, DataBaseRef database)
+        public static PxFileRef CreateFromId(string id, DataBaseRef database)
         {
             if (string.IsNullOrWhiteSpace(id) || id.Length > 50)
                 throw new ArgumentException("Id cannot be null, whitespace or too long.");
 
-            if(id.Any(s => !char.IsLetterOrDigit(s)))
+            if(!id.All(s => char.IsLetterOrDigit(s) || _allowedIdChars.Contains(s)))
             {
                 throw new ArgumentException("PxFile id must containt only letters or numbers.");
             }
+
             return new PxFileRef(id, id, database);
         }
 
@@ -53,14 +56,12 @@ namespace PxApi.Models
         /// </summary>
         /// <param name="fullFilePath">Full path to the Px file.</param>
         /// <param name="database"><see cref="DataBaseRef"/> reference to the database that the Px file belongs to.</param>
-        /// <param name="config">Database configuration for file name parsing.</param>
         /// <returns>A new instance of <see cref="PxFileRef"/>.</returns>
         /// <exception cref="ArgumentException">If the parsed id is null, whitespace, contains invalid characters or exceeds 50 characters.</exception>
-        public static PxFileRef Create(string fullFilePath, DataBaseRef database, DataBaseConfig config)
+        public static PxFileRef CreateFromPath(string fullFilePath, DataBaseRef database)
         {
-            char[] allowed = ['_', '-'];
             string fileName = Path.GetFileNameWithoutExtension(fullFilePath);
-            if(!fileName.All(s => char.IsLetterOrDigit(s) || allowed.Contains(s)))
+            if(!fileName.All(s => char.IsLetterOrDigit(s) || _allowedIdChars.Contains(s)))
             {
                 throw new ArgumentException("PxFile id must containt only letters or numbers.");
             }

@@ -76,7 +76,7 @@ namespace PxApi.UnitTests.ControllerTests
             Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef pxFileRef = PxFileRef.Create(table, dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.CreateFromId(table, dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             DoubleDataValue[] mockData = [
                 new DoubleDataValue(1.0, DataValueType.Exists),
@@ -166,7 +166,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };            
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
+            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             DoubleDataValue[] mockData = [
                 new DoubleDataValue(1.0, DataValueType.Exists),
@@ -258,7 +258,7 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
+            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             DoubleDataValue[] mockData = [
                 new DoubleDataValue(1.0, DataValueType.Exists),
@@ -304,7 +304,7 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "invalid";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
+            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
@@ -330,7 +330,7 @@ namespace PxApi.UnitTests.ControllerTests
             Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
+            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
@@ -356,7 +356,7 @@ namespace PxApi.UnitTests.ControllerTests
             string errorMessage = "Invalid argument";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
+            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
@@ -436,7 +436,7 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
+            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             DoubleDataValue[] mockData = [
                 new DoubleDataValue(1.0, DataValueType.Exists),
@@ -482,7 +482,7 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "invalid";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
+            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
@@ -508,7 +508,7 @@ namespace PxApi.UnitTests.ControllerTests
             Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
+            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
@@ -534,7 +534,7 @@ namespace PxApi.UnitTests.ControllerTests
             string errorMessage = "Invalid argument";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.Create(table, dataBaseRef);
+            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);

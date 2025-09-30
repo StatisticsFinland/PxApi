@@ -62,8 +62,8 @@ namespace PxApi.UnitTests.Caching
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             Task<ImmutableSortedDictionary<string, PxFileRef>> expectedFiles = Task.FromResult(
                 ImmutableSortedDictionary<string, PxFileRef>.Empty
-                    .Add("file1", PxFileRef.Create("file1", database))
-                    .Add("file2", PxFileRef.Create("file2", database)));
+                    .Add("file1", PxFileRef.CreateFromId("file1", database))
+                    .Add("file2", PxFileRef.CreateFromId("file2", database)));
             string fileListSeed = GetSeedForKeyword(FILE_LIST_SEED_VARNAME);
             memoryCache.Set(HashCode.Combine(fileListSeed, database), expectedFiles);
             DatabaseCache dbCache = new(memoryCache);
@@ -109,8 +109,8 @@ namespace PxApi.UnitTests.Caching
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
             Task<ImmutableSortedDictionary<string, PxFileRef>> files = Task.FromResult(
                 ImmutableSortedDictionary<string, PxFileRef>.Empty
-                    .Add("file1", PxFileRef.Create("file1", database))
-                    .Add("file2", PxFileRef.Create("file2", database)));
+                    .Add("file1", PxFileRef.CreateFromId("file1", database))
+                    .Add("file2", PxFileRef.CreateFromId("file2", database)));
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
@@ -139,7 +139,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             Task<DateTime> expectedLastUpdated = Task.FromResult(DateTime.UtcNow);
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
@@ -163,7 +163,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
@@ -188,7 +188,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             Task<DateTime> lastUpdated = Task.FromResult(DateTime.UtcNow);
             string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);
             
@@ -215,7 +215,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
             MetaCacheContainer expectedMetaContainer = new(Task.FromResult(mockMetadata.Object));
             
@@ -242,7 +242,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
@@ -267,7 +267,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
             MetaCacheContainer metaContainer = new(Task.FromResult(mockMetadata.Object));
             
@@ -296,7 +296,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
             MetaCacheContainer metaContainer = new(Task.FromResult(mockMetadata.Object));
             
@@ -319,7 +319,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
@@ -401,7 +401,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -429,7 +429,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -462,7 +462,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -505,7 +505,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -558,7 +558,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -579,7 +579,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -612,7 +612,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.Create("file1", database);
+            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2024", "2025"])
@@ -677,7 +677,7 @@ namespace PxApi.UnitTests.Caching
             
             Task<ImmutableSortedDictionary<string, PxFileRef>> fileList = Task.FromResult(
                 ImmutableSortedDictionary<string, PxFileRef>.Empty
-                    .Add("file1", PxFileRef.Create("file1", database)));
+                    .Add("file1", PxFileRef.CreateFromId("file1", database)));
             
             memoryCache.Set(cacheKey, fileList);
             DatabaseCache dbCache = new(memoryCache);
@@ -701,8 +701,8 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef file1 = PxFileRef.Create("file1", database);
-            PxFileRef file2 = PxFileRef.Create("file2", database);
+            PxFileRef file1 = PxFileRef.CreateFromId("file1", database);
+            PxFileRef file2 = PxFileRef.CreateFromId("file2", database);
             List<PxFileRef> fileList = [file1, file2];
 
             MemoryCache memoryCache = new(new MemoryCacheOptions());
@@ -769,8 +769,8 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef file1 = PxFileRef.Create("file1", database);
-            PxFileRef file2 = PxFileRef.Create("file2", database);
+            PxFileRef file1 = PxFileRef.CreateFromId("file1", database);
+            PxFileRef file2 = PxFileRef.CreateFromId("file2", database);
             List<PxFileRef> fileList = [file1, file2];
 
             MatrixMap map1 = new([
@@ -835,7 +835,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef file = PxFileRef.Create("file1", database);
+            PxFileRef file = PxFileRef.CreateFromId("file1", database);
             List<PxFileRef> fileList = [file];
 
             MemoryCache memoryCache = new(new MemoryCacheOptions());
@@ -855,7 +855,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef file = PxFileRef.Create("file1", database);
+            PxFileRef file = PxFileRef.CreateFromId("file1", database);
             List<PxFileRef> fileList = [file];
 
             MemoryCache memoryCache = new(new MemoryCacheOptions());
@@ -881,8 +881,8 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef file1 = PxFileRef.Create("file1", database);
-            PxFileRef file2 = PxFileRef.Create("file2", database);
+            PxFileRef file1 = PxFileRef.CreateFromId("file1", database);
+            PxFileRef file2 = PxFileRef.CreateFromId("file2", database);
             List<PxFileRef> fileList = [file1, file2];
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);

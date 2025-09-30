@@ -192,7 +192,7 @@ namespace PxApi.Controllers
 
                     MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, filters);
                     DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
-                    JsonStat2 jsonStat = ModelBuilder.BuildJsonStat2(meta, data, actualLang);
+                    JsonStat2 jsonStat = ModelBuilder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
 
                     return Ok(jsonStat);
                 }
@@ -268,7 +268,7 @@ namespace PxApi.Controllers
 
                     MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
                     DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
-                    JsonStat2 jsonStat = ModelBuilder.BuildJsonStat2(meta, data, actualLang);
+                    JsonStat2 jsonStat = ModelBuilder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
 
                     return Ok(jsonStat);
                 }

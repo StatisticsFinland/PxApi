@@ -47,16 +47,12 @@ namespace PxApi.Caching
             }
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(dataBase);
-            DataBaseConfig? dbConfig = AppSettings.Active.DataBases.FirstOrDefault(db => db.Id == dataBase.Id);
             Task<ImmutableSortedDictionary<string, PxFileRef>> fileListTask = dbConnector.GetAllFilesAsync().ContinueWith(t =>
             {
                 Dictionary<string, PxFileRef> fileDict = [];
                 foreach (string file in t.Result)
                 {
-                    PxFileRef fileRef = dbConfig != null
-                        ? PxFileRef.Create(file, dbConnector.DataBase, dbConfig)
-                        : PxFileRef.Create(Path.GetFileNameWithoutExtension(file), dbConnector.DataBase);
-
+                    PxFileRef fileRef = PxFileRef.CreateFromId(Path.GetFileNameWithoutExtension(file), dbConnector.DataBase);
                     fileDict.TryAdd(fileRef.Id, fileRef);
                 }
                 return fileDict.ToImmutableSortedDictionary();
@@ -71,7 +67,7 @@ namespace PxApi.Caching
         {
             ImmutableSortedDictionary<string, PxFileRef> files = await GetFileListCachedAsync(db);
             if (files.TryGetValue(fileId, out PxFileRef file)) return file;
-            throw new KeyNotFoundException("File with not found in database.");
+            return null;
         }
 
         /// <inheritdoc/>
