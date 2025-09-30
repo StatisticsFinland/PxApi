@@ -1,3 +1,4 @@
+using Microsoft.FeatureManagement;
 using Microsoft.OpenApi.Models;
 using NLog;
 using NLog.Web;
@@ -84,7 +85,14 @@ namespace PxApi
         [ExcludeFromCodeCoverage] // Not worth it to make public for testing.
         private static void AddServices(IServiceCollection serviceCollection)
         {
-            serviceCollection.AddControllers().AddJsonOptions(options =>
+            // Add feature management first and API explorer conventions to control Swagger visibility
+            serviceCollection.AddFeatureManagement();
+            
+            serviceCollection.AddControllers(options =>
+            {
+                options.Conventions.Add(new ApiExplorerConventionsFactory());
+            })
+            .AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.PropertyNamingPolicy = GlobalJsonConverterOptions.Default.PropertyNamingPolicy;
                 options.JsonSerializerOptions.PropertyNameCaseInsensitive = GlobalJsonConverterOptions.Default.PropertyNameCaseInsensitive;
@@ -97,6 +105,7 @@ namespace PxApi
                     options.JsonSerializerOptions.Converters.Add(converter);
                 }
             });
+
             serviceCollection.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("openapi", new OpenApiInfo { Title = "PxApi", Version = "v1" });
@@ -105,6 +114,7 @@ namespace PxApi
                 c.SelectSubTypesUsing(baseType =>
                     typeof(Program).Assembly.GetTypes().Where(type => type.IsSubclassOf(baseType)));
             });
+            
             serviceCollection.AddMemoryCache();
             
             // Register database connectors as keyed services

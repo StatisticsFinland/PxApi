@@ -22,7 +22,7 @@
         /// </summary>
         public const string PX_FILE = "PxFile";
         /// <summary>
-        /// Used to identify an auxiliary file path (e.g. groupings.json, Alias_<lang>.txt) in logging scopes.
+        /// Used to identify an auxiliary file path (e.g. groupings.json, Alias_{lang}.txt) in logging scopes.
         /// </summary>
         public const string AUXILIARY_PATH = "AuxPath";
     }

@@ -34,21 +34,23 @@ PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px 
      - GET: `/{database}/{table}/json-stat?dimension1:filter=value1,value2&lang=en`
      - POST: `/{database}/{table}/json-stat?lang=en` with filter body
 
-5. **Cache Endpoint** (`/cache`):
-   - Clear file list cache for a database.
-   - Example: DELETE `/cache/files`
-   - Clear metadata cache for a database.
-   - Example: DELETE `/cache/{database}/metadata`
-   - Clear data cache for a database.
-   - Example: DELETE `/cache/{database}/data`
-   - Clear all cache entries across all databases.
-   - Example: DELETE `/cache`
+4. **Cache Endpoints** (`/cache`):
+   - **Clear all cache for a database**:
+     - Deletes all cache entries (file list, metadata, data, last updated) for a specific database.
+     - Endpoint: `DELETE /cache/{database}`
+     - Example: `DELETE /cache/testdb`
+   - **Clear cache for a specific table**:
+     - Deletes all cache entries (metadata, data, last updated) for a specific table in a database.
+     - Endpoint: `DELETE /cache/{database}/{id}`
+     - Example: `DELETE /cache/testdb/table1`
 
 ## Configuration
 
 The application uses `appsettings.json` for configuration. Key settings include:
 
 - `RootUrl`: The base URL for the API.
+- `FeatureManagement`: Configuration for feature flags that control endpoint availability:
+  - `CacheController`: Boolean flag to enable/disable cache management endpoints (default: `true`)
 - `DataBases`: Array of database configurations with the following properties:
   - `Type`: Type of database storage (`Mounted`, `FileShare`, or `BlobStorage`).
   - `Id`: Unique identifier for the database.

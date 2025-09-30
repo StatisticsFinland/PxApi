@@ -86,39 +86,15 @@ namespace PxApi.Caching
         Task<string> GetSingleStringValueAsync(string key, PxFileRef file);
 
         /// <summary>
-        /// Clears all file list cache entries.
-        /// </summary>
-        /// <param name="dbRef">Reference to the database to clear the file list cache for</param>
-        void ClearFileListCache(DataBaseRef dbRef);
-
-        /// <summary>
-        /// Clears all metadata cache entries for the specified database.
-        /// </summary>
-        /// <param name="dataBase">The database for which to clear metadata cache entries.</param>
-        Task ClearMetadataCacheAsync(DataBaseRef dataBase);
-
-        /// <summary>
-        /// Clears all data cache entries for the specified database.
-        /// </summary>
-        /// <param name="dataBase">The database for which to clear data cache entries.</param>
-        Task ClearDataCacheAsync(DataBaseRef dataBase);
-
-        /// <summary>
-        /// Clears last updated timestamp cache entries for the specified database.
-        /// </summary>
-        /// <param name="dataBase">The database for which to clear last updated timestamp cache entries.</param>
-        Task ClearLastUpdatedCacheAsync(DataBaseRef dataBase);
-
-        /// <summary>
         /// Clears all cache entries for the specified database, including file lists, metadata, and data.
         /// </summary>
         /// <param name="dataBase">The database for which to clear all cache entries.</param>
-        Task ClearAllCache(DataBaseRef dataBase);
+        Task ClearDatabaseCacheAsync(DataBaseRef dataBase);
 
         /// <summary>
-        /// Clears all cache entries for all databases.
+        /// Clears all cache entries for a specified table, including metadata, data and last-updated.
         /// </summary>
-        /// <returns>A task that represents the asynchronous operation.</returns>
-        Task ClearAllCachesAsync();
+        /// <param name="file">Reference to the px file for which to clear the cache</param>
+        void ClearTableCache(PxFileRef file);
     }
 }

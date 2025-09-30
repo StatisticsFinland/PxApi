@@ -19,6 +19,11 @@
         public Uri RootUrl { get; }
 
         /// <summary>
+        /// Feature flags configuration for controlling application behavior.
+        /// </summary>
+        public FeatureFlagsConfig Features { get; }
+
+        /// <summary>
         /// The currently active configuration for the application.
         /// </summary>
         public static AppSettings Active
@@ -58,6 +63,8 @@
             }
             
             DataBases = databases;
+            
+            Features = new FeatureFlagsConfig(configuration.GetSection("FeatureManagement"));
         }
 
         /// <summary>
