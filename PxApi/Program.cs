@@ -113,6 +113,12 @@ namespace PxApi
                 c.UseOneOfForPolymorphism();
                 c.SelectSubTypesUsing(baseType =>
                     typeof(Program).Assembly.GetTypes().Where(type => type.IsSubclassOf(baseType)));
+                
+                // Add the custom schema filter for DoubleDataValue to ensure it appears as number type in OpenAPI
+                c.SchemaFilter<DoubleDataValueSchemaFilter>();
+                
+                // Add document filter to remove DoubleDataValue component schemas
+                c.DocumentFilter<DoubleDataValueDocumentFilter>();
             });
             
             serviceCollection.AddMemoryCache();

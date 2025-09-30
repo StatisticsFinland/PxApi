@@ -1,4 +1,5 @@
 using Px.Utils.Models.Data.DataValue;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace PxApi.Models.JsonStat
@@ -12,24 +13,28 @@ namespace PxApi.Models.JsonStat
         /// <summary>
         /// The version of the JSON-stat implementation.
         /// </summary>
+        [Required]
         [JsonPropertyName("version")]
         public string Version { get; init; } = "2.0";
 
         /// <summary>
         /// The object type of the JSON-stat response (dataset, collection, or dimension).
         /// </summary>
+        [Required]
         [JsonPropertyName("class")]
         public string Class { get; } = "dataset";
 
         /// <summary>
         /// The identifier of the dataset.
         /// </summary>
+        [Required]
         [JsonPropertyName("id")]
         public required string Id { get; init; }
 
         /// <summary>
         /// A very short (one line) descriptive text. Language-dependent.
         /// </summary>
+        [Required]
         [JsonPropertyName("label")]
         public required string Label { get; init; }
 
@@ -48,12 +53,14 @@ namespace PxApi.Models.JsonStat
         /// <summary>
         /// The dimensions of the dataset.
         /// </summary>
+        [Required]
         [JsonPropertyName("dimension")]
         public required Dictionary<string, Dimension> Dimension { get; set; }
 
         /// <summary>
         /// The actual data values.
         /// </summary>
+        [Required]
         [JsonPropertyName("value")]
         public required DoubleDataValue[] Value { get; set; }
 
@@ -73,6 +80,7 @@ namespace PxApi.Models.JsonStat
         /// <summary>
         /// The size array that represents the number of elements in each dimension.
         /// </summary>
+        [Required]
         [JsonPropertyName("size")]
         public List<int> Size { get; set; } = [];
 
@@ -91,14 +99,16 @@ namespace PxApi.Models.JsonStat
         /// <summary>
         /// The label of the dimension.
         /// </summary>
+        [Required]
         [JsonPropertyName("label")]
-        public string? Label { get; set; }
+        public required string Label { get; set; }
 
         /// <summary>
         /// The category object containing dimension categories.
         /// </summary>
+        [Required]
         [JsonPropertyName("category")]
-        public Category Category { get; set; } = new Category();
+        public required Category Category { get; set; }
     }
 
     /// <summary>
@@ -109,14 +119,16 @@ namespace PxApi.Models.JsonStat
         /// <summary>
         /// The index array of the category.
         /// </summary>
+        [Required]
         [JsonPropertyName("index")]
-        public List<string>? Index { get; set; }
+        public required List<string> Index { get; set; }
 
         /// <summary>
         /// The labels for each category value.
         /// </summary>
+        [Required]
         [JsonPropertyName("label")]
-        public Dictionary<string, string>? Label { get; set; }
+        public required Dictionary<string, string> Label { get; set; }
 
         /// <summary>
         /// The unit of measurement for each category.
@@ -134,6 +146,7 @@ namespace PxApi.Models.JsonStat
         /// <summary>
         /// The label of the unit.
         /// </summary>
+        [Required]
         [JsonPropertyName("label")]
         public required string Label { get; set; }
 
@@ -154,6 +167,7 @@ namespace PxApi.Models.JsonStat
         /// <summary>
         /// The number of decimals to display for this unit.
         /// </summary>
+        [Required]
         [JsonPropertyName("decimals")]
         public required int Decimals { get; set; }
     }
