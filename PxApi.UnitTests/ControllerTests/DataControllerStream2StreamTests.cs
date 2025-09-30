@@ -370,7 +370,7 @@ namespace PxApi.UnitTests.ControllerTests
                 DataResponse dataResponse = (DataResponse)okResult.Value!;
                 Assert.That(dataResponse.Data, Is.Not.Null);
                 Assert.That(dataResponse.MetaCodes, Is.Not.Null);
-                Assert.That(dataResponse.LastUpdated, Is.Not.EqualTo(default(DateTime)));
+                Assert.That(dataResponse.LastUpdated, Is.EqualTo(new DateTime(2024, 10, 29, 8, 0, 0, DateTimeKind.Utc)));
                 
                 // Verify correct data dimensions: 2 Tiedot × 2 Vuosineljännes × 5 Alue = 20 data points
                 Assert.That(dataResponse.Data, Has.Length.EqualTo(20));
@@ -447,19 +447,19 @@ namespace PxApi.UnitTests.ControllerTests
                 
                 Assert.That(dataResponse1.Data, Is.Not.Null);
                 Assert.That(dataResponse2.Data, Is.Not.Null);
-                Assert.That(dataResponse1.Data.Length, Is.EqualTo(dataResponse2.Data.Length));
+                Assert.That(dataResponse1.Data, Has.Length.EqualTo(dataResponse2.Data.Length));
                 
                 // Single metric × 2 time periods × 5 regions = 10 data points
-                Assert.That(dataResponse1.Data.Length, Is.EqualTo(10));
-                Assert.That(dataResponse2.Data.Length, Is.EqualTo(10));
+                Assert.That(dataResponse1.Data, Has.Length.EqualTo(10));
+                Assert.That(dataResponse2.Data, Has.Length.EqualTo(10));
                 
                 // Verify all values have correct DataValueType
                 Assert.That(dataResponse1.Data.All(d => d.Type == DataValueType.Exists), Is.True);
                 Assert.That(dataResponse2.Data.All(d => d.Type == DataValueType.Exists), Is.True);
                 
                 // Compare actual data values against expected array for both calls
-                double[] actualValues1 = dataResponse1.Data.Select(d => d.UnsafeValue).ToArray();
-                double[] actualValues2 = dataResponse2.Data.Select(d => d.UnsafeValue).ToArray();
+                double[] actualValues1 = [.. dataResponse1.Data.Select(d => d.UnsafeValue)];
+                double[] actualValues2 = [.. dataResponse2.Data.Select(d => d.UnsafeValue)];
                 Assert.That(actualValues1, Is.EqualTo(expectedValues));
                 Assert.That(actualValues2, Is.EqualTo(expectedValues));
                 Assert.That(actualValues1, Is.EqualTo(actualValues2));
@@ -490,6 +490,12 @@ namespace PxApi.UnitTests.ControllerTests
                 { "Vuosineljännes:code", "2022Q2" }
             };
 
+            // Expected data for superset: 2 metrics × 2 time periods × 5 regions = 20 data points
+            double[] expectedSupersetValues = [
+                0.3, 0.7, -0.1, 0.2, 0.8, 1.3, 0.2, 0.5, 0.6, 1.2, // 2022Q1: neljmuut, neljmuut_eka for all regions
+                1.3, 1.1, 1.2, 0.4, 1.5, 1.8, 1.2, 0.4, 1.7, 2.4   // 2022Q2: neljmuut, neljmuut_eka for all regions
+            ];
+
             // Expected data for subset: 1 metric × 1 time period × 5 regions = 5 data points
             double[] expectedSubsetValues = [1.3, 1.2, 1.5, 1.2, 1.7]; // 2022Q2 neljmuut for all regions
 
@@ -518,22 +524,19 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(subsetDataResponse.Data, Is.Not.Null);
                 
                 // Superset: 2 metrics × 2 time periods × 5 regions = 20 data points
-                Assert.That(supersetDataResponse.Data.Length, Is.EqualTo(20));
+                Assert.That(supersetDataResponse.Data, Has.Length.EqualTo(20));
                 
                 // Subset: 1 metric × 1 time period × 5 regions = 5 data points
-                Assert.That(subsetDataResponse.Data.Length, Is.EqualTo(5));
-                Assert.That(subsetDataResponse.Data.Length, Is.LessThan(supersetDataResponse.Data.Length));
-                
-                // Verify subset contains correct data for neljmuut metric in 2022Q2
-                // Expected values for 2022Q2 across regions: 1.3, 1.2, 1.5, 1.2, 1.7
-                Assert.That(subsetDataResponse.Data[0].UnsafeValue, Is.EqualTo(1.3)); // ksu
-                Assert.That(subsetDataResponse.Data[1].UnsafeValue, Is.EqualTo(1.2)); // pks
-                Assert.That(subsetDataResponse.Data[2].UnsafeValue, Is.EqualTo(1.5)); // msu
-                Assert.That(subsetDataResponse.Data[3].UnsafeValue, Is.EqualTo(1.2)); // kas
-                Assert.That(subsetDataResponse.Data[4].UnsafeValue, Is.EqualTo(1.7)); // muu
+                Assert.That(subsetDataResponse.Data, Has.Length.EqualTo(5));
+                Assert.That(subsetDataResponse.Data, Has.Length.LessThan(supersetDataResponse.Data.Length));
                 
                 // Verify all data points exist
+                Assert.That(supersetDataResponse.Data.All(d => d.Type == DataValueType.Exists), Is.True);
                 Assert.That(subsetDataResponse.Data.All(d => d.Type == DataValueType.Exists), Is.True);
+                
+                // Compare actual superset data against expected array
+                double[] actualSupersetValues = supersetDataResponse.Data.Select(d => d.UnsafeValue).ToArray();
+                Assert.That(actualSupersetValues, Is.EqualTo(expectedSupersetValues));
                 
                 // Compare actual subset data against expected array
                 double[] actualSubsetValues = subsetDataResponse.Data.Select(d => d.UnsafeValue).ToArray();
