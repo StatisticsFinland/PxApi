@@ -31,7 +31,7 @@ namespace PxApi.Controllers
         /// <response code="400">If the query parameters are invalid.</response>
         /// <response code="404">If the specified database or table is not found.</response>
         [HttpGet]
-        [Route("json/{database}/{table}")]
+        [Route("{database}/{table}/json")]
         [Produces("application/json")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
@@ -88,7 +88,7 @@ namespace PxApi.Controllers
         /// <response code="400">If the query is invalid.</response>
         /// <response code="404">If the specified database or table is not found.</response>
         [HttpPost]
-        [Route("json/{database}/{table}")]
+        [Route("{database}/{table}/json")]
         [Produces("application/json")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
