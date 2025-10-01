@@ -14,10 +14,10 @@ namespace PxApi.UnitTests.Models.QueryFilters
         {
             // Arrange
             IReadOnlyMatrixMetadata meta = MatrixMetadataUtils.CreateMetadata([4, 4, 4], ["fi", "en"]);
-            Dictionary<string, IFilter> filters = new()
+            Dictionary<string, Filter> filters = new()
             {
                 { "dim0", new CodeFilter(["dim0-val1"]) },
-                { "dim1", new AllFilter() },
+                { "dim1", new CodeFilter(["*"]) },
                 { "dim2", new FromFilter("dim2-val2") }
             };
 
@@ -40,7 +40,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
         {
             // Arrange
             IReadOnlyMatrixMetadata meta = MatrixMetadataUtils.CreateMetadata([4, 4, 4], ["fi", "en"]);
-            Dictionary<string, IFilter> filters = [];
+            Dictionary<string, Filter> filters = [];
 
             // Act
             MatrixMap filtered = MetaFiltering.ApplyToMatrixMeta(meta, filters);
@@ -59,7 +59,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
         {
             // Arrange
             IReadOnlyMatrixMetadata meta = MatrixMetadataUtils.CreateMetadata([4, 25, 4], ["fi", "en"]);
-            Dictionary<string, IFilter> filters = new()
+            Dictionary<string, Filter> filters = new()
             {
                 { "dim0", new CodeFilter(["dim0-val2"]) }
                 // No filter for dim1 (time dimension) - should apply LastFilter(20)
@@ -85,7 +85,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
             // Arrange
             // Create metadata with an "ELIMINATION" property on one dimension
             IReadOnlyMatrixMetadata meta = CreateMetadataWithElimination();
-            Dictionary<string, IFilter> filters = [];
+            Dictionary<string, Filter> filters = [];
 
             // Act
             MatrixMap filtered = MetaFiltering.ApplyToMatrixMeta(meta, filters);

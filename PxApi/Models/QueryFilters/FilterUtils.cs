@@ -59,16 +59,16 @@ namespace PxApi.Models.QueryFilters
         /// <param name="meta">The metadata containing dimensions to filter</param>
         /// <param name="filters">Dictionary of dimension codes and their corresponding filters</param>
         /// <returns>A MatrixMap containing the filtered dimensions</returns>
-        public static MatrixMap FilterDimensions(IReadOnlyMatrixMetadata meta, Dictionary<string, List<IFilter>> filters)
+        public static MatrixMap FilterDimensions(IReadOnlyMatrixMetadata meta, Dictionary<string, List<Filter>> filters)
         {
             List<IDimensionMap> dimMaps = [];
             
             foreach(IReadOnlyDimension dim in meta.Dimensions)
             {
                 IDimensionMap dimensionMap = new DimensionMap(dim.Code, [..dim.ValueCodes]);
-                if (filters.TryGetValue(dim.Code, out List<IFilter>? filterList))
+                if (filters.TryGetValue(dim.Code, out List<Filter>? filterList))
                 {
-                    foreach (IFilter filter in filterList)
+                    foreach (Filter filter in filterList)
                     {
                         dimensionMap = filter.Apply(dimensionMap);
                     }

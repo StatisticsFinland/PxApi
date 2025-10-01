@@ -73,7 +73,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+            string[] filters = ["dim0:code=value1"];
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             PxFileRef pxFileRef = PxFileRef.CreateFromId(table, dataBaseRef);
@@ -89,7 +89,7 @@ namespace PxApi.UnitTests.ControllerTests
             _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>())).ReturnsAsync(mockData);
 
             // Act
-            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, parameters);
+            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, filters);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
@@ -110,12 +110,12 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "nonexistent";
             string table = "testtable";
-            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+            string[] filters = ["dim0:code=value1"];
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
 
             // Act
-            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, parameters);
+            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, filters);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -134,14 +134,14 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "nonexistent";
-            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+            string[] filters = ["dim0:code=value1"];
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync((PxFileRef?)null);
 
             // Act
-            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, parameters);
+            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, filters);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -164,7 +164,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };            
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };            
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
@@ -200,7 +200,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "nonexistent";
             string table = "testtable";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
 
@@ -224,7 +224,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "nonexistent";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
@@ -254,7 +254,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+            string[] filters = ["dim0:code=value1"];
             string lang = "en";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
@@ -271,7 +271,7 @@ namespace PxApi.UnitTests.ControllerTests
             _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>())).ReturnsAsync(mockData);
 
             // Act
-            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, parameters, lang);
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters, lang);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
@@ -300,7 +300,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+            string[] filters = ["dim0:code=value1"];
             string lang = "invalid";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
@@ -312,7 +312,7 @@ namespace PxApi.UnitTests.ControllerTests
             _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(mockMetadata);
 
             // Act
-            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, parameters, lang);
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters, lang);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
@@ -327,7 +327,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+            string[] filters = ["dim0:code=value1"];
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
@@ -337,7 +337,7 @@ namespace PxApi.UnitTests.ControllerTests
             _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(fileRef)).ThrowsAsync(new FileNotFoundException("File not found"));
 
             // Act
-            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, parameters);
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
@@ -352,7 +352,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+            string[] filters = ["dim0:code=value1"];
             string errorMessage = "Invalid argument";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
@@ -363,7 +363,7 @@ namespace PxApi.UnitTests.ControllerTests
             _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(fileRef)).ThrowsAsync(new ArgumentException(errorMessage));
 
             // Act
-            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, parameters);
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
@@ -378,12 +378,12 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "nonexistent";
             string table = "testtable";
-            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+            string[] filters = ["dim0:code=value1"];
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
 
             // Act
-            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, parameters);
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -402,14 +402,14 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "nonexistent";
-            Dictionary<string, string> parameters = new() { { "dim0.code", "value1" } };
+            string[] filters = ["dim0:code=value1"];
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync((PxFileRef?)null);
 
             // Act
-            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, parameters);
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -432,7 +432,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
             string lang = "en";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
@@ -478,7 +478,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
             string lang = "invalid";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
@@ -505,7 +505,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
@@ -530,7 +530,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
             string errorMessage = "Invalid argument";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
@@ -556,7 +556,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "nonexistent";
             string table = "testtable";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
 
@@ -580,7 +580,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "nonexistent";
-            Dictionary<string, IFilter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);

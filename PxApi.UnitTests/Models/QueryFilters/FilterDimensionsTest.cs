@@ -12,11 +12,11 @@ namespace PxApi.UnitTests.Models.QueryFilters
         {
             // Arrange
             IReadOnlyMatrixMetadata meta = MatrixMetadataUtils.CreateMetadata([4, 4, 4], ["fi", "en"]);
-            Dictionary<string, List<IFilter>> filters = new()
+            Dictionary<string, List<Filter>> filters = new()
             {
-                { "dim0", new List<IFilter> { new CodeFilter(["dim0-val1"]) } },
-                { "dim1", new List<IFilter> { new AllFilter() } },
-                { "dim2", new List<IFilter> { new FromFilter("dim2-val2")} }
+                { "dim0", new List<Filter> { new CodeFilter(["dim0-val1"]) } },
+                { "dim1", new List<Filter> { new CodeFilter(["*"]) } },
+                { "dim2", new List<Filter> { new FromFilter("dim2-val2")} }
             };
 
             // Act
@@ -38,7 +38,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
         {
             // Arrange
             IReadOnlyMatrixMetadata meta = MatrixMetadataUtils.CreateMetadata([4, 4, 4], ["fi", "en"]);
-            Dictionary<string, List<IFilter>> filters = [];
+            Dictionary<string, List<Filter>> filters = [];
             // Act
             MatrixMap filtered = FilterUtils.FilterDimensions(meta, filters);
             // Assert
@@ -55,12 +55,13 @@ namespace PxApi.UnitTests.Models.QueryFilters
         {
             // Arrange
             IReadOnlyMatrixMetadata meta = MatrixMetadataUtils.CreateMetadata([4], ["fi", "en"]);
-            Dictionary<string, List<IFilter>> filters = new()
+            Dictionary<string, List<Filter>> filters = new()
             {
-                { "dim0", new List<IFilter> {
+                { "dim0", new List<Filter> {
                     new FromFilter("dim0-val1"), // Removes first value "dim0-val0"
-                    new ToFilter() {FilterString = "dim0-val2" } } // Excludes last value "dim0-val3"
+                    new ToFilter() {FilterString = "dim0-val2" } // Excludes last value "dim0-val3"
                 }
+            }
             };
 
             // Act
@@ -79,9 +80,9 @@ namespace PxApi.UnitTests.Models.QueryFilters
         {
             // Arrange
             IReadOnlyMatrixMetadata meta = MatrixMetadataUtils.CreateMetadata([4], ["fi", "en"]);
-            Dictionary<string, List<IFilter>> filters = new()
+            Dictionary<string, List<Filter>> filters = new()
             {
-                { "dim0", new List<IFilter> {
+                { "dim0", new List<Filter> {
                     new FromFilter("dim0-val1"), // Removes first value "dim0-val0"
                     new CodeFilter(["dim0-val0"]) // Keeps only "dim0-val0", which is already filtered out
                 } }

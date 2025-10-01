@@ -345,11 +345,10 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange  
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, string> parameters = new()
-            {
-                { "Tiedot:code", "neljmuut,neljmuut_eka" },
-                { "Vuosineljännes:code", "2022Q1,2022Q2" }
-            };
+            string[] filters = [
+                "Tiedot:code=neljmuut,neljmuut_eka",
+                "Vuosineljännes:code=2022Q1,2022Q2"
+            ];
 
             // Expected data values for 2 metrics × 2 time periods × 5 regions = 20 data points
             double[] expectedValues = [
@@ -358,7 +357,7 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             // Act
-            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, parameters);
+            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, filters);
 
             // Assert
             Assert.Multiple(() =>
@@ -412,11 +411,10 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, string> parameters = new()
-            {
-                { "Tiedot:code", "neljmuut" },
-                { "Vuosineljännes:code", "2022Q1,2022Q2" }
-            };
+            string[] filters = [
+                "Tiedot:code=neljmuut",
+                "Vuosineljännes:code=2022Q1,2022Q2"
+            ];
 
             // Expected data values for 1 metric × 2 time periods × 5 regions = 10 data points
             double[] expectedValues = [
@@ -425,10 +423,10 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             // Act - First call should read from stream
-            ActionResult<DataResponse> result1 = await _controller.GetJsonAsync(database, table, parameters);
+            ActionResult<DataResponse> result1 = await _controller.GetJsonAsync(database, table, filters);
             
             // Act - Second call should use cache
-            ActionResult<DataResponse> result2 = await _controller.GetJsonAsync(database, table, parameters);
+            ActionResult<DataResponse> result2 = await _controller.GetJsonAsync(database, table, filters);
 
             // Assert
             Assert.Multiple(() =>
@@ -477,18 +475,16 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             
             // First request for superset
-            Dictionary<string, string> supersetParameters = new()
-            {
-                { "Tiedot:code", "neljmuut,neljmuut_eka" },
-                { "Vuosineljännes:code", "2022Q1,2022Q2" }
-            };
+            string[] supersetFilters = [
+                "Tiedot:code=neljmuut,neljmuut_eka",
+                "Vuosineljännes:code=2022Q1,2022Q2"
+            ];
             
             // Second request for subset
-            Dictionary<string, string> subsetParameters = new()
-            {
-                { "Tiedot:code", "neljmuut" },
-                { "Vuosineljännes:code", "2022Q2" }
-            };
+            string[] subsetFilters = [
+                "Tiedot:code=neljmuut",
+                "Vuosineljännes:code=2022Q2"
+            ];
 
             // Expected data for superset: 2 metrics × 2 time periods × 5 regions = 20 data points
             double[] expectedSupersetValues = [
@@ -500,10 +496,10 @@ namespace PxApi.UnitTests.ControllerTests
             double[] expectedSubsetValues = [1.3, 1.2, 1.5, 1.2, 1.7]; // 2022Q2 neljmuut for all regions
 
             // Act - First call loads superset data
-            ActionResult<DataResponse> supersetResult = await _controller.GetJsonAsync(database, table, supersetParameters);
+            ActionResult<DataResponse> supersetResult = await _controller.GetJsonAsync(database, table, supersetFilters);
             
             // Act - Second call should get subset from cached superset
-            ActionResult<DataResponse> subsetResult = await _controller.GetJsonAsync(database, table, subsetParameters);
+            ActionResult<DataResponse> subsetResult = await _controller.GetJsonAsync(database, table, subsetFilters);
 
             // Assert
             Assert.Multiple(() =>
@@ -552,7 +548,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, IFilter> query = new()
+            Dictionary<string, Filter> query = new()
             {
                 { "Tiedot", new CodeFilter(["neljmuut", "neljmuut_eka"]) },
                 { "Alue", new CodeFilter(["ksu"]) }
@@ -613,11 +609,10 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, string> parameters = new()
-            {
-                { "Alue:code", "ksu,pks" },
-                { "Tiedot:code", "neljmuut" },
-            };
+            string[] filters = [
+                "Alue:code=ksu,pks",
+                "Tiedot:code=neljmuut"
+            ];
             const string? lang = "en";
 
             // Expected data: 1 metric × 10 time periods × 2 regions = 20 data points
@@ -636,7 +631,7 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             // Act
-            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, parameters, lang);
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters, lang);
 
             // Assert
             Assert.Multiple(() =>
@@ -689,7 +684,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, IFilter> query = new()
+            Dictionary<string, Filter> query = new()
             {
                 { "Tiedot", new CodeFilter(["vmuut"]) },
                 { "Alue", new CodeFilter(["ksu", "pks"]) }
@@ -763,10 +758,10 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "nonexistentdb";
             string table = "testtable";
-            Dictionary<string, string> parameters = [];
+            string[] filters = [];
 
             // Act
-            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, parameters);
+            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, filters);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -778,10 +773,10 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "nonexistenttable";
-            Dictionary<string, string> parameters = [];
+            string[] filters = [];
 
             // Act
-            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, parameters);
+            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, filters);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -793,11 +788,11 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, string> parameters = [];
+            string[] filters = [];
             const string invalidLang = "invalid";
 
             // Act
-            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, parameters, invalidLang);
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters, invalidLang);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());

@@ -6,7 +6,7 @@ namespace PxApi.Models.QueryFilters
     /// Provides a filter that returns all elements from the input collection after and including the first element that matches the specified filter string.
     /// The filter string can contain wildcard '*' that matches zero or more characters.
     /// </summary>
-    public class FromFilter(string filterString) : IFilter
+    public class FromFilter(string filterString) : Filter
     {
         /// <summary>
         /// Used to match the items in the input collection against, can contain wildcard '*' that matches zero or more characters.
@@ -14,7 +14,7 @@ namespace PxApi.Models.QueryFilters
         public string FilterString { get; } = filterString;
 
         /// <inheritdoc/>
-        public DimensionMap Apply(IDimensionMap input)
+        public override DimensionMap Apply(IDimensionMap input)
         {
             List<string> resultCodes = [];
             bool found = false;

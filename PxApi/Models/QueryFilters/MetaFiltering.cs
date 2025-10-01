@@ -19,11 +19,11 @@ namespace PxApi.Models.QueryFilters
         /// <param name="meta">The matrix metadata to filter.</param>
         /// <param name="filters">A dictionary of filters to apply to the dimensions.</param>
         /// <returns>A new <see cref="MatrixMap"/> with the filtered dimensions.</returns>
-        public static MatrixMap ApplyToMatrixMeta(IReadOnlyMatrixMetadata meta, Dictionary<string, IFilter> filters)
+        public static MatrixMap ApplyToMatrixMeta(IReadOnlyMatrixMetadata meta, Dictionary<string, Filter> filters)
         {
             return new([.. meta.Dimensions.Select(dim =>
             {
-                if (filters.TryGetValue(dim.Code, out IFilter? filter))
+                if (filters.TryGetValue(dim.Code, out Filter? filter))
                 {
                     return filter.Apply(dim);
                 }

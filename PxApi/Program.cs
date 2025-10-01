@@ -1,7 +1,7 @@
 using Microsoft.FeatureManagement;
 using Microsoft.OpenApi.Models;
-using NLog;
 using NLog.Web;
+using NLog;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.DataSources;
@@ -119,6 +119,18 @@ namespace PxApi
                 
                 // Add document filter to remove DoubleDataValue component schemas
                 c.DocumentFilter<DoubleDataValueDocumentFilter>();
+                
+                // Add document filter to remove Filter subclass component schemas
+                c.DocumentFilter<FilterSubclassDocumentFilter>();
+                
+                // Add schema filter for Filter types to document the custom JSON structure
+                c.SchemaFilter<FilterSchemaFilter>();
+                
+                // Add document filter to enhance DataController POST endpoint documentation with request body examples
+                c.DocumentFilter<DataControllerPostEndpointDocumentFilter>();
+                
+                // Add document filter to enhance DataController GET endpoint documentation with query parameter examples
+                c.DocumentFilter<DataControllerGetEndpointDocumentFilter>();
             });
             
             serviceCollection.AddMemoryCache();

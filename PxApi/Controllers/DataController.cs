@@ -21,11 +21,11 @@ namespace PxApi.Controllers
     public class DataController(ICachedDataSource dataSource, ILogger<DataController> logger) : ControllerBase
     {
         /// <summary>
-        /// GET endpoint to recieve px cube data in <see cref="DataResponse"/> JSON format.
+        /// GET endpoint to receive px cube data in <see cref="DataResponse"/> JSON format.
         /// </summary>
         /// <param name="database">Name of the database containing the table.</param>
         /// <param name="table">Name of the px table to query.</param>
-        /// <param name="parameters">Parameters for filtering the data where key contains the dimension code and filter type separated by period. Value contains a positive integer or a comma-separated list of values.</param>
+        /// <param name="filters">Array of filter specifications in the format 'dimension:filterType=value'.</param>
         /// <returns>JSON response containing the data, metadata and last updated timestamp.</returns>
         /// <response code="200">Returns the data in <see cref="DataResponse"/> format.</response>
         /// <response code="400">If the query parameters are invalid.</response>
@@ -39,7 +39,7 @@ namespace PxApi.Controllers
         public async Task<ActionResult<DataResponse>> GetJsonAsync(
             [FromRoute] string database,
             [FromRoute] string table,
-            [FromQuery] Dictionary<string, string> parameters
+            [FromQuery] string[]? filters = null
             )
         {
             using (logger.BeginScope(new Dictionary<string, object>()
@@ -63,9 +63,9 @@ namespace PxApi.Controllers
                     return NotFound();
                 }
 
-                Dictionary<string, IFilter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+                Dictionary<string, Filter> filterDict = QueryFilterUtils.ConvertFiltersArrayToFilters(filters ?? []);
                 IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
-                MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, filters);
+                MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, filterDict);
                 DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
 
                 return Ok(new DataResponse
@@ -82,7 +82,7 @@ namespace PxApi.Controllers
         /// </summary>
         /// <param name="database">Name of the database containing the table.</param>
         /// <param name="table">Name of the px table to query.</param>
-        /// <param name="query">Dictionary containing dimension codes as keys and <see cref="IFilter"/> objects as values.</param>
+        /// <param name="query">Dictionary containing dimension codes as keys and <see cref="Filter"/> objects as values.</param>
         /// <returns>JSON response containing the data, metadata and last updated timestamp.</returns>
         /// <response code="200">Returns the data in <see cref="DataResponse"/> format.</response>
         /// <response code="400">If the query is invalid.</response>
@@ -96,7 +96,7 @@ namespace PxApi.Controllers
         public async Task<ActionResult<DataResponse>> PostJsonAsync(
             [FromRoute] string database,
             [FromRoute] string table,
-            [FromBody] Dictionary<string, IFilter> query
+            [FromBody] Dictionary<string, Filter> query
             )
         {
             using (logger.BeginScope(new Dictionary<string, object>()
@@ -134,11 +134,11 @@ namespace PxApi.Controllers
         }
 
         /// <summary>
-        /// GET endpoint to receive data in JSON-stat2 format.
+        /// GET endpoint to receive data in json-stat2 format.
         /// </summary>
         /// <param name="database">The name of the database containing the table.</param>
         /// <param name="table">The name of the px table to query.</param>
-        /// <param name="parameters">Dictionary for filtering the data, where key contains the dimension code and filter type separated by period. Value contains a positive integer or a comma-separated list of values.</param>
+        /// <param name="filters">Array of filter specifications in the format 'dimension:filterType=value'.</param>
         /// <param name="lang">Language code for the response. If not provided, uses the default language of the table.</param>
         /// <returns>JSON in <see cref="JsonStat2"/> format containing the data and metadata.</returns>
         /// <response code="200">Returns the data in <see cref="JsonStat2"/> format.</response>
@@ -153,7 +153,7 @@ namespace PxApi.Controllers
         public async Task<ActionResult<JsonStat2>> GetJsonStatAsync(
             [FromRoute] string database,
             [FromRoute] string table,
-            [FromQuery] Dictionary<string, string> parameters,
+            [FromQuery] string[]? filters = null,
             [FromQuery] string? lang = null
             )
         {
@@ -180,7 +180,7 @@ namespace PxApi.Controllers
                         return NotFound();
                     }   
 
-                    Dictionary<string, IFilter> filters = QueryFilterUtils.ConvertUrlParametersToFilters(parameters);
+                    Dictionary<string, Filter> filterDict = QueryFilterUtils.ConvertFiltersArrayToFilters(filters ?? []);
                     IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
 
                     string actualLang = lang ?? meta.DefaultLanguage;
@@ -190,7 +190,7 @@ namespace PxApi.Controllers
                         return BadRequest("The content is not available in the requested language.");
                     }
 
-                    MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, filters);
+                    MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, filterDict);
                     DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
                     JsonStat2 jsonStat = ModelBuilder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
 
@@ -210,11 +210,11 @@ namespace PxApi.Controllers
         }
 
         /// <summary>
-        /// POST endpoint to receive data in JSON-stat2 format.
+        /// POST endpoint to receive data in json-stat2 format.
         /// </summary>
         /// <param name="database">The name of the database containing the table.</param>
         /// <param name="table">The name of the px table to query.</param>
-        /// <param name="query">The query parameters for filtering the data in the form of a dictionary, where keys are dimension codes and values are <see cref="IFilter"/> objects.</param>
+        /// <param name="query">The query parameters for filtering the data in the form of a dictionary, where keys are dimension codes and values are <see cref="Filter"/> objects.</param>
         /// <param name="lang">The language code for the response. If not provided, uses the default language of the table.</param>
         /// <returns>JSON in <see cref="JsonStat2"/> format containing the data and metadata.</returns>
         /// <response code="200">Returns the data in <see cref="JsonStat2"/> format.</response>
@@ -229,7 +229,7 @@ namespace PxApi.Controllers
         public async Task<ActionResult<JsonStat2>> PostJsonStatAsync(
             [FromRoute] string database,
             [FromRoute] string table,
-            [FromBody] Dictionary<string, IFilter> query,
+            [FromBody] Dictionary<string, Filter> query,
             [FromQuery] string? lang = null
             )
         {

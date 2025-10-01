@@ -4,10 +4,10 @@ using System.Text.Json.Serialization;
 namespace PxApi.Models.QueryFilters
 {
     /// <summary>
-    /// Provides custom JSON serialization and deserialization for objects implementing the <see cref="IFilter"/>
+    /// Provides custom JSON serialization and deserialization for objects implementing the <see cref="Filter"/>
     /// interface.
     /// </summary>
-    public class FilterJsonConverter : JsonConverter<IFilter>
+    public class FilterJsonConverter : JsonConverter<Filter>
     {
         /// <summary>
         /// Specifies the type of filter to use when serializing and deserializing.
@@ -19,10 +19,6 @@ namespace PxApi.Models.QueryFilters
             /// Code filter that matches input strings against a list of filter strings.
             /// </summary>
             Code,
-            /// <summary>
-            /// All filter that matches all input strings.
-            /// </summary>
-            All,
             /// <summary>
             /// From filter that matches input strings starting from the first string that matches the filter string.
             /// </summary>
@@ -60,17 +56,11 @@ namespace PxApi.Models.QueryFilters
         }
 
         /// <inheritdoc/>
-        public override void Write(Utf8JsonWriter writer, IFilter value, JsonSerializerOptions options)
+        public override void Write(Utf8JsonWriter writer, Filter value, JsonSerializerOptions options)
         {
             if (value is CodeFilter codeFilter)
             {
                 JsonSerializer.Serialize(writer, new { type = FilterType.Code, query = codeFilter.FilterStrings });
-                return;
-            }
-
-            if (value is AllFilter)
-            {
-                JsonSerializer.Serialize(writer, new { type = FilterType.All });
                 return;
             }
 
@@ -98,7 +88,7 @@ namespace PxApi.Models.QueryFilters
         }
 
         /// <inheritdoc/>
-        public override IFilter Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override Filter Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             FilterJsonModel? filterWrapper = JsonSerializer.Deserialize<FilterJsonModel>(ref reader, options);
 
@@ -110,10 +100,6 @@ namespace PxApi.Models.QueryFilters
                         codesList!.ForEach(ValidateInputString);
                         return new CodeFilter(codesList);
                     }
-                case FilterType.All:
-                    {
-                        return new AllFilter();
-                    }
                 case FilterType.From:
                     {
                         string? fromCode = filterWrapper.Query.Deserialize<string>(options);
@@ -124,7 +110,7 @@ namespace PxApi.Models.QueryFilters
                     {
                         string? toCode = filterWrapper.Query.Deserialize<string>(options);
                         ValidateInputString(toCode!);
-                        return new FromFilter(toCode!);
+                        return new ToFilter { FilterString = toCode! };
                     }
                 case FilterType.First:
                     {
