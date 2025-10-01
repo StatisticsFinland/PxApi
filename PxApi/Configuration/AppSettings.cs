@@ -24,6 +24,11 @@
         public FeatureFlagsConfig Features { get; }
 
         /// <summary>
+        /// Authentication configuration for controlling access to protected endpoints.
+        /// </summary>
+        public AuthenticationConfig Authentication { get; }
+
+        /// <summary>
         /// The currently active configuration for the application.
         /// </summary>
         public static AppSettings Active
@@ -65,6 +70,7 @@
             DataBases = databases;
             
             Features = new FeatureFlagsConfig(configuration.GetSection("FeatureManagement"));
+            Authentication = new AuthenticationConfig(configuration.GetSection(nameof(Authentication)));
         }
 
         /// <summary>

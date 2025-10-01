@@ -113,6 +113,35 @@ namespace PxApi
                 c.UseOneOfForPolymorphism();
                 c.SelectSubTypesUsing(baseType =>
                     typeof(Program).Assembly.GetTypes().Where(type => type.IsSubclassOf(baseType)));
+
+                // Add API Key authentication to Swagger if configured
+                if (AppSettings.Active.Authentication.IsEnabled)
+                {
+                    c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+                    {
+                        Description = $"API Key needed to access the cache endpoints. Add the key in the '{AppSettings.Active.Authentication.Cache.HeaderName}' header.",
+                        Type = SecuritySchemeType.ApiKey,
+                        Name = AppSettings.Active.Authentication.Cache.HeaderName,
+                        In = ParameterLocation.Header,
+                        Scheme = "ApiKeyScheme"
+                    });
+
+                    OpenApiSecurityRequirement key = new()
+                    {
+                        {
+                            new OpenApiSecurityScheme
+                            {
+                                Reference = new OpenApiReference
+                                {
+                                    Type = ReferenceType.SecurityScheme,
+                                    Id = "ApiKey"
+                                }
+                            },
+                            []
+                        }
+                    };
+                    c.AddSecurityRequirement(key);
+                }
                 
                 // Add the custom schema filter for DoubleDataValue to ensure it appears as number type in OpenAPI
                 c.SchemaFilter<DoubleDataValueSchemaFilter>();

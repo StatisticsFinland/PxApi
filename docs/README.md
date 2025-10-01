@@ -43,6 +43,7 @@ PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px 
      - Deletes all cache entries (metadata, data, last updated) for a specific table in a database.
      - Endpoint: `DELETE /cache/{database}/{id}`
      - Example: `DELETE /cache/testdb/table1`
+   - **Authentication**: Cache endpoints support optional API key authentication. See [Authentication.md](docs/Authentication.md) for configuration details.
 
 ## Configuration
 

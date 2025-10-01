@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.FeatureManagement.Mvc;
+using PxApi.Authentication;
 using PxApi.Caching;
 using PxApi.Models;
 using PxApi.Utilities;
@@ -15,6 +16,7 @@ namespace PxApi.Controllers
     /// </remarks>
     /// <param name="cachedConnector">Cache connector for accessing cache operations.</param>
     /// <param name="logger">Logger for logging information, warnings and errors.</param>
+    [ApiKeyAuth]
     [FeatureGate(nameof(CacheController))]
     [Route("cache")]
     [ApiController]
@@ -31,7 +33,9 @@ namespace PxApi.Controllers
         [HttpDelete("{database}/{id}")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 401)]
         [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
         public async Task<ActionResult> ClearTableCacheAsync([FromRoute] string database, string id)
         {
             using (_logger.BeginScope(new Dictionary<string, string>
@@ -75,11 +79,15 @@ namespace PxApi.Controllers
         /// <param name="database">Name of the database for which to clear all cache entries.</param>
         /// <returns>A message indicating the result of the operation.</returns>
         /// <response code="200">All cache entries were successfully cleared.</response>
+        /// <response code="401">If the API key authentication fails.</response>
         /// <response code="404">If the database was not found.</response>
+        /// <response code="500">If an error occurs while clearing cache entries.</response>
         [HttpDelete("{database}")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 401)]
         [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
         public async Task<ActionResult> ClearAllCacheAsync([FromRoute] string database)
         {
             using (_logger.BeginScope(new Dictionary<string, object>
