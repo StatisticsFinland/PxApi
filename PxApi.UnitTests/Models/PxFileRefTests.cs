@@ -15,7 +15,8 @@ namespace PxApi.UnitTests.Models
         public void Create_WithValidIdAndDatabase_ReturnsPxFileRef(string id, string dbId)
         {
             DataBaseRef db = DataBaseRef.Create(dbId);
-            PxFileRef pxFileRef = PxFileRef.CreateFromId(id, db);
+            string filePath = Path.Combine("c:", "testfolder", $"{id}.px");
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(filePath, db);
             Assert.Multiple(() =>
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(id));
@@ -28,13 +29,13 @@ namespace PxApi.UnitTests.Models
         [TestCase("file 1", "database")]
         [TestCase("", "database")]
         [TestCase("   ", "database")]
-        [TestCase(null, "database")]
         [TestCase("\r\n \n", "database")]
         [TestCase("AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrRsStTuUvVwWxXyYz", "database")] // too long
         public void Create_WithInvalidId_ThrowsArgumentException(string? id, string dbId)
         {
             DataBaseRef db = DataBaseRef.Create(dbId);
-            Assert.Throws<ArgumentException>(() => PxFileRef.CreateFromId(id!, db), "Id cannot be null, whitespace or too long.");
+            string filePath = Path.Combine("c:", "testfolder", $"{id}.px");
+            Assert.Throws<ArgumentException>(() => PxFileRef.CreateFromPath(filePath, db), $"id: {id} with db: {dbId} did not throw exception.");
         }
 
         [Test]
@@ -105,8 +106,10 @@ namespace PxApi.UnitTests.Models
             const string id = "file1";
             const string dbId = "database";
             DataBaseRef db = DataBaseRef.Create(dbId);
-            PxFileRef ref1 = PxFileRef.CreateFromId(id, db);
-            PxFileRef ref2 = PxFileRef.CreateFromId(id, db);
+            string filePath1 = Path.Combine("c:", "testfolder", $"{id}.px");
+            string filePath2 = Path.Combine("c:", "testfolder", $"{id}.px");
+            PxFileRef ref1 = PxFileRef.CreateFromPath(filePath1, db);
+            PxFileRef ref2 = PxFileRef.CreateFromPath(filePath2, db);
             Assert.That(ref1.GetHashCode(), Is.EqualTo(ref2.GetHashCode()));
         }
 
@@ -117,8 +120,10 @@ namespace PxApi.UnitTests.Models
             const string id2 = "file2";
             const string dbId = "database";
             DataBaseRef db = DataBaseRef.Create(dbId);
-            PxFileRef ref1 = PxFileRef.CreateFromId(id1, db);
-            PxFileRef ref2 = PxFileRef.CreateFromId(id2, db);
+            string filePath1 = Path.Combine("c:", "testfolder", $"{id1}.px");
+            string filePath2 = Path.Combine("c:", "testfolder", $"{id2}.px");
+            PxFileRef ref1 = PxFileRef.CreateFromPath(filePath1, db);
+            PxFileRef ref2 = PxFileRef.CreateFromPath(filePath2, db);
             Assert.That(ref1.GetHashCode(), Is.Not.EqualTo(ref2.GetHashCode()));
         }
 
@@ -130,8 +135,9 @@ namespace PxApi.UnitTests.Models
             const string dbId2 = "database2";
             DataBaseRef db1 = DataBaseRef.Create(dbId1);
             DataBaseRef db2 = DataBaseRef.Create(dbId2);
-            PxFileRef ref1 = PxFileRef.CreateFromId(id, db1);
-            PxFileRef ref2 = PxFileRef.CreateFromId(id, db2);
+            string filePath = Path.Combine("c:", "testfolder", $"{id}.px");
+            PxFileRef ref1 = PxFileRef.CreateFromPath(filePath, db1);
+            PxFileRef ref2 = PxFileRef.CreateFromPath(filePath, db2);
             Assert.That(ref1.GetHashCode(), Is.Not.EqualTo(ref2.GetHashCode()));
         }
 

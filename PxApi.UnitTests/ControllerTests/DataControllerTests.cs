@@ -76,7 +76,7 @@ namespace PxApi.UnitTests.ControllerTests
             string[] filters = ["dim0:code=value1"];
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef pxFileRef = PxFileRef.CreateFromId(table, dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             DoubleDataValue[] mockData = [
                 new DoubleDataValue(1.0, DataValueType.Exists),
@@ -166,7 +166,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };            
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             DoubleDataValue[] mockData = [
                 new DoubleDataValue(1.0, DataValueType.Exists),
@@ -174,7 +174,7 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
             _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(mockMetadata);
             _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>())).ReturnsAsync(mockData);
 
@@ -258,7 +258,7 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             DoubleDataValue[] mockData = [
                 new DoubleDataValue(1.0, DataValueType.Exists),
@@ -266,7 +266,7 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
             _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(mockMetadata);
             _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>())).ReturnsAsync(mockData);
 
@@ -304,11 +304,11 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "invalid";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
             _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(mockMetadata);
 
             // Act
@@ -330,11 +330,11 @@ namespace PxApi.UnitTests.ControllerTests
             string[] filters = ["dim0:code=value1"];
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(fileRef)).ThrowsAsync(new FileNotFoundException("File not found"));
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ThrowsAsync(new FileNotFoundException("File not found"));
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters);
@@ -356,11 +356,11 @@ namespace PxApi.UnitTests.ControllerTests
             string errorMessage = "Invalid argument";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(fileRef)).ThrowsAsync(new ArgumentException(errorMessage));
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ThrowsAsync(new ArgumentException(errorMessage));
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters);
@@ -436,7 +436,7 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             DoubleDataValue[] mockData = [
                 new DoubleDataValue(1.0, DataValueType.Exists),
@@ -444,7 +444,7 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
             _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(mockMetadata);
             _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>())).ReturnsAsync(mockData);
 
@@ -482,12 +482,12 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "invalid";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(fileRef)).ReturnsAsync(mockMetadata);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ReturnsAsync(mockMetadata);
 
             // Act
             ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query, lang);
@@ -508,11 +508,11 @@ namespace PxApi.UnitTests.ControllerTests
             Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(fileRef)).ThrowsAsync(new FileNotFoundException("File not found"));
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ThrowsAsync(new FileNotFoundException("File not found"));
 
             // Act
             ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query);
@@ -534,11 +534,11 @@ namespace PxApi.UnitTests.ControllerTests
             string errorMessage = "Invalid argument";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.CreateFromId(table, dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(fileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(fileRef)).ThrowsAsync(new ArgumentException(errorMessage));
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ThrowsAsync(new ArgumentException(errorMessage));
 
             // Act
             ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query);

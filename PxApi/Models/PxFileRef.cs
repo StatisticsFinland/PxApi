@@ -32,26 +32,6 @@ namespace PxApi.Models
         }
 
         /// <summary>
-        /// Creates a new instance of <see cref="PxFileRef"/> with the specified id and database reference.
-        /// </summary>
-        /// <param name="id">Unique identifier for the Px file.</param>
-        /// <param name="database"><see cref="DataBaseRef"/> reference to the database that the Px file belongs to.</param>
-        /// <returns>A new instance of <see cref="PxFileRef"/>.</returns>
-        /// <exception cref="ArgumentException">If the id is null, whitespace, contains invalid characters or exceeds 50 characters.</exception>
-        public static PxFileRef CreateFromId(string id, DataBaseRef database)
-        {
-            if (string.IsNullOrWhiteSpace(id) || id.Length > 50)
-                throw new ArgumentException("Id cannot be null, whitespace or too long.");
-
-            if(!id.All(s => char.IsLetterOrDigit(s) || _allowedIdChars.Contains(s)))
-            {
-                throw new ArgumentException("PxFile id must containt only letters or numbers.");
-            }
-
-            return new PxFileRef(id, id, database);
-        }
-
-        /// <summary>
         /// Creates a new instance of <see cref="PxFileRef"/> with the specified file path, using database configuration to parse the ID.
         /// </summary>
         /// <param name="fullFilePath">Full path to the Px file.</param>
@@ -61,7 +41,11 @@ namespace PxApi.Models
         public static PxFileRef CreateFromPath(string fullFilePath, DataBaseRef database)
         {
             string fileName = Path.GetFileNameWithoutExtension(fullFilePath);
-            if(!fileName.All(s => char.IsLetterOrDigit(s) || _allowedIdChars.Contains(s)))
+            if(string.IsNullOrWhiteSpace(fileName) || fileName.Length > 50)
+            {
+                throw new ArgumentException("PxFile id cannot be null, whitespace or exceed 50 characters.");
+            }
+            if (!fileName.All(s => char.IsLetterOrDigit(s) || _allowedIdChars.Contains(s)))
             {
                 throw new ArgumentException("PxFile id must containt only letters or numbers.");
             }

@@ -38,6 +38,11 @@ namespace PxApi.UnitTests.Caching
             AppSettings.Load(_configuration);
         }
 
+        private static PxFileRef BuildTestFileRef(string name, DataBaseRef dbRef)
+        {
+            return PxFileRef.CreateFromPath(Path.Combine("C:", "DbRoot", "folder", $"{name}.px"), dbRef);
+        }
+
         #region GetDataBaseReference
 
         [Test]
@@ -119,8 +124,8 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
             dbCache.SetFileList(dataBase, Task.FromResult(
                 ImmutableSortedDictionary<string, PxFileRef>.Empty
-                    .Add("file1", PxFileRef.CreateFromId("file1", dataBase))
-                    .Add("file2", PxFileRef.CreateFromId("file2", dataBase))));
+                    .Add("file1", BuildTestFileRef("file1", dataBase))
+                    .Add("file2", BuildTestFileRef("file2", dataBase))));
             string[] expected = ["file1", "file2"];
             CachedDataSource connector = new(mockFactory.Object, dbCache);
 
@@ -174,7 +179,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", dataBase);
+            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase);
             ImmutableSortedDictionary<string, PxFileRef> files = ImmutableSortedDictionary<string, PxFileRef>.Empty
                 .Add("file1", fileRef);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
@@ -201,7 +206,7 @@ namespace PxApi.UnitTests.Caching
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
             ImmutableSortedDictionary<string, PxFileRef> files = ImmutableSortedDictionary<string, PxFileRef>.Empty
-                .Add("file1", PxFileRef.CreateFromId("file1", dataBase));
+                .Add("file1", PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase));
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
             dbCache.SetFileList(dataBase, Task.FromResult(files));
@@ -221,7 +226,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", dataBase);
+            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase);
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
@@ -249,7 +254,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", dataBase);
+            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase);
             string pxContent = PxFixtures.MinimalPx.MINIMAL_UTF8_N;
             MemoryStream pxStream = new (Encoding.UTF8.GetBytes(pxContent));
             Mock<IDataBaseConnector> mockConnector = new();
@@ -293,7 +298,7 @@ namespace PxApi.UnitTests.Caching
             // Arrange
             string key = "LANGUAGE";
             DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("testfile", dbRef);
+            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dbRef);
             string pxContent = PxFixtures.MinimalPx.MINIMAL_UTF8_N;
             MemoryStream pxStream = new (Encoding.UTF8.GetBytes(pxContent));
             Mock<IDataBaseConnector> mockConnector = new();
@@ -316,7 +321,7 @@ namespace PxApi.UnitTests.Caching
             // Arrange
             string key = "LANGUAGE";
             DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("testfile", dbRef);
+            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dbRef);
             // Create a stream that cannot seek
             Stream unseekableStream = new UnseekableMemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N));
             Mock<IDataBaseConnector> mockConnector = new();
@@ -339,7 +344,7 @@ namespace PxApi.UnitTests.Caching
             // Arrange
             string key = "TEST";
             DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("testfile", dbRef);
+            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dbRef);
             string pxContent = PxFixtures.MinimalPx.MINIMAL_UTF8_N;
             MemoryStream pxStream = new (Encoding.UTF8.GetBytes(pxContent));
             Mock<IDataBaseConnector> mockConnector = new();
@@ -365,7 +370,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef pxFile = PxFileRef.CreateFromId("testfile", dataBase);
+            PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -400,7 +405,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef pxFile = PxFileRef.CreateFromId("testfile", dataBase);
+            PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
             MatrixMap subsetMap = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -442,7 +447,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef pxFile = PxFileRef.CreateFromId("testfile", dataBase);
+            PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -483,8 +488,8 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
             dbCache.SetFileList(dataBase, Task.FromResult(
                 ImmutableSortedDictionary<string, PxFileRef>.Empty
-                    .Add("file1", PxFileRef.CreateFromId("file1", dataBase))
-                    .Add("file2", PxFileRef.CreateFromId("file2", dataBase))));
+                    .Add("file1", PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase))
+                    .Add("file2", PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file2.px"), dataBase))));
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
             mockConnector.Setup(c => c.GetAllFilesAsync()).ReturnsAsync([]);
@@ -512,7 +517,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef file = PxFileRef.CreateFromId("testfile", dataBase);
+            PxFileRef file = BuildTestFileRef("testfile", dataBase);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
             
@@ -548,7 +553,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef file = PxFileRef.CreateFromId("testfile", dataBase);
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
             

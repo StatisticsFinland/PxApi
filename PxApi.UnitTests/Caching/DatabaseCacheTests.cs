@@ -21,6 +21,9 @@ namespace PxApi.UnitTests.Caching
         private const string DATA_SEED_VARNAME = "DATA_SEED";
         private const string META_SEED_VARNAME = "META_SEED";
 
+        private readonly PxFileRef _file1 = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), DataBaseRef.Create("PxApiUnitTestsDb"));
+        private readonly PxFileRef _file2 = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file2.px"), DataBaseRef.Create("PxApiUnitTestsDb"));
+
         [SetUp]
         public void SetUp()
         {
@@ -62,8 +65,8 @@ namespace PxApi.UnitTests.Caching
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             Task<ImmutableSortedDictionary<string, PxFileRef>> expectedFiles = Task.FromResult(
                 ImmutableSortedDictionary<string, PxFileRef>.Empty
-                    .Add("file1", PxFileRef.CreateFromId("file1", database))
-                    .Add("file2", PxFileRef.CreateFromId("file2", database)));
+                    .Add("file1", _file1)
+                    .Add("file2", _file2));
             string fileListSeed = GetSeedForKeyword(FILE_LIST_SEED_VARNAME);
             memoryCache.Set(HashCode.Combine(fileListSeed, database), expectedFiles);
             DatabaseCache dbCache = new(memoryCache);
@@ -109,8 +112,8 @@ namespace PxApi.UnitTests.Caching
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
             Task<ImmutableSortedDictionary<string, PxFileRef>> files = Task.FromResult(
                 ImmutableSortedDictionary<string, PxFileRef>.Empty
-                    .Add("file1", PxFileRef.CreateFromId("file1", database))
-                    .Add("file2", PxFileRef.CreateFromId("file2", database)));
+                    .Add("file1", _file1)
+                    .Add("file2", _file2));
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
@@ -138,17 +141,15 @@ namespace PxApi.UnitTests.Caching
         public void TryGetLastUpdated_WithCacheHit_ReturnsTruewithLastUpdated()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             Task<DateTime> expectedLastUpdated = Task.FromResult(DateTime.UtcNow);
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);
-            memoryCache.Set(HashCode.Combine(lastUpdatedSeed, fileRef), expectedLastUpdated);
+            memoryCache.Set(HashCode.Combine(lastUpdatedSeed, _file1), expectedLastUpdated);
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetLastUpdated(fileRef, out Task<DateTime>? actualLastUpdated);
+            bool result = dbCache.TryGetLastUpdated(_file1, out Task<DateTime>? actualLastUpdated);
 
             // Assert
             Assert.Multiple(() =>
@@ -162,14 +163,11 @@ namespace PxApi.UnitTests.Caching
         public void TryGetLastUpdated_WithCacheMiss_ReturnsFalse()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
-            
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetLastUpdated(fileRef, out Task<DateTime>? actualLastUpdated);
+            bool result = dbCache.TryGetLastUpdated(_file1, out Task<DateTime>? actualLastUpdated);
 
             // Assert
             Assert.Multiple(() =>
@@ -187,8 +185,6 @@ namespace PxApi.UnitTests.Caching
         public void SetLastUpdated_WithFileRefAndTimeStamp_SetsCacheWithExpectedValues()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             Task<DateTime> lastUpdated = Task.FromResult(DateTime.UtcNow);
             string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);
             
@@ -196,12 +192,12 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
                 
             // Act
-            dbCache.SetLastUpdated(fileRef, lastUpdated);
+            dbCache.SetLastUpdated(_file1, lastUpdated);
 
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, fileRef), out Task<DateTime>? cachedLastUpdated), Is.True);
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, _file1), out Task<DateTime>? cachedLastUpdated), Is.True);
                 Assert.That(cachedLastUpdated, Is.SameAs(lastUpdated));
             });
         }
@@ -214,20 +210,18 @@ namespace PxApi.UnitTests.Caching
         public void TryGetMetadata_WithCacheHit_ReturnsTrueWithMetadataContainer()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
             MetaCacheContainer expectedMetaContainer = new(Task.FromResult(mockMetadata.Object));
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
-            int metaKey = HashCode.Combine(metaSeed, fileRef);
+            int metaKey = HashCode.Combine(metaSeed, _file1);
             memoryCache.Set(metaKey, expectedMetaContainer);
             
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? actualMetaContainer);
+            bool result = dbCache.TryGetMetadata(_file1, out MetaCacheContainer? actualMetaContainer);
 
             // Assert
             Assert.Multiple(() =>
@@ -241,14 +235,11 @@ namespace PxApi.UnitTests.Caching
         public void TryGetMetadata_WithCacheMiss_ReturnsFalse()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
-            
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? actualMetaContainer);
+            bool result = dbCache.TryGetMetadata(_file1, out MetaCacheContainer? actualMetaContainer);
 
             // Assert
             Assert.Multiple(() =>
@@ -266,18 +257,16 @@ namespace PxApi.UnitTests.Caching
         public void SetMetadata_WithPxFileRefAndMetadataContainer_SetsCacheWithExpectedValues()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
             MetaCacheContainer metaContainer = new(Task.FromResult(mockMetadata.Object));
             
             MemoryCache cache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(cache);
             string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
-            int cacheKey = HashCode.Combine(metaSeed, fileRef);
+            int cacheKey = HashCode.Combine(metaSeed, _file1);
             
             // Act
-            dbCache.SetMetadata(fileRef, metaContainer);
+            dbCache.SetMetadata(_file1, metaContainer);
 
             // Assert
             Assert.Multiple(() =>
@@ -295,20 +284,18 @@ namespace PxApi.UnitTests.Caching
         public void TryRemoveMeta_WithCacheHit_RemovesMetaFromCache()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
             MetaCacheContainer metaContainer = new(Task.FromResult(mockMetadata.Object));
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
-            int cacheKey = HashCode.Combine(metaSeed, fileRef);
+            int cacheKey = HashCode.Combine(metaSeed, _file1);
             memoryCache.Set(cacheKey, metaContainer);
             
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            dbCache.TryRemoveMeta(fileRef);
+            dbCache.TryRemoveMeta(_file1);
 
             // Assert
             Assert.That(memoryCache.TryGetValue(cacheKey, out _), Is.False);
@@ -318,9 +305,6 @@ namespace PxApi.UnitTests.Caching
         public void TryRemoveMeta_WithCacheMiss_DoesNotThrow()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
-            
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
 
@@ -328,8 +312,8 @@ namespace PxApi.UnitTests.Caching
             Assert.Multiple(() =>
             {  
                 Assert.That(memoryCache.Keys.Count, Is.EqualTo(0));
-                Assert.That(dbCache.TryGetMetadata(fileRef, out _), Is.False);
-                Assert.DoesNotThrow(() => dbCache.TryRemoveMeta(fileRef));
+                Assert.That(dbCache.TryGetMetadata(_file1, out _), Is.False);
+                Assert.DoesNotThrow(() => dbCache.TryRemoveMeta(_file1));
             });
         }
 
@@ -400,8 +384,6 @@ namespace PxApi.UnitTests.Caching
         public void TryGetDataSuperSet_WithCacheMiss_ReturnsFalse()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -411,7 +393,7 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetDataSuperset(fileRef, map, out IMatrixMap? actualSupersetMap, 
+            bool result = dbCache.TryGetDataSuperset(_file1, map, out IMatrixMap? actualSupersetMap, 
                 out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
 
             // Assert
@@ -428,8 +410,6 @@ namespace PxApi.UnitTests.Caching
         public void TryGetDataSuperSet_WithCacheHitWithoutSuperMap_ReturnsFalse()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -440,11 +420,11 @@ namespace PxApi.UnitTests.Caching
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
-            memoryCache.Set(HashCode.Combine(metaSeed, fileRef), metaContainer);
+            memoryCache.Set(HashCode.Combine(metaSeed, _file1), metaContainer);
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetDataSuperset(fileRef, map, out IMatrixMap? actualSupersetMap, 
+            bool result = dbCache.TryGetDataSuperset(_file1, map, out IMatrixMap? actualSupersetMap, 
                 out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
 
             // Assert
@@ -461,8 +441,6 @@ namespace PxApi.UnitTests.Caching
         public void TryGetDataSuperSet_WithCacheHitWithSuperMapWithContainerMiss_ReturnsFalse()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -483,11 +461,11 @@ namespace PxApi.UnitTests.Caching
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
-            memoryCache.Set(HashCode.Combine(metaSeed, fileRef), metaContainer);
+            memoryCache.Set(HashCode.Combine(metaSeed, _file1), metaContainer);
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetDataSuperset(fileRef, map, out IMatrixMap? actualSupersetMap, 
+            bool result = dbCache.TryGetDataSuperset(_file1, map, out IMatrixMap? actualSupersetMap, 
                 out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
 
             // Assert
@@ -504,8 +482,6 @@ namespace PxApi.UnitTests.Caching
         public void TryGetDataSuperSet_WithCachedSuperSetMap_ReturnsTrueWithSupersetDataContainer()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -527,7 +503,7 @@ namespace PxApi.UnitTests.Caching
             metaContainer.AddDataContainer(dataContainer);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             
-            int metaKey = MetaCacheUtils.GetCacheKey(fileRef);
+            int metaKey = MetaCacheUtils.GetCacheKey(_file1);
             memoryCache.Set(metaKey, metaContainer);
 
             int dataKey = MetaCacheUtils.GetCacheKey(superMap);
@@ -536,7 +512,7 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetDataSuperset(fileRef, map, out IMatrixMap? actualSupersetMap, 
+            bool result = dbCache.TryGetDataSuperset(_file1, map, out IMatrixMap? actualSupersetMap, 
                 out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
 
             // Assert
@@ -557,8 +533,6 @@ namespace PxApi.UnitTests.Caching
         public void SetData_WithoutMetaCacheHit_ThrowsInvalidOperationException()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -571,15 +545,13 @@ namespace PxApi.UnitTests.Caching
 
             // Act & Assert
             Assert.Throws<InvalidOperationException>(() => 
-                dbCache.SetData(fileRef, map, dataTask));
+                dbCache.SetData(_file1, map, dataTask));
         }
 
         [Test]
         public async Task SetData_WithMetaCacheHit_UpdatesCacheWithExpectedValues()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -591,11 +563,11 @@ namespace PxApi.UnitTests.Caching
             MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
-            memoryCache.Set(HashCode.Combine(GetSeedForKeyword(META_SEED_VARNAME), fileRef), metaContainer);
+            memoryCache.Set(HashCode.Combine(GetSeedForKeyword(META_SEED_VARNAME), _file1), metaContainer);
             int mapCode = MetaCacheUtils.GetCacheKey(map);
 
             // Act
-            dbCache.SetData(fileRef, map, dataTask);
+            dbCache.SetData(_file1, map, dataTask);
 
             // Assert
             Assert.Multiple(() =>
@@ -611,8 +583,6 @@ namespace PxApi.UnitTests.Caching
         public async Task SetData_WithSubMaps_RemovesSubMapsFromCache()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromId("file1", database);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2024", "2025"])
@@ -641,7 +611,7 @@ namespace PxApi.UnitTests.Caching
 
             // Pre-populate the cache with the meta container
             string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
-            memoryCache.Set(HashCode.Combine(metaSeed, fileRef), metaContainer);
+            memoryCache.Set(HashCode.Combine(metaSeed, _file1), metaContainer);
 
             // Pre-populate the cache with the submap data container
             int subMapKey = MetaCacheUtils.GetCacheKey(subMap1);
@@ -649,7 +619,7 @@ namespace PxApi.UnitTests.Caching
             memoryCache.Set(subMapKey, subContainer);
 
             // Act
-            dbCache.SetData(fileRef, map, dataTask);
+            dbCache.SetData(_file1, map, dataTask);
 
             // Assert
             Assert.Multiple(() =>
@@ -677,7 +647,7 @@ namespace PxApi.UnitTests.Caching
             
             Task<ImmutableSortedDictionary<string, PxFileRef>> fileList = Task.FromResult(
                 ImmutableSortedDictionary<string, PxFileRef>.Empty
-                    .Add("file1", PxFileRef.CreateFromId("file1", database)));
+                    .Add("file1", _file1));
             
             memoryCache.Set(cacheKey, fileList);
             DatabaseCache dbCache = new(memoryCache);
@@ -700,24 +670,22 @@ namespace PxApi.UnitTests.Caching
         public void ClearLastUpdatedCache_ClearsLastUpdatedForFile()
         {
             // Arrange
-            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef file = PxFileRef.CreateFromId("file1", database);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);
             
             DateTime now = DateTime.UtcNow;
-            memoryCache.Set(HashCode.Combine(lastUpdatedSeed, file), Task.FromResult(now));
+            memoryCache.Set(HashCode.Combine(lastUpdatedSeed, _file1), Task.FromResult(now));
             
             DatabaseCache dbCache = new(memoryCache);
             
             // Verify that cache has the last updated timestamp
-            Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, file), out _), Is.True);
+            Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, _file1), out _), Is.True);
 
             // Act
-            dbCache.ClearLastUpdatedCache(file);
+            dbCache.ClearLastUpdatedCache(_file1);
 
             // Assert
-            Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, file), out _), Is.False);
+            Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, _file1), out _), Is.False);
         }
 
         #endregion

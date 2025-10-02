@@ -47,7 +47,7 @@ namespace PxApi.Configuration
         private static bool IsDataControllerGetOperation(string pathKey, OpenApiOperation operation)
         {
             // Check if the path matches DataController GET endpoints
-            bool hasJsonPath = pathKey.Contains("/json/") || pathKey.Contains("/json-stat");
+            bool hasJsonPath = pathKey.Contains("/data/") && pathKey.Contains("/json");
             bool hasFiltersParam = operation.Parameters?.Any(p => p.Name == "filters") == true;
             
             return hasJsonPath && hasFiltersParam;

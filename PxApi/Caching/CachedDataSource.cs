@@ -52,7 +52,7 @@ namespace PxApi.Caching
                 Dictionary<string, PxFileRef> fileDict = [];
                 foreach (string file in t.Result)
                 {
-                    PxFileRef fileRef = PxFileRef.CreateFromId(Path.GetFileNameWithoutExtension(file), dbConnector.DataBase);
+                    PxFileRef fileRef = PxFileRef.CreateFromPath(file, dbConnector.DataBase);
                     fileDict.TryAdd(fileRef.Id, fileRef);
                 }
                 return fileDict.ToImmutableSortedDictionary();

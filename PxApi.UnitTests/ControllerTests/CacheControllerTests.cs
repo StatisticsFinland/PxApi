@@ -64,7 +64,7 @@ namespace PxApi.UnitTests.ControllerTests
             string database = "testdb";
             string id = "table1";
             DataBaseRef dbRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.CreateFromId(id, dbRef);
+            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("c:", "foo", id), dbRef);
             
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
             _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef))

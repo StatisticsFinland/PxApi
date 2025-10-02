@@ -49,7 +49,7 @@ namespace PxApi.UnitTests.ControllerTests
                 {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
                 {"DataBases:0:Custom:RootPath", "datasource/root/"},
                 {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
-                {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"},
+                {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"}
 
             };
 
@@ -65,7 +65,7 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromId("filename", database);
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
             string lang = "en";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
             List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
@@ -100,7 +100,7 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromId("filename", database);
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
 
             _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ThrowsAsync(new FileNotFoundException());
 
@@ -116,7 +116,7 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromId("filename", database);
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
             string lang = "de";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
@@ -138,7 +138,7 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromId("filename", database);
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
             List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
 
@@ -172,7 +172,7 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromId("filename", database);
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
             string lang = "en";
             string varcode = "content-code";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
@@ -197,7 +197,7 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampleb");
-            PxFileRef file = PxFileRef.CreateFromId("filename", database);
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
             string lang = "en";
             string varcode = "time-code";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
@@ -222,7 +222,7 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromId("filename", database);
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
             string varcode = "nonexistent-varcode";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
@@ -242,7 +242,7 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromId("filename", database);
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
             string varcode = "varcode";
             string lang = "de";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
@@ -265,7 +265,7 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromId("filename", database);
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
             string varcode = "dim0-code";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 

@@ -315,7 +315,7 @@ namespace PxApi.UnitTests.ControllerTests
         private void SetupTestData()
         {
             _testDatabase = DataBaseRef.Create("testdb");
-            _testTable = PxFileRef.CreateFromId("testtable", _testDatabase);
+            _testTable = PxFileRef.CreateFromPath(Path.Combine("c:", "foo", "testtable"), _testDatabase);
         }
 
         private static MemoryStream CreateTestDataStream()
@@ -331,7 +331,7 @@ namespace PxApi.UnitTests.ControllerTests
             _mockConnector.Setup(c => c.GetLastWriteTimeAsync(_testTable))
                 .ReturnsAsync(DateTime.UtcNow.AddMinutes(-10));
             _mockConnector.Setup(c => c.GetAllFilesAsync())
-                .ReturnsAsync([Path.Combine("C:", "dbroot", "folder", "testtable.px")]);
+                .ReturnsAsync([_testTable.FilePath]);
 
             _mockConnectorFactory.Setup(f => f.GetAvailableDatabases())
                 .Returns([_testDatabase]);
@@ -378,7 +378,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse.Data.All(d => d.Type == DataValueType.Exists), Is.True);
                 
                 // Compare actual data values against expected array
-                double[] actualValues = dataResponse.Data.Select(d => d.UnsafeValue).ToArray();
+                double[] actualValues = [.. dataResponse.Data.Select(d => d.UnsafeValue)];
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
                 // Check MetaCodes structure
