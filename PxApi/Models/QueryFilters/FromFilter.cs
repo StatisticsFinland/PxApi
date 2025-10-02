@@ -34,5 +34,13 @@ namespace PxApi.Models.QueryFilters
             if (!found) throw new InvalidOperationException("No element matching the filterstring found.");
             return new DimensionMap(input.Code, resultCodes);
         }
+
+        /// <summary>
+        /// Parameter name constant for use in switch statements and static contexts
+        /// </summary>
+        public const string FilterTypeName = "from";
+
+        /// <inheritdoc/>
+        public override string ParamName => FilterTypeName;
     }
 }

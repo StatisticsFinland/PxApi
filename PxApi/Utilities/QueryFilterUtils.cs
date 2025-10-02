@@ -84,13 +84,13 @@ namespace PxApi.Utilities
         {
             return filterType switch
             {
-                "code" => new CodeFilter(value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)),
-                "from" => new FromFilter(value),
-                "to" => new ToFilter { FilterString = value },
-                "first" => int.TryParse(value, out int firstCount) && firstCount > 0
+                CodeFilter.FilterTypeName => new CodeFilter(value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)),
+                FromFilter.FilterTypeName => new FromFilter(value),
+                ToFilter.FilterTypeName => new ToFilter { FilterString = value },
+                FirstFilter.FilterTypeName => int.TryParse(value, out int firstCount) && firstCount > 0
                     ? new FirstFilter(firstCount)
                     : throw new ArgumentException($"Invalid value '{value}' for 'first' filter on dimension '{dimensionCode}'. Must be a positive integer."),
-                "last" => int.TryParse(value, out int lastCount) && lastCount > 0
+                LastFilter.FilterTypeName => int.TryParse(value, out int lastCount) && lastCount > 0
                     ? new LastFilter(lastCount)
                     : throw new ArgumentException($"Invalid value '{value}' for 'last' filter on dimension '{dimensionCode}'. Must be a positive integer."),
                 _ => throw new ArgumentException($"Unsupported filter type '{filterType}' for dimension '{dimensionCode}'")

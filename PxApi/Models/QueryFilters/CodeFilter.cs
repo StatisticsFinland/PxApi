@@ -18,8 +18,16 @@ namespace PxApi.Models.QueryFilters
         {
             return new DimensionMap(
                 input.Code,
-                [.. input.ValueCodes.Where(c => 
+                [.. input.ValueCodes.Where(c =>
                     FilterStrings.Any(f => FilterUtils.IsCodeMatch(c,f)))]);
         }
+
+        /// <summary>
+        /// Parameter name constant for use in switch statements and static contexts
+        /// </summary>
+        public const string FilterTypeName = "code";
+
+        /// <inheritdoc/>
+        public override string ParamName => FilterTypeName;
     }
 }

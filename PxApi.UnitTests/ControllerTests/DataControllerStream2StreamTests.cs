@@ -347,7 +347,8 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             string[] filters = [
                 "Tiedot:code=neljmuut,neljmuut_eka",
-                "Vuosineljännes:code=2022Q1,2022Q2"
+                "Vuosineljännes:code=2022Q1,2022Q2",
+                "Alue:code=ksu,pks,msu,kas,muu"
             ];
 
             // Expected data values for 2 metrics × 2 time periods × 5 regions = 20 data points
@@ -413,7 +414,8 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             string[] filters = [
                 "Tiedot:code=neljmuut",
-                "Vuosineljännes:code=2022Q1,2022Q2"
+                "Vuosineljännes:code=2022Q1,2022Q2",
+                "Alue:code=ksu,pks,msu,kas,muu"
             ];
 
             // Expected data values for 1 metric × 2 time periods × 5 regions = 10 data points
@@ -477,13 +479,15 @@ namespace PxApi.UnitTests.ControllerTests
             // First request for superset
             string[] supersetFilters = [
                 "Tiedot:code=neljmuut,neljmuut_eka",
-                "Vuosineljännes:code=2022Q1,2022Q2"
+                "Vuosineljännes:code=2022Q1,2022Q2",
+                "Alue:code=ksu,pks,msu,kas,muu"
             ];
             
             // Second request for subset
             string[] subsetFilters = [
                 "Tiedot:code=neljmuut",
-                "Vuosineljännes:code=2022Q2"
+                "Vuosineljännes:code=2022Q2",
+                "Alue:code=ksu,pks,msu,kas,muu"
             ];
 
             // Expected data for superset: 2 metrics × 2 time periods × 5 regions = 20 data points
