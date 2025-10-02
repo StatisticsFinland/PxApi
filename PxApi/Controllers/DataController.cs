@@ -8,6 +8,7 @@ using PxApi.ModelBuilders;
 using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Utilities;
+using PxApi.Configuration;
 
 namespace PxApi.Controllers
 {
@@ -66,6 +67,14 @@ namespace PxApi.Controllers
                 Dictionary<string, Filter> filterDict = QueryFilterUtils.ConvertFiltersArrayToFilters(filters ?? []);
                 IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
                 MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, filterDict);
+                
+                long maxSize = AppSettings.Active.QueryLimits.JsonMaxCells;
+                int size = requestMap.GetSize();
+                if(size > maxSize)
+                {
+                    logger.LogInformation("Too large request received. Size: {Size}.", size);
+                    return BadRequest($"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
+                }
                 DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
 
                 return Ok(new DataResponse
@@ -122,6 +131,14 @@ namespace PxApi.Controllers
 
                 IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
                 MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
+                
+                long maxSize = AppSettings.Active.QueryLimits.JsonMaxCells;
+                int size = requestMap.GetSize();
+                if(size > maxSize)
+                {
+                    logger.LogInformation("Too large request received. Size: {Size}.", size);
+                    return BadRequest($"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
+                }
                 DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
 
                 return Ok(new DataResponse
@@ -191,6 +208,15 @@ namespace PxApi.Controllers
                     }
 
                     MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, filterDict);
+                    
+                    long maxSize = AppSettings.Active.QueryLimits.JsonStatMaxCells;
+                    int size = requestMap.GetSize();
+                    if(size > maxSize)
+                    {
+                        logger.LogInformation("Too large request received. Size: {Size}.", size);
+                        return BadRequest($"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
+                    }
+                    
                     DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
                     JsonStat2 jsonStat = ModelBuilder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
 
@@ -267,6 +293,15 @@ namespace PxApi.Controllers
                     }
 
                     MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
+                    
+                    long maxSize = AppSettings.Active.QueryLimits.JsonStatMaxCells;
+                    int size = requestMap.GetSize();
+                    if(size > maxSize)
+                    {
+                        logger.LogInformation("Too large request received. Size: {Size}.", size);
+                        return BadRequest($"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
+                    }
+                    
                     DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
                     JsonStat2 jsonStat = ModelBuilder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
 

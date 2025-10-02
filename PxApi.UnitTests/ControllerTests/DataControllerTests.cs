@@ -37,6 +37,11 @@ namespace PxApi.UnitTests.ControllerTests
                 }
             };
 
+            SetupAppSettings();
+        }
+
+        private static void SetupAppSettings(uint jsonMaxCells = 0, uint jsonStatMaxCells = 0)
+        {
             Dictionary<string, string?> inMemorySettings = new()
             {
                 {"RootUrl", "https://testurl.fi"},
@@ -58,11 +63,37 @@ namespace PxApi.UnitTests.ControllerTests
                 {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"},
             };
 
+            if (jsonMaxCells > 0)
+            {
+                inMemorySettings["QueryLimits:JsonMaxCells"] = jsonMaxCells.ToString();
+            }
+
+            if (jsonStatMaxCells > 0)
+            {
+                inMemorySettings["QueryLimits:JsonStatMaxCells"] = jsonStatMaxCells.ToString();
+            }
+
             IConfiguration _configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(inMemorySettings)
                 .Build();
 
             AppSettings.Load(_configuration);
+        }
+
+        private void SetupMockDataSourceForValidRequest(string database, string table)
+        {
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
+            IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
+            DoubleDataValue[] mockData = [
+                new DoubleDataValue(1.0, DataValueType.Exists),
+                new DoubleDataValue(2.0, DataValueType.Exists)
+            ];
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(mockMetadata);
+            _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>())).ReturnsAsync(mockData);
         }
 
         #region GetJsonAsync Tests
@@ -598,6 +629,233 @@ namespace PxApi.UnitTests.ControllerTests
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
+        }
+
+        #endregion
+
+        #region Query Limits Tests
+
+        [Test]
+        public async Task GetJsonAsync_RequestWithinJsonLimit_ReturnsOk()
+        {
+            // Arrange
+            const uint limit = 200000; // Set a high limit that won't be exceeded by default mock data
+            SetupAppSettings(jsonMaxCells: limit);
+            
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0:code=value1"];
+
+            SetupMockDataSourceForValidRequest(database, table);
+
+            // Act
+            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, filters);
+
+            // Assert - Verify the configuration is loaded correctly and the request succeeds
+            Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+        }
+
+        [Test]
+        public async Task GetJsonAsync_RequestExceedsJsonLimit_ReturnsBadRequest()
+        {
+            // Arrange
+            const uint limit = 1; // Set a very low limit that will be exceeded by default mock data
+            SetupAppSettings(jsonMaxCells: limit);
+            
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0:code=value1"];
+
+            SetupMockDataSourceForValidRequest(database, table);
+
+            // Act
+            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, filters);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+            BadRequestObjectResult? badRequest = result.Result as BadRequestObjectResult;
+            Assert.That(badRequest, Is.Not.Null);
+            Assert.That(badRequest.Value, Is.TypeOf<string>());
+            string? errorMessage = badRequest.Value as string;
+            Assert.That(errorMessage, Does.Contain("The request is too large. Please narrow down the query. Maximum size is 1 cells."));
+        }
+
+        [Test]
+        public async Task GetJsonAsync_NoJsonLimit_UsesDefaultLimit()
+        {
+            // Arrange
+            SetupAppSettings(); // No limits set, should use default 100000 limit
+            
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0:code=value1"];
+
+            SetupMockDataSourceForValidRequest(database, table);
+
+            // Act
+            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, filters);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+        }
+
+        [Test]
+        public async Task PostJsonAsync_RequestExceedsJsonLimit_ReturnsBadRequest()
+        {
+            // Arrange
+            const uint limit = 1; // Set a very low limit that will be exceeded by default mock data
+            SetupAppSettings(jsonMaxCells: limit);
+            
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+
+            SetupMockDataSourceForValidRequest(database, table);
+
+            // Act
+            ActionResult<DataResponse> result = await _controller.PostJsonAsync(database, table, query);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+            BadRequestObjectResult? badRequest = result.Result as BadRequestObjectResult;
+            Assert.That(badRequest, Is.Not.Null);
+            Assert.That(badRequest.Value, Is.TypeOf<string>());
+            string? errorMessage = badRequest.Value as string;
+            Assert.That(errorMessage, Does.Contain("The request is too large. Please narrow down the query. Maximum size is 1 cells."));
+        }
+
+        [Test]
+        public async Task PostJsonAsync_WithJsonLimit_ConfigurationLoaded()
+        {
+            // Arrange
+            const uint limit = 200000;
+            SetupAppSettings(jsonMaxCells: limit);
+            
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+
+            SetupMockDataSourceForValidRequest(database, table);
+
+            // Act
+            ActionResult<DataResponse> result = await _controller.PostJsonAsync(database, table, query);
+
+            // Assert - Verify configuration is working
+            Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+        }
+
+        [Test]
+        public async Task GetJsonStatAsync_RequestExceedsJsonStatLimit_ReturnsBadRequest()
+        {
+            // Arrange
+            const uint limit = 1; // Set a very low limit that will be exceeded by default mock data
+            SetupAppSettings(jsonStatMaxCells: limit);
+            
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0:code=value1"];
+            string lang = "en";
+
+            SetupMockDataSourceForValidRequest(database, table);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters, lang);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+            BadRequestObjectResult? badRequest = result.Result as BadRequestObjectResult;
+            Assert.That(badRequest, Is.Not.Null);
+            Assert.That(badRequest.Value, Is.TypeOf<string>());
+            string? errorMessage = badRequest.Value as string;
+            Assert.That(errorMessage, Does.Contain("The request is too large. Please narrow down the query. Maximum size is 1 cells."));
+        }
+
+        [Test]
+        public async Task GetJsonStatAsync_WithJsonStatLimit_ConfigurationLoaded()
+        {
+            // Arrange
+            const uint limit = 200000;
+            SetupAppSettings(jsonStatMaxCells: limit);
+            
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0:code=value1"];
+            string lang = "en";
+
+            SetupMockDataSourceForValidRequest(database, table);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters, lang);
+
+            // Assert - Verify configuration is working
+            Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+        }
+
+        [Test]
+        public async Task GetJsonStatAsync_NoJsonStatLimit_AllowsLargeRequests()
+        {
+            // Arrange
+            SetupAppSettings(); // No limits set, should allow unlimited requests for JSON-stat
+            
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0:code=value1"];
+            string lang = "en";
+
+            SetupMockDataSourceForValidRequest(database, table);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters, lang);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+        }
+
+        [Test]
+        public async Task PostJsonStatAsync_RequestExceedsJsonStatLimit_ReturnsBadRequest()
+        {
+            // Arrange
+            const uint limit = 1; // Set a very low limit that will be exceeded by default mock data
+            SetupAppSettings(jsonStatMaxCells: limit);
+            
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            string lang = "en";
+
+            SetupMockDataSourceForValidRequest(database, table);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query, lang);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+            BadRequestObjectResult? badRequest = result.Result as BadRequestObjectResult;
+            Assert.That(badRequest, Is.Not.Null);
+            Assert.That(badRequest.Value, Is.TypeOf<string>());
+            string? errorMessage = badRequest.Value as string;
+            Assert.That(errorMessage, Does.Contain("The request is too large. Please narrow down the query. Maximum size is 1 cells."));
+        }
+
+        [Test]
+        public async Task PostJsonStatAsync_WithJsonStatLimit_ConfigurationLoaded()
+        {
+            // Arrange
+            const uint limit = 200000;
+            SetupAppSettings(jsonStatMaxCells: limit);
+            
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            string lang = "en";
+
+            SetupMockDataSourceForValidRequest(database, table);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.PostJsonStatAsync(database, table, query, lang);
+
+            // Assert - Verify configuration is working
+            Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
         }
 
         #endregion

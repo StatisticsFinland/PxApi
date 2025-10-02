@@ -29,6 +29,11 @@
         public AuthenticationConfig Authentication { get; }
 
         /// <summary>
+        /// Query limits configuration for controlling maximum request sizes.
+        /// </summary>
+        public QueryLimitsConfig QueryLimits { get; }
+
+        /// <summary>
         /// The currently active configuration for the application.
         /// </summary>
         public static AppSettings Active
@@ -71,6 +76,7 @@
             
             Features = new FeatureFlagsConfig(configuration.GetSection("FeatureManagement"));
             Authentication = new AuthenticationConfig(configuration.GetSection(nameof(Authentication)));
+            QueryLimits = new QueryLimitsConfig(configuration.GetSection(nameof(QueryLimits)));
         }
 
         /// <summary>
