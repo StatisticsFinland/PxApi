@@ -27,7 +27,7 @@ namespace PxApi.Controllers
         /// List of tables and their essential metadata in a database.
         /// </summary>
         /// <param name="databaseId">Unique identifier of the database.</param>
-        /// <param name="lang">[Optional] Language used to get the metadata, default is finnis (fi).</param>
+        /// <param name="lang">[Optional] Language used to get the metadata, default is Finnish (fi).</param>
         /// <param name="page">[Optional] Ordinal number of the page to get, default value is 1.</param>
         /// <param name="pageSize">[Optional] Number of items per page, minimum value is 1 and maximum value is 100, default value is 50.</param>
         /// <returns>Object containing the table listing and paging information.</returns>

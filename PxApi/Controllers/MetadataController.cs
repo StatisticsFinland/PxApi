@@ -7,6 +7,7 @@ using PxApi.Configuration;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
+using PxApi.Models.QueryFilters;
 
 namespace PxApi.Controllers
 {
@@ -63,6 +64,17 @@ namespace PxApi.Controllers
 
                     TableMeta tableMeta = ModelBuilder.BuildTableMeta(meta, fileUri, lang, showValues);
 
+                    string dataUri = settings.RootUrl
+                        .AddRelativePath("data", database, Path.GetFileNameWithoutExtension(table), "json").ToString();
+                    dataUri += MetaFiltering.GetDefaultFilteringUrlParameters(meta);
+
+                    tableMeta.Links.Add(new Link()
+                    {
+                        Href = dataUri,
+                        Rel = "data",
+                        Method = "GET"
+                    });
+
                     // Populate groupings from cached grouping provider
                     IReadOnlyList<TableGroup> groupings = await cachedConnector.GetGroupingsCachedAsync(fileRef.Value);
                     tableMeta.Groupings.AddRange(groupings);
@@ -71,7 +83,6 @@ namespace PxApi.Controllers
                 else
                 {
                     return BadRequest("The content is not available in the requested language.");
-
                 }
             }
             catch (FileNotFoundException)

@@ -17,5 +17,13 @@ namespace PxApi.Models.QueryFilters
         public override DimensionMap Apply(IDimensionMap input) => new(
             input.Code,
             [.. input.ValueCodes.Skip(Math.Max(0, input.ValueCodes.Count - Count))]);
+
+        /// <summary>
+        /// Parameter name constant for use in switch statements and static contexts
+        /// </summary>
+        public const string FilterTypeName = "last";
+
+        /// <inheritdoc/>
+        public override string ParamName => FilterTypeName;
     }
 }

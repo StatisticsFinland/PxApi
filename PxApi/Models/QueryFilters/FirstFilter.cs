@@ -14,5 +14,13 @@ namespace PxApi.Models.QueryFilters
 
         /// <inheritdoc/>
         public override DimensionMap Apply(IDimensionMap input) => new(input.Code, [.. input.ValueCodes.Take(Count)]);
+
+        /// <summary>
+        /// Parameter name constant for use in switch statements and static contexts
+        /// </summary>
+        public const string FilterTypeName = "first";
+
+        /// <inheritdoc/>
+        public override string ParamName => FilterTypeName;
     }
 }

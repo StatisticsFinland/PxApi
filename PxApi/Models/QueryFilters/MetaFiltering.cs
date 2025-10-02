@@ -4,6 +4,7 @@ using Px.Utils.Models.Metadata.Enums;
 using Px.Utils.Models.Metadata.MetaProperties;
 using Px.Utils.Models.Metadata;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace PxApi.Models.QueryFilters
 {
@@ -34,20 +35,44 @@ namespace PxApi.Models.QueryFilters
             })]);
         }
 
-        private static IDimensionMap DefaultFiltering(IReadOnlyDimension dimension)
+        /// <summary>
+        /// Applies default filtering for all dimensions in metadata dimensions and returns a string to be used as query url parameters
+        /// </summary>
+        /// <param name="meta">The matrix metadata to filter</param>
+        /// <returns>String that represents url parameters to be used for a default query</returns>
+        public static string GetDefaultFilteringUrlParameters(IReadOnlyMatrixMetadata meta)
         {
-            if(TryGetDefaultValueCode(dimension, out string? code))
+            StringBuilder sb = new("?");
+            for (int i = 0; i < meta.Dimensions.Count; i++)
             {
-                return new DimensionMap(dimension.Code, [code]);
+                IReadOnlyDimension dimension = meta.Dimensions[i];
+                if (i > 0) sb.Append('&');
+                
+                (Filter filter, string value) = SelectFilterForDimension(dimension);
+                sb.Append($"filters={dimension.Code}:{filter.ParamName}={value}");
+            }
+            return sb.ToString();
+        }
+
+        private static (Filter, string) SelectFilterForDimension(IReadOnlyDimension dimension)
+        {
+            if (TryGetDefaultValueCode(dimension, out string? code))
+            {
+                return (new CodeFilter([code]), code);
             }
 
             if (dimension.Type == DimensionType.Time)
             {
-                LastFilter last20 = new(20);
-                return last20.Apply(dimension);
+                return (new CodeFilter(["*"]), "*");
             }
 
-            else return dimension;
+            return (new FirstFilter(1), "1");
+        }
+
+        private static DimensionMap DefaultFiltering(IReadOnlyDimension dimension)
+        {
+            Filter filter = SelectFilterForDimension(dimension).Item1;
+            return filter.Apply(dimension);
         }
 
         private static bool TryGetDefaultValueCode(IReadOnlyDimension dim, [NotNullWhen(true)] out string? code)

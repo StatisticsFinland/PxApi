@@ -21,7 +21,7 @@ namespace PxApi.Configuration
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
 
-            // Add the DoubleDataValue converter and IFilter converter
+            // Add the DoubleDataValue converter and Filter converter
             Default.Converters.Add(new DoubleDataValueJsonConverter());
             Default.Converters.Add(new FilterJsonConverter());
         }

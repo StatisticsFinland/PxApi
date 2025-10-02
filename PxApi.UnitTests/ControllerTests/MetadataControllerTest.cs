@@ -89,6 +89,11 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/filename?lang=en&showValues=true"));
                 Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
                 Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
+                // Verify data link is generated with default filtering parameters
+                Assert.That(resultMeta.Links, Has.Count.EqualTo(2));
+                Assert.That(resultMeta.Links[1].Href, Is.EqualTo("https://testurl.fi/data/exampledb/filename/json?filters=content-code:first=1&filters=time-code:code=*&filters=dim0-code:first=1&filters=dim1-code:first=1"));
+                Assert.That(resultMeta.Links[1].Rel, Is.EqualTo("data"));
+                Assert.That(resultMeta.Links[1].Method, Is.EqualTo("GET"));
                 Assert.That(resultMeta.Groupings, Is.Not.Null);
                 Assert.That(resultMeta.Groupings, Has.Count.EqualTo(1));
                 Assert.That(resultMeta.Groupings[0].Code, Is.EqualTo("group-code-1"));
@@ -161,6 +166,11 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/filename"));
                 Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
                 Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
+                // Verify data link is generated with default filtering parameters
+                Assert.That(resultMeta.Links, Has.Count.EqualTo(2));
+                Assert.That(resultMeta.Links[1].Href, Is.EqualTo("https://testurl.fi/data/exampledb/filename/json?filters=content-code:first=1&filters=time-code:code=*&filters=dim0-code:first=1&filters=dim1-code:first=1"));
+                Assert.That(resultMeta.Links[1].Rel, Is.EqualTo("data"));
+                Assert.That(resultMeta.Links[1].Method, Is.EqualTo("GET"));
                 Assert.That(resultMeta.Groupings, Is.Not.Null);
                 Assert.That(resultMeta.Groupings, Has.Count.EqualTo(1));
                 Assert.That(resultMeta.Groupings[0].Code, Is.EqualTo("group-code-1"));
