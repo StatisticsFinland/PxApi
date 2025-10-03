@@ -1,4 +1,7 @@
 ﻿using System.Globalization;
+using System.Collections.Generic;
+using Px.Utils.Models.Data.DataValue;
+using Px.Utils.Models.Data;
 
 namespace PxApi.ModelBuilders
 {
@@ -61,5 +64,44 @@ namespace PxApi.ModelBuilders
         /// Nominal value for table META-ID in the Px files
         /// </summary>
         public const string NOMINAL_VALUE = "SCALE-TYPE=nominal";
+
+        /// <summary>
+        /// Dictionary containing translations for fi, sv and en for missing data value types.
+        /// The outer dictionary key is the language code ("fi", "en", "sv").
+        /// The inner dictionary maps the DataValueType enum to the human readable translation.
+        /// </summary>
+        public static Dictionary<string, Dictionary<DataValueType, string>> MISSING_DATA_TRANSLATIONS { get; } = new()
+        {
+            ["fi"] = new Dictionary<DataValueType, string>
+            {
+                [DataValueType.Missing] = "Tieto on puuttuva",
+                [DataValueType.CanNotRepresent] = "Tieto on epälooginen esitettäväksi",
+                [DataValueType.Confidential] = "Tieto on salassapitosäännön alainen",
+                [DataValueType.NotAcquired] = "Tietoa ei ole saatu",
+                [DataValueType.NotAsked] = "Tietoa ei ole kysytty",
+                [DataValueType.Empty] = "......",
+                [DataValueType.Nill] = "Ei yhtään"
+            },
+            ["en"] = new Dictionary<DataValueType, string>
+            {
+                [DataValueType.Missing] = "Missing",
+                [DataValueType.CanNotRepresent] = "Not applicable",
+                [DataValueType.Confidential] = "Data is subject to secrecy",
+                [DataValueType.NotAcquired] = "Not available",
+                [DataValueType.NotAsked] = "Not asked",
+                [DataValueType.Empty] = "......",
+                [DataValueType.Nill] = "Magnitude nil"
+            },
+            ["sv"] = new Dictionary<DataValueType, string>
+            {
+                [DataValueType.Missing] = "Uppgift saknas",
+                [DataValueType.CanNotRepresent] = "Uppgift kan inte förekomma",
+                [DataValueType.Confidential] = "Uppgift är sekretessbelagd",
+                [DataValueType.NotAcquired] = "Uppgift inte tillgänglig",
+                [DataValueType.NotAsked] = "Uppgift inte efterfrågad",
+                [DataValueType.Empty] = "......",
+                [DataValueType.Nill] = "Värdet noll"
+            }
+        };
     }
 }

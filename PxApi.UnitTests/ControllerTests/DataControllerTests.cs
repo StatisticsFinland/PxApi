@@ -322,6 +322,15 @@ namespace PxApi.UnitTests.ControllerTests
                 DateTime expectedLastUpdated = new(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc);
                 string expectedUpdated = expectedLastUpdated.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
                 Assert.That(jsonStat.Updated, Is.EqualTo(expectedUpdated));
+                
+                // Check extension contains English missing value translations
+                Assert.That(jsonStat.Extension, Is.Not.Null);
+                Assert.That(jsonStat.Extension!.ContainsKey("MissingValueDescriptions"));
+                Dictionary<DataValueType, string>? translations = jsonStat.Extension["MissingValueDescriptions"] as Dictionary<DataValueType, string>;
+                Assert.That(translations, Is.Not.Null);
+                Assert.That(translations![DataValueType.Missing], Is.EqualTo("Missing"));
+                Assert.That(translations[DataValueType.CanNotRepresent], Is.EqualTo("Not applicable"));
+                Assert.That(translations[DataValueType.Confidential], Is.EqualTo("Data is subject to secrecy"));
             });
         }
 
@@ -500,6 +509,15 @@ namespace PxApi.UnitTests.ControllerTests
                 DateTime expectedLastUpdated = new(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc);
                 string expectedUpdated = expectedLastUpdated.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
                 Assert.That(jsonStat.Updated, Is.EqualTo(expectedUpdated));
+                
+                // Check extension contains English missing value translations using DataValueType keys
+                Assert.That(jsonStat.Extension, Is.Not.Null);
+                Assert.That(jsonStat.Extension!.ContainsKey("MissingValueDescriptions"));
+                Dictionary<DataValueType, string>? translations = jsonStat.Extension["MissingValueDescriptions"] as Dictionary<DataValueType, string>;
+                Assert.That(translations, Is.Not.Null);
+                Assert.That(translations![DataValueType.Missing], Is.EqualTo("Missing"));
+                Assert.That(translations[DataValueType.CanNotRepresent], Is.EqualTo("Not applicable"));
+                Assert.That(translations[DataValueType.Confidential], Is.EqualTo("Data is subject to secrecy"));
             });
         }
 
