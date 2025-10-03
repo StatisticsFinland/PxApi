@@ -677,6 +677,13 @@ namespace PxApi.UnitTests.ControllerTests
                 // Compare actual data against expected array
                 double[] actualValues = jsonStat.Value.Select(v => v.UnsafeValue).ToArray();
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
+                
+                // Verify extension contains English missing value translations
+                Assert.That(jsonStat.Extension, Is.Not.Null);
+                Assert.That(jsonStat.Extension!.ContainsKey("MissingValueDescriptions"));
+                Dictionary<DataValueType, string>? translations = jsonStat.Extension["MissingValueDescriptions"] as Dictionary<DataValueType, string>;
+                Assert.That(translations, Is.Not.Null);
+                Assert.That(translations![DataValueType.Missing], Is.EqualTo("Missing"));
             });
 
             _mockConnector.Verify(c => c.ReadPxFile(_testTable), Times.AtLeastOnce);

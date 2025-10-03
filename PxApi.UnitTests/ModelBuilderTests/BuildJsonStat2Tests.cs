@@ -86,6 +86,19 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 
                 // Check data values
                 Assert.That(result.Value, Is.EqualTo(data));
+                
+                // Check extension with missing value translations
+                Assert.That(result.Extension, Is.Not.Null);
+                Assert.That(result.Extension!.ContainsKey("MissingValueDescriptions"));
+                Dictionary<DataValueType, string>? translations = result.Extension["MissingValueDescriptions"] as Dictionary<DataValueType, string>;
+                Assert.That(translations, Is.Not.Null);
+                Assert.That(translations![DataValueType.Missing], Is.EqualTo("Missing"));
+                Assert.That(translations[DataValueType.CanNotRepresent], Is.EqualTo("Not applicable"));
+                Assert.That(translations[DataValueType.Confidential], Is.EqualTo("Data is subject to secrecy"));
+                Assert.That(translations[DataValueType.NotAcquired], Is.EqualTo("Not available"));
+                Assert.That(translations[DataValueType.NotAsked], Is.EqualTo("Not asked"));
+                Assert.That(translations[DataValueType.Empty], Is.EqualTo("......"));
+                Assert.That(translations[DataValueType.Nill], Is.EqualTo("Magnitude nil"));
             });
         }
 
@@ -123,6 +136,59 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 
                 // Check a dimension label is also in the default language
                 Assert.That(result.Dimension["content-code"].Label, Is.EqualTo("content-name.fi"));
+                
+                // Check extension contains Finnish translations
+                Assert.That(result.Extension, Is.Not.Null);
+                Assert.That(result.Extension!.ContainsKey("MissingValueDescriptions"));
+                Dictionary<DataValueType, string>? translations = result.Extension["MissingValueDescriptions"] as Dictionary<DataValueType, string>;
+                Assert.That(translations, Is.Not.Null);
+                Assert.That(translations![DataValueType.Missing], Is.EqualTo("Tieto on puuttuva"));
+                Assert.That(translations[DataValueType.CanNotRepresent], Is.EqualTo("Tieto on epälooginen esitettäväksi"));
+                Assert.That(translations[DataValueType.Confidential], Is.EqualTo("Tieto on salassapitosäännön alainen"));
+            });
+        }
+
+        [Test]
+        public static void BuildJsonStat2_WithSwedishLanguage_IncludesSwedishTranslations()
+        {
+            // Arrange
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+
+            // Add SOURCE property to content dimension's additional properties
+            if (meta.Dimensions.Find(d => d.Type == DimensionType.Content) is ContentDimension contentDim)
+            {
+                MultilanguageString source = new([
+                    new("fi", "content-source.fi"),
+                    new("sv", "content-source.sv"),
+                    new("en", "content-source.en")
+                ]);
+                contentDim.AdditionalProperties[PxFileConstants.SOURCE] = new MultilanguageStringProperty(source);
+            }
+
+            string lang = "sv";
+            DoubleDataValue[] data = [
+                new DoubleDataValue(1.0, DataValueType.Exists),
+                new DoubleDataValue(2.0, DataValueType.Exists)
+            ];
+
+            // Act
+            JsonStat2 result = ModelBuilder.BuildJsonStat2(meta, data, lang);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                // Check extension contains Swedish translations
+                Assert.That(result.Extension, Is.Not.Null);
+                Assert.That(result.Extension!.ContainsKey("MissingValueDescriptions"));
+                Dictionary<DataValueType, string>? translations = result.Extension["MissingValueDescriptions"] as Dictionary<DataValueType, string>;
+                Assert.That(translations, Is.Not.Null);
+                Assert.That(translations![DataValueType.Missing], Is.EqualTo("Uppgift saknas"));
+                Assert.That(translations[DataValueType.CanNotRepresent], Is.EqualTo("Uppgift kan inte förekomma"));
+                Assert.That(translations[DataValueType.Confidential], Is.EqualTo("Uppgift är sekretessbelagd"));
+                Assert.That(translations[DataValueType.NotAcquired], Is.EqualTo("Uppgift inte tillgänglig"));
+                Assert.That(translations[DataValueType.NotAsked], Is.EqualTo("Uppgift inte efterfrågad"));
+                Assert.That(translations[DataValueType.Empty], Is.EqualTo("......"));
+                Assert.That(translations[DataValueType.Nill], Is.EqualTo("Värdet noll"));
             });
         }
 
@@ -155,6 +221,10 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 // Status values should match the DataValueType byte value
                 Assert.That(result.Status[1], Is.EqualTo(((byte)DataValueType.Missing).ToString()));
                 Assert.That(result.Status[3], Is.EqualTo(((byte)DataValueType.Missing).ToString()));
+                
+                // Extension should still contain translations
+                Assert.That(result.Extension, Is.Not.Null);
+                Assert.That(result.Extension!.ContainsKey("MissingValueDescriptions"));
             });
         }
 
@@ -173,7 +243,14 @@ namespace PxApi.UnitTests.ModelBuilderTests
             JsonStat2 result = ModelBuilder.BuildJsonStat2(meta, data, "en");
 
             // Assert
-            Assert.That(result.Status, Is.Null, "Status dictionary should be null when all values exist");
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Status, Is.Null, "Status dictionary should be null when all values exist");
+                
+                // Extension should still contain translations
+                Assert.That(result.Extension, Is.Not.Null);
+                Assert.That(result.Extension!.ContainsKey("MissingValueDescriptions"));
+            });
         }
         
         [Test]

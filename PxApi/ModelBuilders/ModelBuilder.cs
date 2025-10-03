@@ -86,6 +86,12 @@ namespace PxApi.ModelBuilders
             DateTime lastUpdated = meta.GetContentDimension().Values.Map(v => v.LastUpdated).Max();
             string updated = lastUpdated.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
             
+            // Build extension with missing value descriptions
+            Dictionary<string, object> extension = [];
+            Dictionary<DataValueType, string> translations = PxFileConstants.MISSING_DATA_TRANSLATIONS.GetValueOrDefault(actualLang) 
+                ?? throw new ArgumentException($"No missing data translations found for language '{actualLang}'");
+                extension["MissingValueDescriptions"] = translations;
+            
             return new JsonStat2
             {
                 Id = tableId,
@@ -96,7 +102,8 @@ namespace PxApi.ModelBuilders
                 Size = [.. meta.Dimensions.Select(d => d.Values.Count)],
                 Value = data,
                 Role = BuildJsonStatRoles(meta),
-                Status = BuildStatusDictionary(data)
+                Status = BuildStatusDictionary(data),
+                Extension = extension
             };
         }
 
@@ -291,7 +298,7 @@ namespace PxApi.ModelBuilders
         /// Build a <see cref="ContentValue"/> for a <see cref="ContentDimension"/> based on the input <paramref name="meta"/>.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyDimensionValue"/></param>
-        /// <param name="source">The source information for the content value. This is not nessessarily in the <paramref name="meta"/>.</param>
+        /// <param name="source">The source information for the content value. This is not necessarily in the <paramref name="meta"/>.</param>
         /// <param name="lang">Language of the response, language must be found in the provided <paramref name="meta"/>.</param>
         /// <returns><see cref="ContentValue"/> based on the provided <paramref name="meta"/></returns>
         public static ContentValue BuildContentValue(ContentDimensionValue meta, string source, string lang)
