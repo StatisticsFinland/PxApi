@@ -108,11 +108,11 @@ namespace PxApi.Caching
         /// <param name="lastUpdated">A task that resolves to the <see cref="DateTime"/> representing the last updated timestamp.</param>
         public void SetLastUpdated(PxFileRef file, Task<DateTime> lastUpdated)
         {   
-            CacheConfig config = cacheConfigs[file.DataBase.Id].Modifiedtime;
+            int revalidationIntervalMs = cacheConfigs[file.DataBase.Id].RevalidationIntervalMs
+                ?? throw new InvalidOperationException($"Trying to cache revalidation information for database {file.DataBase.Id} when it should be disabled.");
             MemoryCacheEntryOptions options = new()
             {
-                SlidingExpiration = config.SlidingExpirationSeconds,
-                AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds,
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMilliseconds(revalidationIntervalMs),
                 Size = DEFAULT_UPDATE_TASK_SIZE,
                 Priority = CacheItemPriority.Normal,
             };

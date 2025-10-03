@@ -2,13 +2,13 @@
 using Px.Utils.Models.Metadata;
 using Px.Utils.PxFile.Data;
 using Px.Utils.PxFile.Metadata;
-using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Models;
 using System.Collections.Immutable;
 using System.Text;
 using Px.Utils.Language;
 using System.Text.Json;
+using PxApi.Configuration;
 
 namespace PxApi.Caching
 {
@@ -18,6 +18,11 @@ namespace PxApi.Caching
         private const string GROUPINGS_FILE = "groupings.json"; // Root level file listing groupings meta
         private const string GROUP_ALIAS_PREFIX = "Alias_"; // Files like Alias_fi.txt inside group folder
         private const string GROUP_ALIAS_SUFFIX = ".txt";
+        private readonly Dictionary<string, DatabaseCacheConfig> cacheConfigs = 
+            AppSettings.Active.DataBases.ToDictionary(
+                db => db.Id,
+                db => db.CacheConfig
+            );
 
         private sealed record GroupingFileModel(string code, Dictionary<string, string> name);
 
@@ -111,7 +116,7 @@ namespace PxApi.Caching
         {
             if (matrixCache.TryGetData(map, out Task<DoubleDataValue[]>? data, out DateTime? cached))
             {
-                if (cached! > await GetLastModified(pxFile))
+                if (await CheckCacheValidity(pxFile, cached!.Value))
                 {
                     return await data!;
                 }
@@ -119,7 +124,7 @@ namespace PxApi.Caching
             }
             else if (matrixCache.TryGetDataSuperset(pxFile, map, out IMatrixMap? superMap, out Task<DoubleDataValue[]>? superData, out cached))
             {
-                if (cached! > await GetLastModified(pxFile))
+                if (await CheckCacheValidity(pxFile, cached!.Value))
                 {
                     DataIndexer indexer = new(superMap!, map);
                     DoubleDataValue[] result = new DoubleDataValue[indexer.DataLength];
@@ -175,7 +180,7 @@ namespace PxApi.Caching
         private async Task<MetaCacheContainer> GetMetaContainer(PxFileRef pxFile)
         {
             if (matrixCache.TryGetMetadata(pxFile, out MetaCacheContainer? metaContainer) &&
-                (metaContainer!.CachedUtc > await GetLastModified(pxFile)))
+                await CheckCacheValidity(pxFile, metaContainer!.CachedUtc))
             {
                 return metaContainer!;
             }
@@ -188,17 +193,20 @@ namespace PxApi.Caching
             return metaContainer;
         }
 
-        private async Task<DateTime> GetLastModified(PxFileRef file)
+        private async Task<bool> CheckCacheValidity(PxFileRef file, DateTime cachedUtc)
         {
+            int? revalidationInterval = cacheConfigs[file.DataBase.Id].RevalidationIntervalMs;
+            if(revalidationInterval is null || revalidationInterval == 0) return true;
+
             if (matrixCache.TryGetLastUpdated(file, out Task<DateTime>? cachedTask))
             {
-                return await cachedTask!;
+                return cachedUtc > await cachedTask!;
             }
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(file.DataBase);
             Task<DateTime> lastModified = dbConnector.GetLastWriteTimeAsync(file);
             matrixCache.SetLastUpdated(file, lastModified);
-            return await lastModified;
+            return cachedUtc > await lastModified;
         }
 
         private static async Task<IReadOnlyList<TableGroup>> BuildGroupingsAsync(PxFileRef pxFile, IDataBaseConnector connector)

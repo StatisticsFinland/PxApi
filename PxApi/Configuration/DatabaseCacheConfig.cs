@@ -23,7 +23,7 @@
         /// <summary>
         /// Configuration for modified time caching.
         /// </summary>
-        public CacheConfig Modifiedtime { get; }
+        public int? RevalidationIntervalMs { get; }
 
         /// <summary>
         /// Configuration for grouping metadata caching.
@@ -45,7 +45,7 @@
             TableList = new CacheConfig(section.GetSection(nameof(TableList)));
             Meta = new CacheConfig(section.GetSection(nameof(Meta)));
             Data = new CacheConfig(section.GetSection(nameof(Data)));
-            Modifiedtime = new CacheConfig(section.GetSection(nameof(Modifiedtime)));
+            RevalidationIntervalMs = section.GetValue<int?>(nameof(RevalidationIntervalMs), null);
             Groupings = new CacheConfig(section.GetSection(nameof(Groupings)));
 
             MaxCacheSize = section.GetValue<long?>(nameof(MaxCacheSize))

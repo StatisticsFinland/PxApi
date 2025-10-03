@@ -587,6 +587,253 @@ namespace PxApi.UnitTests.Caching
 
         #endregion
 
+        #region Cache Revalidation Tests
+
+        [Test]
+        public async Task GetDataCachedAsync_RevalidationIntervalNull_DoesNotPerformRevalidation()
+        {
+            // Arrange
+            Dictionary<string, string?> inMemorySettings = new()
+            {
+                {"RootUrl", "https://testurl.fi"},
+                {"DataBases:0:Type", "Mounted"},
+                {"DataBases:0:Id", "NoRevalidationDb"},
+                {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"},
+                {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
+                // RevalidationIntervalMs is intentionally omitted (null)
+                {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
+                {"DataBases:0:Custom:RootPath", "datasource/root/"},
+                {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
+                {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"}
+            };
+
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(inMemorySettings)
+                .Build();
+
+            AppSettings.Load(configuration);
+
+            DataBaseRef dataBase = DataBaseRef.Create("NoRevalidationDb");
+            PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            DoubleDataValue[] expectedData = [new DoubleDataValue(2, DataValueType.Exists)];
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
+            dbCache.SetMetadata(pxFile, metaContainer);
+            dbCache.SetData(pxFile, map, Task.FromResult(expectedData));
+
+            Mock<IDataBaseConnector> mockConnector = new();
+            mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
+            // This should never be called since revalidation is disabled
+            mockConnector.Setup(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()))
+                .ReturnsAsync(DateTime.UtcNow.AddDays(1)); // Future date to make cache invalid if checked
+
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
+
+            // Act
+            DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result, Has.Length.EqualTo(1));
+                Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
+            });
+
+            // Verify that GetLastWriteTimeAsync was never called since revalidation is disabled
+            mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()), Times.Never);
+        }
+
+        [Test]
+        public async Task GetDataCachedAsync_RevalidationIntervalZero_DoesNotPerformRevalidation()
+        {
+            // Arrange
+            Dictionary<string, string?> inMemorySettings = new()
+            {
+                {"RootUrl", "https://testurl.fi"},
+                {"DataBases:0:Type", "Mounted"},
+                {"DataBases:0:Id", "ZeroRevalidationDb"},
+                {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"},
+                {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
+                {"DataBases:0:CacheConfig:RevalidationIntervalMs", "0"}, // Explicitly set to 0
+                {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
+                {"DataBases:0:Custom:RootPath", "datasource/root/"},
+                {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
+                {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"}
+            };
+
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(inMemorySettings)
+                .Build();
+
+            AppSettings.Load(configuration);
+
+            DataBaseRef dataBase = DataBaseRef.Create("ZeroRevalidationDb");
+            PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            DoubleDataValue[] expectedData = [new DoubleDataValue(2, DataValueType.Exists)];
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
+            dbCache.SetMetadata(pxFile, metaContainer);
+            dbCache.SetData(pxFile, map, Task.FromResult(expectedData));
+
+            Mock<IDataBaseConnector> mockConnector = new();
+            mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
+            // This should never be called since revalidation is disabled
+            mockConnector.Setup(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()))
+                .ReturnsAsync(DateTime.UtcNow.AddDays(1)); // Future date to make cache invalid if checked
+
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
+
+            // Act
+            DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result, Has.Length.EqualTo(1));
+                Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
+            });
+
+            // Verify that GetLastWriteTimeAsync was never called since revalidation is disabled
+            mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()), Times.Never);
+        }
+
+        [Test]
+        public async Task GetMetadataCachedAsync_RevalidationIntervalNull_DoesNotPerformRevalidation()
+        {
+            // Arrange
+            Dictionary<string, string?> inMemorySettings = new()
+            {
+                {"RootUrl", "https://testurl.fi"},
+                {"DataBases:0:Type", "Mounted"},
+                {"DataBases:0:Id", "NoRevalidationMetaDb"},
+                {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
+                {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"},
+                {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
+                // RevalidationIntervalMs is intentionally omitted (null)
+                {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
+                {"DataBases:0:Custom:RootPath", "datasource/root/"},
+                {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
+                {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"}
+            };
+
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(inMemorySettings)
+                .Build();
+
+            AppSettings.Load(configuration);
+
+            DataBaseRef dataBase = DataBaseRef.Create("NoRevalidationMetaDb");
+            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
+            DatabaseCache dbCache = new(memoryCache);
+            dbCache.SetMetadata(fileRef, metaContainer);
+
+            Mock<IDataBaseConnector> mockConnector = new();
+            mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
+            // This should never be called since revalidation is disabled
+            mockConnector.Setup(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()))
+                .ReturnsAsync(DateTime.UtcNow.AddDays(1)); // Future date to make cache invalid if checked
+
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
+
+            // Act
+            IReadOnlyMatrixMetadata result = await connector.GetMetadataCachedAsync(fileRef);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result, Is.EqualTo(metadata));
+            });
+
+            // Verify that GetLastWriteTimeAsync was never called since revalidation is disabled
+            mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()), Times.Never);
+        }
+
+        [Test]
+        public async Task GetDataCachedAsync_RevalidationIntervalSet_PerformsRevalidation()
+        {
+            // Arrange - Use existing setup which includes RevalidationIntervalMs
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb"); // This has RevalidationIntervalMs = 500
+            PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            DoubleDataValue[] expectedData = [new DoubleDataValue(2, DataValueType.Exists)];
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
+            dbCache.SetMetadata(pxFile, metaContainer);
+            dbCache.SetData(pxFile, map, Task.FromResult(expectedData));
+
+            Mock<IDataBaseConnector> mockConnector = new();
+            mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
+            // Cache was created now, but file was modified in the past (cache is valid)
+            mockConnector.Setup(c => c.GetLastWriteTimeAsync(pxFile))
+                .ReturnsAsync(DateTime.UtcNow.AddMinutes(-5));
+
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
+            CachedDataSource connector = new(mockFactory.Object, dbCache);
+
+            // Act
+            DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result, Has.Length.EqualTo(1));
+                Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
+            });
+
+            // Verify that GetLastWriteTimeAsync was called since revalidation is enabled
+            mockConnector.Verify(c => c.GetLastWriteTimeAsync(pxFile), Times.Once);
+        }
+
+        #endregion
+
         private class UnseekableMemoryStream(byte[] buffer) : MemoryStream(buffer)
         {
             public override bool CanSeek => false;
@@ -606,8 +853,7 @@ namespace PxApi.UnitTests.Caching
                 {$"DataBases:{index}:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
                 {$"DataBases:{index}:CacheConfig:Data:SlidingExpirationSeconds", "600"},
                 {$"DataBases:{index}:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
-                {$"DataBases:{index}:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},
-                {$"DataBases:{index}:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds", "60"},
+                {$"DataBases:{index}:CacheConfig:RevalidationIntervalMs", "500"},
                 {$"DataBases:{index}:CacheConfig:MaxCacheSize", "1073741824"},
                 {$"DataBases:{index}:Custom:RootPath", "datasource/root/"},
                 {$"DataBases:{index}:Custom:ModifiedCheckIntervalMs", "1000"},
