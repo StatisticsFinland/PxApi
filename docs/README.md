@@ -4,8 +4,8 @@ PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px 
 
 ## Features
 
-- **Table Metadata**: Fetch detailed metadata about Px tables, including content, time variables, and classificatory variables.
-- **Variable Metadata**: Retrieve metadata for specific variables, including content and time variables.
+- **Table Metadata**: Fetch detailed metadata about Px tables, including content, time dimensions, and classificatory dimensions.
+- **Dimension Metadata**: Retrieve metadata for specific dimensions, including content and time dimensions.
 - **Table Listing**: List available tables in a database with essential metadata and paging support.
 - **Data Retrieval**: Query px table data with filtering options, supporting both minimal JSON and JSON-stat2 response formats.
 - **Advanced Caching**: Comprehensive caching system with configurable settings for metadata, data and file lists.
@@ -21,8 +21,8 @@ PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px 
 2. **Metadata Endpoint** (`/meta`):
    - Retrieve metadata for a specific table.
    - Example: `/meta/{database}/{table}?lang=en&showValues=true`
-   - Retrieve metadata for a specific variable in a table.
-   - Example: `/meta/{database}/{table}/{varcode}?lang=en`
+   - Retrieve metadata for a specific dimension in a table.
+   - Example: `/meta/{database}/{table}/{dimcode}?lang=en`
 
 3. **Data Endpoint** (`/data`):
    - GET and POST endpoints to retrieve data in minimal JSON format.

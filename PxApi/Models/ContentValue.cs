@@ -3,7 +3,7 @@
 namespace PxApi.Models
 {
     /// <summary>
-    /// Value of a content variable, contains additional metadata compared to a regular variable values.
+    /// Value of a content dimension, contains additional metadata compared to a regular dimension values.
     /// </summary>
     public class ContentValue : Value
     {

@@ -4,12 +4,12 @@ using System.Text.Json.Serialization;
 namespace PxApi.Models
 {
     /// <summary>
-    /// A value of a variable.
+    /// A value of a dimension.
     /// </summary>
     public class Value
     {
         /// <summary>
-        /// Unique identifier among the values of the variable.
+        /// Unique identifier among the values of the dimension.
         /// </summary>
         [Required]
         public required string Code { get; set; }

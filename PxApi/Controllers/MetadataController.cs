@@ -13,7 +13,7 @@ namespace PxApi.Controllers
 {
     /// <summary>
     /// Controller for /meta endpoint.
-    /// Contains methods for getting metadata about tables and variables.
+    /// Contains methods for getting metadata about tables and dimensions.
     /// </summary>
     [Route("meta")]
     [ApiController]
@@ -29,7 +29,7 @@ namespace PxApi.Controllers
         /// If left empty uses the default language of the table.
         /// The provided language must be available in the table.
         /// </param>
-        /// <param name="showValues">[Optional] If true, will list the variable values. If not provided, the values are not listed.</param>
+        /// <param name="showValues">[Optional] If true, will list the dimension values. If not provided, the values are not listed.</param>
         /// <returns><see cref="TableMeta"/> object containing metadata of the <paramref name="table"/>.</returns> 
         /// <response code="200">Returns the table metadata</response>
         /// <response code="400">If the metadata is not available in the specified language.</response>
@@ -92,29 +92,29 @@ namespace PxApi.Controllers
         }
 
         /// <summary>
-        /// Get variable metadata.
+        /// Get dimension metadata.
         /// </summary>
         /// <param name="database">The name of the database.</param>
         /// <param name="table">The name of the table.</param>
-        /// <param name="varcode">The code of the variable.</param>
+        /// <param name="dimcode">The code of the dimension.</param>
         /// <param name="lang">
         /// [Optional] Language used to get the metadata.
         /// If left empty uses the default language of the table.
         /// The provided language must be available in the table.
         /// </param>
-        /// <returns>Returns variable metadata which can be of type Variable, ContentVariable, or TimeVariable.</returns>
-        /// <response code="200">Returns the variable metadata, which can be of type Variable, ContentVariable, or TimeVariable.</response>
+        /// <returns>Returns dimension metadata which can be of type Dimension, ContentDimension, or TimeDimension.</returns>
+        /// <response code="200">Returns the dimenion metadata, which can be of type Dimension, ContentDimension, or TimeDimension.</response>
         /// <response code="400">If the content is not available in the specified language.</response>
-        /// <response code="404">If the database, table or variable is not found.</response>
-        [HttpGet("{database}/{table}/{varcode}")]
+        /// <response code="404">If the database, table or dimenion is not found.</response>
+        [HttpGet("{database}/{table}/{dimcode}")]
         [Produces("application/json")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult<VariableBase>> GetVariableMeta(
+        public async Task<ActionResult<DimensionBase>> GetDimensionMeta(
             [FromRoute] string database,
             [FromRoute] string table,
-            [FromRoute] string varcode,
+            [FromRoute] string dimcode,
             [FromQuery] string? lang)
         {
             AppSettings settings = AppSettings.Active;
@@ -126,7 +126,7 @@ namespace PxApi.Controllers
                 if (fileRef is null) return NotFound("Table not found.");
 
                 IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
-                IReadOnlyDimension? targetDim = meta.Dimensions.FirstOrDefault(d => d.Code == varcode);
+                IReadOnlyDimension? targetDim = meta.Dimensions.FirstOrDefault(d => d.Code == dimcode);
                 if (targetDim is not null)
                 {
                     string actualLang = lang ?? meta.DefaultLanguage;
@@ -140,15 +140,15 @@ namespace PxApi.Controllers
 
                         if (targetDim.Type is DimensionType.Content)
                         {
-                            return Ok(ModelBuilder.BuildContentVariable(meta, actualLang, true, fileUri, rel));
+                            return Ok(ModelBuilder.BuildContentDimension(meta, actualLang, true, fileUri, rel));
                         }
                         else if (targetDim.Type is DimensionType.Time)
                         {
-                            return Ok(ModelBuilder.BuildTimeVariable(meta, actualLang, true, fileUri, rel));
+                            return Ok(ModelBuilder.BuildTimeDimension(meta, actualLang, true, fileUri, rel));
                         }
                         else
                         {
-                            return Ok(ModelBuilder.BuildVariable(targetDim, actualLang, true, fileUri, rel));
+                            return Ok(ModelBuilder.BuildDimension(targetDim, actualLang, true, fileUri, rel));
                         }
                     }
                     else

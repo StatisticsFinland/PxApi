@@ -187,7 +187,7 @@ namespace PxApi.Configuration
                 ["time-series-analysis"] = new OpenApiExample
                 {
                     Summary = "Time series analysis",
-                    Description = "Get comprehensive time series data for specific regions and all available variable values",
+                    Description = "Get comprehensive time series data for specific regions and all available dimension values",
                     Value = new OpenApiObject
                     {
                         ["Region"] = new OpenApiObject
@@ -201,7 +201,7 @@ namespace PxApi.Configuration
                                 new OpenApiString("Oulu")
                             }
                         },
-                        ["Variable"] = new OpenApiObject
+                        ["Dimension"] = new OpenApiObject
                         {
                             ["type"] = new OpenApiString(nameof(FilterType.Code)),
                             ["query"] = new OpenApiArray
@@ -253,7 +253,7 @@ namespace PxApi.Configuration
                             ["type"] = new OpenApiString(nameof(FilterType.Last)),
                             ["query"] = new OpenApiInteger(12)
                         },
-                        ["Variable"] = new OpenApiObject
+                        ["Dimension"] = new OpenApiObject
                         {
                             ["type"] = new OpenApiString(nameof(FilterType.Code)),
                             ["query"] = new OpenApiArray
@@ -331,7 +331,7 @@ namespace PxApi.Configuration
                             ["type"] = new OpenApiString(nameof(FilterType.Last)),
                             ["query"] = new OpenApiInteger(6)
                         },
-                        ["Variable"] = new OpenApiObject
+                        ["Dimension"] = new OpenApiObject
                         {
                             ["type"] = new OpenApiString(nameof(FilterType.Code)),
                             ["query"] = new OpenApiArray

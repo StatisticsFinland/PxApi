@@ -23,7 +23,7 @@ namespace PxApi.ModelBuilders
         public const string VALUENOTE = "VALUENOTE";
 
         /// <summary>
-        /// Key for VARIABLE in the Px files
+        /// Key for SOURCE in the Px files
         /// </summary>
         public const string SOURCE = "SOURCE";
 
