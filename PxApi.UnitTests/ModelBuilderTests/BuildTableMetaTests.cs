@@ -29,9 +29,9 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Contents, Is.EqualTo("table-contents.en"));
                 Assert.That(result.Title, Is.EqualTo("table-description.en"));
                 Assert.That(result.Note, Is.EqualTo("table-note.en"));
-                Assert.That(result.ContentVariable, Is.Not.Null);
-                Assert.That(result.TimeVariable, Is.Not.Null);
-                Assert.That(result.ClassificatoryVariables, Has.Count.EqualTo(2));
+                Assert.That(result.ContentDimension, Is.Not.Null);
+                Assert.That(result.TimeDimension, Is.Not.Null);
+                Assert.That(result.ClassificatoryDimensions, Has.Count.EqualTo(2));
                 Assert.That(result.FirstPeriod, Is.EqualTo("time-value0-name.en"));
                 Assert.That(result.LastPeriod, Is.EqualTo("time-value1-name.en"));
                 Assert.That(result.LastModified, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
@@ -44,7 +44,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
         }
 
         [Test]
-        public static void BuildTableMeta_CheckVariableValueLengths_WhenShowValuesTrue()
+        public static void BuildTableMeta_CheckDimensionValueLengths_WhenShowValuesTrue()
         {
             // Arrange
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
@@ -55,15 +55,15 @@ namespace PxApi.UnitTests.ModelBuilderTests
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(result.ContentVariable.Values, Has.Count.EqualTo(2));
-                Assert.That(result.TimeVariable.Values, Has.Count.EqualTo(2));
-                Assert.That(result.ClassificatoryVariables[0].Values, Has.Count.EqualTo(2));
-                Assert.That(result.ClassificatoryVariables[1].Values, Has.Count.EqualTo(2));
+                Assert.That(result.ContentDimension.Values, Has.Count.EqualTo(2));
+                Assert.That(result.TimeDimension.Values, Has.Count.EqualTo(2));
+                Assert.That(result.ClassificatoryDimensions[0].Values, Has.Count.EqualTo(2));
+                Assert.That(result.ClassificatoryDimensions[1].Values, Has.Count.EqualTo(2));
             });
         }
 
         [Test]
-        public static void BuildTableMeta_CheckContentVariable_WhenShowValuesTrue()
+        public static void BuildTableMeta_CheckContentDimension_WhenShowValuesTrue()
         {
             // Arrange
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
@@ -74,21 +74,21 @@ namespace PxApi.UnitTests.ModelBuilderTests
             // Assert
             Assert.Multiple(() =>
             {
-                if(result.ContentVariable?.Values is null)
+                if(result.ContentDimension?.Values is null)
                 {
-                    Assert.Fail("ContentVariable.Values is null");
+                    Assert.Fail("ContentDimension.Values is null");
                 }
                 else
                 {
-                    Assert.That(result.ContentVariable.Values, Has.Count.EqualTo(2));
-                    Assert.That(result.ContentVariable.Values[0].Code, Is.EqualTo("content-value0-code"));
-                    Assert.That(result.ContentVariable.Values[0].Name, Is.EqualTo("content-value0-name.en"));
-                    Assert.That(result.ContentVariable.Values[0].Source, Is.EqualTo("table-source.en"));
-                    Assert.That(result.ContentVariable.Values[0].Unit, Is.EqualTo("content-value0-unit.en"));
-                    Assert.That(result.ContentVariable.Values[1].Code, Is.EqualTo("content-value1-code"));
-                    Assert.That(result.ContentVariable.Values[1].Name, Is.EqualTo("content-value1-name.en"));
-                    Assert.That(result.ContentVariable.Values[1].Source, Is.EqualTo("table-source.en"));
-                    Assert.That(result.ContentVariable.Values[1].Unit, Is.EqualTo("content-value1-unit.en"));
+                    Assert.That(result.ContentDimension.Values, Has.Count.EqualTo(2));
+                    Assert.That(result.ContentDimension.Values[0].Code, Is.EqualTo("content-value0-code"));
+                    Assert.That(result.ContentDimension.Values[0].Name, Is.EqualTo("content-value0-name.en"));
+                    Assert.That(result.ContentDimension.Values[0].Source, Is.EqualTo("table-source.en"));
+                    Assert.That(result.ContentDimension.Values[0].Unit, Is.EqualTo("content-value0-unit.en"));
+                    Assert.That(result.ContentDimension.Values[1].Code, Is.EqualTo("content-value1-code"));
+                    Assert.That(result.ContentDimension.Values[1].Name, Is.EqualTo("content-value1-name.en"));
+                    Assert.That(result.ContentDimension.Values[1].Source, Is.EqualTo("table-source.en"));
+                    Assert.That(result.ContentDimension.Values[1].Unit, Is.EqualTo("content-value1-unit.en"));
                 }
             });
         }
@@ -111,9 +111,9 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Contents, Is.EqualTo("table-contents.fi"));
                 Assert.That(result.Title, Is.EqualTo("table-description.fi"));
                 Assert.That(result.Note, Is.EqualTo("table-note.fi"));
-                Assert.That(result.ContentVariable, Is.Not.Null);
-                Assert.That(result.TimeVariable, Is.Not.Null);
-                Assert.That(result.ClassificatoryVariables, Has.Count.EqualTo(2));
+                Assert.That(result.ContentDimension, Is.Not.Null);
+                Assert.That(result.TimeDimension, Is.Not.Null);
+                Assert.That(result.ClassificatoryDimensions, Has.Count.EqualTo(2));
                 Assert.That(result.FirstPeriod, Is.EqualTo("time-value0-name.fi"));
                 Assert.That(result.LastPeriod, Is.EqualTo("time-value1-name.fi"));
                 Assert.That(result.Links, Has.Count.EqualTo(1));
@@ -125,7 +125,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
         }
 
         [Test]
-        public static void BuildContentVariableTest()
+        public static void BuildContentDimensionTest()
         {
             // Arrange
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
@@ -134,7 +134,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             const string rel = "describedby";
 
             // Act
-            ContentVariable result = ModelBuilder.BuildContentVariable(meta, lang, false, urlRoot, rel);
+            PxApi.Models.ContentDimension result = ModelBuilder.BuildContentDimension(meta, lang, false, urlRoot, rel);
             // Assert
             Assert.Multiple(() =>
             {
@@ -155,7 +155,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
         }
 
         [Test]
-        public static void BuildTimeVariableTest()
+        public static void BuildTimeDimensionTest()
         {
             // Arrange
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
@@ -164,7 +164,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             const string rel = "describedby";
 
             // Act
-            TimeVariable result = ModelBuilder.BuildTimeVariable(meta, lang, false, urlRoot, rel);
+            PxApi.Models.TimeDimension result = ModelBuilder.BuildTimeDimension(meta, lang, false, urlRoot, rel);
 
             // Assert
             Assert.Multiple(() =>
@@ -187,16 +187,16 @@ namespace PxApi.UnitTests.ModelBuilderTests
         }
 
         [Test]
-        public static void BuildVariableTest()
+        public static void BuildDimensionTest()
         {
             // Arrange
-            Dimension dimMeta = TestMockMetaBuilder.GetMockDimension("nominal", DimensionType.Nominal);
+            Px.Utils.Models.Metadata.Dimensions.Dimension dimMeta = TestMockMetaBuilder.GetMockDimension("nominal", DimensionType.Nominal);
             Uri urlRoot = new("https://example.com/meta/example-db/example-table/");
             const string lang = "en";
             const string rel = "describedby";
 
             // Act
-            Variable result = ModelBuilder.BuildVariable(dimMeta, lang, false, urlRoot, rel);
+            PxApi.Models.Dimension result = ModelBuilder.BuildDimension(dimMeta, lang, false, urlRoot, rel);
 
 
             // Assert

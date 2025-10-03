@@ -178,7 +178,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetVariableMeta_ContentVariableExists_ReturnsVariableMeta()
+        public async Task GetDimensionMeta_ContentDimensionExists_ReturnsDimensionMeta()
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
@@ -192,18 +192,18 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database.Id, file.Id, varcode, lang);
+            ActionResult<DimensionBase> result = await _controller.GetDimensionMeta(database.Id, file.Id, varcode, lang);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<VariableBase>>());
+            Assert.That(result, Is.InstanceOf<ActionResult<DimensionBase>>());
             OkObjectResult? okResult = result.Result as OkObjectResult;
             Assert.That(okResult, Is.Not.Null);
-            ContentVariable? contentVar = okResult.Value as ContentVariable;
+            ContentDimension? contentVar = okResult.Value as ContentDimension;
             Assert.That(contentVar, Is.Not.Null);
         }
 
         [Test]
-        public async Task GetVariableMeta_TimeVariableExists_ReturnsVariableMeta()
+        public async Task GetDimensionMeta_TimeDimensionExists_ReturnsDimensionMeta()
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampleb");
@@ -217,18 +217,18 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database.Id, file.Id, varcode, lang);
+            ActionResult<DimensionBase> result = await _controller.GetDimensionMeta(database.Id, file.Id, varcode, lang);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<VariableBase>>());
+            Assert.That(result, Is.InstanceOf<ActionResult<DimensionBase>>());
             OkObjectResult? okResult = result.Result as OkObjectResult;
             Assert.That(okResult, Is.Not.Null);
-            TimeVariable? timeVar = okResult.Value as TimeVariable;
+            TimeDimension? timeVar = okResult.Value as TimeDimension;
             Assert.That(timeVar, Is.Not.Null);
         }
 
         [Test]
-        public async Task GetVariableMeta_VariableDoesNotExist_ReturnsNotFound()
+        public async Task GetDimensionMeta_DimensionDoesNotExist_ReturnsNotFound()
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
@@ -241,14 +241,14 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database.Id, file.Id, varcode, null);
+            ActionResult<DimensionBase> result = await _controller.GetDimensionMeta(database.Id, file.Id, varcode, null);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
         }
 
         [Test]
-        public async Task GetVariableMeta_LanguageNotAvailable_ReturnsNotFound()
+        public async Task GetDimensionMeta_LanguageNotAvailable_ReturnsNotFound()
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
@@ -262,7 +262,7 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database.Id, file.Id, varcode, lang);
+            ActionResult<DimensionBase> result = await _controller.GetDimensionMeta(database.Id, file.Id, varcode, lang);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -271,7 +271,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetVariableMeta_NoLanguageSpecified_ReturnsVariableMeta()
+        public async Task GetDimensionMeta_NoLanguageSpecified_ReturnsDimensionMeta()
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
@@ -284,13 +284,13 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<VariableBase> result = await _controller.GetVariableMeta(database.Id, file.Id, varcode, null);
+            ActionResult<DimensionBase> result = await _controller.GetDimensionMeta(database.Id, file.Id, varcode, null);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<VariableBase>>());
+            Assert.That(result, Is.InstanceOf<ActionResult<DimensionBase>>());
             OkObjectResult? okResult = result.Result as OkObjectResult;
             Assert.That(okResult, Is.Not.Null);
-            Variable? resultMeta = okResult.Value as Variable;
+            Dimension? resultMeta = okResult.Value as Dimension;
             Assert.That(resultMeta, Is.Not.Null);
             Assert.Multiple(() =>
             {

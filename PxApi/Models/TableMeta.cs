@@ -48,22 +48,22 @@ namespace PxApi.Models
         public required string LastPeriod { get; set; }
 
         /// <summary>
-        /// Content variable of the table. Contains additional metadata compared to the other variables.
+        /// Content dimension of the table. Contains additional metadata compared to the other dimensions.
         /// </summary>
         [Required]
-        public required ContentVariable ContentVariable { get; set; }
+        public required ContentDimension ContentDimension { get; set; }
 
         /// <summary>
-        /// Time variable of the table. Defines the time series of the table.
+        /// Time dimension of the table. Defines the time series of the table.
         /// </summary>
         [Required]
-        public required TimeVariable TimeVariable { get; set; }
+        public required TimeDimension TimeDimension { get; set; }
 
         /// <summary>
-        /// Other variables. Excluding the content and time variables.
+        /// Other dimensions. Excluding the content and time dimensions.
         /// </summary>
         [Required]
-        public required List<Variable> ClassificatoryVariables { get; set; }
+        public required List<Dimension> ClassificatoryDimensions { get; set; }
 
         /// <summary>
         /// List of groups that the table is part of.

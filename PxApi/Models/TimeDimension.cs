@@ -4,17 +4,17 @@ using System.Text.Json.Serialization;
 namespace PxApi.Models
 {
     /// <summary>
-    /// A time variable, defines the time series of the data.
+    /// A time dimension, defines the time series of the data.
     /// </summary>
-    public class TimeVariable : VariableBase
+    public class TimeDimension : DimensionBase
     {
         /// <summary>
-        /// Length of the the period defined by one value of the variable.
+        /// Length of the the period defined by one value of the dimension.
         /// </summary>
         public required TimeDimensionInterval Interval { get; set; }
 
         /// <summary>
-        /// Values of this variable.
+        /// Values of this dimension.
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public required List<Value>? Values { get; set; }

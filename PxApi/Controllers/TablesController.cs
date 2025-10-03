@@ -110,7 +110,7 @@ namespace PxApi.Controllers
             TableStatus status = TableStatus.Current;
             string id = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang) ?? tableName;
             DateTime lastUpdated = DateTime.MinValue;
-            if (meta.TryGetContentDimension(out ContentDimension? contDim))
+            if (meta.TryGetContentDimension(out Px.Utils.Models.Metadata.Dimensions.ContentDimension? contDim))
             {
                 lastUpdated = contDim.Values.Map(v => v.LastUpdated).Max();
             }

@@ -23,7 +23,7 @@ namespace PxApi.ModelBuilders
         /// <param name="meta">Input <see cref="IReadOnlyMatrixMetadata"/></param>
         /// <param name="baseUrlWithParams">Url used to costruct the <see cref="Link"/> objests in the response.</param>
         /// <param name="lang">Language of the response, if not provided the default language of the input <paramref name="meta"/> will be used.</param>
-        /// <param name="showValues">If true the variable values will be included. If not provided, defaults to false.</param>
+        /// <param name="showValues">If true the dimension values will be included. If not provided, defaults to false.</param>
         /// <returns><see cref="TableMeta"/> based on the input meta.</returns>
         public static TableMeta BuildTableMeta(IReadOnlyMatrixMetadata meta, Uri baseUrlWithParams, string? lang = null, bool? showValues = null)
         {
@@ -31,9 +31,9 @@ namespace PxApi.ModelBuilders
             bool includeValues = showValues ?? false;
             const string rel = "describedby";
 
-            List<Variable> dimensions = [.. meta.Dimensions
+            List<Models.Dimension> dimensions = [.. meta.Dimensions
                 .Where(d => d.Type is not DimensionType.Time and not DimensionType.Content)
-                .Select(d => BuildVariable(d, lang, includeValues, baseUrlWithParams, rel))];
+                .Select(d => BuildDimension(d, lang, includeValues, baseUrlWithParams, rel))];
 
             string? subjectCode = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.SUBJECT_CODE, lang);
 
@@ -43,9 +43,9 @@ namespace PxApi.ModelBuilders
                 Title = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang)
                     ?? throw new ArgumentException($"No {PxFileConstants.DESCRIPTION} found in table level metadata."),
                 Note = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang),
-                ContentVariable = BuildContentVariable(meta, lang, includeValues, baseUrlWithParams, rel),
-                TimeVariable = BuildTimeVariable(meta, lang, includeValues, baseUrlWithParams, rel),
-                ClassificatoryVariables = dimensions,
+                ContentDimension = BuildContentDimension(meta, lang, includeValues, baseUrlWithParams, rel),
+                TimeDimension = BuildTimeDimension(meta, lang, includeValues, baseUrlWithParams, rel),
+                ClassificatoryDimensions = dimensions,
                 FirstPeriod = meta.GetTimeDimension().Values[0].Name[lang],
                 LastPeriod = meta.GetTimeDimension().Values[^1].Name[lang],
                 ID = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang)
@@ -147,7 +147,7 @@ namespace PxApi.ModelBuilders
                 // Add unit information for content dimensions
                 if (dimension.Type == DimensionType.Content)
                 {
-                    ContentDimension contentDim = (ContentDimension)dimension;
+                    Px.Utils.Models.Metadata.Dimensions.ContentDimension contentDim = (Px.Utils.Models.Metadata.Dimensions.ContentDimension)dimension;
                     jsonDimension.Category.Unit = [];
                     
                     foreach (ContentDimensionValue value in contentDim.Values)
@@ -191,17 +191,17 @@ namespace PxApi.ModelBuilders
         }
 
         /// <summary>
-        /// Build a <see cref="ContentVariable"/> object based on the input <paramref name="meta"/>.
+        /// Build a <see cref="ContentDimension"/> object based on the input <paramref name="meta"/>.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyMatrixMetadata"/></param>
         /// <param name="lang">Language of the response, language must be found in the provided <paramref name="meta"/>.</param>
-        /// <param name="showValues">If true the variable values will be included.</param>
+        /// <param name="showValues">If true the dimension values will be included.</param>
         /// <param name="baseUrlWithParams">Url used to costruct the <see cref="Link"/> objests in the response.</param>
         /// <param name="rel">The relation type in the links pointing to this object.</param>
-        /// <returns><see cref="ContentVariable"/> based on the provided <paramref name="meta"/></returns>
-        public static ContentVariable BuildContentVariable(IReadOnlyMatrixMetadata meta, string lang, bool showValues, Uri baseUrlWithParams, string rel)
+        /// <returns><see cref="ContentDimension"/> based on the provided <paramref name="meta"/></returns>
+        public static Models.ContentDimension BuildContentDimension(IReadOnlyMatrixMetadata meta, string lang, bool showValues, Uri baseUrlWithParams, string rel)
         {
-            ContentDimension contentDim = meta.GetContentDimension();
+            Px.Utils.Models.Metadata.Dimensions.ContentDimension contentDim = meta.GetContentDimension();
             string? tableOrDimSource = GetSourceByLang(meta, lang);
 
             List<ContentValue>? values = showValues
@@ -212,67 +212,67 @@ namespace PxApi.ModelBuilders
                 })]
                 : null;
 
-            return new ContentVariable()
+            return new Models.ContentDimension()
             {
                 Code = contentDim.Code,
                 Name = contentDim.Name[lang],
                 Note = contentDim.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang),
                 Size = contentDim.Values.Count,
                 Values = values,
-                Links = BuildVariableLinks(baseUrlWithParams, contentDim.Code, rel)
+                Links = BuildDimensionLinks(baseUrlWithParams, contentDim.Code, rel)
             };
         }
 
         /// <summary>
-        /// Build a <see cref="TimeVariable"/> object based on the input <paramref name="meta"/>.
+        /// Build a <see cref="TimeDimension"/> object based on the input <paramref name="meta"/>.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyMatrixMetadata"/></param>
         /// <param name="lang">Language of the response, language must be found in the provided <paramref name="meta"/>.</param>
-        /// <param name="showValues">If true the variable values will be included.</param>
+        /// <param name="showValues">If true the dimension values will be included.</param>
         /// <param name="baseUrlWithParams">Url used to costruct the <see cref="Link"/> objests in the response.</param>
         /// <param name="rel">The relation type in the links pointing to this object.</param>
-        /// <returns><see cref="TimeVariable"/> based on the provided <paramref name="meta"/></returns>
-        public static TimeVariable BuildTimeVariable(IReadOnlyMatrixMetadata meta, string lang, bool showValues, Uri baseUrlWithParams, string rel)
+        /// <returns><see cref="TimeDimension"/> based on the provided <paramref name="meta"/></returns>
+        public static Models.TimeDimension BuildTimeDimension(IReadOnlyMatrixMetadata meta, string lang, bool showValues, Uri baseUrlWithParams, string rel)
         {
-            TimeDimension timeDim = meta.GetTimeDimension();
+            Px.Utils.Models.Metadata.Dimensions.TimeDimension timeDim = meta.GetTimeDimension();
 
-            return new TimeVariable()
+            return new Models.TimeDimension()
             {
                 Code = timeDim.Code,
                 Name = timeDim.Name[lang],
                 Note = timeDim.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang),
                 Interval = timeDim.Interval,
                 Size = timeDim.Values.Count,
-                Values = showValues ? [.. timeDim.Values.Select(v => BuildValue(v, lang))] : null,
-                Links = BuildVariableLinks(baseUrlWithParams, timeDim.Code, rel)
+                Values = showValues ? [.. timeDim.Values.Select<global::Px.Utils.Models.Metadata.Dimensions.IReadOnlyDimensionValue,global::PxApi.Models.Value>((global::Px.Utils.Models.Metadata.Dimensions.IReadOnlyDimensionValue v) => global::PxApi.ModelBuilders.ModelBuilder.BuildValue(v, lang))] : null,
+                Links = BuildDimensionLinks(baseUrlWithParams, timeDim.Code, rel)
             };
         }
 
         /// <summary>
-        /// Build a <see cref="Variable"/> object based on the input <paramref name="meta"/>.
+        /// Build a <see cref="Models.Dimension"/> object based on the input <paramref name="meta"/>.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyDimension"/></param>
         /// <param name="lang">Language of the response, language must be found in the provided <paramref name="meta"/>.</param>
-        /// <param name="showValues">If true the variable values will be included.</param>
+        /// <param name="showValues">If true the dimension values will be included.</param>
         /// <param name="baseUrlWithParams">Url used to costruct the <see cref="Link"/> objests in the response.</param>
         /// <param name="rel">The relation type in the links pointing to this object.</param>
-        /// <returns><see cref="Variable"/> based on the provided <paramref name="meta"/></returns>
-        public static Variable BuildVariable(IReadOnlyDimension meta, string lang, bool showValues, Uri baseUrlWithParams, string rel)
+        /// <returns><see cref="Models.Dimension"/> based on the provided <paramref name="meta"/></returns>
+        public static Models.Dimension BuildDimension(IReadOnlyDimension meta, string lang, bool showValues, Uri baseUrlWithParams, string rel)
         {
-            return new Variable()
+            return new Models.Dimension()
             {
                 Code = meta.Code,
                 Name = meta.Name[lang],
                 Note = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang),
                 Size = meta.Values.Count,
                 Type = meta.Type,
-                Values = showValues ? [.. meta.Values.Select(v => BuildValue(v, lang))] : null,
-                Links = BuildVariableLinks(baseUrlWithParams, meta.Code, rel)
+                Values = showValues ? [.. meta.Values.Select<global::Px.Utils.Models.Metadata.Dimensions.IReadOnlyDimensionValue,global::PxApi.Models.Value>((global::Px.Utils.Models.Metadata.Dimensions.IReadOnlyDimensionValue v) => global::PxApi.ModelBuilders.ModelBuilder.BuildValue(v, lang))] : null,
+                Links = BuildDimensionLinks(baseUrlWithParams, meta.Code, rel)
             };
         }
 
         /// <summary>
-        /// Build a <see cref="Value"/> for a <see cref="Variable"/> based on the input <paramref name="meta"/>.
+        /// Build a <see cref="Value"/> for a <see cref="Models.Dimension"/> based on the input <paramref name="meta"/>.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyDimensionValue"/></param>
         /// <param name="lang">Language of the response, language must be found in the provided <paramref name="meta"/>.</param>
@@ -288,7 +288,7 @@ namespace PxApi.ModelBuilders
         }
 
         /// <summary>
-        /// Build a <see cref="ContentValue"/> for a <see cref="ContentVariable"/> based on the input <paramref name="meta"/>.
+        /// Build a <see cref="ContentValue"/> for a <see cref="ContentDimension"/> based on the input <paramref name="meta"/>.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyDimensionValue"/></param>
         /// <param name="source">The source information for the content value. This is not nessessarily in the <paramref name="meta"/>.</param>
@@ -314,14 +314,14 @@ namespace PxApi.ModelBuilders
                 ?? additionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang);
         }
 
-        private static List<Link> BuildVariableLinks(Uri urlBaseWithParams, string variableCode, string rel)
+        private static List<Link> BuildDimensionLinks(Uri urlBaseWithParams, string dimensionCode, string rel)
         {
             return [
                 new Link()
                 {
                     Rel = rel,
                     Href = urlBaseWithParams
-                    .AddRelativePath(variableCode)
+                    .AddRelativePath(dimensionCode)
                     .DropQueryParameters("showValues")
                     .ToString(),
                     Method = "GET"
