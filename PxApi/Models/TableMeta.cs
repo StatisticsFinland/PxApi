@@ -63,7 +63,7 @@ namespace PxApi.Models
         /// Other dimensions. Excluding the content and time dimensions.
         /// </summary>
         [Required]
-        public required List<Dimension> ClassificatoryDimensions { get; set; }
+        public required List<ClassificatoryDimension> ClassificatoryDimensions { get; set; }
 
         /// <summary>
         /// List of groups that the table is part of.

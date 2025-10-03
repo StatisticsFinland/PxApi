@@ -31,7 +31,7 @@ namespace PxApi.ModelBuilders
             bool includeValues = showValues ?? false;
             const string rel = "describedby";
 
-            List<Models.Dimension> dimensions = [.. meta.Dimensions
+            List<Models.ClassificatoryDimension> dimensions = [.. meta.Dimensions
                 .Where(d => d.Type is not DimensionType.Time and not DimensionType.Content)
                 .Select(d => BuildDimension(d, lang, includeValues, baseUrlWithParams, rel))];
 
@@ -249,17 +249,17 @@ namespace PxApi.ModelBuilders
         }
 
         /// <summary>
-        /// Build a <see cref="Models.Dimension"/> object based on the input <paramref name="meta"/>.
+        /// Build a <see cref="Models.ClassificatoryDimension"/> object based on the input <paramref name="meta"/>.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyDimension"/></param>
         /// <param name="lang">Language of the response, language must be found in the provided <paramref name="meta"/>.</param>
         /// <param name="showValues">If true the dimension values will be included.</param>
         /// <param name="baseUrlWithParams">Url used to costruct the <see cref="Link"/> objests in the response.</param>
         /// <param name="rel">The relation type in the links pointing to this object.</param>
-        /// <returns><see cref="Models.Dimension"/> based on the provided <paramref name="meta"/></returns>
-        public static Models.Dimension BuildDimension(IReadOnlyDimension meta, string lang, bool showValues, Uri baseUrlWithParams, string rel)
+        /// <returns><see cref="Models.ClassificatoryDimension"/> based on the provided <paramref name="meta"/></returns>
+        public static Models.ClassificatoryDimension BuildDimension(IReadOnlyDimension meta, string lang, bool showValues, Uri baseUrlWithParams, string rel)
         {
-            return new Models.Dimension()
+            return new Models.ClassificatoryDimension()
             {
                 Code = meta.Code,
                 Name = meta.Name[lang],
@@ -272,7 +272,7 @@ namespace PxApi.ModelBuilders
         }
 
         /// <summary>
-        /// Build a <see cref="Value"/> for a <see cref="Models.Dimension"/> based on the input <paramref name="meta"/>.
+        /// Build a <see cref="Value"/> for a <see cref="Models.ClassificatoryDimension"/> based on the input <paramref name="meta"/>.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyDimensionValue"/></param>
         /// <param name="lang">Language of the response, language must be found in the provided <paramref name="meta"/>.</param>

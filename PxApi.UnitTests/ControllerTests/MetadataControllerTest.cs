@@ -290,7 +290,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<ActionResult<DimensionBase>>());
             OkObjectResult? okResult = result.Result as OkObjectResult;
             Assert.That(okResult, Is.Not.Null);
-            Dimension? resultMeta = okResult.Value as Dimension;
+            ClassificatoryDimension? resultMeta = okResult.Value as ClassificatoryDimension;
             Assert.That(resultMeta, Is.Not.Null);
             Assert.Multiple(() =>
             {

@@ -6,7 +6,7 @@ namespace PxApi.Models
     /// <summary>
     /// A classificatory dimension, describes one dimension of the table.
     /// </summary>
-    public class Dimension : DimensionBase
+    public class ClassificatoryDimension : DimensionBase
     {
         /// <summary>
         /// More accurate type of the dimension, e.g. ordinal, nominal, etc.

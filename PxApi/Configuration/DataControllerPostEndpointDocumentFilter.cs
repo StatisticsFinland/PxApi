@@ -201,7 +201,7 @@ namespace PxApi.Configuration
                                 new OpenApiString("Oulu")
                             }
                         },
-                        ["Dimension"] = new OpenApiObject
+                        ["ClassificatoryDimension"] = new OpenApiObject
                         {
                             ["type"] = new OpenApiString(nameof(FilterType.Code)),
                             ["query"] = new OpenApiArray
@@ -253,7 +253,7 @@ namespace PxApi.Configuration
                             ["type"] = new OpenApiString(nameof(FilterType.Last)),
                             ["query"] = new OpenApiInteger(12)
                         },
-                        ["Dimension"] = new OpenApiObject
+                        ["ClassificatoryDimension"] = new OpenApiObject
                         {
                             ["type"] = new OpenApiString(nameof(FilterType.Code)),
                             ["query"] = new OpenApiArray
@@ -331,7 +331,7 @@ namespace PxApi.Configuration
                             ["type"] = new OpenApiString(nameof(FilterType.Last)),
                             ["query"] = new OpenApiInteger(6)
                         },
-                        ["Dimension"] = new OpenApiObject
+                        ["ClassificatoryDimension"] = new OpenApiObject
                         {
                             ["type"] = new OpenApiString(nameof(FilterType.Code)),
                             ["query"] = new OpenApiArray

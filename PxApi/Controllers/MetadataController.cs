@@ -102,8 +102,8 @@ namespace PxApi.Controllers
         /// If left empty uses the default language of the table.
         /// The provided language must be available in the table.
         /// </param>
-        /// <returns>Returns dimension metadata which can be of type Dimension, ContentDimension, or TimeDimension.</returns>
-        /// <response code="200">Returns the dimenion metadata, which can be of type Dimension, ContentDimension, or TimeDimension.</response>
+        /// <returns>Returns dimension metadata which can be of type ClassificatoryDimension, ContentDimension, or TimeDimension.</returns>
+        /// <response code="200">Returns the dimenion metadata, which can be of type ClassificatoryDimension, ContentDimension, or TimeDimension.</response>
         /// <response code="400">If the content is not available in the specified language.</response>
         /// <response code="404">If the database, table or dimenion is not found.</response>
         [HttpGet("{database}/{table}/{dimcode}")]

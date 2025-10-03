@@ -196,7 +196,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             const string rel = "describedby";
 
             // Act
-            PxApi.Models.Dimension result = ModelBuilder.BuildDimension(dimMeta, lang, false, urlRoot, rel);
+            PxApi.Models.ClassificatoryDimension result = ModelBuilder.BuildDimension(dimMeta, lang, false, urlRoot, rel);
 
 
             // Assert
