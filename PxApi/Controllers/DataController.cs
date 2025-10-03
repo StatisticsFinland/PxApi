@@ -80,7 +80,7 @@ namespace PxApi.Controllers
                 return Ok(new DataResponse
                 {
                     LastUpdated = meta.GetContentDimension().Values.Map(v => v.LastUpdated).Max(),
-                    MetaCodes = requestMap,
+                    Dimensions = requestMap.DimensionMaps,
                     Data = data
                 });
             }
@@ -144,7 +144,7 @@ namespace PxApi.Controllers
                 return Ok(new DataResponse
                 {
                     LastUpdated = meta.GetContentDimension().Values.Map(v => v.LastUpdated).Max(),
-                    MetaCodes = requestMap,
+                    Dimensions = requestMap.DimensionMaps,
                     Data = data
                 });
             }

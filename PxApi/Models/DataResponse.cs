@@ -16,10 +16,10 @@ namespace PxApi.Models
         public required DateTime LastUpdated { get; init; }
 
         /// <summary>
-        /// Mappping of the dimensions and their selected values.
+        /// Mappping of the dimensions and their selected values. These dimension define the data in a row-major order.
         /// </summary>
         [Required]
-        public required MatrixMap MetaCodes { get; init; }
+        public required List<DimensionMap> Dimensions { get; init; }
 
         /// <summary>
         /// Array of data values returned by the query.

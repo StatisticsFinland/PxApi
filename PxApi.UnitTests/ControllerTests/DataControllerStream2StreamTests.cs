@@ -369,7 +369,7 @@ namespace PxApi.UnitTests.ControllerTests
                 
                 DataResponse dataResponse = (DataResponse)okResult.Value!;
                 Assert.That(dataResponse.Data, Is.Not.Null);
-                Assert.That(dataResponse.MetaCodes, Is.Not.Null);
+                Assert.That(dataResponse.Dimensions, Is.Not.Null);
                 Assert.That(dataResponse.LastUpdated, Is.EqualTo(new DateTime(2024, 10, 29, 8, 0, 0, DateTimeKind.Utc)));
                 
                 // Verify correct data dimensions: 2 Tiedot × 2 Vuosineljännes × 5 Alue = 20 data points
@@ -382,24 +382,24 @@ namespace PxApi.UnitTests.ControllerTests
                 double[] actualValues = [.. dataResponse.Data.Select(d => d.UnsafeValue)];
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
-                // Check MetaCodes structure
-                Assert.That(dataResponse.MetaCodes.DimensionMaps, Has.Count.EqualTo(3));
-                Assert.That(dataResponse.MetaCodes.DimensionMaps.Any(dm => dm.Code == "Tiedot"));
-                Assert.That(dataResponse.MetaCodes.DimensionMaps.Any(dm => dm.Code == "Vuosineljännes"));
-                Assert.That(dataResponse.MetaCodes.DimensionMaps.Any(dm => dm.Code == "Alue"));
+                // Check Dimensions structure
+                Assert.That(dataResponse.Dimensions, Has.Count.EqualTo(3));
+                Assert.That(dataResponse.Dimensions.Any(dm => dm.Code == "Tiedot"));
+                Assert.That(dataResponse.Dimensions.Any(dm => dm.Code == "Vuosineljännes"));
+                Assert.That(dataResponse.Dimensions.Any(dm => dm.Code == "Alue"));
                 
                 // Verify dimension selections
-                Px.Utils.Models.Metadata.DimensionMap tiedotDim = dataResponse.MetaCodes.DimensionMaps.First(dm => dm.Code == "Tiedot");
+                Px.Utils.Models.Metadata.DimensionMap tiedotDim = dataResponse.Dimensions.First(dm => dm.Code == "Tiedot");
                 Assert.That(tiedotDim.ValueCodes, Contains.Item("neljmuut"));
                 Assert.That(tiedotDim.ValueCodes, Contains.Item("neljmuut_eka"));
                 Assert.That(tiedotDim.ValueCodes, Has.Count.EqualTo(2));
                 
-                Px.Utils.Models.Metadata.DimensionMap vuosineljannesDim = dataResponse.MetaCodes.DimensionMaps.First(dm => dm.Code == "Vuosineljännes");
+                Px.Utils.Models.Metadata.DimensionMap vuosineljannesDim = dataResponse.Dimensions.First(dm => dm.Code == "Vuosineljännes");
                 Assert.That(vuosineljannesDim.ValueCodes, Contains.Item("2022Q1"));
                 Assert.That(vuosineljannesDim.ValueCodes, Contains.Item("2022Q2"));
                 Assert.That(vuosineljannesDim.ValueCodes, Has.Count.EqualTo(2));
 
-                Px.Utils.Models.Metadata.DimensionMap alueDim = dataResponse.MetaCodes.DimensionMaps.First(dm => dm.Code == "Alue");
+                Px.Utils.Models.Metadata.DimensionMap alueDim = dataResponse.Dimensions.First(dm => dm.Code == "Alue");
                 Assert.That(alueDim.ValueCodes, Has.Count.EqualTo(5));
             });
 
@@ -585,7 +585,7 @@ namespace PxApi.UnitTests.ControllerTests
                 
                 DataResponse dataResponse = (DataResponse)okResult.Value!;
                 Assert.That(dataResponse.Data, Is.Not.Null);
-                Assert.That(dataResponse.MetaCodes, Is.Not.Null);
+                Assert.That(dataResponse.Dimensions, Is.Not.Null);
                 
                 // Should return 2 metrics × 10 time periods × 1 region = 20 data points
                 Assert.That(dataResponse.Data, Has.Length.EqualTo(20));
@@ -597,9 +597,9 @@ namespace PxApi.UnitTests.ControllerTests
                 double[] actualValues = dataResponse.Data.Select(d => d.UnsafeValue).ToArray();
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
-                // Verify MetaCodes structure
-                Assert.That(dataResponse.MetaCodes.DimensionMaps, Has.Count.EqualTo(3));
-                Px.Utils.Models.Metadata.DimensionMap alueDim = dataResponse.MetaCodes.DimensionMaps.First(dm => dm.Code == "Alue");
+                // Verify Dimensions structure
+                Assert.That(dataResponse.Dimensions, Has.Count.EqualTo(3));
+                Px.Utils.Models.Metadata.DimensionMap alueDim = dataResponse.Dimensions.First(dm => dm.Code == "Alue");
                 Assert.That(alueDim.ValueCodes, Contains.Item("ksu"));
                 Assert.That(alueDim.ValueCodes, Has.Count.EqualTo(1));
             });
