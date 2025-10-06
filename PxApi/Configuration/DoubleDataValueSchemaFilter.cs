@@ -8,6 +8,7 @@ namespace PxApi.Configuration
     /// Schema filter to map DoubleDataValue to number type in OpenAPI documentation.
     /// This ensures that DoubleDataValue properties appear as number types in the generated
     /// OpenAPI schema, matching the actual JSON serialization behavior of the DoubleDataValueJsonConverter.
+    /// Component removal is handled by DataValueDocumentFilter.
     /// </summary>
     public class DoubleDataValueSchemaFilter : ISchemaFilter
     {
@@ -28,6 +29,8 @@ namespace PxApi.Configuration
                 schema.AllOf?.Clear();
                 schema.OneOf?.Clear();
                 schema.AnyOf?.Clear();
+                schema.AdditionalProperties = null;
+                schema.Reference = null;
             }
             // Handle DoubleDataValue arrays
             else if (context.Type == typeof(DoubleDataValue[]))
@@ -37,12 +40,14 @@ namespace PxApi.Configuration
                 {
                     Type = "number",
                     Format = "double",
-                    Nullable = true
+                    Nullable = true,
+                    Reference = null
                 };
                 schema.Properties?.Clear();
                 schema.AllOf?.Clear();
                 schema.OneOf?.Clear();
                 schema.AnyOf?.Clear();
+                schema.Reference = null;
             }
         }
     }
