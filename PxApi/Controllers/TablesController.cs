@@ -77,7 +77,7 @@ namespace PxApi.Controllers
                             IReadOnlyMatrixMetadata tableMeta = await cachedConnector.GetMetadataCachedAsync(table.Value);
 
                             Uri fileUri = settings.RootUrl
-                                .AddRelativePath("meta", databaseId, table.Key)
+                                .AddRelativePath("meta", "json", databaseId, table.Key)
                                 .AddQueryParameters(("lang", lang));
                             pagedTableList.Tables.Add( BuildTableListingItemFromMeta(table.Key, lang, tableMeta, fileUri));
                         }

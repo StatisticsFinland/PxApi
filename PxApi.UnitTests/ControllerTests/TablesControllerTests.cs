@@ -95,7 +95,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(pagedTableList.Tables[0].LastUpdated, Is.EqualTo(meta1.GetContentDimension().Values.Map(v => v.LastUpdated).Max()));
                 Assert.That(pagedTableList.Tables[0].Links, Has.Count.EqualTo(1));
                 Assert.That(pagedTableList.Tables[0].Links[0].Rel, Is.EqualTo("describedby"));
-                Assert.That(pagedTableList.Tables[0].Links[0].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/file1?lang=en"));
+                Assert.That(pagedTableList.Tables[0].Links[0].Href, Is.EqualTo("https://testurl.fi/meta/json/exampledb/file1?lang=en"));
                 Assert.That(pagedTableList.Tables[0].Links[0].Method, Is.EqualTo("GET"));
             });
         }
