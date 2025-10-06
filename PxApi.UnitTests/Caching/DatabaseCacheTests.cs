@@ -30,6 +30,7 @@ namespace PxApi.UnitTests.Caching
             Dictionary<string, string?> inMemorySettings = new()
                 {
                     {"RootUrl", "https://testurl.fi"},
+                    {"Cache:MaxSizeBytes", "524288000"},
                     {"DataBases:0:Type", "Mounted"},
                     {"DataBases:0:Id", "PxApiUnitTestsDb"},
                     {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
@@ -41,7 +42,6 @@ namespace PxApi.UnitTests.Caching
                     {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"}, // 10 minutes
                     {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"}, // 10 minutes
                     {"DataBases:0:CacheConfig:RevalidationIntervalMs", "1000"},
-                    {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
                     {"DataBases:0:Custom:RootPath", "datasource/root/"},
                     {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
                     {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"},

@@ -31,11 +31,6 @@
         public CacheConfig Groupings { get; }
 
         /// <summary>
-        /// The maximum size of the cache in bytes.
-        /// </summary>
-        public long MaxCacheSize { get; }
-
-        /// <summary>
         /// Default constructor
         /// </summary>
         /// <param name="section">Configuration section that contains the settings for database caching.</param>
@@ -47,9 +42,6 @@
             Data = new CacheConfig(section.GetSection(nameof(Data)));
             RevalidationIntervalMs = section.GetValue<int?>(nameof(RevalidationIntervalMs), null);
             Groupings = new CacheConfig(section.GetSection(nameof(Groupings)));
-
-            MaxCacheSize = section.GetValue<long?>(nameof(MaxCacheSize))
-                ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(MaxCacheSize)}");
         }
     }
 }

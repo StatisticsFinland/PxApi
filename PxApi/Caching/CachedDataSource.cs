@@ -215,16 +215,15 @@ namespace PxApi.Caching
             {
                 using Stream groupingStream = await connector.TryReadAuxiliaryFileAsync(GROUPINGS_FILE);
                 GroupingFileModel? groupingModel = await JsonSerializer.DeserializeAsync<GroupingFileModel>(groupingStream);
-                if (groupingModel is null) return [];
-
-                string? fileDirPath = string.IsNullOrEmpty(pxFile.FilePath) ? null : Path.GetDirectoryName(pxFile.FilePath);
-                string? groupFolderName = fileDirPath is null ? null : new DirectoryInfo(fileDirPath).Name;
-                if (groupFolderName is null) return [];
+                string? fileDirName = Path.GetDirectoryName(pxFile.FilePath)?
+                    .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)
+                    .Last();
+                if (groupingModel is null || fileDirName is null) return [];
 
                 Dictionary<string, string> aliasTranslations = new(StringComparer.OrdinalIgnoreCase);
                 foreach (string lang in groupingModel.name.Keys)
                 {
-                    string aliasFileRelPath = groupFolderName + "/" + GROUP_ALIAS_PREFIX + lang + GROUP_ALIAS_SUFFIX;
+                    string aliasFileRelPath = fileDirName + "/" + GROUP_ALIAS_PREFIX + lang + GROUP_ALIAS_SUFFIX;
                     using Stream aliasStream = await connector.TryReadAuxiliaryFileAsync(aliasFileRelPath);
                     using StreamReader sr = new(aliasStream, Encoding.UTF8, true);
                     string? alias = await sr.ReadLineAsync();
@@ -237,7 +236,7 @@ namespace PxApi.Caching
                 MultilanguageString groupingName = new(groupingModel.name);
                 TableGroup group = new()
                 {
-                    Code = groupFolderName,
+                    Code = fileDirName,
                     Name = new(aliasTranslations),
                     GroupingCode = groupingModel.code,
                     GroupingName = groupingName,

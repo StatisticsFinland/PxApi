@@ -18,9 +18,7 @@ namespace PxApi.Caching
                 db => db.CacheConfig
             );
 
-        private const int DEFAULT_DATACELL_SIZE = 5;
-        private const int DEFAULT_UPDATE_TASK_SIZE = 16;
-        private const int DEFAULT_META_SIZE = 10000;
+        private readonly MemoryCacheConfig memoryCacheConfig = AppSettings.Active.Cache;
         private readonly IMemoryCache _cache = memoryCache;
 
         private const string FILE_LIST_SEED = "9afc7b09";
@@ -54,7 +52,9 @@ namespace PxApi.Caching
             MemoryCacheEntryOptions options = new()
             {
                 SlidingExpiration = config.SlidingExpirationSeconds,
-                AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds
+                AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds,
+                Priority = CacheItemPriority.High,
+                Size = memoryCacheConfig.DefaultFileListSize
             };
             _cache.Set(HashCode.Combine(FILE_LIST_SEED, dataBase), files, options);
         }
@@ -83,7 +83,7 @@ namespace PxApi.Caching
                 SlidingExpiration = config.SlidingExpirationSeconds,
                 AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds,
                 Priority = CacheItemPriority.Normal,
-                Size = 100
+                Size = memoryCacheConfig.DefaultTableGroupSize
             };
             _cache.Set(HashCode.Combine(GROUPINGS_SEED, file), groupings, options);
         }
@@ -113,7 +113,7 @@ namespace PxApi.Caching
             MemoryCacheEntryOptions options = new()
             {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMilliseconds(revalidationIntervalMs),
-                Size = DEFAULT_UPDATE_TASK_SIZE,
+                Size = memoryCacheConfig.DefaultUpdateTaskSize,
                 Priority = CacheItemPriority.Normal,
             };
             _cache.Set(HashCode.Combine(LAST_UPDATED_SEED, file), lastUpdated, options);
@@ -135,7 +135,7 @@ namespace PxApi.Caching
             CacheConfig config = cacheConfigs[file.DataBase.Id].Meta;
             MemoryCacheEntryOptions options = new()
             {
-                Size = DEFAULT_META_SIZE,
+                Size = memoryCacheConfig.DefaultMetaSize,
                 Priority = CacheItemPriority.Normal,
                 SlidingExpiration = config.SlidingExpirationSeconds,
                 AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds
@@ -217,7 +217,7 @@ namespace PxApi.Caching
                 CacheConfig config = cacheConfigs[file.DataBase.Id].Data;
                 MemoryCacheEntryOptions options = new()
                 {
-                    Size = map.GetSize() * DEFAULT_DATACELL_SIZE,
+                    Size = map.GetSize() * memoryCacheConfig.DefaultDataCellSize,
                     Priority = CacheItemPriority.Low,
                     SlidingExpiration = config.SlidingExpirationSeconds,
                     AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds

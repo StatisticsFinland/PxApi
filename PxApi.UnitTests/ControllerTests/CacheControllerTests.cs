@@ -46,7 +46,6 @@ namespace PxApi.UnitTests.ControllerTests
                 {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
                 {"DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},
                 {"DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds", "60"},
-                {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
                 {"DataBases:0:Custom:RootPath", "datasource/root/"}
             };
 

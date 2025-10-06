@@ -162,7 +162,11 @@ namespace PxApi
                 c.DocumentFilter<DataControllerGetEndpointDocumentFilter>();
             });
             
-            serviceCollection.AddMemoryCache();
+            // Configure MemoryCache with global cache size limit
+            serviceCollection.AddMemoryCache(options =>
+            {
+                options.SizeLimit = AppSettings.Active.Cache.MaxSizeBytes;
+            });
             
             // Register database connectors as keyed services
             serviceCollection.AddDataBaseConnectors();

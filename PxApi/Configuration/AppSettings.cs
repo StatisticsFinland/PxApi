@@ -34,6 +34,11 @@
         public QueryLimitsConfig QueryLimits { get; }
 
         /// <summary>
+        /// Global cache configuration for controlling cache behavior.
+        /// </summary>
+        public MemoryCacheConfig Cache { get; }
+
+        /// <summary>
         /// The currently active configuration for the application.
         /// </summary>
         public static AppSettings Active
@@ -77,6 +82,7 @@
             Features = new FeatureFlagsConfig(configuration.GetSection("FeatureManagement"));
             Authentication = new AuthenticationConfig(configuration.GetSection(nameof(Authentication)));
             QueryLimits = new QueryLimitsConfig(configuration.GetSection(nameof(QueryLimits)));
+            Cache = new MemoryCacheConfig(configuration.GetSection(nameof(Cache)));
         }
 
         /// <summary>

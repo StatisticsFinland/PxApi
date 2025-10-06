@@ -607,7 +607,6 @@ namespace PxApi.UnitTests.Caching
                 {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"},
                 {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
                 // RevalidationIntervalMs is intentionally omitted (null)
-                {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
                 {"DataBases:0:Custom:RootPath", "datasource/root/"},
                 {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
                 {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"}
@@ -676,7 +675,6 @@ namespace PxApi.UnitTests.Caching
                 {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"},
                 {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
                 {"DataBases:0:CacheConfig:RevalidationIntervalMs", "0"}, // Explicitly set to 0
-                {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
                 {"DataBases:0:Custom:RootPath", "datasource/root/"},
                 {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
                 {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"}
@@ -745,7 +743,6 @@ namespace PxApi.UnitTests.Caching
                 {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"},
                 {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
                 // RevalidationIntervalMs is intentionally omitted (null)
-                {"DataBases:0:CacheConfig:MaxCacheSize", "1073741824"},
                 {"DataBases:0:Custom:RootPath", "datasource/root/"},
                 {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
                 {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"}
@@ -854,7 +851,6 @@ namespace PxApi.UnitTests.Caching
                 {$"DataBases:{index}:CacheConfig:Data:SlidingExpirationSeconds", "600"},
                 {$"DataBases:{index}:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
                 {$"DataBases:{index}:CacheConfig:RevalidationIntervalMs", "500"},
-                {$"DataBases:{index}:CacheConfig:MaxCacheSize", "1073741824"},
                 {$"DataBases:{index}:Custom:RootPath", "datasource/root/"},
                 {$"DataBases:{index}:Custom:ModifiedCheckIntervalMs", "1000"},
                 {$"DataBases:{index}:Custom:FileListingCacheDurationMs", "10000"}

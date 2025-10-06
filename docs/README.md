@@ -50,6 +50,13 @@ PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px 
 The application uses `appsettings.json` for configuration. Key settings include:
 
 - `RootUrl`: The base URL for the API.
+- `Cache`: Configuration for global cache management:
+  - `MaxSizeBytes`: Maximum size of the global memory cache in bytes (default: 512 MB)
+  - `DefaultDataCellSize`: Default size for data cell cache items in bytes (default: 16)
+  - `DefaultUpdateTaskSize`: Default size for update task cache items in bytes (default: 50)
+  - `DefaultTableGroupSize`: Default size for table group cache items in bytes (default: 100)
+  - `DefaultFileListSize`: Default size for file list cache items in bytes (default: 350000)
+  - `DefaultMetaSize`: Default size for metadata cache items in bytes (default: 200000)
 - `FeatureManagement`: Configuration for feature flags that control endpoint availability:
   - `CacheController`: Boolean flag to enable/disable cache management endpoints (default: `true`)
 - `DataBases`: Array of database configurations with the following properties:
@@ -60,13 +67,43 @@ The application uses `appsettings.json` for configuration. Key settings include:
     - `Meta`: Cache settings for metadata.
     - `Data`: Cache settings for data.
     - `Modifiedtime`: Cache settings for file modification times.
-    - `MaxCacheSize`: Maximum cache size in bytes.
+    - `Groupings`: Cache settings for grouping metadata.
   - `Custom`: Custom settings specific to the database type:
     - For `Mounted`: `RootPath` to the local file system.
     - For `FileShare`: Connection parameters for Azure File Share.
     - For `BlobStorage`: Connection parameters for Azure Blob Storage.
-  - `FilenameSeparator`: Optional character to split filenames into parts.
-  - `FilenameIdPartIndex`: Optional index of the part to use as the file ID.
+
+### Cache Configuration
+
+PxApi uses a global cache size management through the `Cache` configuration section:
+
+```json
+{
+  "Cache": {
+    "MaxSizeBytes": 524288000,
+    "DefaultDataCellSize": 16,
+    "DefaultUpdateTaskSize": 50,
+    "DefaultTableGroupSize": 100,
+    "DefaultFileListSize": 350000,
+    "DefaultMetaSize": 200000
+  }
+}
+```
+
+#### Cache Configuration Options
+
+- **`MaxSizeBytes`**: Controls the maximum memory usage of the global application cache used by the MemoryCache service for caching across the entire application. Default: 512 MB (524288000 bytes).
+
+- **Default Cache Item Sizes**: These settings control the estimated memory footprint of different types of cached items for cache eviction calculations:
+  - **`DefaultDataCellSize`**: Size estimate for individual data cells in cached data sets. Default: 16 bytes.
+  - **`DefaultUpdateTaskSize`**: Size estimate for cached file update timestamp tasks. Default: 50 bytes.
+  - **`DefaultTableGroupSize`**: Size estimate for cached table grouping metadata. Default: 100 bytes.
+  - **`DefaultFileListSize`**: Size estimate for cached file list entries. Default: 350000 bytes.
+  - **`DefaultMetaSize`**: Size estimate for cached table metadata containers. Default: 200000 bytes.
+
+These size estimates are used by the .NET MemoryCache for making eviction decisions when the cache approaches its size limit. Adjusting these values allows fine-tuning of cache behavior based on the actual memory footprint of your data.
+
+If not specified, all cache settings use their respective default values.
 
 ## Database Connectors
 
@@ -83,19 +120,6 @@ For accessing Px files stored in Azure File Shares. Uses Azure Storage SDK.
 ### BlobStorageDataBaseConnector
 
 For accessing Px files stored in Azure Blob Storage. Uses Azure Storage SDK.
-
-## Caching System
-
-PxApi implements a caching system to optimize performance:
-
-- **File List Caching**: Caches lists of available files in each database to reduce file system or cloud storage access.
-- **Metadata Caching**: Stores metadata for tables to avoid repeated parsing of Px files.
-- **Data Caching**: Caches query results to speed up frequently accessed data views.
-- **Last Modified Caching**: Tracks file modification times to invalidate cache entries when files change.
-
-Each cache type can be configured independently with:
-- Sliding expiration time: Cache entries expire after a period of non-use.
-- Absolute expiration time: Cache entries expire after a fixed time regardless of usage.
 
 ## Technologies Used
 
