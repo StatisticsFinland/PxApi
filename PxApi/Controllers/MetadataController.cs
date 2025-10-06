@@ -34,7 +34,7 @@ namespace PxApi.Controllers
         /// <response code="200">Returns the table metadata</response>
         /// <response code="400">If the metadata is not available in the specified language.</response>
         /// <response code="404">If the table or database is not found.</response>
-        [HttpGet("{database}/{table}")]
+        [HttpGet("json/{database}/{table}")]
         [Produces("application/json")] 
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
@@ -58,14 +58,14 @@ namespace PxApi.Controllers
                 if (lang is null || meta.AvailableLanguages.Contains(lang))
                 {
                     Uri fileUri = settings.RootUrl
-                        .AddRelativePath("meta", database, Path.GetFileNameWithoutExtension(table))
+                        .AddRelativePath("meta", "json", database, Path.GetFileNameWithoutExtension(table))
                         .AddQueryParameters(("lang", lang))
                         .AddQueryParameters(("showValues", showValues));
 
                     TableMeta tableMeta = ModelBuilder.BuildTableMeta(meta, fileUri, lang, showValues);
 
                     string dataUri = settings.RootUrl
-                        .AddRelativePath("data", database, Path.GetFileNameWithoutExtension(table), "json").ToString();
+                        .AddRelativePath("data", "json", database, Path.GetFileNameWithoutExtension(table)).ToString();
                     dataUri += MetaFiltering.GetDefaultFilteringUrlParameters(meta);
 
                     tableMeta.Links.Add(new Link()
@@ -106,7 +106,7 @@ namespace PxApi.Controllers
         /// <response code="200">Returns the dimenion metadata, which can be of type ClassificatoryDimension, ContentDimension, or TimeDimension.</response>
         /// <response code="400">If the content is not available in the specified language.</response>
         /// <response code="404">If the database, table or dimenion is not found.</response>
-        [HttpGet("{database}/{table}/{dimcode}")]
+        [HttpGet("json/{database}/{table}/{dimcode}")]
         [Produces("application/json")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
@@ -135,7 +135,7 @@ namespace PxApi.Controllers
                         const string rel = "self";
 
                         Uri fileUri = settings.RootUrl
-                        .AddRelativePath("meta", database, Path.GetFileNameWithoutExtension(table))
+                        .AddRelativePath("meta", "json", database, Path.GetFileNameWithoutExtension(table))
                         .AddQueryParameters(("lang", lang));
 
                         if (targetDim.Type is DimensionType.Content)

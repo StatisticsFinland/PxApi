@@ -20,9 +20,9 @@ PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px 
 
 2. **Metadata Endpoint** (`/meta`):
    - Retrieve metadata for a specific table.
-   - Example: `/meta/{database}/{table}?lang=en&showValues=true`
+   - Example: `/meta/json/{database}/{table}?lang=en&showValues=true`
    - Retrieve metadata for a specific dimension in a table.
-   - Example: `/meta/{database}/{table}/{dimcode}?lang=en`
+   - Example: `/meta/json/{database}/{table}/{dimcode}?lang=en`
 
 3. **Data Endpoint** (`/data`):
    - GET and POST endpoints to retrieve data in minimal JSON format.
@@ -31,8 +31,8 @@ PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px 
      - POST: `/data/json/{database}/{table}` with filter body
    - GET and POST endpoints to retrieve data in JSON-stat2 format.
    - Examples:
-     - GET: `/{database}/{table}/json-stat?dimension1:filter=value1,value2&lang=en`
-     - POST: `/{database}/{table}/json-stat?lang=en` with filter body
+     - GET: `/data/json-stat/{database}/{table}?dimension1:filter=value1,value2&lang=en`
+     - POST: `/data/json-stat/{database}/{table}?lang=en` with filter body
 
 4. **Cache Endpoints** (`/cache`):
    - **Clear all cache for a database**:

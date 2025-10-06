@@ -31,11 +31,9 @@ namespace PxApi.ModelBuilders
             bool includeValues = showValues ?? false;
             const string rel = "describedby";
 
-            List<Models.ClassificatoryDimension> dimensions = [.. meta.Dimensions
+            List<ClassificatoryDimension> dimensions = [.. meta.Dimensions
                 .Where(d => d.Type is not DimensionType.Time and not DimensionType.Content)
                 .Select(d => BuildDimension(d, lang, includeValues, baseUrlWithParams, rel))];
-
-            string? subjectCode = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.SUBJECT_CODE, lang);
 
             return new TableMeta()
             {
