@@ -5,12 +5,13 @@ namespace PxApi.Configuration
 {
     /// <summary>
     /// Class for setting visibility of API controllers in Swagger. 
-    /// CacheController is only visible if the CacheController feature is enabled.
+    /// CacheController is always hidden from OpenAPI documentation since it's for internal use only.
     /// </summary>
     public class ApiExplorerConventionsFactory : IActionModelConvention
     {
         /// <summary>
-        /// Applies the convention to hide controller actions from API explorer when their feature is disabled.
+        /// Applies the convention to hide controller actions from API explorer.
+        /// CacheController is always hidden from OpenAPI documentation regardless of feature flag status.
         /// </summary>
         /// <param name="action">The action model to apply the convention to.</param>
         public void Apply(ActionModel action)
@@ -26,9 +27,8 @@ namespace PxApi.Configuration
             bool isCacheController = action.Controller.ControllerType == typeof(CacheController);
             if (isCacheController)
             {
-                // Check the feature flag from AppSettings
-                bool isCacheControllerEnabled = AppSettings.Active.Features.CacheController;
-                action.ApiExplorer.IsVisible = isCacheControllerEnabled;
+                // Always hide CacheController from OpenAPI documentation since it's for internal use only
+                action.ApiExplorer.IsVisible = false;
             }
         }
     }
