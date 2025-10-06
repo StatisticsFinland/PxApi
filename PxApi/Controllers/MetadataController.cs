@@ -135,7 +135,7 @@ namespace PxApi.Controllers
                         const string rel = "self";
 
                         Uri fileUri = settings.RootUrl
-                        .AddRelativePath("meta", database, Path.GetFileNameWithoutExtension(table))
+                        .AddRelativePath("meta", "json", database, Path.GetFileNameWithoutExtension(table))
                         .AddQueryParameters(("lang", lang));
 
                         if (targetDim.Type is DimensionType.Content)
