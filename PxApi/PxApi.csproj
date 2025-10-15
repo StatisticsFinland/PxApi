@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
  <PropertyGroup>
    <TargetFramework>net9.0</TargetFramework>
@@ -7,6 +7,13 @@
    <GenerateDocumentationFile>true</GenerateDocumentationFile>
    <Version>0.2.0</Version>
  </PropertyGroup>
+
+ <ItemGroup>
+   <Compile Remove="docs\**" />
+   <Content Remove="docs\**" />
+   <EmbeddedResource Remove="docs\**" />
+   <None Remove="docs\**" />
+ </ItemGroup>
 
  <ItemGroup>
    <PackageReference Include="Azure.Identity" Version="1.14.2" />
@@ -21,10 +28,6 @@
    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="7.2.0" />
    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="7.2.0" />
    <PackageReference Include="Ude.NetStandard" Version="1.2.0" />
- </ItemGroup>
-
- <ItemGroup>
-   <Folder Include="docs\" />
  </ItemGroup>
 
 </Project>

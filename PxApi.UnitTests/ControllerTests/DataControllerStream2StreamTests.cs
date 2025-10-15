@@ -4,7 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Px.Utils.Models.Data;
+using Px.Utils.Models.Data.DataValue;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
@@ -122,7 +122,7 @@ namespace PxApi.UnitTests.ControllerTests
             PRECISION[sv]("Uppgifter","Första publikation, kvartalsförändring, %")=1;
             PRECISION[en]("Information","First release, quarterly change, %")=1;
             PRECISION("Tiedot","Tarkentuminen, neljännesmuutos, %-yksikköä")=1;
-            PRECISION[sv]("Uppgifter","Revidering, kvartalsförändring, procentenhet")=1;
+            PRECISION[sv]("Uppgifter","Revidering, kvartalsförändring, prosentenhet")=1;
             PRECISION[en]("Information","Revision, quarterly change, percentage point")=1;
             PRECISION("Tiedot","Uusin julkistus, vuosimuutos, %")=1;
             PRECISION[sv]("Uppgifter","Senaste publikation, årsförändring, %")=1;
@@ -339,7 +339,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetJsonAsync_NoCacheData_ReturnsCorrectDataFromStream()
+        public async Task GetDataAsync_NoCacheData_ReturnsCorrectDataFromStream()
         {
             // Arrange  
             string database = "testdb";
@@ -357,56 +357,41 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             // Act
-            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, filters);
+            IActionResult result = await _controller.GetDataAsync(database, table, filters);
 
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
-                OkObjectResult okResult = (OkObjectResult)result.Result!;
-                Assert.That(okResult.Value, Is.InstanceOf<DataResponse>());
+                Assert.That(result, Is.InstanceOf<OkObjectResult>());
+                OkObjectResult okResult = (OkObjectResult)result!;
+                Assert.That(okResult.Value, Is.InstanceOf<JsonStat2>());
                 
-                DataResponse dataResponse = (DataResponse)okResult.Value!;
-                Assert.That(dataResponse.Data, Is.Not.Null);
-                Assert.That(dataResponse.Dimensions, Is.Not.Null);
-                Assert.That(dataResponse.LastUpdated, Is.EqualTo(new DateTime(2024, 10, 29, 8, 0, 0, DateTimeKind.Utc)));
+                JsonStat2 dataResponse = (JsonStat2)okResult.Value!;
+                Assert.That(dataResponse.Value, Is.Not.Null);
+                Assert.That(dataResponse.Dimension, Is.Not.Null);
                 
                 // Verify correct data dimensions: 2 Tiedot × 2 Vuosineljännes × 5 Alue = 20 data points
-                Assert.That(dataResponse.Data, Has.Length.EqualTo(20));
+                Assert.That(dataResponse.Value, Has.Length.EqualTo(20));
                 
                 // Verify all values have correct DataValueType
-                Assert.That(dataResponse.Data.All(d => d.Type == DataValueType.Exists), Is.True);
+                Assert.That(dataResponse.Value.All(d => d.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
                 
                 // Compare actual data values against expected array
-                double[] actualValues = [.. dataResponse.Data.Select(d => d.UnsafeValue)];
+                double[] actualValues = [.. dataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
                 // Check Dimensions structure
-                Assert.That(dataResponse.Dimensions, Has.Count.EqualTo(3));
-                Assert.That(dataResponse.Dimensions.Any(dm => dm.Code == "Tiedot"));
-                Assert.That(dataResponse.Dimensions.Any(dm => dm.Code == "Vuosineljännes"));
-                Assert.That(dataResponse.Dimensions.Any(dm => dm.Code == "Alue"));
-                
-                // Verify dimension selections
-                Px.Utils.Models.Metadata.DimensionMap tiedotDim = dataResponse.Dimensions.First(dm => dm.Code == "Tiedot");
-                Assert.That(tiedotDim.ValueCodes, Contains.Item("neljmuut"));
-                Assert.That(tiedotDim.ValueCodes, Contains.Item("neljmuut_eka"));
-                Assert.That(tiedotDim.ValueCodes, Has.Count.EqualTo(2));
-                
-                Px.Utils.Models.Metadata.DimensionMap vuosineljannesDim = dataResponse.Dimensions.First(dm => dm.Code == "Vuosineljännes");
-                Assert.That(vuosineljannesDim.ValueCodes, Contains.Item("2022Q1"));
-                Assert.That(vuosineljannesDim.ValueCodes, Contains.Item("2022Q2"));
-                Assert.That(vuosineljannesDim.ValueCodes, Has.Count.EqualTo(2));
-
-                Px.Utils.Models.Metadata.DimensionMap alueDim = dataResponse.Dimensions.First(dm => dm.Code == "Alue");
-                Assert.That(alueDim.ValueCodes, Has.Count.EqualTo(5));
+                Assert.That(dataResponse.Dimension, Has.Count.EqualTo(3));
+                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "Tiedot"));
+                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "Vuosineljännes"));
+                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "Alue"));
             });
 
             _mockConnector.Verify(c => c.ReadPxFile(_testTable), Times.AtLeastOnce);
         }
 
         [Test]
-        public async Task GetJsonAsync_SecondCallUsesCache_ReturnsFromCache()
+        public async Task GetDataAsync_SecondCallUsesCache_ReturnsFromCache()
         {
             // Arrange
             string database = "testdb";
@@ -424,41 +409,41 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             // Act - First call should read from stream
-            ActionResult<DataResponse> result1 = await _controller.GetJsonAsync(database, table, filters);
+            IActionResult result1 = await _controller.GetDataAsync(database, table, filters);
             
             // Act - Second call should use cache
-            ActionResult<DataResponse> result2 = await _controller.GetJsonAsync(database, table, filters);
+            IActionResult result2 = await _controller.GetDataAsync(database, table, filters);
 
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(result1.Result, Is.InstanceOf<OkObjectResult>());
-                Assert.That(result2.Result, Is.InstanceOf<OkObjectResult>());
+                Assert.That(result1, Is.InstanceOf<OkObjectResult>());
+                Assert.That(result2, Is.InstanceOf<OkObjectResult>());
                 
-                OkObjectResult okResult1 = (OkObjectResult)result1.Result!;
-                OkObjectResult okResult2 = (OkObjectResult)result2.Result!;
+                OkObjectResult okResult1 = (OkObjectResult)result1!;
+                OkObjectResult okResult2 = (OkObjectResult)result2!;
                 
-                Assert.That(okResult1.Value, Is.InstanceOf<DataResponse>());
-                Assert.That(okResult2.Value, Is.InstanceOf<DataResponse>());
+                Assert.That(okResult1.Value, Is.InstanceOf<JsonStat2>());
+                Assert.That(okResult2.Value, Is.InstanceOf<JsonStat2>());
                 
-                DataResponse dataResponse1 = (DataResponse)okResult1.Value!;
-                DataResponse dataResponse2 = (DataResponse)okResult2.Value!;
+                JsonStat2 dataResponse1 = (JsonStat2)okResult1.Value!;
+                JsonStat2 dataResponse2 = (JsonStat2)okResult2.Value!;
                 
-                Assert.That(dataResponse1.Data, Is.Not.Null);
-                Assert.That(dataResponse2.Data, Is.Not.Null);
-                Assert.That(dataResponse1.Data, Has.Length.EqualTo(dataResponse2.Data.Length));
+                Assert.That(dataResponse1.Value, Is.Not.Null);
+                Assert.That(dataResponse2.Value, Is.Not.Null);
+                Assert.That(dataResponse1.Value, Has.Length.EqualTo(dataResponse2.Value.Length));
                 
                 // Single metric × 2 time periods × 5 regions = 10 data points
-                Assert.That(dataResponse1.Data, Has.Length.EqualTo(10));
-                Assert.That(dataResponse2.Data, Has.Length.EqualTo(10));
+                Assert.That(dataResponse1.Value, Has.Length.EqualTo(10));
+                Assert.That(dataResponse2.Value, Has.Length.EqualTo(10));
                 
                 // Verify all values have correct DataValueType
-                Assert.That(dataResponse1.Data.All(d => d.Type == DataValueType.Exists), Is.True);
-                Assert.That(dataResponse2.Data.All(d => d.Type == DataValueType.Exists), Is.True);
+                Assert.That(dataResponse1.Value.All(d => d.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
+                Assert.That(dataResponse2.Value.All(d => d.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
                 
                 // Compare actual data values against expected array for both calls
-                double[] actualValues1 = [.. dataResponse1.Data.Select(d => d.UnsafeValue)];
-                double[] actualValues2 = [.. dataResponse2.Data.Select(d => d.UnsafeValue)];
+                double[] actualValues1 = [.. dataResponse1.Value.Select(d => d.UnsafeValue)];
+                double[] actualValues2 = [.. dataResponse2.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualValues1, Is.EqualTo(expectedValues));
                 Assert.That(actualValues2, Is.EqualTo(expectedValues));
                 Assert.That(actualValues1, Is.EqualTo(actualValues2));
@@ -469,7 +454,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetJsonAsync_SupersetInCache_ReturnsSubsetFromCache()
+        public async Task GetDataAsync_SupersetInCache_ReturnsSubsetFromCache()
         {
             // Arrange
             string database = "testdb";
@@ -499,46 +484,46 @@ namespace PxApi.UnitTests.ControllerTests
             double[] expectedSubsetValues = [1.3, 1.2, 1.5, 1.2, 1.7]; // 2022Q2 neljmuut for all regions
 
             // Act - First call loads superset data
-            ActionResult<DataResponse> supersetResult = await _controller.GetJsonAsync(database, table, supersetFilters);
+            IActionResult supersetResult = await _controller.GetDataAsync(database, table, supersetFilters);
             
             // Act - Second call should get subset from cached superset
-            ActionResult<DataResponse> subsetResult = await _controller.GetJsonAsync(database, table, subsetFilters);
+            IActionResult subsetResult = await _controller.GetDataAsync(database, table, subsetFilters);
 
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(supersetResult.Result, Is.InstanceOf<OkObjectResult>());
-                Assert.That(subsetResult.Result, Is.InstanceOf<OkObjectResult>());
+                Assert.That(supersetResult, Is.InstanceOf<OkObjectResult>());
+                Assert.That(subsetResult, Is.InstanceOf<OkObjectResult>());
                 
-                OkObjectResult okSupersetResult = (OkObjectResult)supersetResult.Result!;
-                OkObjectResult okSubsetResult = (OkObjectResult)subsetResult.Result!;
+                OkObjectResult okSupersetResult = (OkObjectResult)supersetResult!;
+                OkObjectResult okSubsetResult = (OkObjectResult)subsetResult!;
                 
-                Assert.That(okSupersetResult.Value, Is.InstanceOf<DataResponse>());
-                Assert.That(okSubsetResult.Value, Is.InstanceOf<DataResponse>());
+                Assert.That(okSupersetResult.Value, Is.InstanceOf<JsonStat2>());
+                Assert.That(okSubsetResult.Value, Is.InstanceOf<JsonStat2>());
                 
-                DataResponse supersetDataResponse = (DataResponse)okSupersetResult.Value!;
-                DataResponse subsetDataResponse = (DataResponse)okSubsetResult.Value!;
+                JsonStat2 supersetDataResponse = (JsonStat2)okSupersetResult.Value!;
+                JsonStat2 subsetDataResponse = (JsonStat2)okSubsetResult.Value!;
                 
-                Assert.That(supersetDataResponse.Data, Is.Not.Null);
-                Assert.That(subsetDataResponse.Data, Is.Not.Null);
+                Assert.That(supersetDataResponse.Value, Is.Not.Null);
+                Assert.That(subsetDataResponse.Value, Is.Not.Null);
                 
                 // Superset: 2 metrics × 2 time periods × 5 regions = 20 data points
-                Assert.That(supersetDataResponse.Data, Has.Length.EqualTo(20));
+                Assert.That(supersetDataResponse.Value, Has.Length.EqualTo(20));
                 
                 // Subset: 1 metric × 1 time period × 5 regions = 5 data points
-                Assert.That(subsetDataResponse.Data, Has.Length.EqualTo(5));
-                Assert.That(subsetDataResponse.Data, Has.Length.LessThan(supersetDataResponse.Data.Length));
+                Assert.That(subsetDataResponse.Value, Has.Length.EqualTo(5));
+                Assert.That(subsetDataResponse.Value, Has.Length.LessThan(supersetDataResponse.Value.Length));
                 
                 // Verify all data points exist
-                Assert.That(supersetDataResponse.Data.All(d => d.Type == DataValueType.Exists), Is.True);
-                Assert.That(subsetDataResponse.Data.All(d => d.Type == DataValueType.Exists), Is.True);
+                Assert.That(supersetDataResponse.Value.All(d => d.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
+                Assert.That(subsetDataResponse.Value.All(d => d.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
                 
                 // Compare actual superset data against expected array
-                double[] actualSupersetValues = supersetDataResponse.Data.Select(d => d.UnsafeValue).ToArray();
+                double[] actualSupersetValues = supersetDataResponse.Value.Select(d => d.UnsafeValue).ToArray();
                 Assert.That(actualSupersetValues, Is.EqualTo(expectedSupersetValues));
                 
                 // Compare actual subset data against expected array
-                double[] actualSubsetValues = subsetDataResponse.Data.Select(d => d.UnsafeValue).ToArray();
+                double[] actualSubsetValues = subsetDataResponse.Value.Select(d => d.UnsafeValue).ToArray();
                 Assert.That(actualSubsetValues, Is.EqualTo(expectedSubsetValues));
             });
 
@@ -546,7 +531,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task PostJsonAsync_NoCacheData_ReturnsCorrectDataFromStream()
+        public async Task PostDataAsync_NoCacheData_ReturnsCorrectDataFromStream()
         {
             // Arrange
             string database = "testdb";
@@ -573,41 +558,38 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             // Act
-            ActionResult<DataResponse> result = await _controller.PostJsonAsync(database, table, query);
+            IActionResult result = await _controller.PostDataAsync(database, table, query);
 
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
-                OkObjectResult okResult = (OkObjectResult)result.Result!;
-                Assert.That(okResult.Value, Is.InstanceOf<DataResponse>());
+                Assert.That(result, Is.InstanceOf<OkObjectResult>());
+                OkObjectResult okResult = (OkObjectResult)result!;
+                Assert.That(okResult.Value, Is.InstanceOf<JsonStat2>());
                 
-                DataResponse dataResponse = (DataResponse)okResult.Value!;
-                Assert.That(dataResponse.Data, Is.Not.Null);
-                Assert.That(dataResponse.Dimensions, Is.Not.Null);
+                JsonStat2 dataResponse = (JsonStat2)okResult.Value!;
+                Assert.That(dataResponse.Value, Is.Not.Null);
+                Assert.That(dataResponse.Dimension, Is.Not.Null);
                 
                 // Should return 2 metrics × 10 time periods × 1 region = 20 data points
-                Assert.That(dataResponse.Data, Has.Length.EqualTo(20));
+                Assert.That(dataResponse.Value, Has.Length.EqualTo(20));
 
                 // Verify all values have correct DataValueType
-                Assert.That(dataResponse.Data.All(d => d.Type == DataValueType.Exists), Is.True);
+                Assert.That(dataResponse.Value.All(d => d.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
                 
                 // Compare actual data against expected array
-                double[] actualValues = dataResponse.Data.Select(d => d.UnsafeValue).ToArray();
+                double[] actualValues = dataResponse.Value.Select(d => d.UnsafeValue).ToArray();
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
                 // Verify Dimensions structure
-                Assert.That(dataResponse.Dimensions, Has.Count.EqualTo(3));
-                Px.Utils.Models.Metadata.DimensionMap alueDim = dataResponse.Dimensions.First(dm => dm.Code == "Alue");
-                Assert.That(alueDim.ValueCodes, Contains.Item("ksu"));
-                Assert.That(alueDim.ValueCodes, Has.Count.EqualTo(1));
+                Assert.That(dataResponse.Dimension, Has.Count.EqualTo(3));
             });
 
             _mockConnector.Verify(c => c.ReadPxFile(_testTable), Times.AtLeastOnce);
         }
 
         [Test]
-        public async Task GetJsonStatAsync_NoCacheData_ReturnsCorrectJsonStat2FromStream()
+        public async Task GetDataAsync_NoCacheData_ReturnsCorrectJsonStat2FromStream()
         {
             // Arrange
             string database = "testdb";
@@ -634,13 +616,13 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             // Act
-            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters, lang);
+            IActionResult result = await _controller.GetDataAsync(database, table, filters, lang);
 
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
-                OkObjectResult okResult = (OkObjectResult)result.Result!;
+                Assert.That(result, Is.InstanceOf<OkObjectResult>());
+                OkObjectResult okResult = (OkObjectResult)result!;
                 Assert.That(okResult.Value, Is.InstanceOf<JsonStat2>());
                 
                 JsonStat2 jsonStat = (JsonStat2)okResult.Value!;
@@ -671,7 +653,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(jsonStat.Size[2], Is.EqualTo(1)); // 1 Tiedot value
                 
                 // Verify all data points exist
-                Assert.That(jsonStat.Value.All(v => v.Type == DataValueType.Exists), Is.True);
+                Assert.That(jsonStat.Value.All(v => v.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
                 
                 // Compare actual data against expected array
                 double[] actualValues = jsonStat.Value.Select(v => v.UnsafeValue).ToArray();
@@ -680,16 +662,16 @@ namespace PxApi.UnitTests.ControllerTests
                 // Verify extension contains English missing value translations
                 Assert.That(jsonStat.Extension, Is.Not.Null);
                 Assert.That(jsonStat.Extension!.ContainsKey("MissingValueDescriptions"));
-                Dictionary<DataValueType, string>? translations = jsonStat.Extension["MissingValueDescriptions"] as Dictionary<DataValueType, string>;
+                Dictionary<Px.Utils.Models.Data.DataValueType, string>? translations = jsonStat.Extension["MissingValueDescriptions"] as Dictionary<Px.Utils.Models.Data.DataValueType, string>;
                 Assert.That(translations, Is.Not.Null);
-                Assert.That(translations![DataValueType.Missing], Is.EqualTo("Missing"));
+                Assert.That(translations![Px.Utils.Models.Data.DataValueType.Missing], Is.EqualTo("Missing"));
             });
 
             _mockConnector.Verify(c => c.ReadPxFile(_testTable), Times.AtLeastOnce);
         }
 
         [Test]
-        public async Task PostJsonStatAsync_ExactDatasetInCache_ReturnsFromCache()
+        public async Task PostDataAsync_ExactDatasetInCache_ReturnsFromCache()
         {
             // Arrange
             string database = "testdb";
@@ -717,19 +699,19 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             // Act - First call to populate cache
-            ActionResult<JsonStat2> result1 = await _controller.PostJsonStatAsync(database, table, query, lang);
+            IActionResult result1 = await _controller.PostDataAsync(database, table, query, lang);
             
             // Act - Second call should use cache
-            ActionResult<JsonStat2> result2 = await _controller.PostJsonStatAsync(database, table, query, lang);
+            IActionResult result2 = await _controller.PostDataAsync(database, table, query, lang);
 
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(result1.Result, Is.InstanceOf<OkObjectResult>());
-                Assert.That(result2.Result, Is.InstanceOf<OkObjectResult>());
+                Assert.That(result1, Is.InstanceOf<OkObjectResult>());
+                Assert.That(result2, Is.InstanceOf<OkObjectResult>());
                 
-                OkObjectResult okResult1 = (OkObjectResult)result1.Result!;
-                OkObjectResult okResult2 = (OkObjectResult)result2.Result!;
+                OkObjectResult okResult1 = (OkObjectResult)result1!;
+                OkObjectResult okResult2 = (OkObjectResult)result2!;
                 
                 Assert.That(okResult1.Value, Is.InstanceOf<JsonStat2>());
                 Assert.That(okResult2.Value, Is.InstanceOf<JsonStat2>());
@@ -748,8 +730,8 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(jsonStat2.Value, Has.Length.EqualTo(20));
                 
                 // Verify all data points exist
-                Assert.That(jsonStat1.Value.All(v => v.Type == DataValueType.Exists), Is.True);
-                Assert.That(jsonStat2.Value.All(v => v.Type == DataValueType.Exists), Is.True);
+                Assert.That(jsonStat1.Value.All(v => v.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
+                Assert.That(jsonStat2.Value.All(v => v.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
                 
                 // Compare actual data against expected array for both calls
                 double[] actualValues1 = [.. jsonStat1.Value.Select(v => v.UnsafeValue)];
@@ -763,7 +745,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetJsonAsync_DatabaseNotFound_ReturnsNotFound()
+        public async Task GetDataAsync_DatabaseNotFound_ReturnsNotFound()
         {
             // Arrange
             string database = "nonexistentdb";
@@ -771,14 +753,14 @@ namespace PxApi.UnitTests.ControllerTests
             string[] filters = [];
 
             // Act
-            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, filters);
+            IActionResult result = await _controller.GetDataAsync(database, table, filters);
 
             // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            Assert.That(result, Is.InstanceOf<NotFoundResult>());
         }
 
         [Test]
-        public async Task GetJsonAsync_TableNotFound_ReturnsNotFound()
+        public async Task GetDataAsync_TableNotFound_ReturnsNotFound()
         {
             // Arrange
             string database = "testdb";
@@ -786,14 +768,14 @@ namespace PxApi.UnitTests.ControllerTests
             string[] filters = [];
 
             // Act
-            ActionResult<DataResponse> result = await _controller.GetJsonAsync(database, table, filters);
+            IActionResult result = await _controller.GetDataAsync(database, table, filters);
 
             // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            Assert.That(result, Is.InstanceOf<NotFoundResult>());
         }
 
         [Test]
-        public async Task GetJsonStatAsync_InvalidLanguage_ReturnsBadRequest()
+        public async Task GetDataAsync_InvalidLanguage_ReturnsBadRequest()
         {
             // Arrange
             string database = "testdb";
@@ -802,10 +784,10 @@ namespace PxApi.UnitTests.ControllerTests
             const string invalidLang = "invalid";
 
             // Act
-            ActionResult<JsonStat2> result = await _controller.GetJsonStatAsync(database, table, filters, invalidLang);
+            IActionResult result = await _controller.GetDataAsync(database, table, filters, invalidLang);
 
             // Assert
-            Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+            Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
         }
     }
 }

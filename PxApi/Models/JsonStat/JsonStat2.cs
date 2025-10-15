@@ -39,6 +39,13 @@ namespace PxApi.Models.JsonStat
         public required string Label { get; init; }
 
         /// <summary>
+        /// Annotations about the dataset. Language-dependent.
+        /// </summary>
+        [JsonPropertyName("note")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string[]? Note { get; init; }
+
+        /// <summary>
         /// The source of the dataset. Language-dependent.
         /// </summary>
         [JsonPropertyName("source")]
@@ -89,86 +96,5 @@ namespace PxApi.Models.JsonStat
         /// </summary>
         [JsonPropertyName("role")]
         public Dictionary<string, List<string>>? Role { get; set; }
-    }
-
-    /// <summary>
-    /// Represents a dimension in the JSON-stat format.
-    /// </summary>
-    public class Dimension
-    {
-        /// <summary>
-        /// The label of the dimension.
-        /// </summary>
-        [Required]
-        [JsonPropertyName("label")]
-        public required string Label { get; set; }
-
-        /// <summary>
-        /// The category object containing dimension categories.
-        /// </summary>
-        [Required]
-        [JsonPropertyName("category")]
-        public required Category Category { get; set; }
-    }
-
-    /// <summary>
-    /// Represents a category in a dimension.
-    /// </summary>
-    public class Category
-    {
-        /// <summary>
-        /// The index array of the category.
-        /// </summary>
-        [Required]
-        [JsonPropertyName("index")]
-        public required List<string> Index { get; set; }
-
-        /// <summary>
-        /// The labels for each category value.
-        /// </summary>
-        [Required]
-        [JsonPropertyName("label")]
-        public required Dictionary<string, string> Label { get; set; }
-
-        /// <summary>
-        /// The unit of measurement for each category.
-        /// </summary>
-        [JsonPropertyName("unit")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public Dictionary<string, Unit>? Unit { get; set; }
-    }
-
-    /// <summary>
-    /// Represents a unit of measurement in the JSON-stat format.
-    /// </summary>
-    public class Unit
-    {
-        /// <summary>
-        /// The label of the unit.
-        /// </summary>
-        [Required]
-        [JsonPropertyName("label")]
-        public required string Label { get; set; }
-
-        /// <summary>
-        /// The symbol for the unit.
-        /// </summary>
-        [JsonPropertyName("symbol")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Symbol { get; set; }
-
-        /// <summary>
-        /// The position of the symbol (start, end).
-        /// </summary>
-        [JsonPropertyName("position")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Position { get; set; }
-
-        /// <summary>
-        /// The number of decimals to display for this unit.
-        /// </summary>
-        [Required]
-        [JsonPropertyName("decimals")]
-        public required int Decimals { get; set; }
     }
 }

@@ -43,7 +43,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = ModelBuilder.BuildJsonStat2(meta, data, lang);
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, lang);
 
             // Assert
             DateTime expectedLastUpdated = new(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc);
@@ -125,7 +125,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act - not providing a language parameter
-            JsonStat2 result = ModelBuilder.BuildJsonStat2(meta, data);
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data);
 
             // Assert
             Assert.Multiple(() =>
@@ -172,7 +172,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = ModelBuilder.BuildJsonStat2(meta, data, lang);
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, lang);
 
             // Assert
             Assert.Multiple(() =>
@@ -205,7 +205,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = ModelBuilder.BuildJsonStat2(meta, data, "en");
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, "en");
 
             // Assert
             Assert.Multiple(() =>
@@ -240,7 +240,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = ModelBuilder.BuildJsonStat2(meta, data, "en");
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, "en");
 
             // Assert
             Assert.Multiple(() =>
@@ -265,7 +265,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             string lang = "en";
 
             // Act
-            JsonStat2 result = ModelBuilder.BuildJsonStat2(meta, data, lang);
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, lang);
 
             // Assert
             Assert.Multiple(() =>
@@ -312,7 +312,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             // Act & Assert
             ArgumentException ex = Assert.Throws<ArgumentException>(() => 
-                ModelBuilder.BuildJsonStat2(meta, data, "en"));
+                JsonStat2Builder.BuildJsonStat2(meta, data, "en"));
                 
             Assert.That(ex.Message, Does.Contain("No TABLEID found in table level metadata"));
         }
@@ -332,7 +332,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             // Act & Assert
             ArgumentException ex = Assert.Throws<ArgumentException>(() => 
-                ModelBuilder.BuildJsonStat2(meta, data, "en"));
+                JsonStat2Builder.BuildJsonStat2(meta, data, "en"));
                 
             Assert.That(ex.Message, Does.Contain("No DESCRIPTION found in table level metadata"));
         }

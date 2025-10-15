@@ -7,6 +7,7 @@ using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.Models;
+using PxApi.Models.JsonStat;
 using PxApi.UnitTests.ModelBuilderTests;
 using PxApi.UnitTests.Utils;
 
@@ -60,7 +61,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetMetadataById_FileExists_ReturnsTableMeta()
+        public async Task GetMetadataById_FileExists_ReturnsJsonStat2()
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
@@ -75,27 +76,21 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file)).ReturnsAsync(groups);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang, true);
+            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<TableMeta>>());
+            Assert.That(result, Is.InstanceOf<ActionResult<JsonStat2>>());
             OkObjectResult? okResult = result.Result as OkObjectResult;
             Assert.That(okResult, Is.Not.Null);
-            TableMeta? resultMeta = okResult.Value as TableMeta;
+            JsonStat2? resultMeta = okResult.Value as JsonStat2;
             Assert.That(resultMeta, Is.Not.Null);
             Assert.Multiple(() =>
             {
-                Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/json/exampledb/filename?lang=en&showValues=true"));
-                Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
-                Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
-                // Verify data link is generated with default filtering parameters
-                Assert.That(resultMeta.Links, Has.Count.EqualTo(2));
-                Assert.That(resultMeta.Links[1].Href, Is.EqualTo("https://testurl.fi/data/json/exampledb/filename?filters=content-code:first=1&filters=time-code:code=*&filters=dim0-code:first=1&filters=dim1-code:first=1"));
-                Assert.That(resultMeta.Links[1].Rel, Is.EqualTo("data"));
-                Assert.That(resultMeta.Links[1].Method, Is.EqualTo("GET"));
-                Assert.That(resultMeta.Groupings, Is.Not.Null);
-                Assert.That(resultMeta.Groupings, Has.Count.EqualTo(1));
-                Assert.That(resultMeta.Groupings[0].Code, Is.EqualTo("group-code-1"));
+                Assert.That(resultMeta.Id, Is.EqualTo("Test-table-id"));
+                Assert.That(resultMeta.Label, Is.EqualTo("Test table description"));
+                Assert.That(resultMeta.Source, Is.EqualTo("Test source"));
+                Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
+                Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
             });
         }
 
@@ -109,7 +104,7 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ThrowsAsync(new FileNotFoundException());
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database.Id, file.Id, null, true);
+            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, null);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
@@ -129,7 +124,7 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang, true);
+            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
@@ -138,7 +133,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetMetadataById_NoLanguageSpecified_ReturnsTableMeta()
+        public async Task GetMetadataById_NoLanguageSpecified_ReturnsJsonStat2()
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
@@ -152,153 +147,21 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file)).ReturnsAsync(groups);
 
             // Act
-            ActionResult<TableMeta> result = await _controller.GetTableMetadataById(database.Id, file.Id, null, null);
+            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, null);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<TableMeta>>()); 
+            Assert.That(result, Is.InstanceOf<ActionResult<JsonStat2>>()); 
             OkObjectResult? okResult = result.Result as OkObjectResult;
             Assert.That(okResult, Is.Not.Null);
-            TableMeta? resultMeta = okResult.Value as TableMeta;
+            JsonStat2? resultMeta = okResult.Value as JsonStat2;
             Assert.That(resultMeta, Is.Not.Null);
             Assert.Multiple(() =>
             {
-                Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/json/exampledb/filename"));
-                Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
-                Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
-                // Verify data link is generated with default filtering parameters
-                Assert.That(resultMeta.Links, Has.Count.EqualTo(2));
-                Assert.That(resultMeta.Links[1].Href, Is.EqualTo("https://testurl.fi/data/json/exampledb/filename?filters=content-code:first=1&filters=time-code:code=*&filters=dim0-code:first=1&filters=dim1-code:first=1"));
-                Assert.That(resultMeta.Links[1].Rel, Is.EqualTo("data"));
-                Assert.That(resultMeta.Links[1].Method, Is.EqualTo("GET"));
-                Assert.That(resultMeta.Groupings, Is.Not.Null);
-                Assert.That(resultMeta.Groupings, Has.Count.EqualTo(1));
-                Assert.That(resultMeta.Groupings[0].Code, Is.EqualTo("group-code-1"));
-            });
-        }
-
-        [Test]
-        public async Task GetDimensionMeta_ContentDimensionExists_ReturnsDimensionMeta()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
-            string lang = "en";
-            string varcode = "content-code";
-            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-
-            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
-
-            // Act
-            ActionResult<DimensionBase> result = await _controller.GetDimensionMeta(database.Id, file.Id, varcode, lang);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<DimensionBase>>());
-            OkObjectResult? okResult = result.Result as OkObjectResult;
-            Assert.That(okResult, Is.Not.Null);
-            ContentDimension? contentVar = okResult.Value as ContentDimension;
-            Assert.That(contentVar, Is.Not.Null);
-        }
-
-        [Test]
-        public async Task GetDimensionMeta_TimeDimensionExists_ReturnsDimensionMeta()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("exampleb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
-            string lang = "en";
-            string varcode = "time-code";
-            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-
-            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
-
-            // Act
-            ActionResult<DimensionBase> result = await _controller.GetDimensionMeta(database.Id, file.Id, varcode, lang);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<DimensionBase>>());
-            OkObjectResult? okResult = result.Result as OkObjectResult;
-            Assert.That(okResult, Is.Not.Null);
-            TimeDimension? timeVar = okResult.Value as TimeDimension;
-            Assert.That(timeVar, Is.Not.Null);
-        }
-
-        [Test]
-        public async Task GetDimensionMeta_DimensionDoesNotExist_ReturnsNotFound()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
-            string varcode = "nonexistent-varcode";
-            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-
-            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
-
-            // Act
-            ActionResult<DimensionBase> result = await _controller.GetDimensionMeta(database.Id, file.Id, varcode, null);
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
-        }
-
-        [Test]
-        public async Task GetDimensionMeta_LanguageNotAvailable_ReturnsNotFound()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
-            string varcode = "varcode";
-            string lang = "de";
-            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-
-            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
-
-            // Act
-            ActionResult<DimensionBase> result = await _controller.GetDimensionMeta(database.Id, file.Id, varcode, lang);
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
-            NotFoundResult? notFoundResult = result.Result as NotFoundResult;
-            Assert.That(notFoundResult, Is.Not.Null);
-        }
-
-        [Test]
-        public async Task GetDimensionMeta_NoLanguageSpecified_ReturnsDimensionMeta()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
-            string varcode = "dim0-code";
-            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-
-            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
-
-            // Act
-            ActionResult<DimensionBase> result = await _controller.GetDimensionMeta(database.Id, file.Id, varcode, null);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<DimensionBase>>());
-            OkObjectResult? okResult = result.Result as OkObjectResult;
-            Assert.That(okResult, Is.Not.Null);
-            ClassificatoryDimension? resultMeta = okResult.Value as ClassificatoryDimension;
-            Assert.That(resultMeta, Is.Not.Null);
-            Assert.Multiple(() =>
-            {
-                Assert.That(resultMeta.Links[0].Href, Is.EqualTo("https://testurl.fi/meta/json/exampledb/filename/dim0-code"));
-                Assert.That(resultMeta.Links[0].Rel, Is.EqualTo("self"));
-                Assert.That(resultMeta.Links[0].Method, Is.EqualTo("GET"));
-                Assert.That(resultMeta.Links[1].Href, Is.EqualTo("https://testurl.fi/meta/json/exampledb/filename"));
-                Assert.That(resultMeta.Links[1].Rel, Is.EqualTo("up"));
-                Assert.That(resultMeta.Links[1].Method, Is.EqualTo("GET"));
+                Assert.That(resultMeta.Id, Is.EqualTo("Test-table-id"));
+                Assert.That(resultMeta.Label, Is.EqualTo("Test table description"));
+                Assert.That(resultMeta.Source, Is.EqualTo("Test source"));
+                Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
+                Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
             });
         }
     }

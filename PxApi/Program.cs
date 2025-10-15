@@ -142,13 +142,19 @@ namespace PxApi
                     };
                     c.AddSecurityRequirement(key);
                 }
-                
+
+                // Add document filter to add JsonStat2 component schema
+                c.DocumentFilter<JsonStat2ComponentDocumentFilter>();
+
                 // Add the custom schema filter for DoubleDataValue to ensure it appears as number type in OpenAPI
                 c.SchemaFilter<DoubleDataValueSchemaFilter>();
                 
                 // Add document filter to remove DoubleDataValue component schemas
                 c.DocumentFilter<DoubleDataValueDocumentFilter>();
-                
+
+                // Add document filter to remove DataValueType component schemas
+                c.DocumentFilter<DataValueDocumentFilter>();
+
                 // Add document filter to remove Filter subclass component schemas
                 c.DocumentFilter<FilterSubclassDocumentFilter>();
                 
@@ -160,6 +166,7 @@ namespace PxApi
                 
                 // Add document filter to enhance DataController GET endpoint documentation with query parameter examples
                 c.DocumentFilter<DataControllerGetEndpointDocumentFilter>();
+                
             });
             
             // Configure MemoryCache with global cache size limit

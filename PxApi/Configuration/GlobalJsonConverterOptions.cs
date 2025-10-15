@@ -24,6 +24,7 @@ namespace PxApi.Configuration
             // Add the DoubleDataValue converter and Filter converter
             Default.Converters.Add(new DoubleDataValueJsonConverter());
             Default.Converters.Add(new FilterJsonConverter());
+            Default.Converters.Add(new DataValueTypeJsonConverter());
         }
 
         /// <summary>

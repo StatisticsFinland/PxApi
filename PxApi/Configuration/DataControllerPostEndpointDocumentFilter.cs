@@ -1,6 +1,7 @@
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Reflection;
 using static PxApi.Models.QueryFilters.FilterJsonConverter;
 
 namespace PxApi.Configuration
@@ -34,6 +35,7 @@ namespace PxApi.Configuration
                     {
                         AddComprehensiveRequestBodyExamples(postOp);
                         AddParameterDescriptions(postOp);
+                        AddResponseExamples(postOp);
                     }
                 }
             }
@@ -74,13 +76,36 @@ namespace PxApi.Configuration
             }
 
             // Add description for request body if it exists
-            if (operation.RequestBody?.Content?.ContainsKey("application/json") == true)
+            if (operation.RequestBody?.Content != null)
             {
-                OpenApiMediaType mediaType = operation.RequestBody.Content["application/json"];
-                if (mediaType.Schema != null && string.IsNullOrEmpty(mediaType.Schema.Description))
+                foreach(var content in operation.RequestBody.Content)
                 {
-                    mediaType.Schema.Description = QueryParameterDescription;
+                    if (content.Value.Schema != null && string.IsNullOrEmpty(content.Value.Schema.Description))
+                    {
+                        content.Value.Schema.Description = QueryParameterDescription;
+                    }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Adds example of a JsonStat2 response to the operation's documentation.
+        /// </summary>
+        /// <param name="operation">The POST operation to enhance with response examples.</param>
+        private static void AddResponseExamples(OpenApiOperation operation)
+        {
+            if (operation.Responses.TryGetValue("200", out OpenApiResponse? response) &&
+                response.Content.TryGetValue("application/json", out OpenApiMediaType? mediaType))
+            {
+                mediaType.Schema = new OpenApiSchema
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Id = "JsonStat2",
+                        Type = ReferenceType.Schema
+                    }
+                };
+                mediaType.Example = JsonStat2Example.Instance;
             }
         }
 
@@ -91,12 +116,9 @@ namespace PxApi.Configuration
         private static void AddComprehensiveRequestBodyExamples(OpenApiOperation operation)
         {
             OpenApiRequestBody? requestBody = operation.RequestBody;
-            if (requestBody?.Content?.ContainsKey("application/json") != true) return;
+            if (requestBody?.Content == null) return;
 
-            OpenApiMediaType mediaType = requestBody.Content["application/json"];
-
-            // Add comprehensive examples for different filter scenarios
-            mediaType.Examples = new Dictionary<string, OpenApiExample>
+            var examples = new Dictionary<string, OpenApiExample>
             {
                 ["simple-code-filter"] = new OpenApiExample
                 {
@@ -389,16 +411,21 @@ namespace PxApi.Configuration
                 }
             };
 
-            // Enhance the description
-            if (string.IsNullOrEmpty(mediaType.Schema?.Description))
+            foreach (var mediaType in requestBody.Content.Values)
             {
-                if (mediaType.Schema != null)
+                mediaType.Examples = examples;
+
+                // Enhance the description
+                if (string.IsNullOrEmpty(mediaType.Schema?.Description))
                 {
-                    mediaType.Schema.Description =
-                        "Query filters for data selection. Each key represents a dimension code, " +
-                        "and each value is a filter object that determines which dimension values to include. " +
-                        "Supports various filter types including Code (specific values or patterns), " +
-                        "From/To (range filtering), First/Last (top/bottom N values), and wildcard matching.";
+                    if (mediaType.Schema != null)
+                    {
+                        mediaType.Schema.Description =
+                            "Query filters for data selection. Each key represents a dimension code, " +
+                            "and each value is a filter object that determines which dimension values to include. " +
+                            "Supports various filter types including Code (specific values or patterns), " +
+                            "From/To (range filtering), First/Last (top/bottom N values), and wildcard matching.";
+                    }
                 }
             }
         }
@@ -412,12 +439,11 @@ namespace PxApi.Configuration
         private static bool IsDataControllerPostOperation(string pathKey, OpenApiOperation operation)
         {
             // Check if the path matches DataController POST endpoints:
-            // - /data/json/{database}/{table}
-            // - /{database}/{table}/json-stat
-            bool hasJsonPath = pathKey.Contains("/json/") || pathKey.Contains("/json-stat");
-            bool hasRequestBody = operation.RequestBody?.Content?.ContainsKey("application/json") == true;
+            // - /data/{database}/{table}
+            bool isDataPath = pathKey.Equals("/data/{database}/{table}", StringComparison.OrdinalIgnoreCase);
+            bool hasRequestBody = operation.RequestBody?.Content?.Any() ?? false;
             
-            return hasJsonPath && hasRequestBody;
+            return isDataPath && hasRequestBody;
         }
     }
 }
