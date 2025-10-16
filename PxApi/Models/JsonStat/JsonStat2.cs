@@ -25,11 +25,11 @@ namespace PxApi.Models.JsonStat
         public string Class { get; } = "dataset";
 
         /// <summary>
-        /// The identifier of the dataset.
+        /// Contains an ordered list of the dimension IDs.
         /// </summary>
         [Required]
         [JsonPropertyName("id")]
-        public required string Id { get; init; }
+        public required string[] Id { get; init; }
 
         /// <summary>
         /// A very short (one line) descriptive text. Language-dependent.

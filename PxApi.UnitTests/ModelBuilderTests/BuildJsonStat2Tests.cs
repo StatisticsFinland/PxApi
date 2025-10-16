@@ -55,7 +55,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result.Version, Is.EqualTo("2.0"));
                 Assert.That(result.Class, Is.EqualTo("dataset"));
-                Assert.That(result.Id, Is.EqualTo("table-tableid"));
+                Assert.That(result.Id, Is.EqualTo(new string[] { "content-code", "time-code", "dim0-code", "dim1-code" }));
                 Assert.That(result.Label, Is.EqualTo("table-description.en"));
                 Assert.That(result.Source, Is.EqualTo("content-source.en"));
                 Assert.That(result.Updated, Is.EqualTo(expectedUpdated));

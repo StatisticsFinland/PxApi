@@ -86,7 +86,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(resultMeta, Is.Not.Null);
             Assert.Multiple(() =>
             {
-                Assert.That(resultMeta.Id, Is.EqualTo("Test-table-id"));
+                Assert.That(resultMeta.Id, Is.EqualTo(new string[] { "dim1", "dim2", "time", "content" }));
                 Assert.That(resultMeta.Label, Is.EqualTo("Test table description"));
                 Assert.That(resultMeta.Source, Is.EqualTo("Test source"));
                 Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
@@ -157,7 +157,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(resultMeta, Is.Not.Null);
             Assert.Multiple(() =>
             {
-                Assert.That(resultMeta.Id, Is.EqualTo("Test-table-id"));
+                Assert.That(resultMeta.Id, Is.EqualTo(new string[] { "dim1", "dim2", "time", "content" }));
                 Assert.That(resultMeta.Label, Is.EqualTo("Test table description"));
                 Assert.That(resultMeta.Source, Is.EqualTo("Test source"));
                 Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));

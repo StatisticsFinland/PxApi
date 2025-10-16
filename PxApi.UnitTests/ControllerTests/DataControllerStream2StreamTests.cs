@@ -635,7 +635,7 @@ namespace PxApi.UnitTests.ControllerTests
                 // Verify JSON-stat metadata
                 Assert.That(jsonStat.Version, Is.EqualTo("2.0"));
                 Assert.That(jsonStat.Class, Is.EqualTo("dataset"));
-                Assert.That(jsonStat.Id, Is.EqualTo("statfin_ashi_pxt_13pz"));
+                Assert.That(jsonStat.Id, Is.EqualTo(new string[] {"Vuosineljännes", "Alue", "Tiedot"}));
                 Assert.That(jsonStat.Label, Is.EqualTo("test_description_en"));
                 Assert.That(jsonStat.Source, Is.EqualTo("Statistics Finland, prices of dwellings in housing companies"));
                 
@@ -656,7 +656,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(jsonStat.Value.All(v => v.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
                 
                 // Compare actual data against expected array
-                double[] actualValues = jsonStat.Value.Select(v => v.UnsafeValue).ToArray();
+                double[] actualValues = [.. jsonStat.Value.Select(v => v.UnsafeValue)];
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
                 // Verify extension contains English missing value translations

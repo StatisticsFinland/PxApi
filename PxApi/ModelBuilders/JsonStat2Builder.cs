@@ -7,6 +7,7 @@ using Px.Utils.Models.Metadata;
 using PxApi.Models.JsonStat;
 using PxApi.Utilities;
 using System.Globalization;
+using Px.Utils.Models.Metadata.MetaProperties;
 
 namespace PxApi.ModelBuilders
 {
@@ -59,9 +60,10 @@ namespace PxApi.ModelBuilders
             
             return new JsonStat2
             {
-                Id = tableId,
+                Id = [..meta.Dimensions.Select(d => d.Code)],
                 Label = tableLabel,
                 Source = GetSourceByLang(meta, actualLang),
+                Note = GetNotesByLang(meta, actualLang),
                 Updated = updated,
                 Dimension = BuildJsonStatDimensions(meta, actualLang),
                 Size = [.. meta.Dimensions.Select(d => d.Values.Count)],
@@ -102,6 +104,7 @@ namespace PxApi.ModelBuilders
                 Models.JsonStat.Dimension jsonDimension = new()
                 {
                     Label = dimension.Name[lang],
+                    Note = GetNotesByLang(dimension, lang),
                     Category = new Category
                     {
                         Index = [],
@@ -113,12 +116,19 @@ namespace PxApi.ModelBuilders
                 {
                     jsonDimension.Category.Index?.Add(value.Code);
                     jsonDimension.Category.Label[value.Code] = value.Name[lang];
+
+                    string[]? note = GetNotesByLang(value, lang);
+                    if(note is not null)
+                    {
+                        if (jsonDimension.Category.Note is null) jsonDimension.Category.Note = [];
+                        jsonDimension.Category.Note[value.Code] = note;
+                    }
                 }
                 
                 // Add unit information for content dimensions
                 if (dimension.Type == DimensionType.Content)
                 {
-                    Px.Utils.Models.Metadata.Dimensions.ContentDimension contentDim = (Px.Utils.Models.Metadata.Dimensions.ContentDimension)dimension;
+                    ContentDimension contentDim = (ContentDimension)dimension;
                     jsonDimension.Category.Unit = [];
                     
                     foreach (ContentDimensionValue value in contentDim.Values)
@@ -166,6 +176,24 @@ namespace PxApi.ModelBuilders
             return meta.GetContentDimension().AdditionalProperties.GetValueByLanguage(PxFileConstants.SOURCE, lang)
                 ?? meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.SOURCE, lang) 
                 ?? "";
+        }
+
+        private static string[]? GetNotesByLang(IReadOnlyMatrixMetadata meta, string lang)
+        {
+            string? note = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang);
+            return note != null ? [note] : null;
+        }
+
+        private static string[]? GetNotesByLang(IReadOnlyDimension meta, string lang)
+        {
+            string? note = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.NOTE, lang);
+            return note != null ? [note] : null;
+        }
+
+        private static string[]? GetNotesByLang(IReadOnlyDimensionValue meta, string lang)
+        {
+            string? note = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.VALUENOTE, lang);
+            return note != null ? [note] : null;
         }
     }
 }
