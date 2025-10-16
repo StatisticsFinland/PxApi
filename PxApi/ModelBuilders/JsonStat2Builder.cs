@@ -7,7 +7,6 @@ using Px.Utils.Models.Metadata;
 using PxApi.Models.JsonStat;
 using PxApi.Utilities;
 using System.Globalization;
-using Px.Utils.Models.Metadata.MetaProperties;
 
 namespace PxApi.ModelBuilders
 {
@@ -42,10 +41,6 @@ namespace PxApi.ModelBuilders
             // Use default language if none specified
             string actualLang = lang ?? meta.DefaultLanguage;
             
-            // Get table ID and title
-            string tableId = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, actualLang) 
-                ?? throw new ArgumentException($"No {PxFileConstants.TABLEID} found in table level metadata.");
-            
             string tableLabel = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, actualLang)
                 ?? throw new ArgumentException($"No {PxFileConstants.DESCRIPTION} found in table level metadata.");
             
@@ -60,7 +55,7 @@ namespace PxApi.ModelBuilders
             
             return new JsonStat2
             {
-                Id = [..meta.Dimensions.Select(d => d.Code)],
+                Id = [..meta.Dimensions.Select(d => d.Code.Convert())],
                 Label = tableLabel,
                 Source = GetSourceByLang(meta, actualLang),
                 Note = GetNotesByLang(meta, actualLang),
@@ -141,7 +136,7 @@ namespace PxApi.ModelBuilders
                     }
                 }
                 
-                dimensions[dimension.Code] = jsonDimension;
+                dimensions[dimension.Code.Convert()] = jsonDimension;
             }
             
             return dimensions;
@@ -156,13 +151,13 @@ namespace PxApi.ModelBuilders
         {
             Dictionary<string, List<string>> roles = new()
             {
-                { "time", [meta.GetTimeDimension().Code] },
-                { "metric", [meta.GetContentDimension().Code] }
+                { "time", [meta.GetTimeDimension().Code.Convert()] },
+                { "metric", [meta.GetContentDimension().Code.Convert()] }
             };
-            
+
             // Add geo role if geographical dimensions exist
             // This is a placeholder - in a real implementation you'd need logic to identify geographical dimensions
-            var geoDimensions = meta.Dimensions.Where(d => d.Type == DimensionType.Geographical).Select(d => d.Code).ToList();
+            List<string> geoDimensions = [.. meta.Dimensions.Where(d => d.Type == DimensionType.Geographical).Select(d => d.Code.Convert())];
             if (geoDimensions.Count > 0)
             {
                 roles["geo"] = geoDimensions;

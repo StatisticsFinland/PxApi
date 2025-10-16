@@ -5,6 +5,8 @@ using Px.Utils.Models.Metadata.MetaProperties;
 using Px.Utils.Models.Metadata;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using PxApi.Utilities;
+using Px.Utils.Models.Metadata.ExtensionMethods;
 
 namespace PxApi.Models.QueryFilters
 {
@@ -22,10 +24,13 @@ namespace PxApi.Models.QueryFilters
         /// <returns>A new <see cref="MatrixMap"/> with the filtered dimensions.</returns>
         public static MatrixMap ApplyToMatrixMeta(IReadOnlyMatrixMetadata meta, Dictionary<string, Filter> filters)
         {
-            return new([.. meta.Dimensions.Select(dim =>
+            Dictionary<string, Filter> filtersCopy = new(filters);
+            MatrixMap map = new([.. meta.Dimensions.Select(dim =>
             {
-                if (filters.TryGetValue(dim.Code, out Filter? filter))
+                string dimCode = dim.Code.Convert();
+                if (filtersCopy.TryGetValue(dimCode, out Filter? filter))
                 {
+                    filtersCopy.Remove(dimCode);
                     return filter.Apply(dim);
                 }
                 else
@@ -33,6 +38,18 @@ namespace PxApi.Models.QueryFilters
                     return DefaultFiltering(dim);
                 }
             })]);
+
+            if (filtersCopy.Count > 0)
+            {
+                throw new ArgumentException($"Filters provided for unknown dimension(s).");
+            }
+
+            if (map.GetSize() < 1)
+            {
+                throw new InvalidOperationException("The resulting filtered matrix map has no data.");
+            }
+
+            return map;
         }
 
         /// <summary>

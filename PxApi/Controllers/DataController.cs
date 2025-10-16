@@ -55,68 +55,8 @@ namespace PxApi.Controllers
                 { LoggerConsts.PX_FILE, table }
             }))
             {
-                try
-                {
-                    DataBaseRef? dbRef = dataSource.GetDataBaseReference(database);
-                    if (dbRef is null)
-                    {
-                        logger.LogWarning("Database not found.");
-                        return NotFound();
-                    }
-                    PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
-                    if (fileRef is null)
-                    {
-                        logger.LogWarning("Px table not found");
-                        return NotFound();
-                    }
-
-                    Dictionary<string, Filter> filterDict = QueryFilterUtils.ConvertFiltersArrayToFilters(filters ?? []);
-                    IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
-
-                    string actualLang = lang ?? meta.DefaultLanguage;
-                    if (!meta.AvailableLanguages.Contains(actualLang))
-                    {
-                        logger.LogWarning("Requested language {Lang} is not available in the table {Table}.", actualLang, table);
-                        return BadRequest("The content is not available in the requested language.");
-                    }
-
-                    MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, filterDict);
-
-                    long maxSize = AppSettings.Active.QueryLimits.JsonStatMaxCells; // TODO: Add format specific limits
-                    int size = requestMap.GetSize();
-                    if (size > maxSize)
-                    {
-                        logger.LogInformation("Too large request received. Size: {Size}.", size);
-                        return BadRequest($"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
-                    }
-
-                    DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
-
-                    string acceptHeader = Request.Headers.Accept.ToString();
-
-                    if (acceptHeader.Contains("text/csv"))
-                    {
-                        // Placeholder for CSV implementation
-                        return Content("col1,col2\nval1,val2", "text/csv");
-                    }
-                    if (string.IsNullOrEmpty(acceptHeader) || acceptHeader.Contains("*/*") || acceptHeader.Contains("application/json"))
-                    {
-                        JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
-                        return Ok(jsonStat);
-                    }
-
-                    return StatusCode(406); // Not Acceptable
-                }
-                catch (FileNotFoundException notFoundException)
-                {
-                    logger.LogWarning(notFoundException, "Table or database not found.");
-                    return NotFound("Table or database not found");
-                }
-                catch (ArgumentException ex)
-                {
-                    logger.LogWarning(ex, "Invalid query parameters provided for table {Table} in database {Database}.", table, database);
-                    return BadRequest(ex.Message);
-                }
+                Dictionary<string, Filter> query = QueryFilterUtils.ConvertFiltersArrayToFilters(filters ?? []);
+                return await GenerateResponse(database, table, lang, query);
             }
         }
 
@@ -139,7 +79,7 @@ namespace PxApi.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [ProducesResponseType(406)]
-        public async Task<IActionResult> PostDataAsync(
+        public async Task<ActionResult> PostDataAsync(
             [FromRoute] string database,
             [FromRoute] string table,
             [FromBody] Dictionary<string, Filter> query,
@@ -154,69 +94,62 @@ namespace PxApi.Controllers
                 { LoggerConsts.PX_FILE, table }
             }))
             {
-                try
-                {
-                    DataBaseRef? dbRef = dataSource.GetDataBaseReference(database);
-                    if (dbRef is null)
-                    {
-                        logger.LogWarning("Database not found.");
-                        return NotFound();
-                    }
-                    PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
-                    if (fileRef is null)
-                    {
-                        logger.LogWarning("Px table not found");
-                        return NotFound();
-                    }
-
-                    IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
-
-                    // Validate language
-                    string actualLang = lang ?? meta.DefaultLanguage;
-                    if (!meta.AvailableLanguages.Contains(actualLang))
-                    {
-                        logger.LogWarning("Requested language {Lang} is not available in the table {Table}.", actualLang, table);
-                        return BadRequest("The content is not available in the requested language.");
-                    }
-
-                    MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
-
-                    long maxSize = AppSettings.Active.QueryLimits.JsonStatMaxCells; // TODO: Add format specific limits
-                    int size = requestMap.GetSize();
-                    if (size > maxSize)
-                    {
-                        logger.LogInformation("Too large request received. Size: {Size}.", size);
-                        return BadRequest($"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
-                    }
-
-                    DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
-
-                    string acceptHeader = Request.Headers.Accept.ToString();
-
-                    if (acceptHeader.Contains("text/csv"))
-                    {
-                        // Placeholder for CSV implementation
-                        return Content("col1,col2\nval1,val2", "text/csv");
-                    }
-                    if (string.IsNullOrEmpty(acceptHeader) || acceptHeader.Contains("*/*") || acceptHeader.Contains("application/json"))
-                    {
-                        JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
-                        return Ok(jsonStat);
-                    }
-                    
-                    return StatusCode(406); // Not Acceptable
-                }
-                catch (FileNotFoundException notFoundException)
-                {
-                    logger.LogWarning(notFoundException, "Table or database not found.");
-                    return NotFound("Table or database not found");
-                }
-                catch (ArgumentException ex)
-                {
-                    logger.LogWarning(ex, "Invalid query parameters provided for table {Table} in database {Database}.", table, database);
-                    return BadRequest(ex.Message);
-                }
+                return await GenerateResponse(database, table, lang, query);
             }
+        }
+
+        private async Task<ActionResult> GenerateResponse(string database, string table, string? lang, Dictionary<string, Filter> query)
+        {
+            DataBaseRef? dbRef = dataSource.GetDataBaseReference(database);
+            if (dbRef is null)
+            {
+                const string message = "The requested database was not found.";
+                logger.LogDebug(message);
+                return NotFound(message);
+            }
+            PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
+            if (fileRef is null)
+            {
+                const string message = "The requested Px table was not found.";
+                logger.LogDebug(message);
+                return NotFound(message);
+            }
+
+            IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
+
+            string actualLang = lang ?? meta.DefaultLanguage;
+            if (!meta.AvailableLanguages.Contains(actualLang))
+            {
+                logger.LogDebug("The Requested language was not available in the table {Table}.", fileRef.Value.Id);
+                return BadRequest("The content is not available in the requested language.");
+            }
+
+            MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
+
+            long maxSize = AppSettings.Active.QueryLimits.JsonStatMaxCells;
+            int size = requestMap.GetSize();
+            if (size > maxSize)
+            {
+                logger.LogInformation("Too large request received. Size: {Size}.", size);
+                return BadRequest($"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
+            }
+
+            DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
+
+            string acceptHeader = Request.Headers.Accept.ToString();
+
+            if (acceptHeader.Contains("text/csv"))
+            {
+                // Placeholder for CSV implementation
+                return Content("col1,col2\nval1,val2", "text/csv");
+            }
+            if (string.IsNullOrEmpty(acceptHeader) || acceptHeader.Contains("*/*") || acceptHeader.Contains("application/json"))
+            {
+                JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
+                return Ok(jsonStat);
+            }
+
+            return StatusCode(406); // Not Acceptable     
         }
     }
 }
