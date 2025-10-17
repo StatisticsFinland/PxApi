@@ -1,142 +1,184 @@
 # PxApi
 
-PxApi is a .NET 9.0 web API designed to provide metadata and data access for Px files stored in various storage types, including local file systems, Azure File Shares, and Azure Blob Storage. It is built with extensibility and performance in mind, leveraging caching mechanisms.
+PxApi is a .NET 9.0 Web API for accessing PX statistical datasets. It provides table listings, table metadata and data retrieval with flexible dimension filtering and caching across multiple storage backends (local file system, Azure File Share, Azure Blob Storage).
 
-## Features
+## Implemented Features
 
-- **Table Metadata**: Fetch detailed metadata about Px tables, including content, time dimensions, and classificatory dimensions.
-- **Dimension Metadata**: Retrieve metadata for specific dimensions, including content and time dimensions.
-- **Table Listing**: List available tables in a database with essential metadata and paging support.
-- **Data Retrieval**: Query px table data with filtering options, supporting both minimal JSON and JSON-stat2 response formats.
-- **Advanced Caching**: Comprehensive caching system with configurable settings for metadata, data and file lists.
-- **Multiple Storage Types**: Support for local file system, Azure File Share, and Azure Blob Storage as data sources.
-- **Swagger Integration**: Includes Swagger UI for API documentation and testing.
+- Table listing with paging (`/tables/{database}`)
+- Table metadata in JSON-stat 2.0 (`/meta/{database}/{table}`)
+- Data retrieval with filter semantics (code, range, positional) via GET query parameters or POST body (`/data/{database}/{table}`)
+- Content negotiation (JSON-stat 2.0 or CSV) using the `Accept` header
+- Cache management endpoints (database level and single table) (`/cache/{database}` / `/cache/{database}/{id}`)
+- Global and per-database caching (file lists, metadata, data, last updated timestamps, grouping metadata)
+- Feature flags (Swagger visibility of cache endpoints)
+- API key authentication for cache endpoints
+- Multiple storage types: Mounted (local / network), Azure File Share, Azure Blob Storage
+- Query size limits returning HTTP 413 when exceeded
+- Swagger / OpenAPI documentation with custom schema & document filters
+- HEAD and OPTIONS support for discoverability and CORS pre-flight
 
-## API Endpoints
+CSV output is currently a placeholder implementation and intended for future enhancement.
 
-1. **Tables Endpoint** (`/tables`):
-   - List tables in a database with paging and metadata.
-   - Example: `/tables/{databaseId}?lang=en&page=1&pageSize=50`
+## Endpoints
 
-2. **Metadata Endpoint** (`/meta`):
-   - Retrieve metadata for a specific table.
-   - Example: `/meta/json/{database}/{table}?lang=en&showValues=true`
-   - Retrieve metadata for a specific dimension in a table.
-   - Example: `/meta/json/{database}/{table}/{dimcode}?lang=en`
+### Tables
+`GET /tables/{database}?lang=fi&page=1&pageSize=50`
+Returns a paged list of tables ordered by PX file name.
 
-3. **Data Endpoint** (`/data`):
-   - GET and POST endpoints to retrieve data in minimal JSON format.
-   - Examples: 
-     - GET: `/data/json/{database}/{table}?dimension1:filter=value1,value2`
-     - POST: `/data/json/{database}/{table}` with filter body
-   - GET and POST endpoints to retrieve data in JSON-stat2 format.
-   - Examples:
-     - GET: `/data/json-stat/{database}/{table}?dimension1:filter=value1,value2&lang=en`
-     - POST: `/data/json-stat/{database}/{table}?lang=en` with filter body
+Query parameters:
+- `lang` (optional, default `fi`): Language used for metadata resolution.
+- `page` (optional, >=1, default `1`)
+- `pageSize` (optional, 1-100, default `50`)
 
-4. **Cache Endpoints** (`/cache`):
-   - **Clear all cache for a database**:
-     - Deletes all cache entries (file list, metadata, data, last updated) for a specific database.
-     - Endpoint: `DELETE /cache/{database}`
-     - Example: `DELETE /cache/testdb`
-   - **Clear cache for a specific table**:
-     - Deletes all cache entries (metadata, data, last updated) for a specific table in a database.
-     - Endpoint: `DELETE /cache/{database}/{id}`
-     - Example: `DELETE /cache/testdb/table1`
-   - **Authentication**: Cache endpoints support optional API key authentication. See [Authentication.md](docs/Authentication.md) for configuration details.
+Responses:
+- `200 OK` JSON body containing table listing and paging info
+- `400 Bad Request` invalid paging values
+- `404 Not Found` database missing
 
-## Configuration
+Additional methods:
+- `HEAD /tables/{database}` validates existence and paging values
+- `OPTIONS /tables/{database}` returns Allow header (`GET,HEAD,OPTIONS`)
 
-The application uses `appsettings.json` for configuration. Key settings include:
+### Metadata
+`GET /meta/{database}/{table}?lang=fi`
+Returns JSON-stat 2.0 metadata (structure only, no data filtering).
 
-- `RootUrl`: The base URL for the API.
-- `Cache`: Configuration for global cache management:
-  - `MaxSizeBytes`: Maximum size of the global memory cache in bytes (default: 512 MB)
-  - `DefaultDataCellSize`: Default size for data cell cache items in bytes (default: 16)
-  - `DefaultUpdateTaskSize`: Default size for update task cache items in bytes (default: 50)
-  - `DefaultTableGroupSize`: Default size for table group cache items in bytes (default: 100)
-  - `DefaultFileListSize`: Default size for file list cache items in bytes (default: 350000)
-  - `DefaultMetaSize`: Default size for metadata cache items in bytes (default: 200000)
-- `FeatureManagement`: Configuration for feature flags that control endpoint availability:
-  - `CacheController`: Boolean flag to enable/disable cache management endpoints (default: `true`)
-- `DataBases`: Array of database configurations with the following properties:
-  - `Type`: Type of database storage (`Mounted`, `FileShare`, or `BlobStorage`).
-  - `Id`: Unique identifier for the database.
-  - `CacheConfig`: Configuration for database caching:
-    - `TableList`: Cache settings for table lists.
-    - `Meta`: Cache settings for metadata.
-    - `Data`: Cache settings for data.
-    - `Modifiedtime`: Cache settings for file modification times.
-    - `Groupings`: Cache settings for grouping metadata.
-  - `Custom`: Custom settings specific to the database type:
-    - For `Mounted`: `RootPath` to the local file system.
-    - For `FileShare`: Connection parameters for Azure File Share.
-    - For `BlobStorage`: Connection parameters for Azure Blob Storage.
+Query parameters:
+- `lang` (optional): If omitted uses table default language
 
-### Cache Configuration
+Responses:
+- `200 OK` JSON-stat 2.0 metadata
+- `400 Bad Request` language not available
+- `404 Not Found` database or table missing
+- `500 Internal Server Error` unexpected error
 
-PxApi uses a global cache size management through the `Cache` configuration section:
+Additional methods:
+- `HEAD /meta/{database}/{table}` existence & language validation only
+- `OPTIONS /meta/{database}/{table}` returns Allow header (`GET,HEAD,OPTIONS`)
 
+### Data
+`GET /data/{database}/{table}?filters=TIME:from=2020&filters=TIME:to=2024&filters=REGION:code=001,002`
+
+Retrieves data values applying filters to dimensions. Content negotiation:
+- `Accept: application/json` or `*/*` -> JSON-stat 2.0
+- `Accept: text/csv` -> CSV (placeholder)
+
+Filter syntax (GET query parameters):
+Each filter supplied via repeated `filters` query parameter: `dimensionCode:filterType=value`
+Supported `filterType` values:
+- `code` one or many codes (comma-separated), supports `*` wildcard
+- `from` lower bound for range (supports wildcard `*` inside value)
+- `to` upper bound for range (supports wildcard `*` inside value)
+- `first` selects first N positions (positive integer)
+- `last` selects last N positions (positive integer)
+
+Rules:
+- One filter per dimension.
+- Wildcard `*` matches zero or more characters in code/from/to values.
+
+POST alternative:
+`POST /data/{database}/{table}` with JSON body mapping dimension codes to filter objects.
+Example body:
 ```json
 {
-  "Cache": {
-    "MaxSizeBytes": 524288000,
-    "DefaultDataCellSize": 16,
-    "DefaultUpdateTaskSize": 50,
-    "DefaultTableGroupSize": 100,
-    "DefaultFileListSize": 350000,
-    "DefaultMetaSize": 200000
-  }
+  "TIME": { "type": "from", "query": ["2020"] },
+  "REGION": { "type": "code", "query": ["001", "002"] }
 }
 ```
 
-#### Cache Configuration Options
+Query parameters (POST):
+- `lang` optional language (defaults to table default)
 
-- **`MaxSizeBytes`**: Controls the maximum memory usage of the global application cache used by the MemoryCache service for caching across the entire application. Default: 512 MB (524288000 bytes).
+Responses (GET & POST):
+- `200 OK` JSON-stat 2.0 object or CSV text
+- `400 Bad Request` invalid filters / language not available
+- `404 Not Found` database or table missing
+- `406 Not Acceptable` unsupported `Accept` header value
+- `413 Payload Too Large` request cell count exceeds configured limit
+- `415 Unsupported Media Type` (POST invalid content type)
 
-- **Default Cache Item Sizes**: These settings control the estimated memory footprint of different types of cached items for cache eviction calculations:
-  - **`DefaultDataCellSize`**: Size estimate for individual data cells in cached data sets. Default: 16 bytes.
-  - **`DefaultUpdateTaskSize`**: Size estimate for cached file update timestamp tasks. Default: 50 bytes.
-  - **`DefaultTableGroupSize`**: Size estimate for cached table grouping metadata. Default: 100 bytes.
-  - **`DefaultFileListSize`**: Size estimate for cached file list entries. Default: 350000 bytes.
-  - **`DefaultMetaSize`**: Size estimate for cached table metadata containers. Default: 200000 bytes.
+Additional methods:
+- `HEAD /data/{database}/{table}?lang=fi` existence & language validation only
+- `OPTIONS /data/{database}/{table}` returns Allow header (`GET,POST,HEAD,OPTIONS`)
 
-These size estimates are used by the .NET MemoryCache for making eviction decisions when the cache approaches its size limit. Adjusting these values allows fine-tuning of cache behavior based on the actual memory footprint of your data.
+### Cache
+Requires feature flag `CacheController = true` and valid API key when authentication is enabled.
 
-If not specified, all cache settings use their respective default values.
+- `DELETE /cache/{database}` clears all cache entries (file list, metadata, data, last updated) for a database.
+- `DELETE /cache/{database}/{id}` clears all cache entries for a single table.
 
-## Database Connectors
+Responses:
+- `200 OK` success message
+- `401 Unauthorized` missing / invalid API key (when authentication configured)
+- `404 Not Found` database or table not found
+- `500 Internal Server Error` unexpected error
 
-PxApi supports multiple types of database storage through specialized connectors:
+## Filter Model (POST)
+Filter object structure:
+```json
+{
+  "<DIMENSION_CODE>": {
+    "type": "code | from | to | first | last",
+    "query": ["value1", "value2"]
+  }
+}
+```
+Notes:
+- `first` / `last` use a single positive integer value in `query`.
+- `from` / `to` use one value each.
+- `code` can contain multiple codes.
 
-### MountedDataBaseConnector
+## Configuration
+Provided via `appsettings.json`.
 
-For accessing Px files stored on a local or network file system. Provides direct file access with minimal overhead.
+Key sections:
+- `RootUrl` Base absolute URL used for generated links & OpenAPI servers.
+- `DataBases` Array of database definitions:
+  - `Type` One of `Mounted`, `FileShare`, `BlobStorage`
+  - `Id` Unique id
+  - `CacheConfig` Per-database cache sizing overrides
+  - `Custom` Backend-specific connection settings
+- `Cache` Global memory cache sizing (applies to `MemoryCache`):
+  - `MaxSizeBytes` (default 524288000)
+  - `DefaultDataCellSize`
+  - `DefaultUpdateTaskSize`
+  - `DefaultTableGroupSize`
+  - `DefaultFileListSize`
+  - `DefaultMetaSize`
+- `QueryLimits` Request size limits:
+  - `JsonMaxCells` (used for any future JSON minimal format endpoints)
+  - `JsonStatMaxCells` (enforced in current data endpoints; exceeding returns 413)
+- `FeatureManagement` Feature flags (e.g. `CacheController`)
+- `Authentication` API key settings (enable / key / header name)
+- `OpenApi` Metadata (contact, license) for Swagger document
 
-### FileShareDataBaseConnector
+## Caching
+Global cache size limit controlled via `Cache.MaxSizeBytes`. Individual item sizes use defaults above or per-database overrides. Cached entities:
+- File lists
+- Metadata objects
+- Data arrays
+- Last updated timestamps (per PX file)
+- Groupings (if implemented via `CacheConfig.Groupings`)
 
-For accessing Px files stored in Azure File Shares. Uses Azure Storage SDK.
+## Storage Backends
+- Mounted (local / network path) direct file access
+- Azure File Share via Azure Storage SDK
+- Azure Blob Storage via Azure Storage SDK
 
-### BlobStorageDataBaseConnector
+## Content Negotiation
+Specify desired format with `Accept` header:
+- `application/json` -> JSON-stat 2.0
+- `text/csv` -> CSV (placeholder)
+- `*/*` or empty -> JSON-stat 2.0
 
-For accessing Px files stored in Azure Blob Storage. Uses Azure Storage SDK.
+## Error Handling
+Central exception handling returns standardized 500 responses. Specific endpoints return 400/404/406/413/415 as described.
 
-## Technologies Used
+## Development
+1. Configure `appsettings.json` with databases and cache settings.
+2. Run the application.
+3. Access Swagger UI at root (`/`) for interactive documentation (`openapi/document.json`).
 
-- **.NET 9.0**: Modern framework for building web APIs.
-- **Azure SDK**: Libraries for Azure File Share and Blob Storage access.
-- **NLog**: Logging framework for error and debug logging.
-- **Swagger/OpenAPI**: API documentation and testing.
-- **Px.Utils**: Utility library for handling Px file metadata.
-- **Memory Cache**: Built-in .NET caching for optimized performance.
-
-## Getting Started
-
-1. Clone the repository.
-2. Configure the `appsettings.json` file with the appropriate settings for your environment.
-3. Build and run the project using Visual Studio or the .NET CLI.
-4. Access the Swagger UI to explore the API.
 
 ## License
-
-This project is licensed under the Apache License 2.0. See the [LICENSE.md](docs/LICENSE.md) file for details.
+Apache License 2.0. See `docs/LICENSE.md`.

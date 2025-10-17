@@ -39,6 +39,11 @@
         public MemoryCacheConfig Cache { get; }
 
         /// <summary>
+        /// OpenAPI related configuration (contact and license information).
+        /// </summary>
+        public OpenApiConfig OpenApi { get; }
+
+        /// <summary>
         /// The currently active configuration for the application.
         /// </summary>
         public static AppSettings Active
@@ -65,24 +70,22 @@
         {
             string rootUrlString = configuration.GetValue<string>(nameof(RootUrl)) 
                 ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(RootUrl)}");
-            
             RootUrl = new Uri(rootUrlString, UriKind.Absolute);
-            
+
             List<DataBaseConfig> databases = [];
             IConfigurationSection databasesSection = configuration.GetSection(nameof(DataBases));
-            
             foreach (IConfigurationSection databaseSection in databasesSection.GetChildren())
             {
                 DataBaseConfig databaseConfig = new(databaseSection);
                 databases.Add(databaseConfig);
             }
-            
             DataBases = databases;
-            
+
             Features = new FeatureFlagsConfig(configuration.GetSection("FeatureManagement"));
             Authentication = new AuthenticationConfig(configuration.GetSection(nameof(Authentication)));
             QueryLimits = new QueryLimitsConfig(configuration.GetSection(nameof(QueryLimits)));
             Cache = new MemoryCacheConfig(configuration.GetSection(nameof(Cache)));
+            OpenApi = new OpenApiConfig(configuration.GetSection(nameof(OpenApi)));
         }
 
         /// <summary>

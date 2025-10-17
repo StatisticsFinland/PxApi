@@ -109,6 +109,7 @@ namespace PxApi
 
             serviceCollection.AddSwaggerGen(c =>
             {
+                OpenApiConfig openApiConfig = AppSettings.Active.OpenApi;
                 OpenApiInfo apiInfo = new()
                 {
                     Title = "PxApi",
@@ -116,14 +117,14 @@ namespace PxApi
                     Description = "API for querying PX statistical datasets, providing JSON-stat 2.0 and CSV outputs with flexible dimension filtering (code, range, positional).",
                     Contact = new OpenApiContact
                     {
-                        Name = "Statistics Finland",
-                        Url = new Uri("https://stat.fi"),
-                        Email = string.Empty
+                        Name = openApiConfig.ContactName,
+                        Url = openApiConfig.ContactUrl,
+                        Email = openApiConfig.ContactEmail
                     },
                     License = new OpenApiLicense
                     {
-                        Name = "MIT License",
-                        Url = new Uri("https://opensource.org/licenses/MIT", UriKind.Absolute)
+                        Name = openApiConfig.LicenseName,
+                        Url = openApiConfig.LicenseUrl
                     }
                 };
                 c.SwaggerDoc("openapi", apiInfo);
