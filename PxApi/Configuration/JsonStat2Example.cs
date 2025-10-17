@@ -14,13 +14,13 @@ namespace PxApi.Configuration
         {
             ["version"] = new OpenApiString("2.0"),
             ["class"] = new OpenApiString("dataset"),
-            ["id"] = new OpenApiString("statfin_vaerak_pxt_11rc"),
-            ["label"] = new OpenApiString("11rc -- Population according to age (5-year) and sex, 1865-2023"),
+            ["id"] = new OpenApiArray { new OpenApiString("vuosi"), new OpenApiString("sukupuoli"), new OpenApiString("ika"), new OpenApiString("tiedot") },
+            ["label"] = new OpenApiString("Population according to age (5-year) and sex, 2014-2023"),
             ["source"] = new OpenApiString("Statistics Finland, population structure"),
-            ["updated"] = new OpenApiString("2024-04-26T08:00:00"),
+            ["updated"] = new OpenApiString("2024-04-26T08:00:00Z"),
             ["dimension"] = new OpenApiObject
             {
-                ["Vuosi"] = new OpenApiObject
+                ["vuosi"] = new OpenApiObject
                 {
                     ["label"] = new OpenApiString("Year"),
                     ["category"] = new OpenApiObject
@@ -42,7 +42,7 @@ namespace PxApi.Configuration
                         }
                     }
                 },
-                ["Sukupuoli"] = new OpenApiObject
+                ["sukupuoli"] = new OpenApiObject
                 {
                     ["label"] = new OpenApiString("Sex"),
                     ["category"] = new OpenApiObject
@@ -56,7 +56,7 @@ namespace PxApi.Configuration
                         }
                     }
                 },
-                ["Ikä"] = new OpenApiObject
+                ["ika"] = new OpenApiObject
                 {
                     ["label"] = new OpenApiString("Age"),
                     ["category"] = new OpenApiObject
@@ -65,7 +65,7 @@ namespace PxApi.Configuration
                         ["label"] = new OpenApiObject { ["SSS"] = new OpenApiString("Total") }
                     }
                 },
-                ["Tiedot"] = new OpenApiObject
+                ["tiedot"] = new OpenApiObject
                 {
                     ["label"] = new OpenApiString("Information"),
                     ["category"] = new OpenApiObject
@@ -76,7 +76,7 @@ namespace PxApi.Configuration
                         {
                             ["vaesto"] = new OpenApiObject
                             {
-                                ["label"] = new OpenApiString("\"\""),
+                                ["label"] = new OpenApiString(""),
                                 ["decimals"] = new OpenApiInteger(0)
                             }
                         }

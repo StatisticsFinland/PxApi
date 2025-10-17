@@ -9,28 +9,28 @@ namespace PxApi.Models.JsonStat
     public class Unit
     {
         /// <summary>
-        /// The label of the unit.
+        /// Localized label of the unit (e.g., Persons).
         /// </summary>
         [Required]
         [JsonPropertyName("label")]
         public required string Label { get; set; }
 
         /// <summary>
-        /// The symbol for the unit.
+        /// Optional symbol for the unit (e.g., %, €).
         /// </summary>
         [JsonPropertyName("symbol")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Symbol { get; set; }
 
         /// <summary>
-        /// The position of the symbol (start, end).
+        /// Optional symbol position relative to value. Allowed values: start, end.
         /// </summary>
         [JsonPropertyName("position")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Position { get; set; }
 
         /// <summary>
-        /// The number of decimals to display for this unit.
+        /// Number of decimals to display for this unit (>= 0).
         /// </summary>
         [Required]
         [JsonPropertyName("decimals")]

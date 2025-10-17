@@ -57,6 +57,7 @@ namespace PxApi
                 app.UseSwaggerUI(c =>
                 {
                     c.SwaggerEndpoint("openapi/document.json", "PxApi");
+                    app.Logger.LogInformation("Swagger UI configured with server {RootUrl}", AppSettings.Active.RootUrl);
                     c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
                 });
 
@@ -108,40 +109,27 @@ namespace PxApi
 
             serviceCollection.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("openapi", new OpenApiInfo { Title = "PxApi", Version = "v1" });
+                OpenApiInfo apiInfo = new()
+                {
+                    Title = "PxApi",
+                    Version = "v1",
+                    Description = "API for querying PX statistical datasets, providing JSON-stat 2.0 and CSV outputs with flexible dimension filtering (code, range, positional).",
+                    Contact = new OpenApiContact
+                    {
+                        Name = "Statistics Finland",
+                        Url = new Uri("https://stat.fi"),
+                        Email = string.Empty
+                    },
+                    License = new OpenApiLicense
+                    {
+                        Name = "MIT License",
+                        Url = new Uri("https://opensource.org/licenses/MIT", UriKind.Absolute)
+                    }
+                };
+                c.SwaggerDoc("openapi", apiInfo);
                 c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "PxApi.xml"));
                 c.UseOneOfForPolymorphism();
-                c.SelectSubTypesUsing(baseType =>
-                    typeof(Program).Assembly.GetTypes().Where(type => type.IsSubclassOf(baseType)));
-
-                // Add API Key authentication to Swagger if configured
-                if (AppSettings.Active.Authentication.IsEnabled)
-                {
-                    c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
-                    {
-                        Description = $"API Key needed to access the cache endpoints. Add the key in the '{AppSettings.Active.Authentication.Cache.HeaderName}' header.",
-                        Type = SecuritySchemeType.ApiKey,
-                        Name = AppSettings.Active.Authentication.Cache.HeaderName,
-                        In = ParameterLocation.Header,
-                        Scheme = "ApiKeyScheme"
-                    });
-
-                    OpenApiSecurityRequirement key = new()
-                    {
-                        {
-                            new OpenApiSecurityScheme
-                            {
-                                Reference = new OpenApiReference
-                                {
-                                    Type = ReferenceType.SecurityScheme,
-                                    Id = "ApiKey"
-                                }
-                            },
-                            []
-                        }
-                    };
-                    c.AddSecurityRequirement(key);
-                }
+                c.SelectSubTypesUsing(baseType => typeof(Program).Assembly.GetTypes().Where(type => type.IsSubclassOf(baseType)));
 
                 // Add document filter to add JsonStat2 component schema
                 c.DocumentFilter<JsonStat2ComponentDocumentFilter>();
@@ -166,7 +154,15 @@ namespace PxApi
                 
                 // Add document filter to enhance DataController GET endpoint documentation with query parameter examples
                 c.DocumentFilter<DataControllerGetEndpointDocumentFilter>();
-                
+
+                // Add document filter to inject the servers list from configuration
+                c.DocumentFilter<RootUrlServersDocumentFilter>();
+
+                // Add document filter to enforce no-auth documentation (ensures no security schemes appear)
+                c.DocumentFilter<NoAuthDocumentFilter>();
+
+                // Global 500 response description for all operations (added via operation filter style hook)
+                c.OperationFilter<UnhandledErrorResponseOperationFilter>();
             });
             
             // Configure MemoryCache with global cache size limit

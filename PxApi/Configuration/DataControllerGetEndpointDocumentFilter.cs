@@ -5,100 +5,81 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 namespace PxApi.Configuration
 {
     /// <summary>
-    /// Document filter to enhance DataController GET endpoint documentation with proper query parameter examples.
-    /// This filter now works alongside DynamicQueryParameterOperationFilter to provide additional examples
-    /// for the structured filters parameter.
+    /// Document filter enhancing DataController GET endpoint documentation with examples and richer parameter descriptions.
     /// </summary>
     public class DataControllerGetEndpointDocumentFilter : IDocumentFilter
     {
-        // Parameter descriptions for OpenAPI documentation
-        private const string DatabaseParameterDescription = "Name of the database containing the table";
-        private const string TableParameterDescription = "Name of the px table to query";
-        private const string FiltersParameterDescription = "Array of filter specifications in the format 'dimension:filterType=value'. Supported filter formats: dimension:code=value1,value2,value3 - Creates a CodeFilter with multiple values, dimension:code=* - Creates a CodeFilter that matches all values (wildcard), dimension:from=valueX - Creates a FromFilter starting from valueX, dimension:to=valueX - Creates a ToFilter up to valueX, dimension:first=N - Creates a FirstFilter that takes the first N values, dimension:last=N - Creates a LastFilter that takes the last N values. Wildcards (*) are supported for 'code', 'from', and 'to' filters, and can be partial (e.g., '202*'). Example: ?filters[]=gender:code=1,2&filters[]=year:from=2020&filters[]=region:last=5 This will filter the gender dimension to codes 1 and 2, the year dimension from 2020 onwards, and return only the last 5 regions.";
-        private const string LanguageParameterDescription = "Language code for the response. If not provided, uses the default language of the table";
-        
         /// <summary>
-        /// Applies enhanced documentation to DataController GET endpoints with query parameters.
+        /// Applies enhancements to GET operations under /data.
         /// </summary>
         /// <param name="swaggerDoc">The OpenAPI document to modify.</param>
-        /// <param name="context">The document filter context.</param>
+        /// <param name="context">Filter context.</param>
         public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
         {
             foreach (KeyValuePair<string, OpenApiPathItem> path in swaggerDoc.Paths)
             {
-                if (path.Value.Operations.TryGetValue(OperationType.Get, out OpenApiOperation? getOp))
+                if (path.Value.Operations.TryGetValue(OperationType.Get, out OpenApiOperation? getOp) && IsDataControllerGetOperation(path.Key, getOp))
                 {
-                    // Check if this is a DataController GET operation with the new filters parameter
-                    if (IsDataControllerGetOperation(path.Key, getOp))
-                    {
-                        AddFiltersParameterExamples(getOp);
-                        AddParameterDescriptions(getOp);
-                        AddResponseExamples(getOp);
-                    }
+                    AddFiltersParameterDescription(getOp);
+                    AddFiltersParameterExamples(getOp);
+                    AddResponseExamples(getOp);
+                    AppendAcceptHeaderNote(getOp);
+                    ImproveLanguageParameter(getOp);
                 }
             }
         }
 
-        /// <summary>
-        /// Determines if this is a DataController GET operation that accepts filter parameters.
-        /// </summary>
-        /// <param name="pathKey">The path key from the OpenAPI document.</param>
-        /// <param name="operation">The GET operation to check.</param>
-        /// <returns>True if this is a DataController GET operation with filter parameters.</returns>
         private static bool IsDataControllerGetOperation(string pathKey, OpenApiOperation operation)
         {
-            // Check if the path matches DataController GET endpoints
             bool isDataPath = pathKey.Equals("/data/{database}/{table}", StringComparison.OrdinalIgnoreCase);
             bool hasFiltersParam = operation.Parameters?.Any(p => p.Name == "filters") == true;
-            
             return isDataPath && hasFiltersParam;
         }
 
-        /// <summary>
-        /// Adds example of a JsonStat2 response to the operation's documentation.
-        /// </summary>
-        /// <param name="operation">The GET operation to enhance with response examples.</param>
         private static void AddResponseExamples(OpenApiOperation operation)
         {
-            if (operation.Responses.TryGetValue("200", out OpenApiResponse? response) &&
-                response.Content.TryGetValue("application/json", out OpenApiMediaType? mediaType))
+            if (operation.Responses.TryGetValue("200", out OpenApiResponse? response))
             {
-                mediaType.Schema = new OpenApiSchema
+                if (response.Content.TryGetValue("application/json", out OpenApiMediaType? jsonMediaType))
                 {
-                    Reference = new OpenApiReference
+                    jsonMediaType.Schema = new OpenApiSchema
                     {
-                        Id = "JsonStat2",
-                        Type = ReferenceType.Schema
+                        Reference = new OpenApiReference { Id = "JsonStat2", Type = ReferenceType.Schema }
+                    };
+                    jsonMediaType.Example = JsonStat2Example.Instance;
+                    if (string.IsNullOrWhiteSpace(response.Description))
+                    {
+                        response.Description = "Returns JSON-stat 2.0 dataset when 'Accept: application/json' or '*/*'. Use 'Accept: text/csv' for CSV output.";
                     }
-                };
-                mediaType.Example = JsonStat2Example.Instance;
+                }
+                if (response.Content.TryGetValue("text/csv", out OpenApiMediaType? csvMediaType) && csvMediaType.Schema != null && string.IsNullOrWhiteSpace(csvMediaType.Schema.Description))
+                {
+                    csvMediaType.Schema.Description = "CSV dataset (UTF-8, comma separated, header row). Column order follows dimension order then metric.";
+                }
             }
         }
 
-        /// <summary>
-        /// Adds additional comprehensive examples to the filters parameter.
-        /// </summary>
-        /// <param name="operation">The GET operation to enhance with examples.</param>
+        private static void AddFiltersParameterDescription(OpenApiOperation operation)
+        {
+            OpenApiParameter? filtersParam = operation.Parameters?.FirstOrDefault(p => p.Name == "filters");
+            if (filtersParam == null) return;
+            filtersParam.Description =
+                "Array of filter specs: 'dimension:filterType=value'. Types: code | from | to | first | last. Wildcard '*' matches zero or more characters. Single filter per dimension. first/last require integer > 0. from/to accept single value (wildcards allowed). code accepts one or more comma-separated values (wildcards allowed). Escaping '*' not supported; literal asterisk must be matched exactly if no wildcard semantics desired.";
+        }
+
         private static void AddFiltersParameterExamples(OpenApiOperation operation)
         {
-            // Find the filters parameter
             OpenApiParameter? filtersParam = operation.Parameters?.FirstOrDefault(p => p.Name == "filters");
             if (filtersParam is null) return;
-
-            // Ensure the Examples dictionary exists
             filtersParam.Examples ??= new Dictionary<string, OpenApiExample>();
-
-            // Clear existing examples to replace them
             filtersParam.Examples.Clear();
 
-            // Add examples for each filter type
-            Dictionary<string, OpenApiExample> filterExamples = new()
+            Dictionary<string, OpenApiExample> filterExamples = new Dictionary<string, OpenApiExample>
             {
-                // CodeFilter examples
                 ["code-filter"] = new OpenApiExample
                 {
                     Summary = "Code filter",
-                    Description = "Examples of filtering by code. This query filters by a single gender, multiple age groups, all regions (full wildcard), and categories containing 'manufacturing' (partial wildcard).",
+                    Description = "Single gender, multiple ages, full wildcard region, partial wildcard category.",
                     Value = new OpenApiArray
                     {
                         new OpenApiString("gender:code=1"),
@@ -107,76 +88,71 @@ namespace PxApi.Configuration
                         new OpenApiString("category:code=*manufacturing*")
                     }
                 },
-
-                // FromFilter examples
                 ["from-filter"] = new OpenApiExample
                 {
                     Summary = "From filter",
-                    Description = "Examples of filtering from a specific starting point, including with wildcards. This query selects years from 2020 onwards and time periods from the first one starting with '202'.",
+                    Description = "Years from 2020 onward; time codes starting with 202.",
                     Value = new OpenApiArray
                     {
                         new OpenApiString("year:from=2020"),
                         new OpenApiString("time:from=202*")
                     }
                 },
-
-                // ToFilter examples
                 ["to-filter"] = new OpenApiExample
                 {
                     Summary = "To filter",
-                    Description = "Examples of filtering up to a specific ending point, including with wildcards. This query selects years up to 2023 and time periods up to the last one starting with '2022'.",
+                    Description = "Years up to 2023; time codes up to first match starting with 2022.",
                     Value = new OpenApiArray
                     {
                         new OpenApiString("year:to=2023"),
                         new OpenApiString("time:to=2022*")
                     }
                 },
-
-                // FirstFilter example
                 ["first-filter"] = new OpenApiExample
                 {
                     Summary = "First filter",
-                    Description = "Select the first N values of a dimension.",
+                    Description = "First 10 region codes.",
                     Value = new OpenApiArray { new OpenApiString("region:first=10") }
                 },
-
-                // LastFilter example
                 ["last-filter"] = new OpenApiExample
                 {
                     Summary = "Last filter",
-                    Description = "Select the last N values of a dimension.",
+                    Description = "Last 5 region codes.",
                     Value = new OpenApiArray { new OpenApiString("region:last=5") }
+                },
+                ["combined-filters"] = new OpenApiExample
+                {
+                    Summary = "Combined filters",
+                    Description = "Multiple types together.",
+                    Value = new OpenApiArray
+                    {
+                        new OpenApiString("gender:code=1,2"),
+                        new OpenApiString("year:from=2020"),
+                        new OpenApiString("age:to=81-90"),
+                        new OpenApiString("region:first=3"),
+                        new OpenApiString("rooms:last=2")
+                    }
                 }
             };
 
-            // Add the new examples
             foreach (KeyValuePair<string, OpenApiExample> example in filterExamples)
             {
                 filtersParam.Examples.Add(example.Key, example.Value);
             }
         }
 
-        /// <summary>
-        /// Adds parameter descriptions to GET operations.
-        /// </summary>
-        /// <param name="operation">The GET operation to enhance with parameter descriptions.</param>
-        private static void AddParameterDescriptions(OpenApiOperation operation)
+        private static void AppendAcceptHeaderNote(OpenApiOperation operation)
         {
-            if (operation.Parameters == null) return;
+            operation.Description = (operation.Description ?? string.Empty) +
+                "Accept header options: application/json (JSON-stat), text/csv (CSV), */* treated as JSON-stat. Unsupported media types yield 406.";
+        }
 
-            foreach (OpenApiParameter parameter in operation.Parameters)
+        private static void ImproveLanguageParameter(OpenApiOperation operation)
+        {
+            OpenApiParameter? langParam = operation.Parameters?.FirstOrDefault(p => p.Name == "lang");
+            if (langParam != null)
             {
-                if (string.IsNullOrEmpty(parameter.Description))
-                {
-                    parameter.Description = parameter.Name.ToLowerInvariant() switch
-                    {
-                        "database" => DatabaseParameterDescription,
-                        "table" => TableParameterDescription,
-                        "filters" => FiltersParameterDescription,
-                        "lang" => LanguageParameterDescription,
-                        _ => parameter.Description
-                    };
-                }
+                langParam.Description = "Optional language code (ISO 639-1). Defaults to table's default language. Must be one of the table's AvailableLanguages.";
             }
         }
     }

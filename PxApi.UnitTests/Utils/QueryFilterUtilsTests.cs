@@ -336,7 +336,7 @@ namespace PxApi.UnitTests.Utils
                 // Code filter with specific values
                 Assert.That(filters["gender"], Is.TypeOf<CodeFilter>());
                 
-                // Code filter with wildcard (replaces AllFilter)
+                // Code filter with wildcard
                 Assert.That(filters["region"], Is.TypeOf<CodeFilter>());
                 CodeFilter? wildcardFilter = filters["region"] as CodeFilter;
                 Assert.That(wildcardFilter!.FilterStrings, Contains.Item("*"));

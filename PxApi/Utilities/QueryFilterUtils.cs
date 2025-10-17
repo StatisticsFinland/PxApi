@@ -3,46 +3,30 @@ using PxApi.Models.QueryFilters;
 namespace PxApi.Utilities
 {
     /// <summary>
-    /// Provides utility methods for working with query filters and URL parameters.
+    /// Provides utility methods for parsing and constructing filter objects from query string specifications.
     /// </summary>
     public static class QueryFilterUtils
     {
         /// <summary>
-        /// Converts an array of filter specifications to a dictionary of Filter objects.
-        /// 
-        /// Each filter specification must follow the format 'dimension:filterType=value':
-        /// - dimension:code=value1,value2,value3 - Creates a CodeFilter with multiple values
-        /// - dimension:code=* - Creates a CodeFilter that matches all values (wildcard)
-        /// - dimension:from=valueX - Creates a FromFilter starting from valueX
-        /// - dimension:to=valueX - Creates a ToFilter up to valueX
-        /// - dimension:first=N - Creates a FirstFilter that takes the first N values
-        /// - dimension:last=N - Creates a LastFilter that takes the last N values
-        /// 
-        /// For example:
-        /// ["gender:code=1,2", "year:from=2020", "region:last=5"]
-        /// 
-        /// This will create filters for gender codes "1" and "2", years from 2020 onwards, 
-        /// and the last 5 regions.
+        /// Converts an array of filter specifications to a dictionary of <see cref="Filter"/> instances.
+        /// Format per element: 'dimension:filterType=value'. Supported filter types:
+        /// code (comma-separated codes, supports '*' wildcard for zero or more characters),
+        /// from (inclusive start code or pattern), to (inclusive end code or pattern),
+        /// first (positive integer), last (positive integer).
+        /// Rules: one filter per dimension, counts must be &gt; 0, wildcards allowed only in code/from/to values.
+        /// Throws <see cref="ArgumentException"/> on invalid formats, unsupported types, duplicate dimensions, or invalid numeric counts.
         /// </summary>
-        /// <param name="filtersArray">Array of filter specifications</param>
-        /// <returns>Dictionary of dimension codes and corresponding Filter objects</returns>
+        /// <param name="filtersArray">Array of raw filter specification strings.</param>
+        /// <returns>Dictionary mapping dimension codes to filter objects.</returns>
         public static Dictionary<string, Filter> ConvertFiltersArrayToFilters(string[] filtersArray)
         {
             Dictionary<string, Filter> filters = [];
-            
-            if (filtersArray.Length == 0)
-            {
-                return filters;
-            }
+            if (filtersArray.Length == 0) return filters;
 
             foreach (string filterSpec in filtersArray)
             {
-                if (string.IsNullOrWhiteSpace(filterSpec))
-                {
-                    continue;
-                }
+                if (string.IsNullOrWhiteSpace(filterSpec)) continue;
 
-                // Each spec should be: dimension:filterType=value
                 string[] dimensionAndRest = filterSpec.Split(':', 2, StringSplitOptions.TrimEntries);
                 if (dimensionAndRest.Length != 2)
                 {
@@ -61,7 +45,6 @@ namespace PxApi.Utilities
                 string filterType = typeAndValue[0].ToLowerInvariant();
                 string value = typeAndValue[1];
 
-                // Check for duplicate dimensions
                 if (filters.ContainsKey(dimensionCode))
                 {
                     throw new ArgumentException($"Duplicate dimension '{dimensionCode}' found in filters array.");
@@ -74,12 +57,13 @@ namespace PxApi.Utilities
         }
 
         /// <summary>
-        /// Creates a Filter object based on the filter type and value.
+        /// Factory method that creates filter instances based on parsed type/value.
         /// </summary>
-        /// <param name="filterType">The filter type (code, from, to, first, last)</param>
-        /// <param name="value">The filter value</param>
-        /// <param name="dimensionCode">The dimension code (for error reporting)</param>
-        /// <returns>The appropriate Filter object</returns>
+        /// <param name="filterType">Lowercase filter type name.</param>
+        /// <param name="value">Raw value segment after '='.</param>
+        /// <param name="dimensionCode">Dimension code for error context.</param>
+        /// <returns>Concrete <see cref="Filter"/> instance.</returns>
+        /// <exception cref="ArgumentException">Thrown for unsupported filter type or invalid value.</exception>
         private static Filter CreateFilterFromTypeAndValue(string filterType, string value, string dimensionCode)
         {
             return filterType switch

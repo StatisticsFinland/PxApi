@@ -8,8 +8,7 @@ namespace PxApi.Configuration
 {
     /// <summary>
     /// Schema filter to provide proper OpenAPI documentation for Filter types.
-    /// This ensures that the custom JSON serialization format used by FilterJsonConverter
-    /// is properly documented in the OpenAPI schema.
+    /// Documents polymorphic shape and per-filter query value expectations.
     /// </summary>
     public class FilterSchemaFilter : ISchemaFilter
     {
@@ -22,13 +21,11 @@ namespace PxApi.Configuration
         {
             if (context.Type == typeof(Filter))
             {
-                // Clear any auto-generated properties
                 schema.Properties?.Clear();
                 schema.AllOf?.Clear();
                 schema.OneOf?.Clear();
                 schema.AnyOf?.Clear();
 
-                // Define the filter schema structure
                 schema.Type = "object";
                 schema.Required = new HashSet<string> { "type" };
                 schema.Properties = new Dictionary<string, OpenApiSchema>
@@ -37,48 +34,45 @@ namespace PxApi.Configuration
                     {
                         Type = "string",
                         Enum = [.. Enum.GetNames<FilterType>().Select(n => (IOpenApiAny)new OpenApiString(n))],
-                        Description = "The type of filter to apply"
+                        Description = "Filter type. Code | From | To | First | Last"
                     },
                     ["query"] = new OpenApiSchema
                     {
-                        Description = "Filter-specific query parameter. Type varies based on filter type.",
+                        Description = "Filter-specific query value. Code: array[string] (supports '*' wildcard). From/To: string (supports '*'). First/Last: positive integer.",
                         OneOf =
                         [
-                            // For Code filter: array of strings
                             new OpenApiSchema
                             {
                                 Type = "array",
                                 Items = new OpenApiSchema { Type = "string" },
-                                Description = "Array of dimension value codes (for Code filter)"
+                                Description = "Code filter: list of codes or wildcard patterns. Comma list in GET; array in POST body. '*' matches zero or more characters."
                             },
-                            // For From/To filters: single string
                             new OpenApiSchema
                             {
                                 Type = "string",
-                                Description = "Dimension value code to filter from/to (for From/To filters)"
+                                Description = "From / To filters: single inclusive boundary value; wildcard '*' allowed."
                             },
-                            // For First/Last filters: integer
                             new OpenApiSchema
                             {
                                 Type = "integer",
-                                Description = "Number of elements to take (for First/Last filters)"
+                                Minimum = 1,
+                                Description = "First / Last filters: positive count (N > 0)."
                             }
                         ]
                     }
                 };
 
-                // Add examples for better documentation
                 schema.Example = new OpenApiObject
                 {
                     ["type"] = new OpenApiString("Code"),
                     ["query"] = new OpenApiArray
                     {
-                        new OpenApiString("value1"),
-                        new OpenApiString("value2")
+                        new OpenApiString("A01"),
+                        new OpenApiString("A02"),
+                        new OpenApiString("*MANUF*")
                     }
                 };
             }
-            // Handle Dictionary<string, Filter> which is used in POST endpoints
             else if (context.Type == typeof(Dictionary<string, Filter>))
             {
                 schema.Type = "object";
@@ -90,25 +84,25 @@ namespace PxApi.Configuration
                         Id = nameof(Filter)
                     }
                 };
-                schema.Description = "Dictionary where keys are dimension codes and values are filter objects";
-                
-                // Add example for the dictionary structure
+                schema.Description = "Dictionary mapping dimension codes to filter objects (one per dimension).";
+
                 schema.Example = new OpenApiObject
                 {
-                    ["dimensionCode1"] = new OpenApiObject
+                    ["gender"] = new OpenApiObject
                     {
                         ["type"] = new OpenApiString("Code"),
                         ["query"] = new OpenApiArray
                         {
-                            new OpenApiString("value1"),
-                            new OpenApiString("value2")
+                            new OpenApiString("1"),
+                            new OpenApiString("2")
                         }
                     },
-                    ["dimensionCode2"] = new OpenApiObject
+                    ["year"] = new OpenApiObject
                     {
-                        ["type"] = new OpenApiString("All")
+                        ["type"] = new OpenApiString("From"),
+                        ["query"] = new OpenApiString("2020")
                     },
-                    ["dimensionCode3"] = new OpenApiObject
+                    ["region"] = new OpenApiObject
                     {
                         ["type"] = new OpenApiString("First"),
                         ["query"] = new OpenApiInteger(5)

@@ -13,26 +13,28 @@ using PxApi.Configuration;
 namespace PxApi.Controllers
 {
     /// <summary>
-    /// Provides endpoints for retrieving and querying data in various formats.
+    /// Provides endpoints for retrieving and querying data in JSON-stat 2.0 or CSV formats via filter specifications supporting code, range and positional selection semantics.
     /// </summary>
-    /// <param name="dataSource"><see cref="ICachedDataSource"/> instance for accessing data and metadata.</param>"/>
-    /// <param name="logger">Logger instance for logging warnings and errors.</param>
+    /// <param name="dataSource">Cached data source for accessing PX file metadata and values.</param>
+    /// <param name="logger">Logger instance.</param>
     [ApiController]
-    [Route("[controller]")]
+    [Route("data")]
     public class DataController(ICachedDataSource dataSource, ILogger<DataController> logger) : ControllerBase
     {
         /// <summary>
-        /// GET endpoint to receive data in json-stat2 or csv format.
+        /// Retrieves data using query string filters. Content negotiation based on the Accept header (application/json for JSON-stat, text/csv for CSV; */* treated as JSON).
         /// </summary>
-        /// <param name="database">The name of the database containing the table.</param>
-        /// <param name="table">The name of the px table to query.</param>
-        /// <param name="filters">Array of filter specifications in the format 'dimension:filterType=value'.</param>
-        /// <param name="lang">Language code for the response. If not provided, uses the default language of the table.</param>
-        /// <returns>Data in the format specified by the Accept header.</returns>
-        /// <response code="200">Returns the data in the requested format.</response>
-        /// <response code="400">If the query parameters are invalid or the requested language is not available.</response>
-        /// <response code="404">If the specified database or table is not found.</response>
-        /// <response code="406">If the requested media type is not supported.</response>
+        /// <param name="database">Database identifier containing the table.</param>
+        /// <param name="table">PX table identifier.</param>
+        /// <param name="filters">Array of filter specifications 'dimension:filterType=value'. Supported filterType: code, from, to, first, last. One filter per dimension; first/last require positive integers; '*' wildcard matches zero or more characters in code/from/to values; multiple code values separated by commas.</param>
+        /// <param name="lang">Optional language code; defaults to table's default language when omitted.</param>
+        /// <returns>Data in JSON-stat or CSV format depending on Accept header.</returns>
+        /// <response code="200">Successful query returning data.</response>
+        /// <response code="400">Invalid filters, duplicate dimensions, or invalid language.</response>
+        /// <response code="404">Database or table not found.</response>
+        /// <response code="406">Requested media type not supported by endpoint.</response>
+        /// <response code="413">Request exceeds maximum allowed cell count.</response>
+        /// <response code="415">Unsupported Content-Type header.</response>
         [HttpGet("{database}/{table}")]
         [Produces("application/json", "text/csv")]
         [ProducesResponseType(typeof(JsonStat2), 200, "application/json")]
@@ -40,12 +42,13 @@ namespace PxApi.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [ProducesResponseType(406)]
+        [ProducesResponseType(413)]
+        [ProducesResponseType(415)]
         public async Task<IActionResult> GetDataAsync(
             [FromRoute] string database,
             [FromRoute] string table,
             [FromQuery] string[]? filters = null,
-            [FromQuery] string? lang = null
-            )
+            [FromQuery] string? lang = null)
         {
             using (logger.BeginScope(new Dictionary<string, object>()
             {
@@ -61,30 +64,34 @@ namespace PxApi.Controllers
         }
 
         /// <summary>
-        /// POST endpoint to receive data in json-stat2 or csv format.
+        /// Retrieves data using a JSON body of filter objects. Content negotiation identical to GET. Body maps dimension codes to filter definitions.
         /// </summary>
-        /// <param name="database">The name of the database containing the table.</param>
-        /// <param name="table">The name of the px table to query.</param>
-        /// <param name="query">The query parameters for filtering the data in the form of a dictionary, where keys are dimension codes and values are <see cref="Filter"/> objects.</param>
-        /// <param name="lang">The language code for the response. If not provided, uses the default language of the table.</param>
-        /// <returns>Data in the format specified by the Accept header.</returns>
-        /// <response code="200">Returns the data in the requested format.</response>
-        /// <response code="400">If the query is invalid or the requested language is not available.</response>
-        /// <response code="404">If the specified database or table is not found.</response>
-        /// <response code="406">If the requested media type is not supported.</response>
+        /// <param name="database">Database identifier containing the table.</param>
+        /// <param name="table">PX table identifier.</param>
+        /// <param name="query">Dictionary of filters keyed by dimension code. Each value defines type and associated query data.</param>
+        /// <param name="lang">Optional language code; defaults to table's default language when omitted.</param>
+        /// <returns>Data in JSON-stat or CSV format depending on Accept header.</returns>
+        /// <response code="200">Successful query returning data.</response>
+        /// <response code="400">Invalid filter body or invalid language.</response>
+        /// <response code="404">Database or table not found.</response>
+        /// <response code="406">Requested media type not supported by endpoint.</response>
+        /// <response code="413">Request exceeds maximum allowed cell count.</response>
+        /// <response code="415">Unsupported Content-Type for request body.</response>
         [HttpPost("{database}/{table}")]
+        [Consumes("application/json")]
         [Produces("application/json", "text/csv")]
         [ProducesResponseType(typeof(JsonStat2), 200, "application/json")]
         [ProducesResponseType(typeof(string), 200, "text/csv")]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [ProducesResponseType(406)]
+        [ProducesResponseType(413)]
+        [ProducesResponseType(415)]
         public async Task<ActionResult> PostDataAsync(
             [FromRoute] string database,
             [FromRoute] string table,
             [FromBody] Dictionary<string, Filter> query,
-            [FromQuery] string? lang = null
-            )
+            [FromQuery] string? lang = null)
         {
             using (logger.BeginScope(new Dictionary<string, object>()
             {
@@ -96,6 +103,45 @@ namespace PxApi.Controllers
             {
                 return await GenerateResponse(database, table, lang, query);
             }
+        }
+
+        /// <summary>
+        /// Returns allowed HTTP methods for the data resource. Useful for CORS pre-flight or client capability discovery.
+        /// </summary>
+        /// <param name="database">Database identifier containing the table.</param>
+        /// <param name="table">PX table identifier.</param>
+        /// <response code="200">Returns allowed methods in the Allow response header.</response>
+        [HttpOptions("{database}/{table}")]
+        [ProducesResponseType(200)]
+        public IActionResult OptionsData(string database, string table)
+        {
+            Response.Headers.Allow = "GET,POST,HEAD,OPTIONS";
+            return Ok();
+        }
+
+        /// <summary>
+        /// HEAD endpoint returning only headers (no body) for the data query target. Validates existence and language availability.
+        /// </summary>
+        /// <param name="database">Database identifier containing the table.</param>
+        /// <param name="table">PX table identifier.</param>
+        /// <param name="lang">Optional language code.</param>
+        /// <response code="200">Resource exists.</response>
+        /// <response code="400">Invalid language requested.</response>
+        /// <response code="404">Database or table not found.</response>
+        [HttpHead("{database}/{table}")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> HeadDataAsync(string database, string table, string? lang = null)
+        {
+            DataBaseRef? dbRef = dataSource.GetDataBaseReference(database);
+            if (dbRef is null) return NotFound();
+            PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
+            if (fileRef is null) return NotFound();
+            IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
+            string actualLang = lang ?? meta.DefaultLanguage;
+            if (!meta.AvailableLanguages.Contains(actualLang)) return BadRequest();
+            return Ok();
         }
 
         private async Task<ActionResult> GenerateResponse(string database, string table, string? lang, Dictionary<string, Filter> query)
@@ -131,25 +177,25 @@ namespace PxApi.Controllers
             if (size > maxSize)
             {
                 logger.LogInformation("Too large request received. Size: {Size}.", size);
-                return BadRequest($"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
+                return StatusCode(413, $"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
             }
 
             DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
 
             string acceptHeader = Request.Headers.Accept.ToString();
 
-            if (acceptHeader.Contains("text/csv"))
+            if (acceptHeader.Contains("text/csv", StringComparison.OrdinalIgnoreCase))
             {
-                // Placeholder for CSV implementation
+                // CSV implementation placeholder.
                 return Content("col1,col2\nval1,val2", "text/csv");
             }
-            if (string.IsNullOrEmpty(acceptHeader) || acceptHeader.Contains("*/*") || acceptHeader.Contains("application/json"))
+            if (string.IsNullOrEmpty(acceptHeader) || acceptHeader.Contains("*/*", StringComparison.OrdinalIgnoreCase) || acceptHeader.Contains("application/json", StringComparison.OrdinalIgnoreCase))
             {
                 JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
                 return Ok(jsonStat);
             }
 
-            return StatusCode(406); // Not Acceptable     
+            return StatusCode(406); // Not Acceptable for unsupported Accept header values.
         }
     }
 }
