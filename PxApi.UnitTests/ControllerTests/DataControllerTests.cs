@@ -527,5 +527,40 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         #endregion
+
+        #region Head and Options Endpoint Tests
+
+        [Test]
+        public async Task HeadDataAsync_ValidRequest_ReturnsOk()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            SetupMockDataSourceForValidRequest(database, table);
+            string lang = "en";
+
+            // Act
+            IActionResult result = await _controller.HeadDataAsync(database, table, lang);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkResult>());
+        }
+
+        [Test]
+        public void OptionsData_ReturnsOkAndSetsAllowHeader()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+
+            // Act
+            IActionResult result = _controller.OptionsData(database, table);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkResult>());
+            Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,POST,HEAD,OPTIONS"));
+        }
+
+        #endregion
     }
 }
