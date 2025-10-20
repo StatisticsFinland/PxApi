@@ -8,6 +8,7 @@ using Px.Utils.Models.Metadata;
 using PxApi.ModelBuilders;
 using PxApi.Models.JsonStat;
 using System.Globalization;
+using PxApi.Models;
 
 namespace PxApi.UnitTests.ModelBuilderTests
 {
@@ -17,6 +18,26 @@ namespace PxApi.UnitTests.ModelBuilderTests
     [TestFixture]
     public static class BuildJsonStat2Tests
     {
+        // Added TableGroup list fixture
+        private static readonly List<TableGroup> GROUPINGS = [
+            new TableGroup
+            {
+                Code = "grp1",
+                Name = new MultilanguageString([
+                    new("fi", "Ryhmä 1"),
+                    new("sv", "Grupp 1"),
+                    new("en", "Group 1")
+                ]),
+                GroupingCode = "rootGrouping",
+                GroupingName = new MultilanguageString([
+                    new("fi", "Pääryhmä"),
+                    new("sv", "Huvudgrupp"),
+                    new("en", "Main Group")
+                ]),
+                Links = []
+            }
+        ];
+
         [Test]
         public static void BuildJsonStat2_WhenCalled_ReturnsJsonStat2WithCorrectMetadata()
         {
@@ -43,15 +64,14 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, lang);
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data, lang);
 
             // Assert
             DateTime expectedLastUpdated = new(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc);
             string expectedUpdated = expectedLastUpdated.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
-            
+
             Assert.Multiple(() =>
             {
-                // Basic metadata
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result.Version, Is.EqualTo("2.0"));
                 Assert.That(result.Class, Is.EqualTo("dataset"));
@@ -59,23 +79,20 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Label, Is.EqualTo("table-description.en"));
                 Assert.That(result.Source, Is.EqualTo("content-source.en"));
                 Assert.That(result.Updated, Is.EqualTo(expectedUpdated));
-                
-                // Dimension-related properties
-                Assert.That(result.Size, Has.Count.EqualTo(4)); // 4 dimensions in mock data
-                Assert.That(result.Size[0], Is.EqualTo(2)); // Each dimension has 2 values
+
+                Assert.That(result.Size, Has.Count.EqualTo(4));
+                Assert.That(result.Size[0], Is.EqualTo(2));
                 Assert.That(result.Size[1], Is.EqualTo(2));
                 Assert.That(result.Size[2], Is.EqualTo(2));
                 Assert.That(result.Size[3], Is.EqualTo(2));
-                
-                // Check dimensions
+
                 Assert.That(result.Dimension, Is.Not.Null);
                 Assert.That(result.Dimension, Has.Count.EqualTo(4));
                 Assert.That(result.Dimension.ContainsKey("content-code"));
                 Assert.That(result.Dimension.ContainsKey("time-code"));
                 Assert.That(result.Dimension.ContainsKey("dim0-code"));
                 Assert.That(result.Dimension.ContainsKey("dim1-code"));
-                
-                // Check roles
+
                 Assert.That(result.Role, Is.Not.Null);
                 Assert.That(result.Role!.ContainsKey("time"));
                 Assert.That(result.Role["time"], Has.Count.EqualTo(1));
@@ -83,14 +100,12 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(result.Role.ContainsKey("metric"));
                 Assert.That(result.Role["metric"], Has.Count.EqualTo(1));
                 Assert.That(result.Role["metric"][0], Is.EqualTo("content-code"));
-                
-                // Check data values
+
                 Assert.That(result.Value, Is.EqualTo(data));
-                
-                // Check extension with missing value translations
+
                 Assert.That(result.Extension, Is.Not.Null);
-                Assert.That(result.Extension!.ContainsKey("MissingValueDescriptions"));
-                Dictionary<DataValueType, string>? translations = result.Extension["MissingValueDescriptions"] as Dictionary<DataValueType, string>;
+                Assert.That(result.Extension!.ContainsKey("missingValueDescriptions"));
+                Dictionary<DataValueType, string>? translations = result.Extension["missingValueDescriptions"] as Dictionary<DataValueType, string>;
                 Assert.That(translations, Is.Not.Null);
                 Assert.That(translations![DataValueType.Missing], Is.EqualTo("Missing"));
                 Assert.That(translations[DataValueType.CanNotRepresent], Is.EqualTo("Not applicable"));
@@ -99,6 +114,11 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(translations[DataValueType.NotAsked], Is.EqualTo("Not asked"));
                 Assert.That(translations[DataValueType.Empty], Is.EqualTo("......"));
                 Assert.That(translations[DataValueType.Nill], Is.EqualTo("Magnitude nil"));
+
+                Assert.That(result.Extension.ContainsKey("groupings"));
+                List<TableGroup>? extensionGroupings = result.Extension["groupings"] as List<TableGroup>;
+                Assert.That(extensionGroupings, Is.Not.Null);
+                Assert.That(extensionGroupings![0].Code, Is.EqualTo("grp1"));
             });
         }
 
@@ -108,7 +128,6 @@ namespace PxApi.UnitTests.ModelBuilderTests
             // Arrange
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
-            // Add SOURCE property to content dimension's additional properties
             if (meta.Dimensions.Find(d => d.Type == DimensionType.Content) is ContentDimension contentDim)
             {
                 MultilanguageString source = new([
@@ -124,8 +143,8 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 new DoubleDataValue(2.0, DataValueType.Exists)
             ];
 
-            // Act - not providing a language parameter
-            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data);
+            // Act
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data);
 
             // Assert
             Assert.Multiple(() =>
@@ -139,8 +158,8 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 
                 // Check extension contains Finnish translations
                 Assert.That(result.Extension, Is.Not.Null);
-                Assert.That(result.Extension!.ContainsKey("MissingValueDescriptions"));
-                Dictionary<DataValueType, string>? translations = result.Extension["MissingValueDescriptions"] as Dictionary<DataValueType, string>;
+                Assert.That(result.Extension!.ContainsKey("missingValueDescriptions"));
+                Dictionary<DataValueType, string>? translations = result.Extension["missingValueDescriptions"] as Dictionary<DataValueType, string>;
                 Assert.That(translations, Is.Not.Null);
                 Assert.That(translations![DataValueType.Missing], Is.EqualTo("Tieto on puuttuva"));
                 Assert.That(translations[DataValueType.CanNotRepresent], Is.EqualTo("Tieto on epälooginen esitettäväksi"));
@@ -172,15 +191,15 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, lang);
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data, lang);
 
             // Assert
             Assert.Multiple(() =>
             {
                 // Check extension contains Swedish translations
                 Assert.That(result.Extension, Is.Not.Null);
-                Assert.That(result.Extension!.ContainsKey("MissingValueDescriptions"));
-                Dictionary<DataValueType, string>? translations = result.Extension["MissingValueDescriptions"] as Dictionary<DataValueType, string>;
+                Assert.That(result.Extension!.ContainsKey("missingValueDescriptions"));
+                Dictionary<DataValueType, string>? translations = result.Extension["missingValueDescriptions"] as Dictionary<DataValueType, string>;
                 Assert.That(translations, Is.Not.Null);
                 Assert.That(translations![DataValueType.Missing], Is.EqualTo("Uppgift saknas"));
                 Assert.That(translations[DataValueType.CanNotRepresent], Is.EqualTo("Uppgift kan inte förekomma"));
@@ -205,7 +224,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, "en");
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data, "en");
 
             // Assert
             Assert.Multiple(() =>
@@ -224,7 +243,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 
                 // Extension should still contain translations
                 Assert.That(result.Extension, Is.Not.Null);
-                Assert.That(result.Extension!.ContainsKey("MissingValueDescriptions"));
+                Assert.That(result.Extension!.ContainsKey("missingValueDescriptions"));
             });
         }
 
@@ -240,7 +259,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, "en");
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data, "en");
 
             // Assert
             Assert.Multiple(() =>
@@ -249,10 +268,10 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 
                 // Extension should still contain translations
                 Assert.That(result.Extension, Is.Not.Null);
-                Assert.That(result.Extension!.ContainsKey("MissingValueDescriptions"));
+                Assert.That(result.Extension!.ContainsKey("missingValueDescriptions"));
             });
         }
-        
+
         [Test]
         public static void BuildJsonStat2_CheckDimensionsStructure()
         {
@@ -265,7 +284,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             string lang = "en";
 
             // Act
-            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, lang);
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data, lang);
 
             // Assert
             Assert.Multiple(() =>
@@ -285,7 +304,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(contentDim.Category.Unit, Is.Not.Null);
                 Assert.That(contentDim.Category.Unit!["content-value0-code"].Label, Is.EqualTo("content-value0-unit.en"));
                 Assert.That(contentDim.Category.Unit!["content-value0-code"].Decimals, Is.EqualTo(2));
-                
+
                 // Check time dimension structure
                 PxApi.Models.JsonStat.Dimension timeDim = result.Dimension["time-code"];
                 Assert.That(timeDim.Label, Is.EqualTo("time-name.en"));
@@ -311,9 +330,8 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act & Assert
-            ArgumentException ex = Assert.Throws<ArgumentException>(() => 
-                JsonStat2Builder.BuildJsonStat2(meta, data, "en"));
-                
+            ArgumentException ex = Assert.Throws<ArgumentException>(() =>
+                JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data, "en"));
             Assert.That(ex.Message, Does.Contain("No DESCRIPTION found in table level metadata"));
         }
     }
