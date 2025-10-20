@@ -121,7 +121,7 @@ namespace PxApi.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> HeadTablesAsync(string database, int page = 1, int pageSize = 50)
+        public IActionResult HeadTablesAsync(string database, int page = 1, int pageSize = 50)
         {
             if (page < 1 || pageSize < 1 || pageSize > MAX_PAGE_SIZE) return BadRequest();
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
