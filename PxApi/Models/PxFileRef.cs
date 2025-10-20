@@ -47,7 +47,7 @@ namespace PxApi.Models
             }
             if (!fileName.All(s => char.IsLetterOrDigit(s) || _allowedIdChars.Contains(s)))
             {
-                throw new ArgumentException("PxFile id must contain only letters or numbers.");
+                throw new ArgumentException("PxFile id must contain only letters, digits, '_' or '-'.");
             }
             return new PxFileRef(fileName, fullFilePath, database);
         }
