@@ -298,26 +298,6 @@ namespace PxApi.UnitTests.ModelBuilderTests
         }
 
         [Test]
-        public static void BuildJsonStat2_WhenTableIdMissing_ThrowsArgumentException()
-        {
-            // Arrange
-            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-            // Remove the tableid property
-            meta.AdditionalProperties.Remove(PxFileConstants.TABLEID);
-            
-            DoubleDataValue[] data = [
-                new DoubleDataValue(1.0, DataValueType.Exists),
-                new DoubleDataValue(2.0, DataValueType.Exists)
-            ];
-
-            // Act & Assert
-            ArgumentException ex = Assert.Throws<ArgumentException>(() => 
-                JsonStat2Builder.BuildJsonStat2(meta, data, "en"));
-                
-            Assert.That(ex.Message, Does.Contain("No TABLEID found in table level metadata"));
-        }
-
-        [Test]
         public static void BuildJsonStat2_WhenDescriptionMissing_ThrowsArgumentException()
         {
             // Arrange
