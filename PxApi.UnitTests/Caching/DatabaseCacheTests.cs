@@ -689,6 +689,50 @@ namespace PxApi.UnitTests.Caching
 
         #endregion
 
+        #region OnMetaCacheEvicted Tests
+
+        [Test]
+        public void OnMetaCacheEvicted_WithPxFileRefKey_RemovesGroupingsFromCache()
+        {
+            // Arrange
+            Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
+            MetaCacheContainer metaContainer = new(Task.FromResult(mockMetadata.Object));
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Add groupings to cache
+            Mock<IReadOnlyList<TableGroup>> mockGroupings = new();
+            Task<IReadOnlyList<TableGroup>> groupingsTask = Task.FromResult(mockGroupings.Object);
+            dbCache.SetGroupings(_file1, groupingsTask);
+
+            // Verify groupings are cached
+            bool hasGroupingsBefore = dbCache.TryGetGroupings(_file1, out Task<IReadOnlyList<TableGroup>>? cachedGroupingsBefore);
+            Assert.Multiple(() =>
+            {
+                Assert.That(hasGroupingsBefore, Is.True);
+                Assert.That(cachedGroupingsBefore, Is.SameAs(groupingsTask));
+            });
+
+            // Act
+            dbCache.SetMetadata(_file1, metaContainer);
+
+            // Manually trigger the eviction callback to test the functionality using reflection
+            System.Reflection.MethodInfo? evictionMethod = typeof(DatabaseCache)
+                .GetMethod("OnMetaCacheEvicted", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            evictionMethod!.Invoke(dbCache, [_file1, metaContainer, Microsoft.Extensions.Caching.Memory.EvictionReason.Removed, null]);
+
+            // Assert - Groupings should be removed from cache
+            bool hasGroupingsAfter = dbCache.TryGetGroupings(_file1, out Task<IReadOnlyList<TableGroup>>? cachedGroupingsAfter);
+            Assert.Multiple(() =>
+            {
+                Assert.That(hasGroupingsAfter, Is.False);
+                Assert.That(cachedGroupingsAfter, Is.Null);
+            });
+        }
+
+        #endregion
+
         private static string GetSeedForKeyword(string keyword)
         {
             // Use reflection to get the private field for the keyword hash seed
