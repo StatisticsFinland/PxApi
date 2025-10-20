@@ -7,6 +7,7 @@ using Px.Utils.Models.Metadata;
 using PxApi.Models.JsonStat;
 using PxApi.Utilities;
 using System.Globalization;
+using PxApi.Models;
 
 namespace PxApi.ModelBuilders
 {
@@ -19,12 +20,13 @@ namespace PxApi.ModelBuilders
         /// Builds a JSON-stat 2.0 format response from matrix metadata and data values.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyMatrixMetadata"/> containing the structure and metadata</param>
+        /// <param name="groupings">The groups this table belongs to</param>
         /// <param name="data">The <see cref="DoubleDataValue"/> array containing the actual data values</param>
         /// <param name="lang">Language of the response, if not provided the default language will be used</param>
         /// <returns><see cref="JsonStat2"/> object representing the data in JSON-stat 2.0 format</returns>
-        public static JsonStat2 BuildJsonStat2(IReadOnlyMatrixMetadata meta, DoubleDataValue[] data, string? lang = null)
+        public static JsonStat2 BuildJsonStat2(IReadOnlyMatrixMetadata meta, IReadOnlyList<TableGroup> groupings, DoubleDataValue[] data, string? lang = null)
         {
-            JsonStat2 jsonStat2Meta = BuildJsonStat2(meta, lang);
+            JsonStat2 jsonStat2Meta = BuildJsonStat2(meta, groupings, lang);
             jsonStat2Meta.Value = data;
             jsonStat2Meta.Status = BuildStatusDictionary(data);
             return jsonStat2Meta;
@@ -34,9 +36,10 @@ namespace PxApi.ModelBuilders
         /// Builds a JSON-stat 2.0 format response from matrix metadata.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyMatrixMetadata"/> containing the structure and metadata</param>
+        /// <param name="groupings">The groups this table belongs to</param>
         /// <param name="lang">Language of the response, if not provided the default language will be used</param>
         /// <returns><see cref="JsonStat2"/> object representing the data in JSON-stat 2.0 format</returns>
-        public static JsonStat2 BuildJsonStat2(IReadOnlyMatrixMetadata meta, string? lang = null)
+        public static JsonStat2 BuildJsonStat2(IReadOnlyMatrixMetadata meta, IReadOnlyList<TableGroup> groupings, string? lang = null)
         {
             // Use default language if none specified
             string actualLang = lang ?? meta.DefaultLanguage;
@@ -51,7 +54,8 @@ namespace PxApi.ModelBuilders
             Dictionary<string, object> extension = [];
             Dictionary<DataValueType, string> translations = PxFileConstants.MISSING_DATA_TRANSLATIONS.GetValueOrDefault(actualLang) 
                 ?? throw new ArgumentException($"No missing data translations found for language '{actualLang}'");
-                extension["MissingValueDescriptions"] = translations;
+            extension["missingValueDescriptions"] = translations;
+            extension["groupings"] = groupings;
             
             return new JsonStat2
             {

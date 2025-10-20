@@ -3,7 +3,7 @@ using Px.Utils.Models.Metadata;
 using PxApi.Caching;
 using PxApi.ModelBuilders;
 using PxApi.Models.JsonStat;
-using PxApi.Models; // Added for DataBaseRef and PxFileRef
+using PxApi.Models;
 
 namespace PxApi.Controllers
 {
@@ -51,7 +51,9 @@ namespace PxApi.Controllers
                     return BadRequest("The content is not available in the requested language.");
                 }
 
-                JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, resolvedLang);
+                IReadOnlyList<TableGroup> groupings = await cachedConnector.GetGroupingsCachedAsync(fileRef.Value);
+                JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, groupings, resolvedLang);
+
                 return Ok(jsonStat2);
             }
             catch (FileNotFoundException)

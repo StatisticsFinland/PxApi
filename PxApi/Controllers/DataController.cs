@@ -191,7 +191,8 @@ namespace PxApi.Controllers
             }
             if (string.IsNullOrEmpty(acceptHeader) || acceptHeader.Contains("*/*", StringComparison.OrdinalIgnoreCase) || acceptHeader.Contains("application/json", StringComparison.OrdinalIgnoreCase))
             {
-                JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
+                IReadOnlyList<TableGroup> groupings = await dataSource.GetGroupingsCachedAsync(fileRef.Value);
+                JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), groupings, data, actualLang);
                 return Ok(jsonStat);
             }
 
