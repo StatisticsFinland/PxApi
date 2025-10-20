@@ -13,7 +13,7 @@ using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
-using System.Globalization;
+using Px.Utils.Language;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -89,10 +89,31 @@ namespace PxApi.UnitTests.ControllerTests
                 new DoubleDataValue(2.0, DataValueType.Exists)
             ];
 
+            // Added TableGroup list fixture
+            List<TableGroup> groupingsFixture = [
+                new TableGroup
+            {
+                Code = "grp1",
+                Name = new MultilanguageString([
+                    new("fi", "group.fi"),
+                    new("sv", "group.sv"),
+                    new("en", "group.en")
+                ]),
+                GroupingCode = "rootGrouping",
+                GroupingName = new MultilanguageString([
+                    new("fi", "groupingname.fi"),
+                    new("sv", "groupingname.sv"),
+                    new("en", "groupingname.en")
+                ]),
+                Links = []
+            }
+            ];
+
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
             _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(mockMetadata);
             _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>())).ReturnsAsync(mockData);
+            _cachedDbConnector.Setup(x => x.GetGroupingsCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(groupingsFixture);
         }
 
         #region GetDataAsync Tests
