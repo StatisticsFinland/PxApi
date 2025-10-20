@@ -15,7 +15,6 @@ namespace PxApi.DataSources
     public class BlobStorageDataBaseConnector : IDataBaseConnector
     {
         private readonly DataBaseRef _dataBase; 
-        private readonly string _connectionString;
         private readonly string _containerName;
         private readonly ILogger<BlobStorageDataBaseConnector> _logger;
         private readonly BlobContainerClient _containerClient;
@@ -33,10 +32,9 @@ namespace PxApi.DataSources
         public BlobStorageDataBaseConnector(DataBaseRef dataBase, string connectionString, string containerName, ILogger<BlobStorageDataBaseConnector> logger)
         {
             _dataBase = dataBase;
-            _connectionString = connectionString;
             _containerName = containerName;
             _logger = logger;
-            _containerClient = new BlobContainerClient(_connectionString, _containerName);
+            _containerClient = new BlobContainerClient(connectionString, _containerName);
         }
 
         /// <inheritdoc/>
