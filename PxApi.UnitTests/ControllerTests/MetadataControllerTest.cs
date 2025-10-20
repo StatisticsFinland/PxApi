@@ -69,6 +69,7 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
             List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
+            string[] expectedId = ["content-code", "time-code", "dim0-code", "dim1-code"];
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
             _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
@@ -86,9 +87,9 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(resultMeta, Is.Not.Null);
             Assert.Multiple(() =>
             {
-                Assert.That(resultMeta.Id, Is.EqualTo(new string[] { "dim1", "dim2", "time", "content" }));
-                Assert.That(resultMeta.Label, Is.EqualTo("Test table description"));
-                Assert.That(resultMeta.Source, Is.EqualTo("Test source"));
+                Assert.That(resultMeta.Id, Is.EqualTo(expectedId));
+                Assert.That(resultMeta.Label, Is.EqualTo("table-description.en"));
+                Assert.That(resultMeta.Source, Is.EqualTo("table-source.en"));
                 Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
                 Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
             });
@@ -107,7 +108,7 @@ namespace PxApi.UnitTests.ControllerTests
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, null);
 
             // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
         }
 
         [Test]
@@ -140,6 +141,8 @@ namespace PxApi.UnitTests.ControllerTests
             PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
             List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
+            string[] expectedId = ["content-code", "time-code", "dim0-code", "dim1-code"];
+
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
             _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
@@ -157,9 +160,9 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(resultMeta, Is.Not.Null);
             Assert.Multiple(() =>
             {
-                Assert.That(resultMeta.Id, Is.EqualTo(new string[] { "dim1", "dim2", "time", "content" }));
-                Assert.That(resultMeta.Label, Is.EqualTo("Test table description"));
-                Assert.That(resultMeta.Source, Is.EqualTo("Test source"));
+                Assert.That(resultMeta.Id, Is.EqualTo(expectedId));
+                Assert.That(resultMeta.Label, Is.EqualTo("table-description.fi"));
+                Assert.That(resultMeta.Source, Is.EqualTo("table-source.fi"));
                 Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
                 Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
             });

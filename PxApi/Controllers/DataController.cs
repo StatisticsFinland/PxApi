@@ -161,39 +161,47 @@ namespace PxApi.Controllers
                 return NotFound(message);
             }
 
-            IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
-
-            string actualLang = lang ?? meta.DefaultLanguage;
-            if (!meta.AvailableLanguages.Contains(actualLang))
+            try
             {
-                logger.LogDebug("The Requested language was not available in the table {Table}.", fileRef.Value.Id);
-                return BadRequest("The content is not available in the requested language.");
+                IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
+
+                string actualLang = lang ?? meta.DefaultLanguage;
+                if (!meta.AvailableLanguages.Contains(actualLang))
+                {
+                    logger.LogDebug("The Requested language was not available in the table {Table}.", fileRef.Value.Id);
+                    return BadRequest("The content is not available in the requested language.");
+                }
+
+                MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
+
+                long maxSize = AppSettings.Active.QueryLimits.JsonStatMaxCells;
+                int size = requestMap.GetSize();
+                if (size > maxSize)
+                {
+                    logger.LogInformation("Too large request received. Size: {Size}.", size);
+                    return StatusCode(413, $"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
+                }
+
+                DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
+
+                string acceptHeader = Request.Headers.Accept.ToString();
+
+                if (acceptHeader.Contains("text/csv", StringComparison.OrdinalIgnoreCase))
+                {
+                    // CSV implementation placeholder.
+                    return Content("col1,col2\nval1,val2", "text/csv");
+                }
+                if (string.IsNullOrEmpty(acceptHeader) || acceptHeader.Contains("*/*", StringComparison.OrdinalIgnoreCase) || acceptHeader.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+                {
+                    IReadOnlyList<TableGroup> groupings = await dataSource.GetGroupingsCachedAsync(fileRef.Value);
+                    JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), groupings, data, actualLang);
+                    return Ok(jsonStat);
+                }
             }
-
-            MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
-
-            long maxSize = AppSettings.Active.QueryLimits.JsonStatMaxCells;
-            int size = requestMap.GetSize();
-            if (size > maxSize)
+            catch (ArgumentException argEx)
             {
-                logger.LogInformation("Too large request received. Size: {Size}.", size);
-                return StatusCode(413, $"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
-            }
-
-            DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
-
-            string acceptHeader = Request.Headers.Accept.ToString();
-
-            if (acceptHeader.Contains("text/csv", StringComparison.OrdinalIgnoreCase))
-            {
-                // CSV implementation placeholder.
-                return Content("col1,col2\nval1,val2", "text/csv");
-            }
-            if (string.IsNullOrEmpty(acceptHeader) || acceptHeader.Contains("*/*", StringComparison.OrdinalIgnoreCase) || acceptHeader.Contains("application/json", StringComparison.OrdinalIgnoreCase))
-            {
-                IReadOnlyList<TableGroup> groupings = await dataSource.GetGroupingsCachedAsync(fileRef.Value);
-                JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), groupings, data, actualLang);
-                return Ok(jsonStat);
+                logger.LogDebug(argEx, "Argument exception occurred while processing request: {Message}", argEx.Message);
+                return BadRequest(argEx.Message);
             }
 
             return StatusCode(406); // Not Acceptable for unsupported Accept header values.

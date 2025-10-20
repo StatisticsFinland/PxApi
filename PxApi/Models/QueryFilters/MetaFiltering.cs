@@ -24,7 +24,7 @@ namespace PxApi.Models.QueryFilters
         /// <returns>A new <see cref="MatrixMap"/> with the filtered dimensions.</returns>
         public static MatrixMap ApplyToMatrixMeta(IReadOnlyMatrixMetadata meta, Dictionary<string, Filter> filters)
         {
-            Dictionary<string, Filter> filtersCopy = new(filters);
+            Dictionary<string, Filter> filtersCopy = new(filters, StringComparer.OrdinalIgnoreCase);
             MatrixMap map = new([.. meta.Dimensions.Select(dim =>
             {
                 string dimCode = dim.Code.Convert();

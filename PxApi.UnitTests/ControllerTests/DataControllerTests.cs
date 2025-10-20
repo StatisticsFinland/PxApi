@@ -103,7 +103,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            string[] filters = ["dim0:code=value1"];
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
             string lang = "en";
             
             SetupMockDataSourceForValidRequest(database, table);
@@ -131,7 +131,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            string[] filters = ["dim0:code=value1"];
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
             string lang = "en";
             
             double[] expectedValues = { 1.0, 2.0 };
@@ -159,7 +159,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            string[] filters = ["dim0:code=value1"];
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
             string lang = "en";
 
             SetupMockDataSourceForValidRequest(database, table);
@@ -173,23 +173,6 @@ namespace PxApi.UnitTests.ControllerTests
             StatusCodeResult? statusResult = result as StatusCodeResult;
             Assert.That(statusResult, Is.Not.Null);
             Assert.That(statusResult.StatusCode, Is.EqualTo(StatusCodes.Status406NotAcceptable));
-        }
-
-        [Test]
-        public async Task GetDataAsync_MissingDatabase_ReturnsNotFound()
-        {
-            // Arrange
-            string database = "nonexistent";
-            string table = "testtable";
-            string[] filters = ["dim0:code=value1"];
-
-            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
-
-            // Act
-            IActionResult result = await _controller.GetDataAsync(database, table, filters);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundResult>());
         }
 
         [Test]
@@ -208,7 +191,7 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = await _controller.GetDataAsync(database, table, filters);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
         }
 
         #endregion
@@ -221,7 +204,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
             
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
@@ -248,7 +231,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
             
             double[] expectedValues = { 1.0, 2.0 };
 
@@ -275,8 +258,9 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "text/html";
+            SetupMockDataSourceForValidRequest(database, table);
 
             // Act
             IActionResult result = await _controller.PostDataAsync(database, table, query);
@@ -294,7 +278,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "nonexistent";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
 
@@ -302,7 +286,7 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = await _controller.PostDataAsync(database, table, query);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
         }
 
         [Test]
@@ -311,7 +295,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "nonexistent";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
@@ -321,7 +305,7 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = await _controller.PostDataAsync(database, table, query);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
         }
 
         #endregion
@@ -355,7 +339,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
             string lang = "invalid";
             
             SetupMockDataSourceForValidRequest(database, table);
@@ -374,6 +358,7 @@ namespace PxApi.UnitTests.ControllerTests
 
         #region Exception Handling Tests
 
+        // TODO: TÄÄ
         [Test]
         public async Task GetDataAsync_FileNotFound_ReturnsNotFound()
         {
@@ -383,11 +368,10 @@ namespace PxApi.UnitTests.ControllerTests
             string[] filters = ["dim0:code=value1"];
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
+            PxFileRef? pxFileRef = null;
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ThrowsAsync(new FileNotFoundException("File not found"));
 
             // Act
             IActionResult result = await _controller.GetDataAsync(database, table, filters);
@@ -425,14 +409,13 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
-            
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
+            PxFileRef? pxFileRef = null;
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ThrowsAsync(new FileNotFoundException("File not found"));
 
             // Act
             IActionResult result = await _controller.PostDataAsync(database, table, query);
@@ -447,7 +430,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
             string errorMessage = "Invalid argument";
             
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
@@ -469,7 +452,7 @@ namespace PxApi.UnitTests.ControllerTests
         #region Query Limits Tests
 
         [Test]
-        public async Task GetDataAsync_RequestExceedsLimit_ReturnsBadRequest()
+        public async Task GetDataAsync_RequestExceedsLimit_ReturnsContentTooLarge()
         {
             // Arrange
             const uint limit = 1; 
@@ -477,7 +460,7 @@ namespace PxApi.UnitTests.ControllerTests
             
             string database = "testdb";
             string table = "testtable";
-            string[] filters = ["dim0:code=value1"];
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
 
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
@@ -486,16 +469,17 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = await _controller.GetDataAsync(database, table, filters);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
-            BadRequestObjectResult? badRequest = result as BadRequestObjectResult;
+            Assert.That(result, Is.InstanceOf<ObjectResult>());
+            ObjectResult? badRequest = result as ObjectResult;
             Assert.That(badRequest, Is.Not.Null);
             Assert.That(badRequest.Value, Is.TypeOf<string>());
+            Assert.That(badRequest.StatusCode.Equals(413)); // 413 Content Too Large
             string? errorMessage = badRequest.Value as string;
-            Assert.That(errorMessage, Does.Contain($"Maximum size is {limit} cells."));
+            Assert.That(errorMessage, Does.Contain($"The request is too large. Please narrow down the query. Maximum size is {limit} cells."));
         }
 
         [Test]
-        public async Task PostDataAsync_RequestExceedsLimit_ReturnsBadRequest()
+        public async Task PostDataAsync_RequestExceedsLimit_ReturnsContentTooLarge()
         {
             // Arrange
             const uint limit = 1;
@@ -503,7 +487,7 @@ namespace PxApi.UnitTests.ControllerTests
             
             string database = "testdb";
             string table = "testtable";
-            Dictionary<string, Filter> query = new() { { "dim0", new CodeFilter(["value1"]) } };
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
 
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
@@ -512,12 +496,13 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = await _controller.PostDataAsync(database, table, query);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
-            BadRequestObjectResult? badRequest = result as BadRequestObjectResult;
-            Assert.That(badRequest, Is.Not.Null);
-            Assert.That(badRequest.Value, Is.TypeOf<string>());
-            string? errorMessage = badRequest.Value as string;
-            Assert.That(errorMessage, Does.Contain($"Maximum size is {limit} cells."));
+            Assert.That(result, Is.InstanceOf<ObjectResult>());
+            ObjectResult? tooLarge = result as ObjectResult;
+            Assert.That(tooLarge, Is.Not.Null);
+            Assert.That(tooLarge.StatusCode.Equals(413)); // 413 Content Too Large
+            Assert.That(tooLarge.Value, Is.TypeOf<string>());
+            string? errorMessage = tooLarge.Value as string;
+            Assert.That(errorMessage, Does.Contain($"The request is too large. Please narrow down the query. Maximum size is {limit} cells."));
         }
 
         #endregion

@@ -122,7 +122,7 @@ namespace PxApi.UnitTests.ControllerTests
             PRECISION[sv]("Uppgifter","Första publikation, kvartalsförändring, %")=1;
             PRECISION[en]("Information","First release, quarterly change, %")=1;
             PRECISION("Tiedot","Tarkentuminen, neljännesmuutos, %-yksikköä")=1;
-            PRECISION[sv]("Uppgifter","Revidering, kvartalsförändring, prosentenhet")=1;
+            PRECISION[sv]("Uppgifter","Revidering, kvartalsförändring, procentenhet")=1;
             PRECISION[en]("Information","Revision, quarterly change, percentage point")=1;
             PRECISION("Tiedot","Uusin julkistus, vuosimuutos, %")=1;
             PRECISION[sv]("Uppgifter","Senaste publikation, årsförändring, %")=1;
@@ -346,7 +346,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             string[] filters = [
                 "Tiedot:code=neljmuut,neljmuut_eka",
-                "Vuosineljännes:code=2022Q1,2022Q2",
+                "Vuosineljannes:code=2022Q1,2022Q2",
                 "Alue:code=ksu,pks,msu,kas,muu"
             ];
 
@@ -382,9 +382,9 @@ namespace PxApi.UnitTests.ControllerTests
                 
                 // Check Dimensions structure
                 Assert.That(dataResponse.Dimension, Has.Count.EqualTo(3));
-                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "Tiedot"));
-                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "Vuosineljännes"));
-                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "Alue"));
+                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "tiedot"));
+                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "vuosineljannes"));
+                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "alue"));
             });
 
             _mockConnector.Verify(c => c.ReadPxFile(_testTable), Times.AtLeastOnce);
@@ -398,7 +398,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             string[] filters = [
                 "Tiedot:code=neljmuut",
-                "Vuosineljännes:code=2022Q1,2022Q2",
+                "Vuosineljannes:code=2022Q1,2022Q2",
                 "Alue:code=ksu,pks,msu,kas,muu"
             ];
 
@@ -463,14 +463,14 @@ namespace PxApi.UnitTests.ControllerTests
             // First request for superset
             string[] supersetFilters = [
                 "Tiedot:code=neljmuut,neljmuut_eka",
-                "Vuosineljännes:code=2022Q1,2022Q2",
+                "Vuosineljannes:code=2022Q1,2022Q2",
                 "Alue:code=ksu,pks,msu,kas,muu"
             ];
             
             // Second request for subset
             string[] subsetFilters = [
                 "Tiedot:code=neljmuut",
-                "Vuosineljännes:code=2022Q2",
+                "Vuosineljannes:code=2022Q2",
                 "Alue:code=ksu,pks,msu,kas,muu"
             ];
 
@@ -635,16 +635,16 @@ namespace PxApi.UnitTests.ControllerTests
                 // Verify JSON-stat metadata
                 Assert.That(jsonStat.Version, Is.EqualTo("2.0"));
                 Assert.That(jsonStat.Class, Is.EqualTo("dataset"));
-                Assert.That(jsonStat.Id, Is.EqualTo(new string[] {"Vuosineljännes", "Alue", "Tiedot"}));
+                Assert.That(jsonStat.Id, Is.EqualTo(new string[] {"vuosineljannes", "alue", "tiedot"}));
                 Assert.That(jsonStat.Label, Is.EqualTo("test_description_en"));
                 Assert.That(jsonStat.Source, Is.EqualTo("Statistics Finland, prices of dwellings in housing companies"));
                 
                 // Verify dimensions structure  
                 Assert.That(jsonStat.Dimension, Is.Not.Null);
                 Assert.That(jsonStat.Dimension, Has.Count.EqualTo(3));
-                Assert.That(jsonStat.Dimension.ContainsKey("Vuosineljännes"));
-                Assert.That(jsonStat.Dimension.ContainsKey("Alue"));
-                Assert.That(jsonStat.Dimension.ContainsKey("Tiedot"));
+                Assert.That(jsonStat.Dimension.ContainsKey("vuosineljannes"));
+                Assert.That(jsonStat.Dimension.ContainsKey("alue"));
+                Assert.That(jsonStat.Dimension.ContainsKey("tiedot"));
                 
                 // Verify size array matches expected dimensions
                 Assert.That(jsonStat.Size, Has.Count.EqualTo(3));
@@ -756,7 +756,7 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = await _controller.GetDataAsync(database, table, filters);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
         }
 
         [Test]
@@ -771,7 +771,7 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = await _controller.GetDataAsync(database, table, filters);
 
             // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
         }
 
         [Test]
