@@ -1,6 +1,7 @@
 ﻿using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PxApi.Configuration
 {
@@ -67,6 +68,7 @@ namespace PxApi.Configuration
                 "Array of filter specs: 'dimension:filterType=value'. Types: code | from | to | first | last. Wildcard '*' matches zero or more characters. Single filter per dimension. first/last require integer > 0. from/to accept single value (wildcards allowed). code accepts one or more comma-separated values (wildcards allowed). Escaping '*' not supported; literal asterisk must be matched exactly if no wildcard semantics desired.";
         }
 
+        [SuppressMessage("SonarAnalyzer.CSharp", "S1192", Justification = "Duplicate string literals are intentional to represent example JSON structure.")]
         private static void AddFiltersParameterExamples(OpenApiOperation operation)
         {
             OpenApiParameter? filtersParam = operation.Parameters?.FirstOrDefault(p => p.Name == "filters");

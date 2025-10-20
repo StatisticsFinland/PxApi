@@ -50,24 +50,16 @@ namespace PxApi.DataSources
             {
                 _logger.LogDebug("Getting list of all available databases");
 
-                try
-                {
-                    List<DataBaseRef> databases = [];
+                List<DataBaseRef> databases = [];
 
-                    foreach (DataBaseConfig dbConfig in AppSettings.Active.DataBases)
-                    {
-                        DataBaseRef database = DataBaseRef.Create(dbConfig.Id);
-                        databases.Add(database);
-                    }
-
-                    _logger.LogInformation("Found {DatabaseCount} available databases", databases.Count);
-                    return databases;
-                }
-                catch (Exception ex)
+                foreach (DataBaseConfig dbConfig in AppSettings.Active.DataBases)
                 {
-                    _logger.LogError(ex, "Failed to retrieve available databases");
-                    throw;
+                    DataBaseRef database = DataBaseRef.Create(dbConfig.Id);
+                    databases.Add(database);
                 }
+
+                _logger.LogInformation("Found {DatabaseCount} available databases", databases.Count);
+                return databases;
             }
         }
     }

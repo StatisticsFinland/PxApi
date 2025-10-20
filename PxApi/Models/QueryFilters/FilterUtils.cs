@@ -1,5 +1,6 @@
 ﻿using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.Dimensions;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PxApi.Models.QueryFilters
 {
@@ -12,6 +13,9 @@ namespace PxApi.Models.QueryFilters
         /// Determines whether the input string matches the given filter pattern, where '*' in the filter matches zero or more characters.
         /// The comparison is case-insensitive and supports multiple wildcards in the filter.
         /// </summary>
+        [SuppressMessage("Major Code Smell", "S3776:Cognitive Complexity of methods should not be too high",
+            Justification = "Keeping the algorithm in a single method preserves clarity; splitting would make logic harder to follow."
+            )]
         public static bool IsCodeMatch(string input, string filter)
         {
             input = input.ToLower();

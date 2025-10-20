@@ -216,15 +216,14 @@ namespace PxApi.Caching
                 using Stream groupingStream = await connector.TryReadAuxiliaryFileAsync(GROUPINGS_FILE);
                 GroupingFileModel? groupingModel = await JsonSerializer.DeserializeAsync<GroupingFileModel>(groupingStream);
                 string? fileDirName = Path.GetDirectoryName(pxFile.FilePath)?
-                    .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)
-                    .Last();
+                    .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)[^1];
                 if (groupingModel is null || fileDirName is null) return [];
 
                 Dictionary<string, string> aliasTranslations = new(StringComparer.OrdinalIgnoreCase);
                 foreach (string lang in groupingModel.name.Keys)
                 {
-                    string aliasFileRelPath = fileDirName + "/" + GROUP_ALIAS_PREFIX + lang + GROUP_ALIAS_SUFFIX;
-                    using Stream aliasStream = await connector.TryReadAuxiliaryFileAsync(aliasFileRelPath);
+                    string aliasFilePath = Path.Combine(fileDirName, GROUP_ALIAS_PREFIX + lang + GROUP_ALIAS_SUFFIX);
+                    using Stream aliasStream = await connector.TryReadAuxiliaryFileAsync(aliasFilePath);
                     using StreamReader sr = new(aliasStream, Encoding.UTF8, true);
                     string? alias = await sr.ReadLineAsync();
                     if (!string.IsNullOrWhiteSpace(alias))

@@ -1,7 +1,8 @@
-using Microsoft.OpenApi.Any;
+﻿using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using PxApi.Models.QueryFilters;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Diagnostics.CodeAnalysis;
 using static PxApi.Models.QueryFilters.FilterJsonConverter;
 
 namespace PxApi.Configuration
@@ -17,6 +18,7 @@ namespace PxApi.Configuration
         /// </summary>
         /// <param name="schema">The OpenAPI schema to modify.</param>
         /// <param name="context">The schema filter context containing type information.</param>
+        [SuppressMessage("SonarAnalyzer.CSharp", "S1192", Justification = "Duplicate string literals are intentional to represent example JSON structure.")]
         public void Apply(OpenApiSchema schema, SchemaFilterContext context)
         {
             if (context.Type == typeof(Filter))
