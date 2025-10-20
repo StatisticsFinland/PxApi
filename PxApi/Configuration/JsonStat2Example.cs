@@ -1,10 +1,12 @@
-using Microsoft.OpenApi.Any;
+﻿using Microsoft.OpenApi.Any;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PxApi.Configuration
 {
     /// <summary>
     /// Provides a shared example of a JsonStat2 response for OpenAPI documentation.
     /// </summary>
+    [SuppressMessage("SonarAnalyzer.CSharp", "S1192", Justification = "Duplicate string literals are intentional to represent example JSON structure.")]
     public static class JsonStat2Example
     {
         /// <summary>

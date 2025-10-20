@@ -151,7 +151,7 @@ namespace PxApi.DataSources
                     _logger.LogWarning("Aux file {AuxFile} not found", normalized);
                     throw new FileNotFoundException("Auxiliary file not found", normalized);
                 }
-                MemoryStream ms = new MemoryStream();
+                MemoryStream ms = new();
                 ShareFileDownloadInfo dl = (await fileClient.DownloadAsync()).Value;
                 await dl.Content.CopyToAsync(ms);
                 ms.Position = 0;

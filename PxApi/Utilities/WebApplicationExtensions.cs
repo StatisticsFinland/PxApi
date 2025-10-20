@@ -1,4 +1,4 @@
-using PxApi.Configuration;
+﻿using PxApi.Configuration;
 using PxApi.DataSources;
 
 namespace PxApi.Utilities
@@ -22,30 +22,28 @@ namespace PxApi.Utilities
             foreach (DataBaseConfig dbConfig in AppSettings.Active.DataBases)
             {
                 string dbId = dbConfig.Id;
-                using (IServiceScope scope = app.Services.CreateScope())
+                using IServiceScope scope = app.Services.CreateScope();
+                logger.LogInformation("Testing connection to database {DatabaseId}", dbId);
+                IDataBaseConnector connector = scope.ServiceProvider.GetRequiredKeyedService<IDataBaseConnector>(dbId);
+
+                try
                 {
-                    logger.LogInformation("Testing connection to database {DatabaseId}", dbId);
-                    IDataBaseConnector connector = scope.ServiceProvider.GetRequiredKeyedService<IDataBaseConnector>(dbId);
-                    
-                    try
+                    // Test connection by getting all files - if it returns any files, connection is working
+                    string[] files = await connector.GetAllFilesAsync();
+
+                    if (files.Length == 0)
                     {
-                        // Test connection by getting all files - if it returns any files, connection is working
-                        string[] files = await connector.GetAllFilesAsync();
-                        
-                        if (files.Length == 0)
-                        {
-                            logger.LogWarning("Database {DatabaseId} connection successful but no files were found", dbId);
-                        }
-                        else
-                        {
-                            logger.LogInformation("Successfully connected to database {DatabaseId} and found {FileCount} files", dbId, files.Length);
-                        }
+                        logger.LogWarning("Database {DatabaseId} connection successful but no files were found", dbId);
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        logger.LogCritical(ex, "Failed to connect to database {DatabaseId}", dbId);
-                        throw new InvalidOperationException($"Failed to connect to database {dbId}. Application startup aborted.", ex);
+                        logger.LogInformation("Successfully connected to database {DatabaseId} and found {FileCount} files", dbId, files.Length);
                     }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogCritical(ex, "Failed to connect to database {DatabaseId}", dbId);
+                    throw new InvalidOperationException($"Failed to connect to database {dbId}. Application startup aborted.", ex);
                 }
             }
             

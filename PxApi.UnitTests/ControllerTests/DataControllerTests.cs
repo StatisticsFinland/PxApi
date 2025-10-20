@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+ï»¿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -155,7 +155,7 @@ namespace PxApi.UnitTests.ControllerTests
             string[] filters = ["dim0-code:code=dim0-value1-code"];
             string lang = "en";
             
-            double[] expectedValues = { 1.0, 2.0 };
+            double[] expectedValues = [1.0, 2.0];
 
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
@@ -254,7 +254,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
             
-            double[] expectedValues = { 1.0, 2.0 };
+            double[] expectedValues = [1.0, 2.0];
 
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
@@ -379,7 +379,7 @@ namespace PxApi.UnitTests.ControllerTests
 
         #region Exception Handling Tests
 
-        // TODO: TÄÄ
+        // TODO: TÃ„Ã„
         [Test]
         public async Task GetDataAsync_FileNotFound_ReturnsNotFound()
         {
@@ -493,8 +493,11 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<ObjectResult>());
             ObjectResult? badRequest = result as ObjectResult;
             Assert.That(badRequest, Is.Not.Null);
-            Assert.That(badRequest.Value, Is.TypeOf<string>());
-            Assert.That(badRequest.StatusCode.Equals(413)); // 413 Content Too Large
+            Assert.Multiple(() =>
+            {
+                Assert.That(badRequest.Value, Is.TypeOf<string>());
+                Assert.That(badRequest.StatusCode, Is.EqualTo(413)); // 413 Content Too Large
+            });
             string? errorMessage = badRequest.Value as string;
             Assert.That(errorMessage, Does.Contain($"The request is too large. Please narrow down the query. Maximum size is {limit} cells."));
         }
@@ -520,8 +523,11 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<ObjectResult>());
             ObjectResult? tooLarge = result as ObjectResult;
             Assert.That(tooLarge, Is.Not.Null);
-            Assert.That(tooLarge.StatusCode.Equals(413)); // 413 Content Too Large
-            Assert.That(tooLarge.Value, Is.TypeOf<string>());
+            Assert.Multiple(() =>
+            {
+                Assert.That(tooLarge.StatusCode, Is.EqualTo(413)); // 413 Content Too Large
+                Assert.That(tooLarge.Value, Is.TypeOf<string>());
+            });
             string? errorMessage = tooLarge.Value as string;
             Assert.That(errorMessage, Does.Contain($"The request is too large. Please narrow down the query. Maximum size is {limit} cells."));
         }
@@ -556,9 +562,12 @@ namespace PxApi.UnitTests.ControllerTests
             // Act
             IActionResult result = _controller.OptionsData(database, table);
 
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkResult>());
-            Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,POST,HEAD,OPTIONS"));
+            Assert.Multiple(() =>
+            {
+                // Assert
+                Assert.That(result, Is.InstanceOf<OkResult>());
+                Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,POST,HEAD,OPTIONS"));
+            });
         }
 
         #endregion

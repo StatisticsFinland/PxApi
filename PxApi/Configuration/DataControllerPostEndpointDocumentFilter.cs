@@ -1,4 +1,4 @@
-using Microsoft.OpenApi.Any;
+﻿using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using static PxApi.Models.QueryFilters.FilterJsonConverter;
@@ -62,7 +62,7 @@ namespace PxApi.Configuration
             OpenApiRequestBody? requestBody = operation.RequestBody;
             if (requestBody?.Content == null) return;
 
-            Dictionary<string, OpenApiExample> examples = new Dictionary<string, OpenApiExample>
+            Dictionary<string, OpenApiExample> examples = new()
             {
                 ["code-filter"] = new OpenApiExample
                 {

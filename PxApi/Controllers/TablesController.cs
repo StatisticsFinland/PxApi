@@ -136,6 +136,7 @@ namespace PxApi.Controllers
         /// <response code="200">Returns allowed methods in the Allow header.</response>
         [HttpOptions("{database}")]
         [ProducesResponseType(200)]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Needs to match route signature.")]
         public IActionResult OptionsTables(string database)
         {
             Response.Headers.Allow = "GET,HEAD,OPTIONS";

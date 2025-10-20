@@ -1,4 +1,4 @@
-using Microsoft.OpenApi.Any;
+﻿using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -74,7 +74,7 @@ namespace PxApi.Configuration
             filtersParam.Examples ??= new Dictionary<string, OpenApiExample>();
             filtersParam.Examples.Clear();
 
-            Dictionary<string, OpenApiExample> filterExamples = new Dictionary<string, OpenApiExample>
+            Dictionary<string, OpenApiExample> filterExamples = new()
             {
                 ["code-filter"] = new OpenApiExample
                 {

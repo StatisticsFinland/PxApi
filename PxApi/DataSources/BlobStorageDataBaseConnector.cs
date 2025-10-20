@@ -151,7 +151,7 @@ namespace PxApi.DataSources
                     _logger.LogWarning("Aux file {AuxFile} not found", blobName);
                     throw new FileNotFoundException("Auxiliary file not found", blobName);
                 }
-                MemoryStream ms = new MemoryStream();
+                MemoryStream ms = new();
                 await blob.DownloadToAsync(ms);
                 ms.Position = 0;
                 return ms;

@@ -1,5 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
-using PxApi.Configuration;
+﻿using PxApi.Configuration;
 using PxApi.Models;
 using PxApi.Utilities;
 
@@ -8,21 +7,12 @@ namespace PxApi.DataSources
     /// <summary>
     /// Factory for creating database connectors based on a DataBase instance.
     /// </summary>
-    public class DataBaseConnectorFactoryImpl : IDataBaseConnectorFactory
+    /// <param name="serviceProvider">The service provider to get the database connectors from.</param>
+    /// <param name="logger">The logger.</param>
+    public class DataBaseConnectorFactoryImpl(IServiceProvider serviceProvider, ILogger<DataBaseConnectorFactoryImpl> logger) : IDataBaseConnectorFactory
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly ILogger<DataBaseConnectorFactoryImpl> _logger;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="DataBaseConnectorFactoryImpl"/> class.
-        /// </summary>
-        /// <param name="serviceProvider">The service provider to get the database connectors from.</param>
-        /// <param name="logger">The logger.</param>
-        public DataBaseConnectorFactoryImpl(IServiceProvider serviceProvider, ILogger<DataBaseConnectorFactoryImpl> logger)
-        {
-            _serviceProvider = serviceProvider;
-            _logger = logger;
-        }
+        private readonly IServiceProvider _serviceProvider = serviceProvider;
+        private readonly ILogger<DataBaseConnectorFactoryImpl> _logger = logger;
 
         /// <inheritdoc/>
         public IDataBaseConnector GetConnector(DataBaseRef database)
@@ -62,7 +52,7 @@ namespace PxApi.DataSources
 
                 try
                 {
-                    List<DataBaseRef> databases = new List<DataBaseRef>();
+                    List<DataBaseRef> databases = [];
 
                     foreach (DataBaseConfig dbConfig in AppSettings.Active.DataBases)
                     {
