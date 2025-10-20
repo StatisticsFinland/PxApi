@@ -116,9 +116,10 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(translations[DataValueType.Nill], Is.EqualTo("Magnitude nil"));
 
                 Assert.That(result.Extension.ContainsKey("groupings"));
-                List<TableGroup>? extensionGroupings = result.Extension["groupings"] as List<TableGroup>;
+                List<TableGroupJsonStatExtension>? extensionGroupings = result.Extension["groupings"] as List<TableGroupJsonStatExtension>;
                 Assert.That(extensionGroupings, Is.Not.Null);
                 Assert.That(extensionGroupings![0].Code, Is.EqualTo("grp1"));
+                Assert.That(extensionGroupings[0].Name, Is.EqualTo("Group 1"));
             });
         }
 
