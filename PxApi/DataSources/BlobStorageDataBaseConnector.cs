@@ -1,4 +1,4 @@
-using Azure;
+﻿using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using PxApi.ModelBuilders;
@@ -49,31 +49,23 @@ namespace PxApi.DataSources
                 }))
             {
                 _logger.LogDebug("Getting all files from blob storage container {ContainerName}", _containerName);
-                
+
                 List<string> fileNames = [];
-                
-                try
+
+                await _containerClient.CreateIfNotExistsAsync();
+
+                AsyncPageable<BlobItem> blobs = _containerClient.GetBlobsAsync();
+
+                await foreach (BlobItem blob in blobs)
                 {
-                    await _containerClient.CreateIfNotExistsAsync();
-                    
-                    AsyncPageable<BlobItem> blobs = _containerClient.GetBlobsAsync();
-                    
-                    await foreach (BlobItem blob in blobs)
+                    if (blob.Name.EndsWith(PxFileConstants.FILE_ENDING, StringComparison.OrdinalIgnoreCase))
                     {
-                        if (blob.Name.EndsWith(PxFileConstants.FILE_ENDING, StringComparison.OrdinalIgnoreCase))
-                        {
-                            fileNames.Add(blob.Name);
-                        }
+                        fileNames.Add(blob.Name);
                     }
-                    
-                    _logger.LogDebug("Found {Count} PX files in container {ContainerName}", fileNames.Count, _containerName);
-                    return [.. fileNames];
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error getting files from blob storage container {ContainerName}", _containerName);
-                    throw;
-                }
+
+                _logger.LogDebug("Found {Count} PX files in container {ContainerName}", fileNames.Count, _containerName);
+                return [.. fileNames];
             }
         }
 
@@ -90,34 +82,26 @@ namespace PxApi.DataSources
                 }))
             {
                 _logger.LogDebug("Reading PX file {FileId} from blob storage", file.Id);
-                
-                try
-                {
-                    if (file.DataBase.Id != DataBase.Id)
-                    {
-                        _logger.LogWarning("The file does not belong to the database.");
-                        throw new InvalidOperationException("The file does not belong to the database.");
-                    }
 
-                    BlobClient blobClient = _containerClient.GetBlobClient(file.Id);
-                    
-                    if (!blobClient.Exists())
-                    {
-                        _logger.LogError("PX file {FileId} not found in blob storage", file.Id);
-                        throw new FileNotFoundException($"File {file.Id} not found in blob storage container {_containerName}");
-                    }
-                    
-                    MemoryStream memoryStream = new();
-                    blobClient.DownloadTo(memoryStream);
-                    memoryStream.Position = 0;
-                    
-                    return memoryStream;
-                }
-                catch (Exception ex) when (ex is not FileNotFoundException)
+                if (file.DataBase.Id != DataBase.Id)
                 {
-                    _logger.LogError(ex, "Error reading PX file {FileId} from blob storage", file.Id);
-                    throw;
+                    _logger.LogWarning("The file does not belong to the database.");
+                    throw new InvalidOperationException("The file does not belong to the database.");
                 }
+
+                BlobClient blobClient = _containerClient.GetBlobClient(file.Id);
+
+                if (!blobClient.Exists())
+                {
+                    _logger.LogError("PX file {FileId} not found in blob storage", file.Id);
+                    throw new FileNotFoundException($"File {file.Id} not found in blob storage container {_containerName}");
+                }
+
+                MemoryStream memoryStream = new();
+                blobClient.DownloadTo(memoryStream);
+                memoryStream.Position = 0;
+
+                return memoryStream;
             }
         }
 
@@ -134,25 +118,17 @@ namespace PxApi.DataSources
                 }))
             {
                 _logger.LogDebug("Getting last write time for PX file {FileId} from blob storage", file.Id);
-                
-                try
+
+                BlobClient blobClient = _containerClient.GetBlobClient(file.Id);
+
+                if (!await blobClient.ExistsAsync())
                 {
-                    BlobClient blobClient = _containerClient.GetBlobClient(file.Id);
-                    
-                    if (!await blobClient.ExistsAsync())
-                    {
-                        _logger.LogError("PX file {FileId} not found in blob storage", file.Id);
-                        throw new FileNotFoundException($"File {file.Id} not found in blob storage container {_containerName}");
-                    }
-                    
-                    BlobProperties properties = await blobClient.GetPropertiesAsync();
-                    return properties.LastModified.DateTime;
+                    _logger.LogError("PX file {FileId} not found in blob storage", file.Id);
+                    throw new FileNotFoundException($"File {file.Id} not found in blob storage container {_containerName}");
                 }
-                catch (Exception ex) when (ex is not FileNotFoundException)
-                {
-                    _logger.LogError(ex, "Error getting last write time for PX file {FileId} from blob storage", file.Id);
-                    throw;
-                }
+
+                BlobProperties properties = await blobClient.GetPropertiesAsync();
+                return properties.LastModified.DateTime;
             }
         }
 
