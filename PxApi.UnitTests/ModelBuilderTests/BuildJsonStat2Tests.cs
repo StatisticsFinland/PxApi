@@ -72,6 +72,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             Assert.Multiple(() =>
             {
+                // Verify top-level properties
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result.Version, Is.EqualTo("2.0"));
                 Assert.That(result.Class, Is.EqualTo("dataset"));
