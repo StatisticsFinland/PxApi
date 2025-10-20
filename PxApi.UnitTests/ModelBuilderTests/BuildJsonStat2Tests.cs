@@ -1,4 +1,4 @@
-using Px.Utils.Language;
+Ôªøusing Px.Utils.Language;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Metadata.Dimensions;
@@ -24,13 +24,13 @@ namespace PxApi.UnitTests.ModelBuilderTests
             {
                 Code = "grp1",
                 Name = new MultilanguageString([
-                    new("fi", "Ryhm‰ 1"),
+                    new("fi", "Ryhm√§ 1"),
                     new("sv", "Grupp 1"),
                     new("en", "Group 1")
                 ]),
                 GroupingCode = "rootGrouping",
                 GroupingName = new MultilanguageString([
-                    new("fi", "P‰‰ryhm‰"),
+                    new("fi", "P√§√§ryhm√§"),
                     new("sv", "Huvudgrupp"),
                     new("en", "Main Group")
                 ]),
@@ -164,8 +164,8 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Dictionary<DataValueType, string>? translations = result.Extension["missingValueDescriptions"] as Dictionary<DataValueType, string>;
                 Assert.That(translations, Is.Not.Null);
                 Assert.That(translations![DataValueType.Missing], Is.EqualTo("Tieto on puuttuva"));
-                Assert.That(translations[DataValueType.CanNotRepresent], Is.EqualTo("Tieto on ep‰looginen esitett‰v‰ksi"));
-                Assert.That(translations[DataValueType.Confidential], Is.EqualTo("Tieto on salassapitos‰‰nnˆn alainen"));
+                Assert.That(translations[DataValueType.CanNotRepresent], Is.EqualTo("Tieto on ep√§looginen esitett√§v√§ksi"));
+                Assert.That(translations[DataValueType.Confidential], Is.EqualTo("Tieto on salassapitos√§√§nn√∂n alainen"));
             });
         }
 
@@ -204,12 +204,12 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Dictionary<DataValueType, string>? translations = result.Extension["missingValueDescriptions"] as Dictionary<DataValueType, string>;
                 Assert.That(translations, Is.Not.Null);
                 Assert.That(translations![DataValueType.Missing], Is.EqualTo("Uppgift saknas"));
-                Assert.That(translations[DataValueType.CanNotRepresent], Is.EqualTo("Uppgift kan inte fˆrekomma"));
-                Assert.That(translations[DataValueType.Confidential], Is.EqualTo("Uppgift ‰r sekretessbelagd"));
-                Assert.That(translations[DataValueType.NotAcquired], Is.EqualTo("Uppgift inte tillg‰nglig"));
-                Assert.That(translations[DataValueType.NotAsked], Is.EqualTo("Uppgift inte efterfrÂgad"));
+                Assert.That(translations[DataValueType.CanNotRepresent], Is.EqualTo("Uppgift kan inte f√∂rekomma"));
+                Assert.That(translations[DataValueType.Confidential], Is.EqualTo("Uppgift √§r sekretessbelagd"));
+                Assert.That(translations[DataValueType.NotAcquired], Is.EqualTo("Uppgift inte tillg√§nglig"));
+                Assert.That(translations[DataValueType.NotAsked], Is.EqualTo("Uppgift inte efterfr√•gad"));
                 Assert.That(translations[DataValueType.Empty], Is.EqualTo("......"));
-                Assert.That(translations[DataValueType.Nill], Is.EqualTo("V‰rdet noll"));
+                Assert.That(translations[DataValueType.Nill], Is.EqualTo("V√§rdet noll"));
             });
         }
 
