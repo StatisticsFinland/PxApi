@@ -9,7 +9,7 @@ namespace PxApi.Models.QueryFilters
     public class ToFilter : Filter
     {
         /// <summary>
-        /// Used to match the items in the input collection against, can contain wildcard '*' that matches zore or more characters.
+        /// Used to match the items in the input collection against, can contain wildcard '*' that matches zero or more characters.
         /// </summary>
         public required string FilterString { get; init; }
 

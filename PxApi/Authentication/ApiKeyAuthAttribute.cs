@@ -63,8 +63,11 @@ namespace PxApi.Authentication
 
                 // Compute hash of provided key and compare with stored hash
                 string computedHash = ComputeHash(providedKey, apiKeyConfig.Salt!);
-                
-                if (!computedHash.Equals(apiKeyConfig.Hash, StringComparison.Ordinal))
+
+                ReadOnlySpan<byte> computedHashBytes = [.. Convert.FromBase64String(computedHash)];
+                ReadOnlySpan<byte> apiKeyConfigHashBytes = [.. Convert.FromBase64String(apiKeyConfig.Hash!)];
+
+                if (!CryptographicOperations.FixedTimeEquals(computedHashBytes, apiKeyConfigHashBytes))
                 {
                     logger.LogWarning("API key authentication failed: Invalid API key provided");
                     context.Result = new UnauthorizedObjectResult(new { message = "Invalid API key" });

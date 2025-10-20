@@ -139,7 +139,7 @@ namespace PxApi.Models.QueryFilters
             {
                 if (!char.IsLetterOrDigit(c) && !allowedSpecialChars.Contains(c))
                 {
-                    throw new ArgumentException("Input string contains characters other than letters and numbers");
+                    throw new ArgumentException("Input string contains characters other than letters, numbers, '*' and '_'");
                 }
             }
         }

@@ -39,12 +39,12 @@ namespace PxApi.UnitTests.ControllerTests
                 {
                     {"RootUrl", "https://testurl.fi"},
                     {"DataSource:LocalFileSystem:RootPath", "datasource/root/"},
-                    {"DataSource:LocalFileSystem:MetadataCache:SlidingExpirationMinutes", "15"},
-                    {"DataSource:LocalFileSystem:MetadataCache:AbsoluteExpirationMinutes", "15"},
+                    {"DataSource:LocalFileSystem:MetadataCache:SlidingExpirationSeconds", "15"},
+                    {"DataSource:LocalFileSystem:MetadataCache:AbsoluteExpirationSeconds", "15"},
                     {"DataSource:LocalFileSystem:ModifiedCheckIntervalMs", "1000"},
                     {"DataSource:LocalFileSystem:FileListingCacheDurationMs", "10000"},
-                    {"DataSource:LocalFileSystem:DataCache:SlidingExpirationMinutes", "10"},
-                    {"DataSource:LocalFileSystem:DataCache:AbsoluteExpirationMinutes", "10" }
+                    {"DataSource:LocalFileSystem:DataCache:SlidingExpirationSeconds", "10"},
+                    {"DataSource:LocalFileSystem:DataCache:AbsoluteExpirationSeconds", "10" }
                 };
 
             IConfiguration _configuration = new ConfigurationBuilder()

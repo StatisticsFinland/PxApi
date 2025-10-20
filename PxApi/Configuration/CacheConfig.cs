@@ -22,15 +22,15 @@
         /// <exception cref="InvalidOperationException">Thrown if the required configuration value is missing.</exception>
         public CacheConfig(IConfigurationSection section)
         {
-            int slidingMinutes = section.GetValue<int?>(nameof(SlidingExpirationSeconds))
+            int slidingSeconds = section.GetValue<int?>(nameof(SlidingExpirationSeconds))
                 ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(SlidingExpirationSeconds)}");
 
-            SlidingExpirationSeconds = TimeSpan.FromMinutes(slidingMinutes);
+            SlidingExpirationSeconds = TimeSpan.FromSeconds(slidingSeconds);
 
-            int absoluteMinutes = section.GetValue<int?>(nameof(AbsoluteExpirationSeconds))
+            int absoluteSeconds = section.GetValue<int?>(nameof(AbsoluteExpirationSeconds))
                 ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(AbsoluteExpirationSeconds)}");
 
-            AbsoluteExpirationSeconds = TimeSpan.FromMinutes(absoluteMinutes);
+            AbsoluteExpirationSeconds = TimeSpan.FromSeconds(absoluteSeconds);
         }
     }
 }

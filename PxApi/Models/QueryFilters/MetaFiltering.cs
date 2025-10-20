@@ -66,7 +66,7 @@ namespace PxApi.Models.QueryFilters
                 if (i > 0) sb.Append('&');
                 
                 (Filter filter, string value) = SelectFilterForDimension(dimension);
-                sb.Append($"filters={dimension.Code}:{filter.ParamName}={value}");
+                sb.Append($"filters={dimension.Code.Convert()}:{filter.ParamName}={value}");
             }
             return sb.ToString();
         }
