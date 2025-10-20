@@ -1,4 +1,4 @@
-using Microsoft.FeatureManagement;
+﻿using Microsoft.FeatureManagement;
 using Microsoft.OpenApi.Models;
 using NLog.Web;
 using NLog;
@@ -69,7 +69,7 @@ namespace PxApi
 
                 app.MapControllers();
 
-                app.Run();
+                await app.RunAsync();
             }
             catch (Exception ex)
             {

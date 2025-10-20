@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.FeatureManagement.Mvc;
 using PxApi.Authentication;
 using PxApi.Caching;
@@ -25,6 +25,8 @@ namespace PxApi.Controllers
         private readonly ICachedDataSource _cachedConnector = cachedConnector;
         private readonly ILogger<CacheController> _logger = logger;
 
+        private const string DB_NOT_FOUND = "Database not found";
+
         /// <summary>
         /// Clears data, metadata and last updated caches related to a specific px file in a specific database.
         /// </summary>
@@ -49,8 +51,8 @@ namespace PxApi.Controllers
                 DataBaseRef? dbRef = _cachedConnector.GetDataBaseReference(database);
                 if (dbRef == null)
                 {
-                    _logger.LogWarning("Database not found");
-                    return NotFound(new { message = "Database not found" });
+                    _logger.LogWarning(DB_NOT_FOUND);
+                    return NotFound(new { message = DB_NOT_FOUND });
                 }
 
                 try
@@ -100,8 +102,8 @@ namespace PxApi.Controllers
                 DataBaseRef? dbRef = _cachedConnector.GetDataBaseReference(database);
                 if (dbRef == null)
                 {
-                    _logger.LogWarning("Database not found");
-                    return NotFound(new { message = "Database not found" });
+                    _logger.LogWarning(DB_NOT_FOUND);
+                    return NotFound(new { message = DB_NOT_FOUND });
                 }
 
                 try
