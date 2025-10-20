@@ -1,8 +1,7 @@
-using Azure;
-using Azure.Identity;
-using Azure.Storage.Files.Shares;
+﻿using Azure.Identity;
 using Azure.Storage.Files.Shares.Models;
-using Px.Utils.PxFile;
+using Azure.Storage.Files.Shares;
+using Azure;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
@@ -45,24 +44,16 @@ namespace PxApi.DataSources
                 }))
             {
                 _logger.LogDebug("Getting all files from file share {SharePath}", _sharePath);
-                
+
                 List<string> fileNames = [];
-                
-                try
-                {
-                    await _shareClient.CreateIfNotExistsAsync();
-                    ShareDirectoryClient rootDirectory = _shareClient.GetRootDirectoryClient();
-                    
-                    await ListAllFilesRecursivelyAsync(rootDirectory, "", fileNames);
-                    
-                    _logger.LogDebug("Found {Count} PX files in file share {SharePath}", fileNames.Count, _sharePath);
-                    return [.. fileNames];
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error getting files from file share {SharePath}", _sharePath);
-                    throw;
-                }
+
+                await _shareClient.CreateIfNotExistsAsync();
+                ShareDirectoryClient rootDirectory = _shareClient.GetRootDirectoryClient();
+
+                await ListAllFilesRecursivelyAsync(rootDirectory, "", fileNames);
+
+                _logger.LogDebug("Found {Count} PX files in file share {SharePath}", fileNames.Count, _sharePath);
+                return [.. fileNames];
             }
         }
 
@@ -85,29 +76,21 @@ namespace PxApi.DataSources
                 }
 
                 _logger.LogDebug("Reading PX file {FileId} from file share", file.Id);
-                
-                try
+
+                ShareDirectoryClient directoryClient = _shareClient.GetRootDirectoryClient();
+                ShareFileClient? fileClient = FindPxFileAsync(directoryClient, file.Id).GetAwaiter().GetResult();
+                if (fileClient == null || !fileClient.Exists())
                 {
-                    ShareDirectoryClient directoryClient = _shareClient.GetRootDirectoryClient();
-                    ShareFileClient? fileClient = FindPxFileAsync(directoryClient, file.Id).GetAwaiter().GetResult();
-                    if (fileClient == null || !fileClient.Exists())
-                    {
-                        _logger.LogError("PX file {FileId} not found in file share", file.Id);
-                        throw new FileNotFoundException($"File {file.Id} not found in file share {_sharePath}");
-                    }
-                    
-                    MemoryStream memoryStream = new();
-                    Response<ShareFileDownloadInfo> dl = fileClient.Download();
-                    dl.Value.Content.CopyTo(memoryStream);
-                    memoryStream.Position = 0;
-                    
-                    return memoryStream;
+                    _logger.LogError("PX file {FileId} not found in file share", file.Id);
+                    throw new FileNotFoundException($"File {file.Id} not found in file share {_sharePath}");
                 }
-                catch (Exception ex) when (ex is not FileNotFoundException)
-                {
-                    _logger.LogError(ex, "Error reading PX file {FileId} from file share", file.Id);
-                    throw;
-                }
+
+                MemoryStream memoryStream = new();
+                Response<ShareFileDownloadInfo> dl = fileClient.Download();
+                dl.Value.Content.CopyTo(memoryStream);
+                memoryStream.Position = 0;
+
+                return memoryStream;
             }
         }
 
@@ -124,25 +107,17 @@ namespace PxApi.DataSources
                 }))
             {
                 _logger.LogDebug("Getting last write time for PX file {FileId} from file share", file.Id);
-                
-                try
+
+                ShareDirectoryClient directoryClient = _shareClient.GetRootDirectoryClient();
+                ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id);
+                if (fileClient == null || !await fileClient.ExistsAsync())
                 {
-                    ShareDirectoryClient directoryClient = _shareClient.GetRootDirectoryClient();
-                    ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id);
-                    if (fileClient == null || !await fileClient.ExistsAsync())
-                    {
-                        _logger.LogError("PX file {FileId} not found in file share", file.Id);
-                        throw new FileNotFoundException($"File {file.Id} not found in file share {_sharePath}");
-                    }
-                    
-                    ShareFileProperties properties = await fileClient.GetPropertiesAsync();
-                    return properties.LastModified.DateTime;
+                    _logger.LogError("PX file {FileId} not found in file share", file.Id);
+                    throw new FileNotFoundException($"File {file.Id} not found in file share {_sharePath}");
                 }
-                catch (Exception ex) when (ex is not FileNotFoundException)
-                {
-                    _logger.LogError(ex, "Error getting last write time for PX file {FileId} from file share", file.Id);
-                    throw;
-                }
+
+                ShareFileProperties properties = await fileClient.GetPropertiesAsync();
+                return properties.LastModified.DateTime;
             }
         }
 
@@ -205,33 +180,25 @@ namespace PxApi.DataSources
             return null;
         }
 
-        private async Task ListAllFilesRecursivelyAsync(ShareDirectoryClient directory, string path, List<string> fileNames)
+        private static async Task ListAllFilesRecursivelyAsync(ShareDirectoryClient directory, string path, List<string> fileNames)
         {
-            try
-            {
                 // List all files in current directory
                 await foreach (ShareFileItem item in directory.GetFilesAndDirectoriesAsync())
                 {
-                    if (item.IsDirectory)
+                if (item.IsDirectory)
+                {
+                    // Recursively traverse subdirectories
+                    string subDirPath = string.IsNullOrEmpty(path) ? item.Name : $"{path}/{item.Name}";
+                    ShareDirectoryClient subDir = directory.GetSubdirectoryClient(item.Name);
+                    await ListAllFilesRecursivelyAsync(subDir, subDirPath, fileNames);
+                }
+                else
+                {
+                    if (item.Name.EndsWith(PxFileConstants.FILE_ENDING, StringComparison.OrdinalIgnoreCase))
                     {
-                        // Recursively traverse subdirectories
-                        string subDirPath = string.IsNullOrEmpty(path) ? item.Name : $"{path}/{item.Name}";
-                        ShareDirectoryClient subDir = directory.GetSubdirectoryClient(item.Name);
-                        await ListAllFilesRecursivelyAsync(subDir, subDirPath, fileNames);
-                    }
-                    else
-                    {
-                        if (item.Name.EndsWith(PxFileConstants.FILE_ENDING, StringComparison.OrdinalIgnoreCase))
-                        {
-                            fileNames.Add(item.Name);
-                        }
+                        fileNames.Add(item.Name);
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error listing files in directory {Path}", path);
-                throw;
             }
         }
     }
