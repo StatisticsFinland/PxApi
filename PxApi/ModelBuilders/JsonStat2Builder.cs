@@ -43,23 +43,23 @@ namespace PxApi.ModelBuilders
         {
             // Use default language if none specified
             string actualLang = lang ?? meta.DefaultLanguage;
-            
+
             string tableLabel = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, actualLang)
                 ?? throw new ArgumentException($"No {PxFileConstants.DESCRIPTION} found in table level metadata.");
-            
+
             DateTime lastUpdated = meta.GetContentDimension().Values.Map(v => v.LastUpdated).Max();
             string updated = lastUpdated.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
-            
+
             // Build extension with missing value descriptions
             Dictionary<string, object> extension = [];
-            Dictionary<DataValueType, string> translations = PxFileConstants.MISSING_DATA_TRANSLATIONS.GetValueOrDefault(actualLang) 
+            Dictionary<DataValueType, string> translations = PxFileConstants.MISSING_DATA_TRANSLATIONS.GetValueOrDefault(actualLang)
                 ?? throw new ArgumentException($"No missing data translations found for language '{actualLang}'");
             extension["missingValueDescriptions"] = translations;
-            extension["groupings"] = groupings;
-            
+            extension["groupings"] = BuildLocalizedGroupings(groupings, actualLang);
+
             return new JsonStat2
             {
-                Id = [..meta.Dimensions.Select(d => d.Code.Convert())],
+                Id = [.. meta.Dimensions.Select(d => d.Code.Convert())],
                 Label = tableLabel,
                 Source = GetSourceByLang(meta, actualLang),
                 Note = GetNotesByLang(meta, actualLang),
@@ -89,15 +89,34 @@ namespace PxApi.ModelBuilders
                     status.Add(i, ((byte)data[i].Type).ToString());
                 }
             }
-            
+
             // If no missing values were found, return null
             return status.Count > 0 ? status : null;
+        }
+
+        private static List<TableGroupJsonStatExtension> BuildLocalizedGroupings(IReadOnlyList<TableGroup> groupings, string lang)
+        {
+            List<TableGroupJsonStatExtension> localizedGroupings = [];
+            for (int i = 0; i < groupings.Count; i++)
+            {
+                TableGroup group = groupings[i];
+                TableGroupJsonStatExtension localized = new()
+                {
+                    Code = group.Code,
+                    Name = group.Name[lang],
+                    GroupingCode = group.GroupingCode,
+                    GroupingName = group.GroupingName[lang],
+                    Links = group.Links
+                };
+                localizedGroupings.Add(localized);
+            }
+            return localizedGroupings;
         }
 
         private static Dictionary<string, Models.JsonStat.Dimension> BuildJsonStatDimensions(IReadOnlyMatrixMetadata meta, string lang)
         {
             Dictionary<string, Models.JsonStat.Dimension> dimensions = [];
-            
+
             foreach (IReadOnlyDimension dimension in meta.Dimensions)
             {
                 Models.JsonStat.Dimension jsonDimension = new()
@@ -110,26 +129,26 @@ namespace PxApi.ModelBuilders
                         Label = []
                     }
                 };
-                
+
                 foreach (IReadOnlyDimensionValue value in dimension.Values)
                 {
                     jsonDimension.Category.Index?.Add(value.Code);
                     jsonDimension.Category.Label[value.Code] = value.Name[lang];
 
                     string[]? note = GetNotesByLang(value, lang);
-                    if(note is not null)
+                    if (note is not null)
                     {
                         if (jsonDimension.Category.Note is null) jsonDimension.Category.Note = [];
                         jsonDimension.Category.Note[value.Code] = note;
                     }
                 }
-                
+
                 // Add unit information for content dimensions
                 if (dimension.Type == DimensionType.Content)
                 {
                     ContentDimension contentDim = (ContentDimension)dimension;
                     jsonDimension.Category.Unit = [];
-                    
+
                     foreach (ContentDimensionValue value in contentDim.Values)
                     {
                         jsonDimension.Category.Unit[value.Code] = new Unit
@@ -139,10 +158,10 @@ namespace PxApi.ModelBuilders
                         };
                     }
                 }
-                
+
                 dimensions[dimension.Code.Convert()] = jsonDimension;
             }
-            
+
             return dimensions;
         }
 
@@ -159,22 +178,20 @@ namespace PxApi.ModelBuilders
                 { "metric", [meta.GetContentDimension().Code.Convert()] }
             };
 
-            // Add geo role if geographical dimensions exist
-            // This is a placeholder - in a real implementation you'd need logic to identify geographical dimensions
             List<string> geoDimensions = [.. meta.Dimensions.Where(d => d.Type == DimensionType.Geographical).Select(d => d.Code.Convert())];
             if (geoDimensions.Count > 0)
             {
                 roles["geo"] = geoDimensions;
             }
-            
+
             return roles;
         }
 
         private static string GetSourceByLang(IReadOnlyMatrixMetadata meta, string lang)
         {
             return meta.GetContentDimension().AdditionalProperties.GetValueByLanguage(PxFileConstants.SOURCE, lang)
-                ?? meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.SOURCE, lang) 
-                ?? "";
+                ?? meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.SOURCE, lang)
+                ?? string.Empty;
         }
 
         private static string[]? GetNotesByLang(IReadOnlyMatrixMetadata meta, string lang)
