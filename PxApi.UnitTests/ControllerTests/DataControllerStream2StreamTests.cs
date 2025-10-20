@@ -13,6 +13,7 @@ using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Models;
 using System.Text;
+using Px.Utils.Models.Data;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -331,7 +332,8 @@ namespace PxApi.UnitTests.ControllerTests
                 .ReturnsAsync(DateTime.UtcNow.AddMinutes(-10));
             _mockConnector.Setup(c => c.GetAllFilesAsync())
                 .ReturnsAsync([_testTable.FilePath]);
-
+            _mockConnector.Setup(c => c.TryReadAuxiliaryFileAsync(It.IsAny<string>()))
+                .ThrowsAsync(new FileNotFoundException());
             _mockConnectorFactory.Setup(f => f.GetAvailableDatabases())
                 .Returns([_testDatabase]);
             _mockConnectorFactory.Setup(f => f.GetConnector(_testDatabase))
@@ -374,7 +376,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse.Value, Has.Length.EqualTo(20));
                 
                 // Verify all values have correct DataValueType
-                Assert.That(dataResponse.Value.All(d => d.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
+                Assert.That(dataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
                 // Compare actual data values against expected array
                 double[] actualValues = [.. dataResponse.Value.Select(d => d.UnsafeValue)];
@@ -438,8 +440,8 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse2.Value, Has.Length.EqualTo(10));
                 
                 // Verify all values have correct DataValueType
-                Assert.That(dataResponse1.Value.All(d => d.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
-                Assert.That(dataResponse2.Value.All(d => d.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
+                Assert.That(dataResponse1.Value.All(d => d.Type == DataValueType.Exists), Is.True);
+                Assert.That(dataResponse2.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
                 // Compare actual data values against expected array for both calls
                 double[] actualValues1 = [.. dataResponse1.Value.Select(d => d.UnsafeValue)];
@@ -515,8 +517,8 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(subsetDataResponse.Value, Has.Length.LessThan(supersetDataResponse.Value.Length));
                 
                 // Verify all data points exist
-                Assert.That(supersetDataResponse.Value.All(d => d.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
-                Assert.That(subsetDataResponse.Value.All(d => d.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
+                Assert.That(supersetDataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
+                Assert.That(subsetDataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
                 // Compare actual superset data against expected array
                 double[] actualSupersetValues = supersetDataResponse.Value.Select(d => d.UnsafeValue).ToArray();
@@ -575,7 +577,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse.Value, Has.Length.EqualTo(20));
 
                 // Verify all values have correct DataValueType
-                Assert.That(dataResponse.Value.All(d => d.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
+                Assert.That(dataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
                 // Compare actual data against expected array
                 double[] actualValues = dataResponse.Value.Select(d => d.UnsafeValue).ToArray();
@@ -653,7 +655,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(jsonStat.Size[2], Is.EqualTo(1)); // 1 Tiedot value
                 
                 // Verify all data points exist
-                Assert.That(jsonStat.Value.All(v => v.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
+                Assert.That(jsonStat.Value.All(v => v.Type == DataValueType.Exists), Is.True);
                 
                 // Compare actual data against expected array
                 double[] actualValues = [.. jsonStat.Value.Select(v => v.UnsafeValue)];
@@ -661,10 +663,10 @@ namespace PxApi.UnitTests.ControllerTests
                 
                 // Verify extension contains English missing value translations
                 Assert.That(jsonStat.Extension, Is.Not.Null);
-                Assert.That(jsonStat.Extension!.ContainsKey("MissingValueDescriptions"));
-                Dictionary<Px.Utils.Models.Data.DataValueType, string>? translations = jsonStat.Extension["MissingValueDescriptions"] as Dictionary<Px.Utils.Models.Data.DataValueType, string>;
+                Assert.That(jsonStat.Extension!.ContainsKey("missingValueDescriptions"));
+                Dictionary<DataValueType, string>? translations = jsonStat.Extension["missingValueDescriptions"] as Dictionary<DataValueType, string>;
                 Assert.That(translations, Is.Not.Null);
-                Assert.That(translations![Px.Utils.Models.Data.DataValueType.Missing], Is.EqualTo("Missing"));
+                Assert.That(translations![DataValueType.Missing], Is.EqualTo("Missing"));
             });
 
             _mockConnector.Verify(c => c.ReadPxFile(_testTable), Times.AtLeastOnce);
@@ -730,8 +732,8 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(jsonStat2.Value, Has.Length.EqualTo(20));
                 
                 // Verify all data points exist
-                Assert.That(jsonStat1.Value.All(v => v.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
-                Assert.That(jsonStat2.Value.All(v => v.Type == Px.Utils.Models.Data.DataValueType.Exists), Is.True);
+                Assert.That(jsonStat1.Value.All(v => v.Type == DataValueType.Exists), Is.True);
+                Assert.That(jsonStat2.Value.All(v => v.Type == DataValueType.Exists), Is.True);
                 
                 // Compare actual data against expected array for both calls
                 double[] actualValues1 = [.. jsonStat1.Value.Select(v => v.UnsafeValue)];
