@@ -1,8 +1,8 @@
-using NUnit.Framework;
+﻿using NUnit.Framework;
 using PxApi.Models.QueryFilters;
 using PxApi.Utilities;
 
-namespace PxApi.UnitTests.Utilities
+namespace PxApi.UnitTests.UtilitiesTests
 {
     /// <summary>
     /// Unit tests for the QueryFilterUtils class, specifically testing the filters array syntax.

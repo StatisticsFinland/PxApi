@@ -1,7 +1,7 @@
-using Microsoft.Net.Http.Headers;
+﻿using Microsoft.Net.Http.Headers;
 using PxApi.Utilities;
 
-namespace PxApi.UnitTests.Utilities
+namespace PxApi.UnitTests.UtilitiesTests
 {
     [TestFixture]
     public class ContentNegotiationTests
