@@ -43,7 +43,7 @@ namespace PxApi.UnitTests.SchemaFilters
                 Assert.That(schema.Required, Is.Not.Null);
                 Assert.That(schema.Required.Contains("type"), Is.True);
                 Assert.That(schema.Properties, Is.Not.Null);
-                Assert.That(schema.Properties.Count, Is.EqualTo(2));
+                Assert.That(schema.Properties, Has.Count.EqualTo(2));
                 Assert.That(schema.Properties.ContainsKey("type"), Is.True);
                 Assert.That(schema.Properties.ContainsKey("query"), Is.True);
                 Assert.That(schema.AllOf?.Count, Is.EqualTo(0));
@@ -54,7 +54,7 @@ namespace PxApi.UnitTests.SchemaFilters
                 Assert.That(typeProperty.Type, Is.EqualTo("string"));
                 IList<IOpenApiAny> enumValues = typeProperty.Enum;
                 Assert.That(enumValues, Is.Not.Null);
-                List<string> enumStrings = enumValues.Select(v => ((OpenApiString)v).Value).ToList();
+                List<string> enumStrings = [.. enumValues.Select(v => ((OpenApiString)v).Value)];
                 Assert.That(enumStrings, Has.Count.EqualTo(5));
                 Assert.That(enumStrings, Is.EquivalentTo(new[] { "Code", "From", "To", "First", "Last" }));
 
@@ -73,7 +73,7 @@ namespace PxApi.UnitTests.SchemaFilters
                 Assert.That(example.ContainsKey("query"), Is.True);
                 Assert.That(example["query"], Is.TypeOf<OpenApiArray>());
                 OpenApiArray exampleQuery = (OpenApiArray)example["query"];
-                List<string> queryValues = exampleQuery.Select(v => ((OpenApiString)v).Value).ToList();
+                List<string> queryValues = [.. exampleQuery.Select(v => ((OpenApiString)v).Value)];
                 Assert.That(queryValues, Is.EquivalentTo(new[] { "A01", "A02", "*MANUF*" }));
             });
         }
