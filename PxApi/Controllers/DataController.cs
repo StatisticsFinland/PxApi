@@ -9,6 +9,7 @@ using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Utilities;
 using PxApi.Configuration;
+using Microsoft.Net.Http.Headers;
 
 namespace PxApi.Controllers
 {
@@ -21,6 +22,8 @@ namespace PxApi.Controllers
     [Route("data")]
     public class DataController(ICachedDataSource dataSource, ILogger<DataController> logger) : ControllerBase
     {
+        private static readonly string[] SupportedMediaTypes = ["application/json", "text/csv"];
+
         /// <summary>
         /// Retrieves data using query string filters. Content negotiation based on the Accept header (application/json for JSON-stat, text/csv for CSV; */* treated as JSON).
         /// </summary>
@@ -184,14 +187,16 @@ namespace PxApi.Controllers
 
                 DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
 
-                string acceptHeader = Request.Headers.Accept.ToString();
+                // Use proper content negotiation with quality values
+                IList<MediaTypeHeaderValue> acceptHeaderValues = Request.GetTypedHeaders().Accept;
+                string? bestMatch = ContentNegotiation.GetBestMatch(acceptHeaderValues, SupportedMediaTypes);
 
-                if (acceptHeader.Contains("text/csv", StringComparison.OrdinalIgnoreCase))
+                if (bestMatch == "text/csv")
                 {
                     // CSV implementation placeholder.
                     return Content("col1,col2\nval1,val2", "text/csv");
                 }
-                if (string.IsNullOrEmpty(acceptHeader) || acceptHeader.Contains("*/*", StringComparison.OrdinalIgnoreCase) || acceptHeader.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+                if (bestMatch == "application/json")
                 {
                     IReadOnlyList<TableGroup> groupings = await dataSource.GetGroupingsCachedAsync(fileRef.Value);
                     JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), groupings, data, actualLang);

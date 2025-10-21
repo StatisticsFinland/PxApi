@@ -343,6 +343,7 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "invalid";
             
             SetupMockDataSourceForValidRequest(database, table);
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
             // Act
             IActionResult result = await _controller.GetDataAsync(database, table, filters, lang);
@@ -364,6 +365,7 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "invalid";
             
             SetupMockDataSourceForValidRequest(database, table);
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
             // Act
             IActionResult result = await _controller.PostDataAsync(database, table, query, lang);
@@ -394,6 +396,7 @@ namespace PxApi.UnitTests.ControllerTests
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
 
+            // Accept header not needed since this test expects NotFound before content negotiation
             // Act
             IActionResult result = await _controller.GetDataAsync(database, table, filters);
 
@@ -417,6 +420,8 @@ namespace PxApi.UnitTests.ControllerTests
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
             _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ThrowsAsync(new ArgumentException(errorMessage));
 
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
             // Act
             IActionResult result = await _controller.GetDataAsync(database, table, filters);
 
@@ -438,6 +443,7 @@ namespace PxApi.UnitTests.ControllerTests
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
 
+            // Accept header not needed since this test expects NotFound before content negotiation
             // Act
             IActionResult result = await _controller.PostDataAsync(database, table, query);
 
@@ -460,6 +466,8 @@ namespace PxApi.UnitTests.ControllerTests
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
             _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ThrowsAsync(new ArgumentException(errorMessage));
+
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
             // Act
             IActionResult result = await _controller.PostDataAsync(database, table, query);
@@ -530,6 +538,123 @@ namespace PxApi.UnitTests.ControllerTests
             });
             string? errorMessage = tooLarge.Value as string;
             Assert.That(errorMessage, Does.Contain($"The request is too large. Please narrow down the query. Maximum size is {limit} cells."));
+        }
+
+        #endregion
+
+        #region Content Negotiation Tests
+
+        [Test]
+        public async Task GetDataAsync_AcceptWithQualityValues_ReturnsHighestQuality()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+
+            SetupMockDataSourceForValidRequest(database, table);
+            // Simulate: Accept: text/csv;q=0.9, application/json;q=0.5
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "text/csv;q=0.9, application/json;q=0.5";
+
+            // Act
+            IActionResult result = await _controller.GetDataAsync(database, table, filters);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ContentResult>());
+            ContentResult? contentResult = result as ContentResult;
+            Assert.That(contentResult, Is.Not.Null);
+            Assert.That(contentResult.ContentType, Is.EqualTo("text/csv"));
+        }
+
+        [Test]
+        public async Task GetDataAsync_AcceptWithDefaultQuality_ReturnsDefaultPreference()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+
+            SetupMockDataSourceForValidRequest(database, table);
+            // Simulate: Accept: application/json, text/csv;q=0.5 (application/json defaults to q=1.0)
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json, text/csv;q=0.5";
+
+            // Act
+            IActionResult result = await _controller.GetDataAsync(database, table, filters);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            OkObjectResult? okResult = result as OkObjectResult;
+            Assert.That(okResult, Is.Not.Null);
+            JsonStat2? jsonStat = okResult.Value as JsonStat2;
+            Assert.That(jsonStat, Is.Not.Null);
+        }
+
+        [Test]
+        public async Task GetDataAsync_AcceptWithWildcard_ReturnsFirstSupported()
+        {
+            // Arrange  
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+
+            SetupMockDataSourceForValidRequest(database, table);
+            // Simulate: Accept: */*
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "*/*";
+
+            // Act
+            IActionResult result = await _controller.GetDataAsync(database, table, filters);
+
+            // Assert - Should return JSON since it's first in SupportedMediaTypes array
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            OkObjectResult? okResult = result as OkObjectResult;
+            Assert.That(okResult, Is.Not.Null);
+            JsonStat2? jsonStat = okResult.Value as JsonStat2;
+            Assert.That(jsonStat, Is.Not.Null);
+        }
+
+        [Test]
+        public async Task PostDataAsync_AcceptWithQualityValues_ReturnsHighestQuality()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+
+            SetupMockDataSourceForValidRequest(database, table);
+            // Simulate: Accept: text/csv;q=0.9, application/json;q=0.5
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "text/csv;q=0.9, application/json;q=0.5";
+
+            // Act
+            IActionResult result = await _controller.PostDataAsync(database, table, query);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ContentResult>());
+            ContentResult? contentResult = result as ContentResult;
+            Assert.That(contentResult, Is.Not.Null);
+            Assert.That(contentResult.ContentType, Is.EqualTo("text/csv"));
+        }
+
+        [Test]
+        public async Task GetDataAsync_AcceptComplexHeader_ReturnsCorrectMatch()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+
+            SetupMockDataSourceForValidRequest(database, table);
+            // Simulate: Accept: application/json, application/xml;q=0.9, */*;q=0.1
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json, application/xml;q=0.9, */*;q=0.1";
+
+            // Act
+            IActionResult result = await _controller.GetDataAsync(database, table, filters);
+
+            // Assert - Should return JSON (highest quality among supported types)
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            OkObjectResult? okResult = result as OkObjectResult;
+            Assert.That(okResult, Is.Not.Null);
+            JsonStat2? jsonStat = okResult.Value as JsonStat2;
+            Assert.That(jsonStat, Is.Not.Null);
         }
 
         #endregion

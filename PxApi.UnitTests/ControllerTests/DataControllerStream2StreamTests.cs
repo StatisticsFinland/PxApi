@@ -352,6 +352,8 @@ namespace PxApi.UnitTests.ControllerTests
                 "Alue:code=ksu,pks,msu,kas,muu"
             ];
 
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
             // Expected data values for 2 metrics × 2 time periods × 5 regions = 20 data points
             double[] expectedValues = [
                 0.3, 0.7, -0.1, 0.2, 0.8, 1.3, 0.2, 0.5, 0.6, 1.2, // 2022Q1: neljmuut, neljmuut_eka for all regions
@@ -403,6 +405,8 @@ namespace PxApi.UnitTests.ControllerTests
                 "Vuosineljannes:code=2022Q1,2022Q2",
                 "Alue:code=ksu,pks,msu,kas,muu"
             ];
+
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
             // Expected data values for 1 metric × 2 time periods × 5 regions = 10 data points
             double[] expectedValues = [
@@ -476,6 +480,8 @@ namespace PxApi.UnitTests.ControllerTests
                 "Alue:code=ksu,pks,msu,kas,muu"
             ];
 
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
             // Expected data for superset: 2 metrics × 2 time periods × 5 regions = 20 data points
             double[] expectedSupersetValues = [
                 0.3, 0.7, -0.1, 0.2, 0.8, 1.3, 0.2, 0.5, 0.6, 1.2, // 2022Q1: neljmuut, neljmuut_eka for all regions
@@ -544,6 +550,8 @@ namespace PxApi.UnitTests.ControllerTests
                 { "Alue", new CodeFilter(["ksu"]) }
             };
 
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
             // Expected data: 2 metrics × 10 time periods × 1 region = 20 data points
             // For ksu region across all time periods, alternating between neljmuut and neljmuut_eka
             double[] expectedValues = [
@@ -601,6 +609,8 @@ namespace PxApi.UnitTests.ControllerTests
                 "Tiedot:code=neljmuut"
             ];
             const string? lang = "en";
+
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
             // Expected data: 1 metric × 10 time periods × 2 regions = 20 data points
             // neljmuut for ksu and pks regions across all time periods
@@ -684,6 +694,8 @@ namespace PxApi.UnitTests.ControllerTests
                 { "Alue", new CodeFilter(["ksu", "pks"]) }
             };
             const string? lang = "en";
+
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
             // Expected data: 1 metric × 10 time periods × 2 regions = 20 data points
             // vmuut for ksu and pks regions across all time periods
@@ -784,6 +796,8 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             string[] filters = [];
             const string invalidLang = "invalid";
+
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
             // Act
             IActionResult result = await _controller.GetDataAsync(database, table, filters, invalidLang);
