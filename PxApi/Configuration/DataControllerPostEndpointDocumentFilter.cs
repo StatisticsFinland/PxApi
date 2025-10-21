@@ -1,6 +1,7 @@
 ﻿using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Diagnostics.CodeAnalysis;
 using static PxApi.Models.QueryFilters.FilterJsonConverter;
 
 namespace PxApi.Configuration
@@ -57,6 +58,7 @@ namespace PxApi.Configuration
             }
         }
 
+        [SuppressMessage("SonarAnalyzer.CSharp", "S1192", Justification = "Duplicate string literals are intentional to represent example JSON structure.")]
         private static void AddComprehensiveRequestBodyExamples(OpenApiOperation operation)
         {
             OpenApiRequestBody? requestBody = operation.RequestBody;

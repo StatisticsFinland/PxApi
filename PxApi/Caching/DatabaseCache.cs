@@ -181,17 +181,14 @@ namespace PxApi.Caching
         /// <param name="cached">The timestamp of when the data was cached.</param>
         public bool TryGetDataSuperset<TData>(PxFileRef file, IMatrixMap map, out IMatrixMap? supersetMap, out Task<TData[]>? data, out DateTime? cached)
         {
-            if (_cache.TryGetValue(HashCode.Combine(META_SEED, file), out MetaCacheContainer? metaContainer) && metaContainer is not null)
+            if (_cache.TryGetValue(HashCode.Combine(META_SEED, file), out MetaCacheContainer? metaContainer) &&
+                metaContainer is not null &&
+                metaContainer.TryGetSuperMap(map, out supersetMap) &&
+                _cache.TryGetValue(HashCode.Combine(DATA_SEED, MapHash(supersetMap)), out DataCacheContainer<TData>? superContainer))
             {
-                if(metaContainer.TryGetSuperMap(map, out supersetMap))
-                {
-                    if (_cache.TryGetValue(HashCode.Combine(DATA_SEED, MapHash(supersetMap)), out DataCacheContainer<TData>? superContainer))
-                    {
-                        data = superContainer!.Data;
-                        cached = superContainer!.CachedUtc;
-                        return true;
-                    }
-                }
+                data = superContainer!.Data;
+                cached = superContainer!.CachedUtc;
+                return true;
             }
 
             supersetMap = null;
