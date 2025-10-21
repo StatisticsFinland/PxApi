@@ -96,6 +96,43 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task GetMetadataById_DatabaseNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            string databaseId = "nonexistentdb";
+            string tableId = "table1";
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(databaseId)).Returns((DataBaseRef?)null);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(databaseId, tableId, null);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
+            NotFoundObjectResult? notFoundResult = result.Result as NotFoundObjectResult;
+            Assert.That(notFoundResult?.Value, Is.EqualTo("Database not found."));
+        }
+
+        [Test]
+        public async Task GetMetadataById_TableNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            string tableId = "nonexistenttable";
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(tableId, database)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, tableId, null);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
+            NotFoundObjectResult? notFoundResult = result.Result as NotFoundObjectResult;
+            Assert.That(notFoundResult?.Value, Is.EqualTo("Table not found."));
+        }
+
+        [Test]
         public async Task GetMetadataById_FileDoesNotExist_ReturnsNotFound()
         {
             // Arrange
@@ -109,6 +146,30 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
+        }
+
+        [Test]
+        public async Task GetMetadataById_UnexpectedError_ReturnsInternalServerError()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ThrowsAsync(new InvalidOperationException("Unexpected error"));
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, null);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<ObjectResult>());
+            ObjectResult? objectResult = result.Result as ObjectResult;
+            Assert.Multiple(() =>
+            {
+                Assert.That(objectResult?.StatusCode, Is.EqualTo(500));
+                Assert.That(objectResult?.Value, Is.EqualTo("Unexpected server error."));
+            });
         }
 
         [Test]
@@ -166,6 +227,113 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
                 Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
             });
+        }
+
+        [Test]
+        public async Task HeadMetadataAsync_ResourceExists_ReturnsOk()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            string lang = "en";
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
+
+            // Act
+            IActionResult result = await _controller.HeadMetadataAsync(database.Id, file.Id, lang);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkResult>());
+        }
+
+        [Test]
+        public async Task HeadMetadataAsync_DatabaseNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            string databaseId = "nonexistentdb";
+            string tableId = "table1";
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(databaseId)).Returns((DataBaseRef?)null);
+
+            // Act
+            IActionResult result = await _controller.HeadMetadataAsync(databaseId, tableId, null);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        }
+
+        [Test]
+        public async Task HeadMetadataAsync_TableNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            string tableId = "nonexistenttable";
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(tableId, database)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            IActionResult result = await _controller.HeadMetadataAsync(database.Id, tableId, null);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        }
+
+        [Test]
+        public async Task HeadMetadataAsync_LanguageNotAvailable_ReturnsBadRequest()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            string lang = "de";
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
+
+            // Act
+            IActionResult result = await _controller.HeadMetadataAsync(database.Id, file.Id, lang);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<BadRequestResult>());
+        }
+
+        [Test]
+        public async Task HeadMetadataAsync_NoLanguageSpecified_ReturnsOk()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
+
+            // Act
+            IActionResult result = await _controller.HeadMetadataAsync(database.Id, file.Id, null);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkResult>());
+        }
+
+        [Test]
+        public void OptionsMetadata_ReturnsOkWithAllowHeader()
+        {
+            // Arrange
+            string database = "exampledb";
+            string table = "table1";
+
+            // Act
+            IActionResult result = _controller.OptionsMetadata(database, table);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkResult>());
+            Assert.That(_controller.Response.Headers.Allow.ToString(), Is.EqualTo("GET,HEAD,OPTIONS"));
         }
     }
 }

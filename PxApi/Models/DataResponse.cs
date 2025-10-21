@@ -16,7 +16,7 @@ namespace PxApi.Models
         public required DateTime LastUpdated { get; init; }
 
         /// <summary>
-        /// Mappping of the dimensions and their selected values. These dimension define the data in a row-major order.
+        /// Mapping of the dimensions and their selected values. These dimension define the data in a row-major order.
         /// </summary>
         [Required]
         public required List<DimensionMap> Dimensions { get; init; }

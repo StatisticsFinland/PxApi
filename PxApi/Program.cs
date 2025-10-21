@@ -19,7 +19,7 @@ namespace PxApi
         /// <summary>
         /// Main entry point of the application.
         /// </summary>
-        [ExcludeFromCodeCoverage] // Difficult to test Main method since the app.Run() method is blocking.
+        [ExcludeFromCodeCoverage(Justification = "Difficult to test Main method since the app.Run() method is blocking.")]
         public static async Task Main()
         {
             Logger logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
