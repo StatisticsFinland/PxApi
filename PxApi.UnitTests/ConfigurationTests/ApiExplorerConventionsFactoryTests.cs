@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.ApplicationModels;
-using PxApi.Configuration;
 using PxApi.Controllers;
+using PxApi.OpenApi;
 using System.Reflection;
 
 namespace PxApi.UnitTests.Configuration

@@ -1,7 +1,7 @@
-using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace PxApi.Configuration
+namespace PxApi.OpenApi
 {
     /// <summary>
     /// Adds a generic 500 response to all operations if not already defined.

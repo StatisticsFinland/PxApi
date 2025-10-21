@@ -1,9 +1,10 @@
 ﻿using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
+using PxApi.OpenApi.Examples;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Diagnostics.CodeAnalysis;
 
-namespace PxApi.Configuration
+namespace PxApi.OpenApi.DocumentFilters
 {
     /// <summary>
     /// Document filter enhancing DataController GET endpoint documentation with examples and richer parameter descriptions.

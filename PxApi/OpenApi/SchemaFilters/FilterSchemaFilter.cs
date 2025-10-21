@@ -5,7 +5,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Diagnostics.CodeAnalysis;
 using static PxApi.Models.QueryFilters.FilterJsonConverter;
 
-namespace PxApi.Configuration
+namespace PxApi.OpenApi.SchemaFilters
 {
     /// <summary>
     /// Schema filter to provide proper OpenAPI documentation for Filter types.

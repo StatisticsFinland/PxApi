@@ -1,8 +1,8 @@
-using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi.Models;
 using PxApi.Models.QueryFilters;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace PxApi.Configuration
+namespace PxApi.OpenApi.DocumentFilters
 {
     /// <summary>
     /// Document filter to remove Filter subclass component schemas from the OpenAPI document.

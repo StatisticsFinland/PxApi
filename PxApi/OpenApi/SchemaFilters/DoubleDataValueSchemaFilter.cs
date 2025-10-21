@@ -1,8 +1,8 @@
-using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi.Models;
 using Px.Utils.Models.Data.DataValue;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace PxApi.Configuration
+namespace PxApi.OpenApi.SchemaFilters
 {
     /// <summary>
     /// Schema filter to map DoubleDataValue to number type in OpenAPI documentation.

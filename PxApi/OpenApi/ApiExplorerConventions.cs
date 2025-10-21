@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Mvc.ApplicationModels;
+﻿using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using PxApi.Controllers;
 
-namespace PxApi.Configuration
+namespace PxApi.OpenApi
 {
     /// <summary>
     /// Class for setting visibility of API controllers in Swagger. 

@@ -1,8 +1,8 @@
-using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi.Models;
 using Px.Utils.Models.Data.DataValue;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace PxApi.Configuration
+namespace PxApi.OpenApi.DocumentFilters
 {
     /// <summary>
     /// Document filter to remove DoubleDataValue component schemas from the OpenAPI document.

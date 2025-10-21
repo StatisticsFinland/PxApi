@@ -1,7 +1,7 @@
 ﻿using Microsoft.OpenApi.Any;
 using System.Diagnostics.CodeAnalysis;
 
-namespace PxApi.Configuration
+namespace PxApi.OpenApi.Examples
 {
     /// <summary>
     /// Provides a shared example of a JsonStat2 response for OpenAPI documentation.

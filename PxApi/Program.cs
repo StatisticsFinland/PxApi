@@ -8,6 +8,9 @@ using PxApi.DataSources;
 using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
+using PxApi.OpenApi.DocumentFilters;
+using PxApi.OpenApi.SchemaFilters;
+using PxApi.OpenApi;
 
 namespace PxApi
 {

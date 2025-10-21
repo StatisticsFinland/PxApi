@@ -1,10 +1,11 @@
 ﻿using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
+using PxApi.OpenApi.Examples;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Diagnostics.CodeAnalysis;
 using static PxApi.Models.QueryFilters.FilterJsonConverter;
 
-namespace PxApi.Configuration
+namespace PxApi.OpenApi.DocumentFilters
 {
     /// <summary>
     /// Enhances DataController POST endpoint documentation with request body examples and refined descriptions.

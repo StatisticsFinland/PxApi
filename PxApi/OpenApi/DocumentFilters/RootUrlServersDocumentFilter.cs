@@ -1,7 +1,8 @@
-using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi.Models;
+using PxApi.Configuration;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace PxApi.Configuration
+namespace PxApi.OpenApi.DocumentFilters
 {
     /// <summary>
     /// Adds the RootUrl from configuration as the single server entry in the OpenAPI document.
