@@ -69,7 +69,6 @@ namespace PxApi.OpenApi.DocumentFilters
                 "Array of filter specs: 'dimension:filterType=value'. Types: code | from | to | first | last. Wildcard '*' matches zero or more characters. Single filter per dimension. first/last require integer > 0. from/to accept single value (wildcards allowed). code accepts one or more comma-separated values (wildcards allowed). Escaping '*' not supported; literal asterisk must be matched exactly if no wildcard semantics desired.";
         }
 
-        [SuppressMessage("SonarAnalyzer.CSharp", "S1192", Justification = "Duplicate string literals are intentional to represent example JSON structure.")]
         private static void AddFiltersParameterExamples(OpenApiOperation operation)
         {
             OpenApiParameter? filtersParam = operation.Parameters?.FirstOrDefault(p => p.Name == "filters");
@@ -77,68 +76,7 @@ namespace PxApi.OpenApi.DocumentFilters
             filtersParam.Examples ??= new Dictionary<string, OpenApiExample>();
             filtersParam.Examples.Clear();
 
-            Dictionary<string, OpenApiExample> filterExamples = new()
-            {
-                ["code-filter"] = new OpenApiExample
-                {
-                    Summary = "Code filter",
-                    Description = "Single gender, multiple ages, full wildcard region, partial wildcard category.",
-                    Value = new OpenApiArray
-                    {
-                        new OpenApiString("gender:code=1"),
-                        new OpenApiString("age:code=25-34,35-44"),
-                        new OpenApiString("region:code=*"),
-                        new OpenApiString("category:code=*manufacturing*")
-                    }
-                },
-                ["from-filter"] = new OpenApiExample
-                {
-                    Summary = "From filter",
-                    Description = "Years from 2020 onward; time codes starting with 202.",
-                    Value = new OpenApiArray
-                    {
-                        new OpenApiString("year:from=2020"),
-                        new OpenApiString("time:from=202*")
-                    }
-                },
-                ["to-filter"] = new OpenApiExample
-                {
-                    Summary = "To filter",
-                    Description = "Years up to 2023; time codes up to first match starting with 2022.",
-                    Value = new OpenApiArray
-                    {
-                        new OpenApiString("year:to=2023"),
-                        new OpenApiString("time:to=2022*")
-                    }
-                },
-                ["first-filter"] = new OpenApiExample
-                {
-                    Summary = "First filter",
-                    Description = "First 10 region codes.",
-                    Value = new OpenApiArray { new OpenApiString("region:first=10") }
-                },
-                ["last-filter"] = new OpenApiExample
-                {
-                    Summary = "Last filter",
-                    Description = "Last 5 region codes.",
-                    Value = new OpenApiArray { new OpenApiString("region:last=5") }
-                },
-                ["combined-filters"] = new OpenApiExample
-                {
-                    Summary = "Combined filters",
-                    Description = "Multiple types together.",
-                    Value = new OpenApiArray
-                    {
-                        new OpenApiString("gender:code=1,2"),
-                        new OpenApiString("year:from=2020"),
-                        new OpenApiString("age:to=81-90"),
-                        new OpenApiString("region:first=3"),
-                        new OpenApiString("rooms:last=2")
-                    }
-                }
-            };
-
-            foreach (KeyValuePair<string, OpenApiExample> example in filterExamples)
+            foreach (KeyValuePair<string, OpenApiExample> example in FiltersParameterExamples.Examples)
             {
                 filtersParam.Examples.Add(example.Key, example.Value);
             }

@@ -1,9 +1,6 @@
-﻿using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi.Models;
 using PxApi.OpenApi.Examples;
 using Swashbuckle.AspNetCore.SwaggerGen;
-using System.Diagnostics.CodeAnalysis;
-using static PxApi.Models.QueryFilters.FilterJsonConverter;
 
 namespace PxApi.OpenApi.DocumentFilters
 {
@@ -49,7 +46,7 @@ namespace PxApi.OpenApi.DocumentFilters
                     jsonMediaType.Example = JsonStat2Example.Instance;
                     if (string.IsNullOrWhiteSpace(response.Description))
                     {
-                        response.Description = "Returns JSON-stat 2.0 dataset when 'Accept: application/json' or '*/*'. Use 'Accept: text/csv' for CSV output.";
+                        response.Description = "Returns JSON-stat2.0 dataset when 'Accept: application/json' or '*/*'. Use 'Accept: text/csv' for CSV output.";
                     }
                 }
                 if (response.Content.TryGetValue("text/csv", out OpenApiMediaType? csvMediaType) && csvMediaType.Schema != null && string.IsNullOrWhiteSpace(csvMediaType.Schema.Description))
@@ -59,142 +56,16 @@ namespace PxApi.OpenApi.DocumentFilters
             }
         }
 
-        [SuppressMessage("SonarAnalyzer.CSharp", "S1192", Justification = "Duplicate string literals are intentional to represent example JSON structure.")]
         private static void AddComprehensiveRequestBodyExamples(OpenApiOperation operation)
         {
             OpenApiRequestBody? requestBody = operation.RequestBody;
             if (requestBody?.Content == null) return;
 
-            Dictionary<string, OpenApiExample> examples = new()
-            {
-                ["code-filter"] = new OpenApiExample
-                {
-                    Summary = "Code filter",
-                    Description = "Specific codes, full wildcard, partial wildcard.",
-                    Value = new OpenApiObject
-                    {
-                        ["gender"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.Code)),
-                            ["query"] = new OpenApiArray { new OpenApiString("1") }
-                        },
-                        ["age"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.Code)),
-                            ["query"] = new OpenApiArray { new OpenApiString("25-34"), new OpenApiString("35-44") }
-                        },
-                        ["region"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.Code)),
-                            ["query"] = new OpenApiArray { new OpenApiString("*") }
-                        },
-                        ["category"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.Code)),
-                            ["query"] = new OpenApiArray { new OpenApiString("*manufacturing*") }
-                        }
-                    }
-                },
-                ["from-filter"] = new OpenApiExample
-                {
-                    Summary = "From filter",
-                    Description = "Inclusive start at value or pattern.",
-                    Value = new OpenApiObject
-                    {
-                        ["year"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.From)),
-                            ["query"] = new OpenApiString("2020")
-                        },
-                        ["time"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.From)),
-                            ["query"] = new OpenApiString("202*")
-                        }
-                    }
-                },
-                ["to-filter"] = new OpenApiExample
-                {
-                    Summary = "To filter",
-                    Description = "Inclusive end at value or pattern.",
-                    Value = new OpenApiObject
-                    {
-                        ["year"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.To)),
-                            ["query"] = new OpenApiString("2023")
-                        },
-                        ["time"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.To)),
-                            ["query"] = new OpenApiString("2022*")
-                        }
-                    }
-                },
-                ["first-filter"] = new OpenApiExample
-                {
-                    Summary = "First filter",
-                    Description = "First N values (N > 0).",
-                    Value = new OpenApiObject
-                    {
-                        ["region"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.First)),
-                            ["query"] = new OpenApiInteger(10)
-                        }
-                    }
-                },
-                ["last-filter"] = new OpenApiExample
-                {
-                    Summary = "Last filter",
-                    Description = "Last N values (N > 0).",
-                    Value = new OpenApiObject
-                    {
-                        ["region"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.Last)),
-                            ["query"] = new OpenApiInteger(5)
-                        }
-                    }
-                },
-                ["combined-filters"] = new OpenApiExample
-                {
-                    Summary = "Combined filters",
-                    Description = "Multiple filter types in one request.",
-                    Value = new OpenApiObject
-                    {
-                        ["gender"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.Code)),
-                            ["query"] = new OpenApiArray { new OpenApiString("1"), new OpenApiString("2") }
-                        },
-                        ["year"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.From)),
-                            ["query"] = new OpenApiString("2020")
-                        },
-                        ["age"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.To)),
-                            ["query"] = new OpenApiString("81-90")
-                        },
-                        ["region"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.First)),
-                            ["query"] = new OpenApiInteger(3)
-                        },
-                        ["rooms"] = new OpenApiObject
-                        {
-                            ["type"] = new OpenApiString(nameof(FilterType.Last)),
-                            ["query"] = new OpenApiInteger(2)
-                        }
-                    }
-                }
-            };
-
+            // Use external examples provider
+            IReadOnlyDictionary<string, OpenApiExample> examples = DataRequestBodyExamples.Examples;
             foreach (OpenApiMediaType mediaType in requestBody.Content.Values)
             {
-                mediaType.Examples = examples;
+                mediaType.Examples = new Dictionary<string, OpenApiExample>(examples);
                 if (mediaType.Schema != null && string.IsNullOrWhiteSpace(mediaType.Schema.Description))
                 {
                     mediaType.Schema.Description = "Dictionary mapping dimension codes to filter objects (one per dimension).";
@@ -214,14 +85,14 @@ namespace PxApi.OpenApi.DocumentFilters
             OpenApiParameter? langParam = operation.Parameters?.FirstOrDefault(p => p.Name == "lang");
             if (langParam != null)
             {
-                langParam.Description = "Optional language code (ISO 639-1). Defaults to table's default language. Must be one of the table's AvailableLanguages.";
+                langParam.Description = "Optional language code (ISO639-1). Defaults to table's default language. Must be one of the table's AvailableLanguages.";
             }
         }
 
         private static void AppendAcceptHeaderNote(OpenApiOperation operation)
         {
             operation.Description = (operation.Description ?? string.Empty) +
-                "Accept header options: application/json (JSON-stat), text/csv (CSV), */* treated as JSON-stat. Unsupported media types yield 406.";
+                "Accept header options: application/json (JSON-stat), text/csv (CSV), */* treated as JSON-stat. Unsupported media types yield406.";
         }
     }
 }
