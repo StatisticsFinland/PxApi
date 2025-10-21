@@ -1,6 +1,6 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace PxApi.Models
+namespace PxApi.Models.JsonStat
 {
     /// <summary>
     /// Table grouping information used inside JsonStat2 extension data.
