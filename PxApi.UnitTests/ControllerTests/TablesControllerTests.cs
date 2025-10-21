@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
+using Px.Utils.Models.Metadata.Dimensions;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
@@ -161,6 +162,26 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task GetTablesAsync_DirectoryNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            string dbId = "exampledb";
+            DataBaseRef db = DataBaseRef.Create(dbId);
+            string lang = "en";
+            int page = 1;
+            int pageSize = 50;
+            
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ThrowsAsync(new DirectoryNotFoundException("Directory not found"));
+
+            // Act
+            ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+        }
+
+        [Test]
         public async Task GetTablesAsync_PagingWorksCorrectly()
         {
             // Arrange
@@ -305,5 +326,167 @@ namespace PxApi.UnitTests.ControllerTests
                 }
             });
         }
+
+        [Test]
+        public async Task GetTablesAsync_MetadataWithoutContentDimension_ReturnsTableWithErrorStatusAndNullLastUpdated()
+        {
+            // Arrange
+            string dbId = "exampledb";
+            DataBaseRef db = DataBaseRef.Create(dbId);
+            string lang = "en";
+            int page = 1;
+            int pageSize = 50;
+            
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "table1.px"), db);
+            ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
+                new Dictionary<string, PxFileRef> { { file.Id, file } });
+
+            // Create metadata with only non-content dimensions (time dimension and regular dimensions)
+            // This will cause TryGetContentDimension to return false
+            MatrixMetadata metaWithoutContent = TestMockMetaBuilder.GetMockMetadata([
+                Px.Utils.Models.Metadata.Enums.DimensionType.Ordinal, 
+                Px.Utils.Models.Metadata.Enums.DimensionType.Nominal
+            ]);
+
+            // Remove the content dimension by creating a new metadata with only the other dimensions
+            List<Dimension> dimensionsWithoutContent = [.. metaWithoutContent.Dimensions.Where(d => d is not ContentDimension)];
+
+            MatrixMetadata metadataWithoutContentDim = new(
+                metaWithoutContent.DefaultLanguage,
+                metaWithoutContent.AvailableLanguages,
+                dimensionsWithoutContent,
+                metaWithoutContent.AdditionalProperties
+            );
+
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(metadataWithoutContentDim);
+
+            // Act
+            ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
+            OkObjectResult? objectResult = result.Result as OkObjectResult;
+            Assert.That(objectResult, Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+                if (objectResult.Value is not PagedTableList pageTableList)
+                {
+                    Assert.Fail("PagedTableList is null");
+                }
+                else
+                {
+                    Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
+                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
+                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1"));
+                    Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
+                    Assert.That(pageTableList.Tables[0].LastUpdated, Is.EqualTo(DateTime.MinValue));
+                }
+            });
+        }
+
+        #region HeadTablesAsync Tests
+
+        [Test]
+        public void HeadTablesAsync_ValidParameters_ReturnsOk()
+        {
+            // Arrange
+            string database = "exampledb";
+            DataBaseRef db = DataBaseRef.Create(database);
+            int page = 1;
+            int pageSize = 50;
+
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(database)).Returns(db);
+
+            // Act
+            IActionResult result = _controller.HeadTablesAsync(database, page, pageSize);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkResult>());
+        }
+
+        [Test]
+        public void HeadTablesAsync_InvalidPage_ReturnsBadRequest()
+        {
+            // Arrange
+            string database = "exampledb";
+            int page = 0;
+            int pageSize = 50;
+
+            // Act
+            IActionResult result = _controller.HeadTablesAsync(database, page, pageSize);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<BadRequestResult>());
+        }
+
+        [Test]
+        public void HeadTablesAsync_InvalidPageSize_ReturnsBadRequest()
+        {
+            // Arrange
+            string database = "exampledb";
+            int page = 1;
+            int pageSize = 0;
+
+            // Act
+            IActionResult result = _controller.HeadTablesAsync(database, page, pageSize);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<BadRequestResult>());
+        }
+
+        [Test]
+        public void HeadTablesAsync_PageSizeExceedsMax_ReturnsBadRequest()
+        {
+            // Arrange
+            string database = "exampledb";
+            int page = 1;
+            int pageSize = 101;
+
+            // Act
+            IActionResult result = _controller.HeadTablesAsync(database, page, pageSize);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<BadRequestResult>());
+        }
+
+        [Test]
+        public void HeadTablesAsync_DatabaseNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "nonexistentdb";
+            int page = 1;
+            int pageSize = 50;
+
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
+
+            // Act
+            IActionResult result = _controller.HeadTablesAsync(database, page, pageSize);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        }
+
+        #endregion
+
+        #region OptionsTables Tests
+
+        [Test]
+        public void OptionsTables_AnyDatabase_ReturnsOkWithAllowHeader()
+        {
+            // Arrange
+            string database = "exampledb";
+
+            // Act
+            IActionResult result = _controller.OptionsTables(database);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkResult>());
+            Assert.That(_controller.Response.Headers.Allow.ToString(), Is.EqualTo("GET,HEAD,OPTIONS"));
+        }
+
+        #endregion
     }
 }
