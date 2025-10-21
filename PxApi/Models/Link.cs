@@ -3,27 +3,26 @@
 namespace PxApi.Models
 {
     /// <summary>
-    /// A link to a resource
-    /// For use in the HATEOAS implementation.
+    /// Represents a link to a related resource (HATEOAS).
     /// </summary>
     public class Link
     {
         /// <summary>
-        /// The href to the resource
+        /// Absolute or relative URI of the target resource.
         /// </summary>
         [Required]
         public required string Href { get; set; }
 
         /// <summary>
-        /// The relation between the object containing the link and the resource
+        /// Relation type describing how the target resource relates to the current resource (e.g., self, data, metadata).
         /// </summary>
         [Required]
-        public required string Rel { get; set;  }
+        public required string Rel { get; set; }
 
         /// <summary>
-        /// The method to use when accessing the resource, e.g. GET, POST.
+        /// HTTP method to use when following the link (e.g., GET, POST).
         /// </summary>
         [Required]
-        public required string Method { get; set;  }
+        public required string Method { get; set; }
     }
 }
