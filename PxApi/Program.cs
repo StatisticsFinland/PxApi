@@ -142,9 +142,9 @@ namespace PxApi
                 c.SchemaFilter<DoubleDataValueSchemaFilter>();
                 
                 // Add document filter to remove DoubleDataValue component schemas
-                c.DocumentFilter<DoubleDataValueDocumentFilter>();
+                // c.DocumentFilter<DoubleDataValueDocumentFilter>(); // merged into DataValueDocumentFilter
 
-                // Add document filter to remove DataValueType component schemas
+                // Add document filter to remove DataValueType and DoubleDataValue component schemas
                 c.DocumentFilter<DataValueDocumentFilter>();
 
                 // Add document filter to remove Filter subclass component schemas
