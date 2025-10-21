@@ -1,4 +1,4 @@
-# PxApi
+﻿# PxApi
 
 PxApi is a .NET 9.0 Web API for accessing PX statistical datasets. It provides table listings, table metadata and data retrieval with flexible dimension filtering and caching across multiple storage backends (local file system, Azure File Share, Azure Blob Storage).
 

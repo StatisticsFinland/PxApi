@@ -17,12 +17,12 @@ namespace PxApi
     /// <summary>
     /// Main entry point of the application.
     /// </summary>
+    [ExcludeFromCodeCoverage(Justification = "No meaningful logic to test in Main.")]
     public static class Program
     {
         /// <summary>
         /// Main entry point of the application.
         /// </summary>
-        [ExcludeFromCodeCoverage(Justification = "Difficult to test Main method since the app.Run() method is blocking.")]
         public static async Task Main()
         {
             Logger logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
