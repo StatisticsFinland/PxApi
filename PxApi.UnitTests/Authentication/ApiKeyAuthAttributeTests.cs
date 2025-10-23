@@ -1,13 +1,11 @@
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Moq;
 using PxApi.Authentication;
-using PxApi.Configuration;
+using PxApi.UnitTests.Utils;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -27,17 +25,16 @@ namespace PxApi.UnitTests.Authentication
         [SetUp]
         public void SetUp()
         {
-            Dictionary<string, string?> configData = new()
-            {
-                ["RootUrl"] = "https://testurl.fi",
-                ["Authentication:Cache:Hash"] = null,
-                ["Authentication:Cache:Salt"] = null,
-                ["Authentication:Cache:HeaderName"] = "X-API-KEY"
-            };
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(configData)
-                .Build();
-            AppSettings.Load(configuration);
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                new Dictionary<string, string?>
+                {
+                    ["Authentication:Cache:Hash"] = null,
+                    ["Authentication:Cache:Salt"] = null,
+                    ["Authentication:Cache:HeaderName"] = "X-API-KEY"
+                }
+            );
+            TestConfigFactory.BuildAndLoad(configData);
 
             _mockLogger = new();
             _mockServiceProvider = new();
@@ -80,18 +77,16 @@ namespace PxApi.UnitTests.Authentication
             const string testSalt = "test-salt";
             string hashedKey = ComputeTestHash(testKey, testSalt);
 
-            Dictionary<string, string?> configData = new()
-            {
-                ["RootUrl"] = "https://testurl.fi",
-                ["Authentication:Cache:Hash"] = hashedKey,
-                ["Authentication:Cache:Salt"] = testSalt,
-                ["Authentication:Cache:HeaderName"] = headerName
-            };
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(configData)
-                .Build();
-
-            AppSettings.Load(configuration);
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                new Dictionary<string, string?>
+                {
+                    ["Authentication:Cache:Hash"] = hashedKey,
+                    ["Authentication:Cache:Salt"] = testSalt,
+                    ["Authentication:Cache:HeaderName"] = headerName
+                }
+            );
+            TestConfigFactory.BuildAndLoad(configData);
         }
 
         private static string ComputeTestHash(string input, string salt)
@@ -104,16 +99,14 @@ namespace PxApi.UnitTests.Authentication
         public async Task OnActionExecutionAsync_WhenAuthenticationDisabled_ShouldProceed()
         {
             // Arrange
-            Dictionary<string, string?> configData = new()
-            {
-                ["RootUrl"] = "https://testurl.fi",
-                ["Authentication:Cache"] = null
-            };
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(configData)
-                .Build();
-
-            AppSettings.Load(configuration);
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                new Dictionary<string, string?>
+                {
+                    ["Authentication:Cache"] = null
+                }
+            );
+            TestConfigFactory.BuildAndLoad(configData);
 
             // Act
             await _attribute.OnActionExecutionAsync(_actionContext, NextDelegate);
@@ -130,17 +123,15 @@ namespace PxApi.UnitTests.Authentication
         public async Task OnActionExecutionAsync_WhenApiKeyAuthDisabled_ShouldProceed()
         {
             // Arrange
-            Dictionary<string, string?> configData = new()
-            {
-                ["RootUrl"] = "https://testurl.fi",
-                ["Authentication:Cache:Hash"] = null,
-                ["Authentication:Cache:Salt"] = "test-salt",
-            };
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(configData)
-                .Build();
-
-            AppSettings.Load(configuration);
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                new Dictionary<string, string?>
+                {
+                    ["Authentication:Cache:Hash"] = null,
+                    ["Authentication:Cache:Salt"] = "test-salt",
+                }
+            );
+            TestConfigFactory.BuildAndLoad(configData);
 
             // Act
             await _attribute.OnActionExecutionAsync(_actionContext, NextDelegate);

@@ -1,4 +1,4 @@
-﻿using Microsoft.FeatureManagement;
+using Microsoft.FeatureManagement;
 using Microsoft.OpenApi.Models;
 using NLog.Web;
 using NLog;
@@ -159,11 +159,17 @@ namespace PxApi
                 // Add document filter to enhance DataController GET endpoint documentation with query parameter examples
                 c.DocumentFilter<DataControllerGetEndpointDocumentFilter>();
 
+                // Add document filter to inject example response for DatabasesController GET endpoint
+                c.DocumentFilter<DatabasesControllerGetEndpointDocumentFilter>();
+
                 // Add document filter to inject the servers list from configuration
                 c.DocumentFilter<RootUrlServersDocumentFilter>();
 
                 // Add document filter to enforce no-auth documentation (ensures no security schemes appear)
                 c.DocumentFilter<NoAuthDocumentFilter>();
+
+                // Remove bodies from all HEAD responses
+                c.DocumentFilter<HeadResponsesNoBodyDocumentFilter>();
 
                 // Global 500 response description for all operations (added via operation filter style hook)
                 c.OperationFilter<UnhandledErrorResponseOperationFilter>();

@@ -1,9 +1,10 @@
-﻿using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Memory;
 using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using PxApi.Configuration;
 using PxApi.Models;
 using System.Collections.Immutable;
+using Px.Utils.Language;
 
 namespace PxApi.Caching
 {
@@ -26,13 +27,14 @@ namespace PxApi.Caching
         private const string META_SEED = "c4d8ee8f";
         private const string DATA_SEED = "398baf7d";
         private const string GROUPINGS_SEED = "c7fe21b1";
+        private const string DATABASE_NAME_SEED = "1e4c2a77";
 
         /// <summary>
         /// Attempts to retrieve a list of files associated with the specified database.
         /// </summary>
         /// <param name="dataBase">The database for which the file list is being retrieved. Cannot be null.</param>
         /// <param name="files">When this method returns, contains a task that resolves to an immutable list of files if the operation
-        /// succeeds;  otherwise, <see langword="null"/>.</param>
+        /// succeeds; otherwise, <see langword="null"/>.</param>
         /// <returns><see langword="true"/> if the file list was successfully retrieved from the cache; otherwise, <see
         /// langword="false"/>.</returns>
         public bool TryGetFileList(DataBaseRef dataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? files)
@@ -89,12 +91,41 @@ namespace PxApi.Caching
         }
 
         /// <summary>
+        /// Attempts to retrieve a cached multilanguage database name (from Alias_*.txt files) for the specified database.
+        /// </summary>
+        /// <param name="dataBase">Database reference whose name is requested.</param>
+        /// <param name="name">When this method returns contains the cached multilanguage database name task if found.</param>
+        /// <returns>True if found, otherwise false.</returns>
+        public bool TryGetDatabaseName(DataBaseRef dataBase, out Task<MultilanguageString>? name)
+        {
+            return _cache.TryGetValue(HashCode.Combine(DATABASE_NAME_SEED, dataBase), out name);
+        }
+
+        /// <summary>
+        /// Caches a multilanguage database name (built from Alias_*.txt files) for the specified database.
+        /// </summary>
+        /// <param name="dataBase">Database reference whose name is being cached.</param>
+        /// <param name="name">Task producing the multilanguage database name.</param>
+        public void SetDatabaseName(DataBaseRef dataBase, Task<MultilanguageString> name)
+        {
+            CacheConfig config = cacheConfigs[dataBase.Id].Groupings; // Reuse grouping cache config (small text files)
+            MemoryCacheEntryOptions options = new()
+            {
+                SlidingExpiration = config.SlidingExpirationSeconds,
+                AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds,
+                Priority = CacheItemPriority.Normal,
+                Size = memoryCacheConfig.DefaultTableGroupSize
+            };
+            _cache.Set(HashCode.Combine(DATABASE_NAME_SEED, dataBase), name, options);
+        }
+
+        /// <summary>
         /// Attempts to retrieve the last updated timestamp for the specified file from the cache.
         /// </summary>
         /// <param name="file">The file for which the last updated timestamp is being retrieved. Cannot be null.</param>
         /// <param name="lastUpdated">When this method returns, contains a <see cref="Task{DateTime}"/> representing the last updated timestamp 
         /// of the file if the operation succeeds; otherwise, <see langword="null"/>.</param>
-        /// <returns><see langword="true"/> if the last updated timestamp was successfully retrieved from the cache;  otherwise,
+        /// <returns><see langword="true"/> if the last updated timestamp was successfully retrieved from the cache; otherwise,
         /// <see langword="false"/>.</returns>
         public bool TryGetLastUpdated(PxFileRef file, out Task<DateTime>? lastUpdated)
         {
@@ -148,7 +179,7 @@ namespace PxApi.Caching
         /// Attempts to remove metadata associated with the specified file from the cache.
         /// </summary>
         /// <remarks>This method removes the metadata entry for the given file from the cache if it
-        /// exists.  If the file is not present in the cache, no action is taken.</remarks>
+        /// exists. If the file is not present in the cache, no action is taken.</remarks>
         /// <param name="file">The file whose associated metadata should be removed.</param>
         public void TryRemoveMeta(PxFileRef file)
         {
@@ -259,6 +290,15 @@ namespace PxApi.Caching
         public void ClearLastUpdatedCache(PxFileRef file)
         {
             _cache.Remove(HashCode.Combine(LAST_UPDATED_SEED, file));
+        }
+
+        /// <summary>
+        /// Clears the cached multilanguage database name for the specified database.
+        /// </summary>
+        /// <param name="dbRef">Database reference for which to clear the cached name.</param>
+        public void ClearDatabaseNameCache(DataBaseRef dbRef)
+        {
+            _cache.Remove(HashCode.Combine(DATABASE_NAME_SEED, dbRef));
         }
 
         private void OnMetaCacheEvicted(object? key, object? value, EvictionReason reason, object? state)

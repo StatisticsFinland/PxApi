@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using Px.Utils.Models.Data;
@@ -12,6 +12,7 @@ using PxApi.UnitTests.Models;
 using PxApi.UnitTests.Utils;
 using System.Collections.Immutable;
 using System.Text;
+using Px.Utils.Language; // Added for MultilanguageString
 
 namespace PxApi.UnitTests.Caching
 {
@@ -21,21 +22,21 @@ namespace PxApi.UnitTests.Caching
         [SetUp]
         public void SetUp()
         {
-            Dictionary<string, string?> inMemorySettings = new()
-            {
-                {"RootUrl", "https://testurl.fi"}
-            };
-
-            foreach (KeyValuePair<string, string?> kvp in CreateDatabaseSettings(0, "PxApiUnitTestsDb"))
-                inMemorySettings[kvp.Key] = kvp.Value;
-            foreach (KeyValuePair<string, string?> kvp in CreateDatabaseSettings(1, "AnotherPxApiUnitTestsDb"))
-                inMemorySettings[kvp.Key] = kvp.Value;
-
-            IConfiguration _configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(inMemorySettings)
-                .Build();
-
-            AppSettings.Load(_configuration);
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                TestConfigFactory.MountedDb(0, "PxApiUnitTestsDb", "datasource/root/"),
+                TestConfigFactory.MountedDb(1, "AnotherPxApiUnitTestsDb", "datasource/root/"),
+                new Dictionary<string, string?>
+                {
+                    ["DataBases:0:CacheConfig:RevalidationIntervalMs"] = "500",
+                    ["DataBases:1:CacheConfig:RevalidationIntervalMs"] = "500",
+                    ["DataBases:0:Custom:ModifiedCheckIntervalMs"] = "1000",
+                    ["DataBases:0:Custom:FileListingCacheDurationMs"] = "10000",
+                    ["DataBases:1:Custom:ModifiedCheckIntervalMs"] = "1000",
+                    ["DataBases:1:Custom:FileListingCacheDurationMs"] = "10000"
+                }
+            );
+            TestConfigFactory.BuildAndLoad(configData);
         }
 
         private static PxFileRef BuildTestFileRef(string name, DataBaseRef dbRef)
@@ -592,31 +593,17 @@ namespace PxApi.UnitTests.Caching
         [Test]
         public async Task GetDataCachedAsync_RevalidationIntervalNull_DoesNotPerformRevalidation()
         {
-            // Arrange
-            Dictionary<string, string?> inMemorySettings = new()
-            {
-                {"RootUrl", "https://testurl.fi"},
-                {"DataBases:0:Type", "Mounted"},
-                {"DataBases:0:Id", "NoRevalidationDb"},
-                {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"},
-                {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
-                // RevalidationIntervalMs is intentionally omitted (null)
-                {"DataBases:0:Custom:RootPath", "datasource/root/"},
-                {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
-                {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"}
-            };
-
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(inMemorySettings)
-                .Build();
-
-            AppSettings.Load(configuration);
+            // Arrange (omit RevalidationIntervalMs entirely)
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                TestConfigFactory.MountedDb(0, "NoRevalidationDb", "datasource/root/"),
+                new Dictionary<string, string?>
+                {
+                    ["DataBases:0:Custom:ModifiedCheckIntervalMs"] = "1000",
+                    ["DataBases:0:Custom:FileListingCacheDurationMs"] = "10000"
+                }
+            );
+            TestConfigFactory.BuildAndLoad(configData);
 
             DataBaseRef dataBase = DataBaseRef.Create("NoRevalidationDb");
             PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
@@ -660,31 +647,18 @@ namespace PxApi.UnitTests.Caching
         [Test]
         public async Task GetDataCachedAsync_RevalidationIntervalZero_DoesNotPerformRevalidation()
         {
-            // Arrange
-            Dictionary<string, string?> inMemorySettings = new()
-            {
-                {"RootUrl", "https://testurl.fi"},
-                {"DataBases:0:Type", "Mounted"},
-                {"DataBases:0:Id", "ZeroRevalidationDb"},
-                {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"},
-                {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
-                {"DataBases:0:CacheConfig:RevalidationIntervalMs", "0"}, // Explicitly set to 0
-                {"DataBases:0:Custom:RootPath", "datasource/root/"},
-                {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
-                {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"}
-            };
-
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(inMemorySettings)
-                .Build();
-
-            AppSettings.Load(configuration);
+            // Arrange (set RevalidationIntervalMs explicitly to0)
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                TestConfigFactory.MountedDb(0, "ZeroRevalidationDb", "datasource/root/"),
+                new Dictionary<string, string?>
+                {
+                    ["DataBases:0:CacheConfig:RevalidationIntervalMs"] = "0",
+                    ["DataBases:0:Custom:ModifiedCheckIntervalMs"] = "1000",
+                    ["DataBases:0:Custom:FileListingCacheDurationMs"] = "10000"
+                }
+            );
+            TestConfigFactory.BuildAndLoad(configData);
 
             DataBaseRef dataBase = DataBaseRef.Create("ZeroRevalidationDb");
             PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
@@ -720,39 +694,23 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
             });
-
-            // Verify that GetLastWriteTimeAsync was never called since revalidation is disabled
             mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()), Times.Never);
         }
 
         [Test]
         public async Task GetMetadataCachedAsync_RevalidationIntervalNull_DoesNotPerformRevalidation()
         {
-            // Arrange
-            Dictionary<string, string?> inMemorySettings = new()
-            {
-                {"RootUrl", "https://testurl.fi"},
-                {"DataBases:0:Type", "Mounted"},
-                {"DataBases:0:Id", "NoRevalidationMetaDb"},
-                {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"},
-                {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
-                // RevalidationIntervalMs is intentionally omitted (null)
-                {"DataBases:0:Custom:RootPath", "datasource/root/"},
-                {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
-                {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"}
-            };
-
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(inMemorySettings)
-                .Build();
-
-            AppSettings.Load(configuration);
+            // Arrange (omit RevalidationIntervalMs entirely)
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                TestConfigFactory.MountedDb(0, "NoRevalidationMetaDb", "datasource/root/"),
+                new Dictionary<string, string?>
+                {
+                    ["DataBases:0:Custom:ModifiedCheckIntervalMs"] = "1000",
+                    ["DataBases:0:Custom:FileListingCacheDurationMs"] = "10000"
+                }
+            );
+            TestConfigFactory.BuildAndLoad(configData);
 
             DataBaseRef dataBase = DataBaseRef.Create("NoRevalidationMetaDb");
             PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase);
@@ -781,8 +739,6 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Is.EqualTo(metadata));
             });
-
-            // Verify that GetLastWriteTimeAsync was never called since revalidation is disabled
             mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()), Times.Never);
         }
 
@@ -796,7 +752,8 @@ namespace PxApi.UnitTests.Caching
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
             ]);
-            DoubleDataValue[] expectedData = [new DoubleDataValue(2, DataValueType.Exists)];
+            DoubleDataValue[] expectedData = [new DoubleDataValue(2, DataValueType.Exists)]
+               ;
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
@@ -831,12 +788,110 @@ namespace PxApi.UnitTests.Caching
 
         #endregion
 
+        #region GetDatabaseNameAsync
+
+        [Test]
+        public async Task GetDatabaseNameAsync_WithCacheMiss_ReadsAndCachesName()
+        {
+            // Arrange
+            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            Mock<IDataBaseConnectorFactory> factoryMock = new();
+            Mock<IDataBaseConnector> connectorMock = new();
+            connectorMock.SetupGet(c => c.DataBase).Returns(dbRef);
+            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_fi.txt")).Returns(BuildStream("Suomi"));
+            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_sv.txt")).Returns(BuildStream("Finland"));
+            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_en.txt")).Returns(BuildStream("Finland"));
+            factoryMock.Setup(f => f.GetConnector(dbRef)).Returns(connectorMock.Object);
+            CachedDataSource dataSource = new(factoryMock.Object, dbCache);
+
+            // Act
+            MultilanguageString name = await dataSource.GetDatabaseNameAsync(dbRef, string.Empty);
+            MultilanguageString cachedName = await dataSource.GetDatabaseNameAsync(dbRef, string.Empty);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(name, Is.Not.Null);
+                Assert.That(cachedName, Is.SameAs(name));
+            });
+            connectorMock.Verify(c => c.TryReadAuxiliaryFileAsync(It.IsAny<string>()), Times.Exactly(3));
+        }
+
+        [Test]
+        public async Task GetDatabaseNameAsync_WithCacheHit_ReturnsCachedTask()
+        {
+            // Arrange
+            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            MultilanguageString expected = new(new Dictionary<string, string> { {"fi", "Suomi"} });
+            dbCache.SetDatabaseName(dbRef, Task.FromResult(expected));
+            Mock<IDataBaseConnectorFactory> factoryMock = new();
+            CachedDataSource dataSource = new(factoryMock.Object, dbCache);
+
+            // Act
+            MultilanguageString result = await dataSource.GetDatabaseNameAsync(dbRef, string.Empty);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result, Is.EqualTo(expected));
+            });
+        }
+
+        [Test]
+        public async Task ClearDatabaseCacheAsync_RemovesDatabaseName()
+        {
+            // Arrange
+            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            MultilanguageString expected = new(new Dictionary<string, string> { {"fi", "Suomi"} });
+            dbCache.SetDatabaseName(dbRef, Task.FromResult(expected));
+            Mock<IDataBaseConnectorFactory> factoryMock = new();
+            Mock<IDataBaseConnector> connectorMock = new();
+            connectorMock.SetupGet(c => c.DataBase).Returns(dbRef);
+            connectorMock.Setup(c => c.GetAllFilesAsync()).ReturnsAsync([]); // For ClearDatabaseCacheAsync
+            factoryMock.Setup(f => f.GetConnector(dbRef)).Returns(connectorMock.Object);
+            CachedDataSource dataSource = new(factoryMock.Object, dbCache);
+
+            // Pre-assert
+            bool nameCached = dbCache.TryGetDatabaseName(dbRef, out Task<MultilanguageString>? beforeTask);
+            Assert.Multiple(() =>
+            {
+                Assert.That(nameCached, Is.True);
+                Assert.That(beforeTask, Is.Not.Null);
+            });
+
+            // Act
+            await dataSource.ClearDatabaseCacheAsync(dbRef);
+            bool nameStillCached = dbCache.TryGetDatabaseName(dbRef, out Task<MultilanguageString>? afterTask);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(nameStillCached, Is.False);
+                Assert.That(afterTask, Is.Null);
+            });
+        }
+
+        #endregion // GetDatabaseNameAsync
+
+        private static Task<Stream> BuildStream(string content)
+        {
+            MemoryStream ms = new(System.Text.Encoding.UTF8.GetBytes(content + "\n"));
+            return Task.FromResult<Stream>(ms);
+        }
+
         private class UnseekableMemoryStream(byte[] buffer) : MemoryStream(buffer)
         {
             public override bool CanSeek => false;
         }
 
-        private static Dictionary<string, string?> CreateDatabaseSettings(int index, string id)
+        private static Dictionary<string, string?> CreateDatabaseSettings(int index, String id)
         {
             return new Dictionary<string, string?>
             {

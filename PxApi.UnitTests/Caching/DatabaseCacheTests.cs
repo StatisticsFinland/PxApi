@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using Px.Utils.Models.Data;
@@ -10,6 +10,7 @@ using PxApi.Models;
 using PxApi.UnitTests.Models;
 using PxApi.UnitTests.Utils;
 using System.Collections.Immutable;
+using Px.Utils.Language;
 
 namespace PxApi.UnitTests.Caching
 {
@@ -20,6 +21,7 @@ namespace PxApi.UnitTests.Caching
         private const string LAST_UPDATED_SEED_VARNAME = "LAST_UPDATED_SEED";
         private const string DATA_SEED_VARNAME = "DATA_SEED";
         private const string META_SEED_VARNAME = "META_SEED";
+        private const string DATABASE_NAME_SEED_VARNAME = "DATABASE_NAME_SEED";
 
         private readonly PxFileRef _file1 = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), DataBaseRef.Create("PxApiUnitTestsDb"));
         private readonly PxFileRef _file2 = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file2.px"), DataBaseRef.Create("PxApiUnitTestsDb"));
@@ -27,31 +29,18 @@ namespace PxApi.UnitTests.Caching
         [SetUp]
         public void SetUp()
         {
-            Dictionary<string, string?> inMemorySettings = new()
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                TestConfigFactory.MountedDb(0, "PxApiUnitTestsDb", "datasource/root/"),
+                new Dictionary<string, string?>
                 {
-                    {"RootUrl", "https://testurl.fi"},
-                    {"Cache:MaxSizeBytes", "524288000"},
-                    {"DataBases:0:Type", "Mounted"},
-                    {"DataBases:0:Id", "PxApiUnitTestsDb"},
-                    {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
-                    {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
-                    {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"}, // 15 minutes
-                    {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"}, // 15 minutes
-                    {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
-                    {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
-                    {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"}, // 10 minutes
-                    {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"}, // 10 minutes
-                    {"DataBases:0:CacheConfig:RevalidationIntervalMs", "1000"},
-                    {"DataBases:0:Custom:RootPath", "datasource/root/"},
-                    {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
-                    {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"},
-                };
-
-            IConfiguration _configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(inMemorySettings)
-                .Build();
-
-            AppSettings.Load(_configuration);
+                    ["Cache:MaxSizeBytes"] = "524288000",
+                    ["DataBases:0:CacheConfig:RevalidationIntervalMs"] = "1000",
+                    ["DataBases:0:Custom:ModifiedCheckIntervalMs"] = "1000",
+                    ["DataBases:0:Custom:FileListingCacheDurationMs"] = "10000"
+                }
+            );
+            TestConfigFactory.BuildAndLoad(configData);
         }
 
         #region TryGetFileList
@@ -729,6 +718,117 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(hasGroupingsAfter, Is.False);
                 Assert.That(cachedGroupingsAfter, Is.Null);
             });
+        }
+
+        #endregion
+
+        #region TryGetDatabaseName
+
+        [Test]
+        public void TryGetDatabaseName_WithCacheHit_ReturnsTrueWithNameTask()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            MultilanguageString expectedName = new(new Dictionary<string, string>
+            {
+                {"fi", "Suomi"},
+                {"sv", "Sverige"},
+                {"en", "Finland"}
+            });
+            Task<MultilanguageString> nameTask = Task.FromResult(expectedName);
+            string seed = GetSeedForKeyword(DATABASE_NAME_SEED_VARNAME);
+            memoryCache.Set(HashCode.Combine(seed, database), nameTask);
+
+            // Act
+            bool result = dbCache.TryGetDatabaseName(database, out Task<MultilanguageString>? actualTask);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(actualTask, Is.SameAs(nameTask));
+            });
+        }
+
+        [Test]
+        public void TryGetDatabaseName_WithCacheMiss_ReturnsFalse()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetDatabaseName(database, out Task<MultilanguageString>? actualTask);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(actualTask, Is.Null);
+            });
+        }
+
+        #endregion
+
+        #region SetDatabaseName
+
+        [Test]
+        public void SetDatabaseName_WithValidName_SetsCache()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            MultilanguageString nameValue = new(new Dictionary<string, string>
+            {
+                {"fi", "Suomi"},
+                {"sv", "Sverige"},
+                {"en", "Finland"}
+            });
+            Task<MultilanguageString> nameTask = Task.FromResult(nameValue);
+            string seed = GetSeedForKeyword(DATABASE_NAME_SEED_VARNAME);
+            int key = HashCode.Combine(seed, database);
+
+            // Act
+            dbCache.SetDatabaseName(database, nameTask);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(memoryCache.TryGetValue(key, out Task<MultilanguageString>? cachedTask), Is.True);
+                Assert.That(cachedTask, Is.SameAs(nameTask));
+            });
+        }
+
+        #endregion
+
+        #region ClearDatabaseNameCache
+
+        [Test]
+        public void ClearDatabaseNameCache_RemovesCachedName()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            MultilanguageString nameValue = new(new Dictionary<string, string>
+            {
+                {"fi", "Suomi"}
+            });
+            Task<MultilanguageString> nameTask = Task.FromResult(nameValue);
+            dbCache.SetDatabaseName(database, nameTask);
+            string seed = GetSeedForKeyword(DATABASE_NAME_SEED_VARNAME);
+            int key = HashCode.Combine(seed, database);
+            Assert.That(memoryCache.TryGetValue(key, out _), Is.True);
+
+            // Act
+            dbCache.ClearDatabaseNameCache(database);
+
+            // Assert
+            Assert.That(memoryCache.TryGetValue(key, out _), Is.False);
         }
 
         #endregion

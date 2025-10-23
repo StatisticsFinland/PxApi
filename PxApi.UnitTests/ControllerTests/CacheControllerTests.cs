@@ -8,6 +8,7 @@ using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.Models;
 using System.Collections.Immutable;
+using PxApi.UnitTests.Utils; // Added for TestConfigFactory
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -31,40 +32,27 @@ namespace PxApi.UnitTests.ControllerTests
                 }
             };
 
-            Dictionary<string, string?> inMemorySettings = new()
-            {
-                {"RootUrl", "https://testurl.fi"},
-                {"DataBases:0:Type", "Mounted"},
-                {"DataBases:0:Id", "testdb"},
-                {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"},
-                {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
-                {"DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},
-                {"DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds", "60"},
-                {"DataBases:0:Custom:RootPath", "datasource/root/"}
-            };
-
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(inMemorySettings)
-                .Build();
-
-            AppSettings.Load(configuration);
+            // Use TestConfigFactory to build configuration with localization and mounted database settings
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                TestConfigFactory.MountedDb(0, "testdb", "datasource/root/"),
+                new Dictionary<string, string?>
+                {
+                    ["DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds"] = "60",
+                    ["DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds"] = "60"
+                }
+            );
+            IConfiguration configuration = TestConfigFactory.BuildAndLoad(configData);
         }
 
         [Test]
         public async Task ClearTableCache_DatabaseExists_CallsClearTableCacheMethod_ReturnsOk()
         {
             // Arrange
-            string database = "testdb";
-            string id = "table1";
+            const string database = "testdb";
+            const string id = "table1";
             DataBaseRef dbRef = DataBaseRef.Create(database);
             PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("c:", "foo", id), dbRef);
-            
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
             _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef))
                 .ReturnsAsync(ImmutableSortedDictionary<string, PxFileRef>.Empty.Add(id, fileRef));
@@ -82,8 +70,8 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task ClearTableCache_DatabaseDoesNotExist_ReturnsNotFound()
         {
             // Arrange
-            string database = "nonexistentdb";
-            string id = "table1";
+            const string database = "nonexistentdb";
+            const string id = "table1";
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
 
             // Act
@@ -98,10 +86,9 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task ClearTableCache_FileDoesNotExist_ReturnsNotFound()
         {
             // Arrange
-            string database = "testdb";
-            string id = "nonexistentfile";
+            const string database = "testdb";
+            const string id = "nonexistentfile";
             DataBaseRef dbRef = DataBaseRef.Create(database);
-            
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
             _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef))
                 .ReturnsAsync(ImmutableSortedDictionary<string, PxFileRef>.Empty);
@@ -118,10 +105,9 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task ClearTableCache_ExceptionThrown_ReturnsStatusCode500()
         {
             // Arrange
-            string database = "testdb";
-            string id = "table1";
+            const string database = "testdb";
+            const string id = "table1";
             DataBaseRef dbRef = DataBaseRef.Create(database);
-            
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
             _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef))
                 .ThrowsAsync(new Exception("Test exception"));
@@ -140,7 +126,7 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task ClearAllCache_DatabaseExists_CallsClearDatabaseCacheAsyncMethod_ReturnsOk()
         {
             // Arrange
-            string database = "testdb";
+            const string database = "testdb";
             DataBaseRef dbRef = DataBaseRef.Create(database);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
             _cachedDbConnector.Setup(x => x.ClearDatabaseCacheAsync(dbRef));
@@ -157,7 +143,7 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task ClearAllCache_DatabaseDoesNotExist_ReturnsNotFound()
         {
             // Arrange
-            string database = "nonexistentdb";
+            const string database = "nonexistentdb";
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
 
             // Act

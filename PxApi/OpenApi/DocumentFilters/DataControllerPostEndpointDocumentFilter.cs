@@ -1,4 +1,4 @@
-﻿using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Models;
 using PxApi.OpenApi.Examples;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -92,7 +92,7 @@ namespace PxApi.OpenApi.DocumentFilters
         private static void AppendAcceptHeaderNote(OpenApiOperation operation)
         {
             operation.Description = (operation.Description ?? string.Empty) +
-                "Accept header options: application/json (JSON-stat), text/csv (CSV), */* treated as JSON-stat. Unsupported media types yield406.";
+                " Accept header options: application/json (JSON-stat), text/csv (CSV), */* treated as JSON-stat. Unsupported media types yield 406.";
         }
     }
 }
