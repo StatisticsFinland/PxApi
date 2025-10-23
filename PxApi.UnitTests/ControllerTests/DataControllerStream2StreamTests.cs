@@ -4,7 +4,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Px.Utils.Models.Data.DataValue;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
