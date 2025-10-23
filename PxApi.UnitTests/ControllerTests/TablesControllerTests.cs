@@ -1,19 +1,17 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Px.Utils.Models.Metadata.Dimensions;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
-using Px.Utils.Models.Metadata.Dimensions;
 using PxApi.Caching;
-using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
-using System.Collections.Immutable;
 using PxApi.UnitTests.Utils;
+using System.Collections.Immutable;
 
 namespace PxApi.UnitTests.ControllerTests
 {

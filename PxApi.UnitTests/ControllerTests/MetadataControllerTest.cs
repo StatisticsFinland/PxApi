@@ -1,13 +1,11 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Moq;
 using Px.Utils.Models.Metadata;
 using PxApi.Caching;
-using PxApi.Configuration;
 using PxApi.Controllers;
-using PxApi.Models;
 using PxApi.Models.JsonStat;
+using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
 using PxApi.UnitTests.Utils;
 

@@ -21,11 +21,11 @@ namespace PxApi.UnitTests.UtilitiesTests
 
             // Setup common logger mocks using GetService instead of GetRequiredService
             _mockServiceProvider.Setup(sp => sp.GetService(typeof(ILogger<MountedDataBaseConnector>)))
-                               .Returns(new Mock<ILogger<MountedDataBaseConnector>>().Object);
+                .Returns(new Mock<ILogger<MountedDataBaseConnector>>().Object);
             _mockServiceProvider.Setup(sp => sp.GetService(typeof(ILogger<FileShareDataBaseConnector>)))
-                               .Returns(new Mock<ILogger<FileShareDataBaseConnector>>().Object);
+               .Returns(new Mock<ILogger<FileShareDataBaseConnector>>().Object);
             _mockServiceProvider.Setup(sp => sp.GetService(typeof(ILogger<BlobStorageDataBaseConnector>)))
-                               .Returns(new Mock<ILogger<BlobStorageDataBaseConnector>>().Object);
+               .Returns(new Mock<ILogger<BlobStorageDataBaseConnector>>().Object);
         }
 
         [TearDown]

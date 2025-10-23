@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Px.Utils.Models.Data;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
@@ -11,9 +12,8 @@ using PxApi.DataSources;
 using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Models;
-using System.Text;
-using Px.Utils.Models.Data;
 using PxApi.UnitTests.Utils;
+using System.Text;
 
 namespace PxApi.UnitTests.ControllerTests
 {
