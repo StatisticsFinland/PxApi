@@ -200,7 +200,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(item1.Description, Is.EqualTo("Description EN1"));
                 Assert.That(item1.TableCount, Is.EqualTo(2));
                 Assert.That(item1.AvailableLanguages, Is.EquivalentTo(new List<string> { "fi", "sv", "en" }));
-                Assert.That(item1.Links.Count, Is.EqualTo(1));
+                Assert.That(item1.Links, Has.Count.EqualTo(1));
                 Assert.That(item1.Links[0].Rel, Is.EqualTo("describedby"));
                 Assert.That(item1.Links[0].Method, Is.EqualTo("GET"));
                 string expectedHref1 = AppSettings.Active.RootUrl.ToString().TrimEnd('/') + "/tables/db1?lang=en";
