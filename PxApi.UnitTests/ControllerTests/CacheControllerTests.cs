@@ -1,14 +1,11 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PxApi.Caching;
-using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.Models;
 using System.Collections.Immutable;
-using PxApi.UnitTests.Utils; // Added for TestConfigFactory
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -31,18 +28,6 @@ namespace PxApi.UnitTests.ControllerTests
                     HttpContext = new DefaultHttpContext()
                 }
             };
-
-            // Use TestConfigFactory to build configuration with localization and mounted database settings
-            Dictionary<string, string?> configData = TestConfigFactory.Merge(
-                TestConfigFactory.Base(),
-                TestConfigFactory.MountedDb(0, "testdb", "datasource/root/"),
-                new Dictionary<string, string?>
-                {
-                    ["DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds"] = "60",
-                    ["DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds"] = "60"
-                }
-            );
-            IConfiguration configuration = TestConfigFactory.BuildAndLoad(configData);
         }
 
         [Test]

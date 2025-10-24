@@ -517,11 +517,11 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(subsetDataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
                 // Compare actual superset data against expected array
-                double[] actualSupersetValues = supersetDataResponse.Value.Select(d => d.UnsafeValue).ToArray();
+                double[] actualSupersetValues = [.. supersetDataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualSupersetValues, Is.EqualTo(expectedSupersetValues));
                 
                 // Compare actual subset data against expected array
-                double[] actualSubsetValues = subsetDataResponse.Value.Select(d => d.UnsafeValue).ToArray();
+                double[] actualSubsetValues = [.. subsetDataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualSubsetValues, Is.EqualTo(expectedSubsetValues));
             });
 
@@ -578,7 +578,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
                 // Compare actual data against expected array
-                double[] actualValues = dataResponse.Value.Select(d => d.UnsafeValue).ToArray();
+                double[] actualValues = [.. dataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
                 // Verify Dimensions structure

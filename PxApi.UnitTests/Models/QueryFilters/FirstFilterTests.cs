@@ -132,9 +132,9 @@ namespace PxApi.UnitTests.Models.QueryFilters
         {
             // Arrange
             FirstFilter filter = new(3);
-            
+
             // Create an input sequence that throws when enumerating past the third element
-            IEnumerable<string> ThrowingSequence()
+            static IEnumerable<string> ThrowingSequence()
             {
                 yield return "item1";
                 yield return "item2";
@@ -144,7 +144,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
 
             // Convert IEnumerable to List since that's what DimensionMap constructor requires
             // Taking only 3 items to avoid the exception
-            List<string> safeList = ThrowingSequence().Take(3).ToList();
+            List<string> safeList = [.. ThrowingSequence().Take(3)];
             DimensionMap input = new("foo", safeList);
 
             // Act & Assert

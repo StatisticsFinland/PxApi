@@ -1,18 +1,16 @@
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using Moq;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Metadata;
 using PxApi.Caching;
-using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Models;
 using PxApi.UnitTests.Models;
 using PxApi.UnitTests.Utils;
 using System.Collections.Immutable;
 using System.Text;
-using Px.Utils.Language; // Added for MultilanguageString
+using Px.Utils.Language;
 
 namespace PxApi.UnitTests.Caching
 {
@@ -752,8 +750,7 @@ namespace PxApi.UnitTests.Caching
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
             ]);
-            DoubleDataValue[] expectedData = [new DoubleDataValue(2, DataValueType.Exists)]
-               ;
+            DoubleDataValue[] expectedData = [new DoubleDataValue(2, DataValueType.Exists)];
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
@@ -878,7 +875,7 @@ namespace PxApi.UnitTests.Caching
             });
         }
 
-        #endregion // GetDatabaseNameAsync
+        #endregion
 
         private static Task<Stream> BuildStream(string content)
         {
@@ -889,27 +886,6 @@ namespace PxApi.UnitTests.Caching
         private class UnseekableMemoryStream(byte[] buffer) : MemoryStream(buffer)
         {
             public override bool CanSeek => false;
-        }
-
-        private static Dictionary<string, string?> CreateDatabaseSettings(int index, String id)
-        {
-            return new Dictionary<string, string?>
-            {
-                {$"DataBases:{index}:Type", "Mounted"},
-                {$"DataBases:{index}:Id", id},
-                {$"DataBases:{index}:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
-                {$"DataBases:{index}:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
-                {$"DataBases:{index}:CacheConfig:Meta:SlidingExpirationSeconds", "900"},
-                {$"DataBases:{index}:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"},
-                {$"DataBases:{index}:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
-                {$"DataBases:{index}:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
-                {$"DataBases:{index}:CacheConfig:Data:SlidingExpirationSeconds", "600"},
-                {$"DataBases:{index}:CacheConfig:Data:AbsoluteExpirationSeconds", "600"},
-                {$"DataBases:{index}:CacheConfig:RevalidationIntervalMs", "500"},
-                {$"DataBases:{index}:Custom:RootPath", "datasource/root/"},
-                {$"DataBases:{index}:Custom:ModifiedCheckIntervalMs", "1000"},
-                {$"DataBases:{index}:Custom:FileListingCacheDurationMs", "10000"}
-            };
         }
     }
 }

@@ -1,20 +1,18 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Px.Utils.Language;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Metadata;
 using PxApi.Caching;
-using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
-using Px.Utils.Language;
-using PxApi.UnitTests.Utils; // Added for TestConfigFactory
+using PxApi.UnitTests.Utils;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -45,7 +43,7 @@ namespace PxApi.UnitTests.ControllerTests
         {
             Dictionary<string, string?> baseConfig = TestConfigFactory.Base();
             Dictionary<string, string?> mountedDb = TestConfigFactory.MountedDb(0, "testdb", "datasource/root/");
-            Dictionary<string, string?> extraDbSettings = new Dictionary<string, string?>
+            Dictionary<string, string?> extraDbSettings = new()
             {
                 ["DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds"] = "60",
                 ["DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds"] = "60",

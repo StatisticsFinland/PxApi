@@ -115,7 +115,7 @@ namespace PxApi.Caching
         {
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(file.DataBase);
             using Stream fileStream = dbConnector.ReadPxFile(file);
-            PxFileMetadataReader reader = new PxFileMetadataReader();
+            PxFileMetadataReader reader = new();
             Encoding encoding = await reader.GetEncodingAsync(fileStream);
 
             if (fileStream.CanSeek) fileStream.Seek(0, SeekOrigin.Begin);
@@ -140,7 +140,7 @@ namespace PxApi.Caching
             {
                 if (await CheckCacheValidity(pxFile, cached!.Value))
                 {
-                    DataIndexer indexer = new DataIndexer(superMap!, map);
+                    DataIndexer indexer = new(superMap!, map);
                     DoubleDataValue[] result = new DoubleDataValue[indexer.DataLength];
                     DoubleDataValue[] superDataArray = await superData!;
                     int index =0;
@@ -153,7 +153,7 @@ namespace PxApi.Caching
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
             MetaCacheContainer metaContainer = await GetMetaContainer(pxFile);
-            PxFileReader reader = new PxFileReader(dbConnector);
+            PxFileReader reader = new(dbConnector);
             metaContainer.DataSectionOffset ??= await reader.GetDataSectionOffsetAsync(pxFile);
 
             Task<DoubleDataValue[]> dataTask = reader.ReadDataAsync(pxFile, metaContainer.DataSectionOffset.Value, map, await metaContainer.Metadata);
@@ -201,7 +201,7 @@ namespace PxApi.Caching
             }
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
-            PxFileReader reader = new PxFileReader(dbConnector);
+            PxFileReader reader = new(dbConnector);
             Task<IReadOnlyMatrixMetadata> meta = reader.ReadMetadataAsync(pxFile);
             metaContainer = new MetaCacheContainer(meta);
             cache.SetMetadata(pxFile, metaContainer);
