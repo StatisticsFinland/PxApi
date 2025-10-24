@@ -1,13 +1,13 @@
-﻿using Px.Utils.Models.Data.DataValue;
+using Px.Utils.Language;
+using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Metadata;
-using PxApi.DataSources;
 using PxApi.Models;
 using System.Collections.Immutable;
 
 namespace PxApi.Caching
 {
     /// <summary>
-    /// Defines methods for retrieving data, file lists, and metadata from a PX file data source,  with built-in caching
+    /// Defines methods for retrieving data, file lists, and metadata from a PX file data source, with built-in caching
     /// to optimize performance for repeated requests.
     /// </summary>
     public interface ICachedDataSource
@@ -84,6 +84,15 @@ namespace PxApi.Caching
         /// <returns>A task that represents the asynchronous operation. The task result contains the string value associated with
         /// the specified key.</returns>
         Task<string> GetSingleStringValueAsync(string key, PxFileRef file);
+
+        /// <summary>
+        /// Retrieves a cached multilanguage database name composed from Alias_*.txt files in the given database folder.
+        /// Builds and caches it if not already cached.
+        /// </summary>
+        /// <param name="dataBase">Reference to the database whose translated name is requested.</param>
+        /// <param name="folderRelativePath">Folder path relative to the database root containing the Alias_*.txt files.</param>
+        /// <returns>A task resolving to a <see cref="MultilanguageString"/> containing the translated database name (may be empty).</returns>
+        Task<MultilanguageString> GetDatabaseNameAsync(DataBaseRef dataBase, string folderRelativePath);
 
         /// <summary>
         /// Clears all cache entries for the specified database, including file lists, metadata, and data.

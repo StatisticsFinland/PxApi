@@ -1,4 +1,4 @@
-﻿using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Models;
 using PxApi.Models.QueryFilters;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -11,14 +11,14 @@ namespace PxApi.OpenApi.DocumentFilters
     /// </summary>
     public class FilterSubclassDocumentFilter : IDocumentFilter
     {
-        private static readonly HashSet<string> FilterSubclassNames = new()
-        {
+        private static readonly HashSet<string> FilterSubclassNames =
+        [
             nameof(CodeFilter),
             nameof(FromFilter), 
             nameof(ToFilter),
             nameof(FirstFilter),
             nameof(LastFilter)
-        };
+        ];
 
         /// <summary>
         /// Removes Filter subclass component schemas from the OpenAPI document.

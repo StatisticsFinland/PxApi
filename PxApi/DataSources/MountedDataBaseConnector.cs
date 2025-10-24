@@ -1,4 +1,4 @@
-﻿using PxApi.ModelBuilders;
+using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;

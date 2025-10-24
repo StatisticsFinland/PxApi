@@ -1,4 +1,4 @@
-﻿using PxApi.Models;
+using PxApi.Models;
 
 namespace PxApi.DataSources
 {

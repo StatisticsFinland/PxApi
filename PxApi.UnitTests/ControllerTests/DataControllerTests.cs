@@ -1,19 +1,18 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Px.Utils.Language;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Metadata;
 using PxApi.Caching;
-using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
-using Px.Utils.Language;
+using PxApi.UnitTests.Utils;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -40,43 +39,31 @@ namespace PxApi.UnitTests.ControllerTests
             SetupAppSettings();
         }
 
-        private static void SetupAppSettings(uint jsonMaxCells = 0, uint jsonStatMaxCells = 0)
+        private static void SetupAppSettings(uint jsonMaxCells =0, uint jsonStatMaxCells =0)
         {
-            Dictionary<string, string?> inMemorySettings = new()
+            Dictionary<string, string?> baseConfig = TestConfigFactory.Base();
+            Dictionary<string, string?> mountedDb = TestConfigFactory.MountedDb(0, "testdb", "datasource/root/");
+            Dictionary<string, string?> extraDbSettings = new()
             {
-                {"RootUrl", "https://testurl.fi"},
-                {"DataBases:0:Type", "Mounted"},
-                {"DataBases:0:Id", "testdb"},
-                {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"}, // 15 minutes
-                {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"}, // 15 minutes 
-                {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
-                {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"}, // 10 minutes
-                {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"}, // 10 minutes
-                {"DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},
-                {"DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds", "60"},
-                {"DataBases:0:Custom:RootPath", "datasource/root/"},
-                {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
-                {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"},
+                ["DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds"] = "60",
+                ["DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds"] = "60",
+                ["DataBases:0:Custom:ModifiedCheckIntervalMs"] = "1000",
+                ["DataBases:0:Custom:FileListingCacheDurationMs"] = "10000"
             };
 
-            if (jsonMaxCells > 0)
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(baseConfig, mountedDb, extraDbSettings);
+
+            if (jsonMaxCells >0)
             {
-                inMemorySettings["QueryLimits:JsonMaxCells"] = jsonMaxCells.ToString();
+                configData["QueryLimits:JsonMaxCells"] = jsonMaxCells.ToString();
             }
 
-            if (jsonStatMaxCells > 0)
+            if (jsonStatMaxCells >0)
             {
-                inMemorySettings["QueryLimits:JsonStatMaxCells"] = jsonStatMaxCells.ToString();
+                configData["QueryLimits:JsonStatMaxCells"] = jsonStatMaxCells.ToString();
             }
 
-            IConfiguration _configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(inMemorySettings)
-                .Build();
-
-            AppSettings.Load(_configuration);
+            TestConfigFactory.BuildAndLoad(configData);
         }
 
         private void SetupMockDataSourceForValidRequest(string database, string table)

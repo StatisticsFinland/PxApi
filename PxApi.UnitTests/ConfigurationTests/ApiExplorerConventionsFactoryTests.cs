@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using PxApi.Controllers;
 using PxApi.OpenApi;
 using System.Reflection;
 
-namespace PxApi.UnitTests.Configuration
+namespace PxApi.UnitTests.ConfigurationTests
 {
     public class ApiExplorerConventionsFactoryTests
     {

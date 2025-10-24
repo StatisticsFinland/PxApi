@@ -1,6 +1,6 @@
-﻿using Azure;
-using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs;
+using Azure;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;

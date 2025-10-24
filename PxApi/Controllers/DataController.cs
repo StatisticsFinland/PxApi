@@ -1,15 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using Px.Utils.Models.Data.DataValue;
-using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.ExtensionMethods;
+using Px.Utils.Models.Metadata;
 using PxApi.Caching;
-using PxApi.Models;
+using PxApi.Configuration;
 using PxApi.ModelBuilders;
 using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
+using PxApi.Models;
 using PxApi.Utilities;
-using PxApi.Configuration;
-using Microsoft.Net.Http.Headers;
 
 namespace PxApi.Controllers
 {

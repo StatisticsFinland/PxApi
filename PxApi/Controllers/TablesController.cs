@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+
+using Microsoft.AspNetCore.Mvc;
+using Px.Utils.Models.Metadata.Dimensions;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
 using PxApi.Caching;
@@ -8,7 +10,6 @@ using PxApi.Models;
 using PxApi.Utilities;
 using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
-using Px.Utils.Models.Metadata.Dimensions;
 
 namespace PxApi.Controllers
 {
@@ -28,12 +29,12 @@ namespace PxApi.Controllers
         /// Returns a paged list of tables and their essential metadata for a database.
         /// </summary>
         /// <param name="database">Unique identifier of the database.</param>
-        /// <param name="lang">Optional language used to get the metadata, default is Finnish (fi).</param>
+        /// <param name="lang">Optional language used to get the metadata. If not provided, the default language is used.</param>
         /// <param name="page">Optional 1-based page number to retrieve, default value is 1.</param>
         /// <param name="pageSize">Optional number of items per page (1-100), default value is 50.</param>
         /// <returns>Paged list containing table listing items and paging information.</returns>
         /// <response code="200">Returns the table listing.</response>
-        /// <response code="400">Invalid query parameter was provided (page &lt; 1, pageSize outside 1-100).</response>
+        /// <response code="400">Invalid query parameter was provided (page &lt; 1, pageSize outside 1-100 or unsupported language).</response>
         /// <response code="404">Database not found.</response>
         [HttpGet("{database}")]
         [Produces("application/json")]
@@ -42,7 +43,7 @@ namespace PxApi.Controllers
         [ProducesResponseType(404)]
         public async Task<ActionResult<PagedTableList>> GetTablesAsync(
             [FromRoute] string database,
-            [FromQuery] string lang = "fi",
+            [FromQuery] string? lang = null,
             [FromQuery][Range(1, int.MaxValue)] int page = 1,
             [FromQuery][Range(1, 100)] int pageSize = 50)
         {
@@ -50,6 +51,9 @@ namespace PxApi.Controllers
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
 
             AppSettings settings = AppSettings.Active;
+            string actualLang = lang ?? settings.Localization.DefaultLanguage;
+            if (!settings.Localization.SupportedLanguages.Contains(actualLang)) return BadRequest("The requested language is not supported.");
+
             try
             {
                 DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
@@ -80,9 +84,9 @@ namespace PxApi.Controllers
                             IReadOnlyMatrixMetadata tableMeta = await cachedConnector.GetMetadataCachedAsync(table.Value);
 
                             Uri fileUri = settings.RootUrl
-                                .AddRelativePath("meta", "json", database, table.Key)
-                                .AddQueryParameters(("lang", lang));
-                            pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, lang, tableMeta, fileUri));
+                                .AddRelativePath("meta", database, table.Key)
+                                .AddQueryParameters(("lang", actualLang));
+                            pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, actualLang, tableMeta, fileUri));
                         }
                         catch (Exception buildEx)
                         {

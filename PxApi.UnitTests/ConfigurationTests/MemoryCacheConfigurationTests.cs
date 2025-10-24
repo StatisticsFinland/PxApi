@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using PxApi.Configuration;
+using PxApi.UnitTests.Utils;
 
 namespace PxApi.UnitTests.ConfigurationTests
 {
@@ -14,41 +15,26 @@ namespace PxApi.UnitTests.ConfigurationTests
         {
             // Arrange
             const long expectedCacheSize = 134217728; // 128 MB
-            Dictionary<string, string?> configData = new()
-            {
-                ["RootUrl"] = "https://testurl.fi",
-                ["Cache:MaxSizeBytes"] = expectedCacheSize.ToString(),
-                ["Cache:DefaultDataCellSize"] = "32",
-                ["Cache:DefaultUpdateTaskSize"] = "100",
-                ["Cache:DefaultTableGroupSize"] = "200",
-                ["Cache:DefaultFileListSize"] = "500000",
-                ["Cache:DefaultMetaSize"] = "300000",
-                ["DataBases:0:Type"] = "Mounted",
-                ["DataBases:0:Id"] = "TestDb",
-                ["DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds"] = "900",
-                ["DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds"] = "900",
-                ["DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds"] = "900",
-                ["DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds"] = "900",
-                ["DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds"] = "900",
-                ["DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds"] = "900",
-                ["DataBases:0:CacheConfig:Data:SlidingExpirationSeconds"] = "600",
-                ["DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds"] = "600",
-                ["DataBases:0:Custom:RootPath"] = "datasource/root/"
-            };
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                TestConfigFactory.MountedDb(0, "TestDb", "datasource/root/"),
+                new Dictionary<string, string?>
+                {
+                    ["Cache:MaxSizeBytes"] = expectedCacheSize.ToString(),
+                    ["Cache:DefaultDataCellSize"] = "32",
+                    ["Cache:DefaultUpdateTaskSize"] = "100",
+                    ["Cache:DefaultTableGroupSize"] = "200",
+                    ["Cache:DefaultFileListSize"] = "500000",
+                    ["Cache:DefaultMetaSize"] = "300000"
+                }
+            );
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(configData)
                 .Build();
 
             AppSettings.Load(configuration);
-
             ServiceCollection services = new();
-            
-            // Configure MemoryCache the same way as in Program.cs
-            services.AddMemoryCache(options =>
-            {
-                options.SizeLimit = AppSettings.Active.Cache.MaxSizeBytes;
-            });
-
+            services.AddMemoryCache(options => { options.SizeLimit = AppSettings.Active.Cache.MaxSizeBytes; });
             ServiceProvider serviceProvider = services.BuildServiceProvider();
 
             // Act
@@ -62,35 +48,17 @@ namespace PxApi.UnitTests.ConfigurationTests
         public void MemoryCache_WhenDefaultConfiguration_ShouldHaveDefaultSizeLimit()
         {
             // Arrange
-            Dictionary<string, string?> configData = new()
-            {
-                ["RootUrl"] = "https://testurl.fi",
-                ["DataBases:0:Type"] = "Mounted",
-                ["DataBases:0:Id"] = "TestDb",
-                ["DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds"] = "900",
-                ["DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds"] = "900",
-                ["DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds"] = "900",
-                ["DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds"] = "900",
-                ["DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds"] = "900",
-                ["DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds"] = "900",
-                ["DataBases:0:CacheConfig:Data:SlidingExpirationSeconds"] = "600",
-                ["DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds"] = "600",
-                ["DataBases:0:Custom:RootPath"] = "datasource/root/"
-            };
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                TestConfigFactory.MountedDb(0, "TestDb", "datasource/root/")
+            );
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(configData)
                 .Build();
 
             AppSettings.Load(configuration);
-
             ServiceCollection services = new();
-            
-            // Configure MemoryCache the same way as in Program.cs
-            services.AddMemoryCache(options =>
-            {
-                options.SizeLimit = AppSettings.Active.Cache.MaxSizeBytes;
-            });
-
+            services.AddMemoryCache(options => { options.SizeLimit = AppSettings.Active.Cache.MaxSizeBytes; });
             ServiceProvider serviceProvider = services.BuildServiceProvider();
 
             // Act

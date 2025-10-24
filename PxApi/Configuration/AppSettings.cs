@@ -1,4 +1,4 @@
-﻿namespace PxApi.Configuration
+namespace PxApi.Configuration
 {
     /// <summary>
     /// The main class for all application settings.
@@ -44,6 +44,11 @@
         public OpenApiConfig OpenApi { get; }
 
         /// <summary>
+        /// Localization configuration containing default language and supported languages.
+        /// </summary>
+        public LocalizationConfig Localization { get; }
+
+        /// <summary>
         /// The currently active configuration for the application.
         /// </summary>
         public static AppSettings Active
@@ -86,6 +91,7 @@
             QueryLimits = new QueryLimitsConfig(configuration.GetSection(nameof(QueryLimits)));
             Cache = new MemoryCacheConfig(configuration.GetSection(nameof(Cache)));
             OpenApi = new OpenApiConfig(configuration.GetSection(nameof(OpenApi)));
+            Localization = new LocalizationConfig(configuration.GetSection(nameof(Localization)));
         }
 
         /// <summary>

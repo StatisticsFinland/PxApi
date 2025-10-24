@@ -1,4 +1,4 @@
-﻿using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Models;
 using Moq;
 using PxApi.OpenApi.DocumentFilters;
 using PxApi.OpenApi.Examples;
@@ -98,7 +98,7 @@ namespace PxApi.UnitTests.DocumentFilters
         public void Apply_NonMatchingGetOperation_DoesNotModify()
         {
             // Arrange
-            OpenApiOperation operation = new OpenApiOperation
+            OpenApiOperation operation = new()
             {
                 Parameters = [ new OpenApiParameter { Name = "filters" } ],
                 Responses = new OpenApiResponses

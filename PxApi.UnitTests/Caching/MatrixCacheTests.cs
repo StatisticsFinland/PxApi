@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using Px.Utils.Models.Metadata;
@@ -25,31 +25,18 @@ namespace PxApi.UnitTests.Caching
         [SetUp]
         public void SetUp()
         {
-            Dictionary<string, string?> inMemorySettings = new()
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                TestConfigFactory.MountedDb(0, "PxApiUnitTestsDb", "datasource/root/"),
+                new Dictionary<string, string?>
                 {
-                    {"RootUrl", "https://testurl.fi"},
-                    {"DataBases:0:Type", "Mounted"},
-                    {"DataBases:0:Id", "PxApiUnitTestsDb"},
-                    {"DataBases:0:CacheConfig:TableList:SlidingExpirationSeconds", "900"},
-                    {"DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds", "900"},
-                    {"DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds", "900"}, // 15 minutes
-                    {"DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds", "900"}, // 15 minutes
-                    {"DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds", "900"},
-                    {"DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds", "900"},
-                    {"DataBases:0:CacheConfig:Data:SlidingExpirationSeconds", "600"}, // 10 minutes
-                    {"DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds", "600"}, // 10 minutes
-                    {"DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds", "60"},
-                    {"DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds", "60"},
-                    {"DataBases:0:Custom:RootPath", "datasource/root/"},
-                    {"DataBases:0:Custom:ModifiedCheckIntervalMs", "1000"},
-                    {"DataBases:0:Custom:FileListingCacheDurationMs", "10000"},
-                };
-
-            IConfiguration _configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(inMemorySettings)
-                .Build();
-
-            AppSettings.Load(_configuration);
+                    ["DataBases:0:CacheConfig:Modifiedtime:SlidingExpirationSeconds"] = "60",
+                    ["DataBases:0:CacheConfig:Modifiedtime:AbsoluteExpirationSeconds"] = "60",
+                    ["DataBases:0:Custom:ModifiedCheckIntervalMs"] = "1000",
+                    ["DataBases:0:Custom:FileListingCacheDurationMs"] = "10000"
+                }
+            );
+            TestConfigFactory.BuildAndLoad(configData);
         }
 
         [Test]
