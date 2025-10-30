@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Px.Utils.Models.Metadata;
 using PxApi.Caching;
 using PxApi.ModelBuilders;
 using PxApi.Models.JsonStat;
 using PxApi.Models;
+using PxApi.OpenApi;
 
 namespace PxApi.Controllers
 {
@@ -26,6 +27,7 @@ namespace PxApi.Controllers
         /// <response code="404">Database or table not found.</response>
         /// <response code="500">Unexpected server error.</response>
         [HttpGet("{database}/{table}")]
+        [OperationId("getTableMeta")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(JsonStat2), 200)]
         [ProducesResponseType(400)]
@@ -76,6 +78,7 @@ namespace PxApi.Controllers
         /// <response code="400">Requested language not available.</response>
         /// <response code="404">Database or table not found.</response>
         [HttpHead("{database}/{table}")]
+        [OperationId("headTableMeta")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
@@ -98,6 +101,7 @@ namespace PxApi.Controllers
         /// <param name="table">Identifier of the table.</param>
         /// <response code="200">Returns allowed methods in the Allow header.</response>
         [HttpOptions("{database}/{table}")]
+        [OperationId("optionsTableMeta")]
         [ProducesResponseType(200)]
         public IActionResult OptionsMetadata(string database, string table)
         {

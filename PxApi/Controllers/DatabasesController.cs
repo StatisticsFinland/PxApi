@@ -5,6 +5,7 @@ using PxApi.Configuration;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Collections.Immutable;
+using PxApi.OpenApi;
 
 namespace PxApi.Controllers
 {
@@ -31,6 +32,7 @@ namespace PxApi.Controllers
         /// <returns>A list of <see cref="DataBaseListingItem"/> objects describing each available database.</returns>
         /// <response code="200">Successful retrieval of database listing.</response>
         [HttpGet]
+        [OperationId("listDatabases")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(List<DataBaseListingItem>),200, "application/json")]
         public async Task<ActionResult<List<DataBaseListingItem>>> GetDatabases([FromQuery] string? lang = null)
@@ -88,6 +90,7 @@ namespace PxApi.Controllers
         /// <returns><see cref="OkResult"/> indicating the collection resource exists.</returns>
         /// <response code="200">Resource exists.</response>
         [HttpHead]
+        [OperationId("headDatabases")]
         [ProducesResponseType(200)]
         public IActionResult HeadDatabases() => Ok();
 
@@ -97,6 +100,7 @@ namespace PxApi.Controllers
         /// <returns><see cref="OkResult"/> with Allow header populated.</returns>
         /// <response code="200">Allowed methods returned.</response>
         [HttpOptions]
+        [OperationId("optionsDatabases")]
         [ProducesResponseType(200)]
         public IActionResult OptionsDatabases()
         {
