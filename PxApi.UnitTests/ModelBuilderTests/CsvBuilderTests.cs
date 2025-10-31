@@ -13,30 +13,13 @@ namespace PxApi.UnitTests.ModelBuilderTests
     [TestFixture]
     public class CsvBuilderTests
     {
+
         [Test]
         public void BuildCsvResponse_BasicMetadata_ReturnsValidCsv()
         {
             // Arrange
             IReadOnlyMatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
-            
-            DoubleDataValue[] data = [
-                new DoubleDataValue(1.0, DataValueType.Exists),
-                new DoubleDataValue(2.0, DataValueType.Exists),
-                new DoubleDataValue(3.0, DataValueType.Exists),
-                new DoubleDataValue(4.0, DataValueType.Exists),
-                new DoubleDataValue(5.0, DataValueType.Exists),
-                new DoubleDataValue(6.0, DataValueType.Exists),
-                new DoubleDataValue(7.0, DataValueType.Exists),
-                new DoubleDataValue(8.0, DataValueType.Exists),
-                new DoubleDataValue(9.0, DataValueType.Exists),
-                new DoubleDataValue(10.0, DataValueType.Exists),
-                new DoubleDataValue(11.0, DataValueType.Exists),
-                new DoubleDataValue(12.0, DataValueType.Exists),
-                new DoubleDataValue(13.0, DataValueType.Exists),
-                new DoubleDataValue(14.0, DataValueType.Exists),
-                new DoubleDataValue(15.0, DataValueType.Exists),
-                new DoubleDataValue(16.0, DataValueType.Exists)
-            ];
+            DoubleDataValue[] data = CreateDataArray(16);
             const string lang = "en";
 
             string expected =
@@ -62,10 +45,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
         public void BuildCsvResponse_WithFilteredMeta_ReturnsFilteredCsv()
         {
             // Arrange
-            DoubleDataValue[] data = [
-                new DoubleDataValue(1.0, DataValueType.Exists),
-                new DoubleDataValue(2.0, DataValueType.Exists),
-            ];
+            DoubleDataValue[] data = CreateDataArray(2);
 
             MultilanguageString eliminationValueName = new(new Dictionary<string, string>()
             {
@@ -83,8 +63,8 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 completeMeta.Dimensions[0].AdditionalProperties,
                 [
                     (ContentDimensionValue)completeMeta.Dimensions[0].Values[0] // Content dimension with only one value
-                ]
-            );
+                    ]
+                    );
 
             completeMeta.Dimensions[0] = singleValueContentDimension; // Force single value content dimension
 
@@ -93,24 +73,24 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 completeMeta.Dimensions[2].Name,
                 completeMeta.Dimensions[2].AdditionalProperties,
                 new ValueList(
-                [
+                    [
                     completeMeta.Dimensions[2].Values[0] // Note, only one of two dimensions
-                ]),
+                    ]),
                 completeMeta.Dimensions[3].Type
-            );
+                );
 
-            Dimension filteredDimOne = new (
+            Dimension filteredDimOne = new(
                 completeMeta.Dimensions[3].Code,
                 completeMeta.Dimensions[3].Name,
                 completeMeta.Dimensions[3].AdditionalProperties,
                 new ValueList(
-                [
+                    [
                     completeMeta.Dimensions[3].Values[0] // Note, only one of two dimensions (Elimination value)
-                ]),
+                    ]),
                 completeMeta.Dimensions[3].Type
-            );
+                );
 
-            MatrixMetadata filteredMeta = new (
+            MatrixMetadata filteredMeta = new(
                 completeMeta.DefaultLanguage,
                 completeMeta.AvailableLanguages,
                 [
@@ -118,9 +98,9 @@ namespace PxApi.UnitTests.ModelBuilderTests
                     completeMeta.Dimensions[1], // Time dimension
                     filteredDimZero, // Filtered dimension with only one value
                     filteredDimOne // Filtered dimension with only one elimination value
-                ],
+                    ],
                 completeMeta.AdditionalProperties
-            );
+                );
 
             string expected =
                 $"\"table-description.en\",\"time-value0-name.en\",\"time-value1-name.en\"{Environment.NewLine}\"dim0-value0-name.en\",1,2";
@@ -138,7 +118,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
         {
             // Arrange
             IReadOnlyMatrixMetadata metadata = CreateMetadataWithoutDescription();
-            DoubleDataValue[] data = [new DoubleDataValue(1.0, DataValueType.Exists)];
+            DoubleDataValue[] data = CreateDataArray(1);
             const string lang = "en";
 
             // Act & Assert
@@ -153,16 +133,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
         {
             // Arrange
             IReadOnlyMatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata([DimensionType.Nominal, DimensionType.Ordinal]); // Two additional dimensions go to heading
-            DoubleDataValue[] data = [
-                new DoubleDataValue(1.0, DataValueType.Exists),
-                new DoubleDataValue(2.0, DataValueType.Exists),
-                new DoubleDataValue(3.0, DataValueType.Exists),
-                new DoubleDataValue(4.0, DataValueType.Exists),
-                new DoubleDataValue(5.0, DataValueType.Exists),
-                new DoubleDataValue(6.0, DataValueType.Exists),
-                new DoubleDataValue(7.0, DataValueType.Exists),
-                new DoubleDataValue(8.0, DataValueType.Exists)
-                ];
+            DoubleDataValue[] data = CreateDataArray(8);
             const string lang = "en";
 
             // Act
@@ -187,12 +158,11 @@ namespace PxApi.UnitTests.ModelBuilderTests
         {
             // Arrange
             IReadOnlyMatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
-            DoubleDataValue[] data = [
-                new DoubleDataValue(1.0, DataValueType.Exists),
-                new DoubleDataValue(0.0, DataValueType.Missing),
-                new DoubleDataValue(0.0, DataValueType.Confidential),
-                new DoubleDataValue(4.0, DataValueType.Exists)
-                ];
+            DoubleDataValue[] data = CreateDataArray(4, new Dictionary<int, DataValueType>
+            {
+                { 1, DataValueType.Missing },
+                { 2, DataValueType.Confidential }
+            });
             const string lang = "en";
 
             // Act
@@ -213,12 +183,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
         {
             // Arrange
             IReadOnlyMatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
-            DoubleDataValue[] data = [
-                new DoubleDataValue(1.0, DataValueType.Exists),
-                new DoubleDataValue(2.0, DataValueType.Exists),
-                new DoubleDataValue(3.0, DataValueType.Exists),
-                new DoubleDataValue(4.0, DataValueType.Exists)
-                ];
+            DoubleDataValue[] data = CreateDataArray(4);
 
             // Act - Finnish
             string resultFi = CsvBuilder.BuildCsvResponse(metadata, data, "fi", metadata);
@@ -267,16 +232,17 @@ namespace PxApi.UnitTests.ModelBuilderTests
         {
             // Arrange
             IReadOnlyMatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
-            DoubleDataValue[] data = [
-                new DoubleDataValue(0.0, DataValueType.Missing),
-                new DoubleDataValue(0.0, DataValueType.CanNotRepresent),
-                new DoubleDataValue(0.0, DataValueType.Confidential),
-                new DoubleDataValue(0.0, DataValueType.NotAcquired),
-                new DoubleDataValue(0.0, DataValueType.NotAsked),
-                new DoubleDataValue(0.0, DataValueType.Empty),
-                new DoubleDataValue(0.0, DataValueType.Nill),
-                new DoubleDataValue(1.0, DataValueType.Exists)
-                ];
+            DoubleDataValue[] data = CreateDataArray(8, new Dictionary<int, DataValueType>
+            {
+                { 0, DataValueType.Missing },
+                { 1, DataValueType.CanNotRepresent },
+                { 2, DataValueType.Confidential },
+                { 3, DataValueType.NotAcquired },
+                { 4, DataValueType.NotAsked },
+                { 5, DataValueType.Empty },
+                { 6, DataValueType.Nill }
+                // Index 7 will remain as DataValueType.Exists
+            });
             const string lang = "en";
 
             // Act
@@ -290,10 +256,148 @@ namespace PxApi.UnitTests.ModelBuilderTests
             Assert.That(result, Does.Contain("....."));  // NotAsked
             Assert.That(result, Does.Contain("......")); // Empty
             Assert.That(result, Does.Contain("-"));    // Nill
-            Assert.That(result, Does.Contain("1"));      // Exists
+            Assert.That(result, Does.Contain("8"));      // Exists (index 7 + 1)
         }
 
-        // Helper method to create metadata without description
+        [Test]
+        public void BuildCsvResponse_OnlyStubs_ReturnsValidCsv()
+        {
+            // Arrange
+            MatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
+            DoubleDataValue[] data = CreateDataArray(16);
+            MultilanguageStringListProperty stubNames = new(
+                [
+                metadata.Dimensions[0].Name,
+                metadata.Dimensions[1].Name,
+                metadata.Dimensions[2].Name,
+                metadata.Dimensions[3].Name
+                ]);
+            metadata.AdditionalProperties[PxFileConstants.STUB] = stubNames; // All dimensions listed in STUB
+            metadata.AdditionalProperties[PxFileConstants.HEADING] = new MultilanguageStringListProperty([]); // No dimensions for HEADING
+            const string lang = "en";
+            string expected =
+                $"\"table-description.en\"{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en dim0-value0-name.en dim1-value0-name.en\",1{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en dim0-value0-name.en dim1-value1-name.en\",2{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en dim0-value1-name.en dim1-value0-name.en\",3{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en dim0-value1-name.en dim1-value1-name.en\",4{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en dim0-value0-name.en dim1-value0-name.en\",5{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en dim0-value0-name.en dim1-value1-name.en\",6{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en dim0-value1-name.en dim1-value0-name.en\",7{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en dim0-value1-name.en dim1-value1-name.en\",8{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value0-name.en dim0-value0-name.en dim1-value0-name.en\",9{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value0-name.en dim0-value0-name.en dim1-value1-name.en\",10{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value0-name.en dim0-value1-name.en dim1-value0-name.en\",11{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value0-name.en dim0-value1-name.en dim1-value1-name.en\",12{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value1-name.en dim0-value0-name.en dim1-value0-name.en\",13{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value1-name.en dim0-value0-name.en dim1-value1-name.en\",14{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value1-name.en dim0-value1-name.en dim1-value0-name.en\",15{Environment.NewLine}" +
+                "\"content-value1-name.en time-value1-name.en dim0-value1-name.en dim1-value1-name.en\",16";
+
+            // Act
+            string result = CsvBuilder.BuildCsvResponse(metadata, data, lang, metadata);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result, Is.EqualTo(expected));
+            });
+        }
+
+        [Test]
+        public void BuildCsvResponse_OnlyHeadings_ReturnsValidCsv()
+        {
+            // Arrange
+            MatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
+            DoubleDataValue[] data = CreateDataArray(16);
+            MultilanguageStringListProperty headingNames = new(
+                [
+                metadata.Dimensions[0].Name,
+                metadata.Dimensions[1].Name,
+                metadata.Dimensions[2].Name,
+                metadata.Dimensions[3].Name
+                ]);
+            metadata.AdditionalProperties[PxFileConstants.HEADING] = headingNames; // All dimensions listed in HEADING
+            metadata.AdditionalProperties[PxFileConstants.STUB] = new MultilanguageStringListProperty([]); // No dimensions for STUB
+            const string lang = "en";
+            string expected =
+                $"\"table-description.en\",\"content-value0-name.en time-value0-name.en dim0-value0-name.en dim1-value0-name.en\",\"content-value0-name.en time-value0-name.en dim0-value0-name.en dim1-value1-name.en\",\"content-value0-name.en time-value0-name.en dim0-value1-name.en dim1-value0-name.en\",\"content-value0-name.en time-value0-name.en dim0-value1-name.en dim1-value1-name.en\",\"content-value0-name.en time-value1-name.en dim0-value0-name.en dim1-value0-name.en\",\"content-value0-name.en time-value1-name.en dim0-value0-name.en dim1-value1-name.en\",\"content-value0-name.en time-value1-name.en dim0-value1-name.en dim1-value0-name.en\",\"content-value0-name.en time-value1-name.en dim0-value1-name.en dim1-value1-name.en\",\"content-value1-name.en time-value0-name.en dim0-value0-name.en dim1-value0-name.en\",\"content-value1-name.en time-value0-name.en dim0-value0-name.en dim1-value1-name.en\",\"content-value1-name.en time-value0-name.en dim0-value1-name.en dim1-value0-name.en\",\"content-value1-name.en time-value0-name.en dim0-value1-name.en dim1-value1-name.en\",\"content-value1-name.en time-value1-name.en dim0-value0-name.en dim1-value0-name.en\",\"content-value1-name.en time-value1-name.en dim0-value0-name.en dim1-value1-name.en\",\"content-value1-name.en time-value1-name.en dim0-value1-name.en dim1-value0-name.en\",\"content-value1-name.en time-value1-name.en dim0-value1-name.en dim1-value1-name.en\"{Environment.NewLine}" +
+                $"\"\",1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16";
+
+            // Act
+            string result = CsvBuilder.BuildCsvResponse(metadata, data, lang, metadata);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result, Is.EqualTo(expected));
+            });
+        }
+
+        [Test]
+        public void BuildCsvResponse_SingleValue_ReturnsValidCsv()
+        {
+            // Arrange
+            MatrixMetadata complete = TestMockMetaBuilder.GetMockMetadata();
+            ContentDimension filteredContent = new(
+                complete.Dimensions[0].Code,
+                complete.Dimensions[0].Name,
+                complete.Dimensions[0].AdditionalProperties,
+                [
+                    (ContentDimensionValue)complete.Dimensions[0].Values[1]
+                ]
+            );
+            Dimension filteredTime = new(
+                complete.Dimensions[1].Code,
+                complete.Dimensions[1].Name,
+                complete.Dimensions[1].AdditionalProperties,
+                [
+                    complete.Dimensions[1].Values[1]
+                ],
+                complete.Dimensions[1].Type
+            );
+            Dimension filteredDimZero = new(
+                complete.Dimensions[2].Code,
+                complete.Dimensions[2].Name,
+                complete.Dimensions[2].AdditionalProperties,
+                [
+                    complete.Dimensions[2].Values[1]
+                ],
+                complete.Dimensions[2].Type
+            );
+            Dimension filteredDimOne = new(
+                complete.Dimensions[3].Code,
+                complete.Dimensions[3].Name,
+                complete.Dimensions[3].AdditionalProperties,
+                [
+                    complete.Dimensions[3].Values[1]
+                ],
+                complete.Dimensions[3].Type
+            );
+
+            MatrixMetadata filteredMeta = new(
+                complete.DefaultLanguage,
+                complete.AvailableLanguages,
+                [filteredContent, filteredTime, filteredDimZero, filteredDimOne],
+                complete.AdditionalProperties
+            );
+            string expected =
+                $"\"table-description.fi\",\"time-value1-name.fi\"{Environment.NewLine}" +
+                "\"content-value1-name.fi dim0-value1-name.fi dim1-value1-name.fi\",1";
+            // Act
+            string result = CsvBuilder.BuildCsvResponse(filteredMeta, [new(1, DataValueType.Exists)], filteredMeta.DefaultLanguage, complete);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result, Is.EqualTo(expected));
+            });
+        }
+
+        // Helper method to create complete without description
         private static MatrixMetadata CreateMetadataWithoutDescription()
         {
             List<Dimension> dimensions = [
@@ -312,6 +416,25 @@ namespace PxApi.UnitTests.ModelBuilderTests
             };
 
             return new MatrixMetadata("en", ["en"], dimensions, properties);
+        }
+
+        private static DoubleDataValue[] CreateDataArray(int count, Dictionary<int, DataValueType>? nonExistingValues = null)
+        {
+            DoubleDataValue[] data = new DoubleDataValue[count];
+
+            for (int i = 0; i < count; i++)
+            {
+                if (nonExistingValues?.TryGetValue(i, out DataValueType type) == true)
+                {
+                    data[i] = new DoubleDataValue(0.0, type);
+                }
+                else
+                {
+                    data[i] = new DoubleDataValue(i + 1.0, DataValueType.Exists);
+                }
+            }
+
+            return data;
         }
     }
 }

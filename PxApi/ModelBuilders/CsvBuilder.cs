@@ -179,23 +179,10 @@ namespace PxApi.ModelBuilders
 
         private static void BuildDataRows(StringBuilder csv, DoubleDataValue[] data, List<IReadOnlyDimension> filteredStubDims, List<IReadOnlyDimension> filteredHeadingDims, string lang)
         {
-            if (filteredStubDims.Count == 0 && filteredHeadingDims.Count == 0)
-            {
-                // If no dimensions to display, create a single row with all data
-                csv.Append("\"\"");
-                for (int i = 0; i < data.Length; i++)
-                {
-                    csv.Append(',');
-                    csv.Append(FormatDataValue(data[i]));
-                }
-                csv.AppendLine();
-                return;
-            }
-
             // Generate combinations for filtered dimensions (which are the same for data indexing)
             List<string[]> stubCombinations = GetValueCombinations(filteredStubDims, lang);
             int headingCount = filteredHeadingDims.Count > 0 ? GetValueCombinations(filteredHeadingDims, lang).Count : 1;
-
+            
             // If no stub dimensions to display, create one empty row for data
             if (stubCombinations.Count == 0)
             {
