@@ -198,8 +198,7 @@ namespace PxApi.Controllers
 
                 if (bestMatch == "text/csv")
                 {
-                    // CSV implementation placeholder.
-                    return Content("col1,col2\nval1,val2", "text/csv");
+                    return Content(CsvBuilder.BuildCsvResponse(meta.GetTransform(requestMap), data, actualLang, meta), "text/csv");
                 }
                 if (bestMatch == "application/json")
                 {

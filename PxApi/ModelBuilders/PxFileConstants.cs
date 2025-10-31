@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Collections.Generic;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Data;
@@ -49,6 +49,16 @@ namespace PxApi.ModelBuilders
         /// Key for table DESCRIPTION in the Px files
         /// </summary>
         public const string DESCRIPTION = "DESCRIPTION";
+
+        /// <summary>
+        /// Key for STUB in the Px files
+        /// </summary>
+        public const string STUB = "STUB";
+
+        /// <summary>
+        /// Key for HEADING in the Px filestubs
+        /// </summary>
+        public const string HEADING = "HEADING";
 
         /// <summary>
         /// Key for table META-ID in the Px files
