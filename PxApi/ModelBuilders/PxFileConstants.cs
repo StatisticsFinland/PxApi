@@ -56,7 +56,7 @@ namespace PxApi.ModelBuilders
         public const string STUB = "STUB";
 
         /// <summary>
-        /// Key for HEADING in the Px filestubs
+        /// Key for HEADING in the Px files
         /// </summary>
         public const string HEADING = "HEADING";
 

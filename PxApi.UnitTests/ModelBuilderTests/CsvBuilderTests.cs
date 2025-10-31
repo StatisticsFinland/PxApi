@@ -5,10 +5,8 @@ using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.Dimensions;
 using Px.Utils.Models.Metadata.Enums;
 using Px.Utils.Models.Metadata.MetaProperties;
-using Px.Utils.Serializers.Json;
 using PxApi.ModelBuilders;
 using PxApi.UnitTests.Utils;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace PxApi.UnitTests.ModelBuilderTests
 {
