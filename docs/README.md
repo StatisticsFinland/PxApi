@@ -1,4 +1,4 @@
-﻿# PxApi
+# PxApi
 
 PxApi is a .NET 9.0 Web API for accessing PX statistical datasets. It provides table listings, table metadata and data retrieval with flexible dimension filtering and caching across multiple storage backends (local file system, Azure File Share, Azure Blob Storage).
 
@@ -17,9 +17,22 @@ PxApi is a .NET 9.0 Web API for accessing PX statistical datasets. It provides t
 - Swagger / OpenAPI documentation with custom schema & document filters
 - HEAD and OPTIONS support for discoverability and CORS pre-flight
 
-CSV output is currently a placeholder implementation and intended for future enhancement.
-
 ## Endpoints
+
+### Databases
+`GET /databases?lang=fi`
+Returns a list of available databases with their metadata.
+
+Query parameters:
+- `lang` (optional, default `fi`): Language used for name and description resolution.
+
+Responses:
+- `200 OK` JSON array containing database listing items
+- `400 Bad Request` requested language not supported
+
+Additional methods:
+- `HEAD /databases` validates existence of the database collection resource
+- `OPTIONS /databases` returns Allow header (`GET,HEAD,OPTIONS`)
 
 ### Tables
 `GET /tables/{database}?lang=fi&page=1&pageSize=50`
@@ -32,7 +45,7 @@ Query parameters:
 
 Responses:
 - `200 OK` JSON body containing table listing and paging info
-- `400 Bad Request` invalid paging values
+- `400 Bad Request` invalid paging values or unsupported language
 - `404 Not Found` database missing
 
 Additional methods:
@@ -59,9 +72,16 @@ Additional methods:
 ### Data
 `GET /data/{database}/{table}?filters=TIME:from=2020&filters=TIME:to=2024&filters=REGION:code=001,002`
 
-Retrieves data values applying filters to dimensions. Content negotiation:
+Retrieves data values applying filters to dimensions. Content negotiation support for json and csv:
 - `Accept: application/json` or `*/*` -> JSON-stat 2.0
-- `Accept: text/csv` -> CSV (placeholder)
+- `Accept: text/csv` -> CSV format with containing table description, selected value names and data.
+
+####CSV Export Structure:####
+- Table description as A1 cell header
+- Stub dimensions (rows) and heading dimensions (columns) based on PX file metadata
+- Automatic filtering of single-value elimination/total dimensions for cleaner output
+- Formatting of missing values using PX-standard dot codes (`.`, `..`, `...`, etc.)
+- Culture-invariant number formatting with period as decimal separator
 
 Filter syntax (GET query parameters):
 Each filter supplied via repeated `filters` query parameter: `dimensionCode:filterType=value`
@@ -168,7 +188,7 @@ Global cache size limit controlled via `Cache.MaxSizeBytes`. Individual item siz
 ## Content Negotiation
 Specify desired format with `Accept` header:
 - `application/json` -> JSON-stat 2.0
-- `text/csv` -> CSV (placeholder)
+- `text/csv` -> Table description, selected value names and data in CSV format
 - `*/*` or empty -> JSON-stat 2.0
 
 ## Error Handling
@@ -178,7 +198,6 @@ Central exception handling returns standardized 500 responses. Specific endpoint
 1. Configure `appsettings.json` with databases and cache settings.
 2. Run the application.
 3. Access Swagger UI at root (`/`) for interactive documentation (`openapi/document.json`).
-
 
 ## License
 Apache License 2.0. See `docs/LICENSE.md`.
