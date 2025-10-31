@@ -63,8 +63,8 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 completeMeta.Dimensions[0].AdditionalProperties,
                 [
                     (ContentDimensionValue)completeMeta.Dimensions[0].Values[0] // Content dimension with only one value
-                    ]
-                    );
+                ]
+                );
 
             completeMeta.Dimensions[0] = singleValueContentDimension; // Force single value content dimension
 
@@ -103,7 +103,8 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 );
 
             string expected =
-                $"\"table-description.en\",\"time-value0-name.en\",\"time-value1-name.en\"{Environment.NewLine}\"dim0-value0-name.en\",1,2";
+                $"\"table-description.en\",\"time-value0-name.en\",\"time-value1-name.en\"{Environment.NewLine}" +
+                "\"dim0-value0-name.en\",1,2";
 
             // Act
             string result = CsvBuilder.BuildCsvResponse(filteredMeta, data, "en", completeMeta);
@@ -342,49 +343,49 @@ namespace PxApi.UnitTests.ModelBuilderTests
             // Arrange
             MatrixMetadata complete = TestMockMetaBuilder.GetMockMetadata();
             ContentDimension filteredContent = new(
-                complete.Dimensions[0].Code,
-                complete.Dimensions[0].Name,
-                complete.Dimensions[0].AdditionalProperties,
-                [
-                    (ContentDimensionValue)complete.Dimensions[0].Values[1]
-                ]
-            );
+           complete.Dimensions[0].Code,
+        complete.Dimensions[0].Name,
+           complete.Dimensions[0].AdditionalProperties,
+    [
+            (ContentDimensionValue)complete.Dimensions[0].Values[1]
+     ]
+             );
             Dimension filteredTime = new(
-                complete.Dimensions[1].Code,
-                complete.Dimensions[1].Name,
-                complete.Dimensions[1].AdditionalProperties,
-                [
-                    complete.Dimensions[1].Values[1]
-                ],
-                complete.Dimensions[1].Type
+      complete.Dimensions[1].Code,
+             complete.Dimensions[1].Name,
+       complete.Dimensions[1].AdditionalProperties,
+          [
+             complete.Dimensions[1].Values[1]
+            ],
+             complete.Dimensions[1].Type
             );
             Dimension filteredDimZero = new(
-                complete.Dimensions[2].Code,
-                complete.Dimensions[2].Name,
-                complete.Dimensions[2].AdditionalProperties,
-                [
+           complete.Dimensions[2].Code,
+           complete.Dimensions[2].Name,
+     complete.Dimensions[2].AdditionalProperties,
+                 [
                     complete.Dimensions[2].Values[1]
-                ],
-                complete.Dimensions[2].Type
-            );
+         ],
+             complete.Dimensions[2].Type
+              );
             Dimension filteredDimOne = new(
-                complete.Dimensions[3].Code,
+             complete.Dimensions[3].Code,
                 complete.Dimensions[3].Name,
-                complete.Dimensions[3].AdditionalProperties,
-                [
-                    complete.Dimensions[3].Values[1]
-                ],
-                complete.Dimensions[3].Type
-            );
+             complete.Dimensions[3].AdditionalProperties,
+           [
+          complete.Dimensions[3].Values[1]
+          ],
+                 complete.Dimensions[3].Type
+          );
 
             MatrixMetadata filteredMeta = new(
-                complete.DefaultLanguage,
-                complete.AvailableLanguages,
-                [filteredContent, filteredTime, filteredDimZero, filteredDimOne],
-                complete.AdditionalProperties
-            );
+                  complete.DefaultLanguage,
+                     complete.AvailableLanguages,
+                  [filteredContent, filteredTime, filteredDimZero, filteredDimOne],
+                       complete.AdditionalProperties
+                    );
             string expected =
-                $"\"table-description.fi\",\"time-value1-name.fi\"{Environment.NewLine}" +
+             $"\"table-description.fi\",\"time-value1-name.fi\"{Environment.NewLine}" +
                 "\"content-value1-name.fi dim0-value1-name.fi dim1-value1-name.fi\",1";
             // Act
             string result = CsvBuilder.BuildCsvResponse(filteredMeta, [new(1, DataValueType.Exists)], filteredMeta.DefaultLanguage, complete);
@@ -394,6 +395,69 @@ namespace PxApi.UnitTests.ModelBuilderTests
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Is.EqualTo(expected));
+            });
+        }
+
+        [Test]
+        public void BuildCsvResponse_WithEliminationValuesByLanguage_FiltersCorrectly()
+        {
+            // Arrange
+            DoubleDataValue[] data = CreateDataArray(8);
+
+            // Create elimination value that matches by multilanguage name
+            MultilanguageString eliminationName = new(new Dictionary<string, string>()
+            {
+                { "en", "dim0-value1-name.en" },
+                { "fi", "dim0-value1-name.fi" },
+                { "sv", "dim0-value1-name.sv" }
+            });
+            Dictionary<string, MetaProperty> eliminationByName = new()
+            {
+                { PxFileConstants.ELIMINATION, new MultilanguageStringProperty(eliminationName) }
+            };
+
+            MatrixMetadata completeMeta = TestMockMetaBuilder.GetMockMetadata(dimensionAdditionalProps: [
+                [], [], eliminationByName, []  // Dimension[2] (dim0) with elimination value1
+            ]);
+
+            // Create filtered metadata with elimination values
+            Dimension filteredDimZero = new(
+                completeMeta.Dimensions[2].Code,
+                completeMeta.Dimensions[2].Name,
+                completeMeta.Dimensions[2].AdditionalProperties,
+                new ValueList([completeMeta.Dimensions[2].Values[1]]), // Only elimination value
+                completeMeta.Dimensions[2].Type
+            );
+            
+            MatrixMetadata filteredMeta = new(
+                completeMeta.DefaultLanguage,
+                completeMeta.AvailableLanguages,
+                [
+                    completeMeta.Dimensions[0],
+                    completeMeta.Dimensions[1],
+                    filteredDimZero, // Filtered dimension with elimination
+                    completeMeta.Dimensions[3]
+                ],
+                completeMeta.AdditionalProperties
+            );
+
+            string expected =
+                $"\"table-description.en\",\"time-value0-name.en\",\"time-value1-name.en\"{Environment.NewLine}" +
+                $"\"content-value0-name.en dim1-value0-name.en\",1,2{Environment.NewLine}" +
+                $"\"content-value0-name.en dim1-value1-name.en\",3,4{Environment.NewLine}" +
+                $"\"content-value1-name.en dim1-value0-name.en\",5,6{Environment.NewLine}" +
+                $"\"content-value1-name.en dim1-value1-name.en\",7,8";
+
+            // Act
+            string result = CsvBuilder.BuildCsvResponse(filteredMeta, data, "en", completeMeta);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null.And.Not.Empty);
+                Assert.That(result, Is.EqualTo(expected));
+                // Verify that elimination dimensions are filtered out from headers (they should not appear in row headers)
+                Assert.That(result, Does.Not.Contain("dim0-value0-name.en"));
             });
         }
 

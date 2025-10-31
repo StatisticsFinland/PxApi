@@ -91,8 +91,8 @@ namespace PxApi.ModelBuilders
             {
                 completeDimensionSizes[dim.Code] = dim.Values.Count;
             }
-            List<IReadOnlyDimension> filteredStubDims = FilterSingleValueDimensions(orderedStubDims, completeDimensionSizes);
-            List<IReadOnlyDimension> filteredHeadingDims = FilterSingleValueDimensions(orderedHeadingDims, completeDimensionSizes);
+            List<IReadOnlyDimension> filteredStubDims = FilterSingleValueDimensions(orderedStubDims, completeDimensionSizes, lang);
+            List<IReadOnlyDimension> filteredHeadingDims = FilterSingleValueDimensions(orderedHeadingDims, completeDimensionSizes, lang);
 
             BuildHeaderRow(csv, header, filteredHeadingDims, lang);
             BuildDataRows(csv, data, filteredStubDims, filteredHeadingDims, lang);
@@ -106,8 +106,9 @@ namespace PxApi.ModelBuilders
         /// </summary>
         /// <param name="dimensions">The dimensions to filter</param>
         /// <param name="completeDimensionSizes">Dictionary of complete dimension sizes for reference</param>
+        /// <param name="lang">Language to use for elimination value checking</param>
         /// <returns>List of dimensions that should be included in headers</returns>
-        private static List<IReadOnlyDimension> FilterSingleValueDimensions(List<IReadOnlyDimension> dimensions, Dictionary<string, int> completeDimensionSizes)
+        private static List<IReadOnlyDimension> FilterSingleValueDimensions(List<IReadOnlyDimension> dimensions, Dictionary<string, int> completeDimensionSizes, string lang)
         {
             return [.. dimensions.Where(dim =>
             {
@@ -117,7 +118,7 @@ namespace PxApi.ModelBuilders
                 if (dim.Values.Count == 1)
                 {
                     // If it's an elimination/total value or the complete map only has one value for the dimension, omit it from headers
-                    return !IsEliminationValue(dim, dim.Values[0]) && completeDimensionSizes[dim.Code] > 1;
+                    return !IsEliminationValue(dim, dim.Values[0], lang) && completeDimensionSizes[dim.Code] > 1;
                 }
 
                 return true;
@@ -129,20 +130,18 @@ namespace PxApi.ModelBuilders
         /// </summary>
         /// <param name="dimension">The dimension to check</param>
         /// <param name="value">The value to check</param>
+        /// <param name="lang">Language to use for multilanguage property comparison</param>
         /// <returns>True if the value is an elimination value</returns>
-        private static bool IsEliminationValue(IReadOnlyDimension dimension, IReadOnlyDimensionValue value)
+        private static bool IsEliminationValue(IReadOnlyDimension dimension, IReadOnlyDimensionValue value, string lang)
         {
-            if (dimension.AdditionalProperties.TryGetValue("ELIMINATION", out MetaProperty? prop))
+            string? eliminationValue = dimension.AdditionalProperties.GetValueByLanguage(PxFileConstants.ELIMINATION, lang);
+            if (eliminationValue != null)
             {
-                if (prop.Type == MetaPropertyType.Text)
+                // Check if it matches the value name for the specified language
+                string? valueName = value.Name[lang];
+                if (valueName != null && valueName.Equals(eliminationValue))
                 {
-                    string valCode = ((StringProperty)prop).Value;
-                    return value.Code.Equals(valCode);
-                }
-                else if (prop.Type == MetaPropertyType.MultilanguageText)
-                {
-                    MultilanguageString valName = ((MultilanguageStringProperty)prop).Value;
-                    return value.Name.Equals(valName);
+                    return true;
                 }
             }
             return false;
@@ -182,7 +181,7 @@ namespace PxApi.ModelBuilders
             // Generate combinations for filtered dimensions (which are the same for data indexing)
             List<string[]> stubCombinations = GetValueCombinations(filteredStubDims, lang);
             int headingCount = filteredHeadingDims.Count > 0 ? GetValueCombinations(filteredHeadingDims, lang).Count : 1;
-            
+
             // If no stub dimensions to display, create one empty row for data
             if (stubCombinations.Count == 0)
             {

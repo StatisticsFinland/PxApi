@@ -76,6 +76,11 @@ namespace PxApi.ModelBuilders
         public const string NOMINAL_VALUE = "SCALE-TYPE=nominal";
 
         /// <summary>
+        /// Key for ELIMINATION values in the Px files
+        /// </summary>
+        public const string ELIMINATION = "ELIMINATION";
+
+        /// <summary>
         /// Dictionary containing translations for fi, sv and en for missing data value types.
         /// The outer dictionary key is the language code ("fi", "en", "sv").
         /// The inner dictionary maps the DataValueType enum to the human readable translation.
