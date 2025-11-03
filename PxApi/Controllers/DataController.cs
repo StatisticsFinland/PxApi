@@ -10,6 +10,7 @@ using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Models;
 using PxApi.Utilities;
+using Px.Utils.Models;
 using PxApi.OpenApi;
 
 namespace PxApi.Controllers
@@ -198,7 +199,8 @@ namespace PxApi.Controllers
 
                 if (bestMatch == "text/csv")
                 {
-                    return Content(CsvBuilder.BuildCsvResponse(meta.GetTransform(requestMap), data, actualLang, meta), "text/csv");
+                    Matrix<DoubleDataValue> requestMatrix = new(meta.GetTransform(requestMap), data);
+                    return Content(CsvBuilder.BuildCsvResponse(requestMatrix, actualLang, meta), "text/csv");
                 }
                 if (bestMatch == "application/json")
                 {

@@ -6,82 +6,60 @@ using PxApi.Utilities;
 using System.Globalization;
 using System.Text;
 using Px.Utils.Models.Data;
+using Px.Utils.Models;
 
 namespace PxApi.ModelBuilders
 {
     /// <summary>
-    /// Collection of static methods for building CSV responses from matrix requestMeta and data values.
+    /// Collection of static methods for building CSV responses from requested matrix and data values.
     /// </summary>
     public static class CsvBuilder
     {
         /// <summary>
-        /// Builds a CSV format response from matrix requestMeta and data values.
+        /// Builds a CSV format response from requested matrix and data values.
         /// </summary>
-        /// <param name="requestMeta">Input <see cref="IReadOnlyMatrixMetadata"/> containing the structure and requestMeta</param>
-        /// <param name="data">The <see cref="DoubleDataValue"/> array containing the actual data values</param>
+        /// <param name="requestMatrix">Input <see cref="Matrix{DoubleDataValue}"/> containing the structure of the requested matrix</param>
         /// <param name="lang">Language of the response</param>
         /// <param name="completeMeta">The complete <see cref="IReadOnlyMatrixMetadata"/> for reference (used for filtering dimensions)</param>
         /// <returns>CSV formatted string representing the data</returns>
         /// <exception cref="InvalidOperationException">Thrown when DESCRIPTION meta property is missing</exception>
-        public static string BuildCsvResponse(IReadOnlyMatrixMetadata requestMeta, DoubleDataValue[] data, string lang, IReadOnlyMatrixMetadata completeMeta)
+        public static string BuildCsvResponse(Matrix<DoubleDataValue> requestMatrix, string lang, IReadOnlyMatrixMetadata completeMeta)
         {
             // Get header for A1 cell (table description)
-            string header = MatrixMetadataUtilityFunctions.GetValueByLanguage(requestMeta.AdditionalProperties, PxFileConstants.DESCRIPTION, lang) ??
+            string header = MatrixMetadataUtilityFunctions.GetValueByLanguage(requestMatrix.Metadata.AdditionalProperties, PxFileConstants.DESCRIPTION, lang) ??
             throw new InvalidOperationException("DESCRIPTION meta property is required for CSV export.");
 
             StringBuilder csv = new();
 
-            // Get stub and heading dimensions from requestMeta
-            string[] stubDimensions = GetDimensionNamesFromMetaPropertyForLanguage(requestMeta.AdditionalProperties, PxFileConstants.STUB, lang);
-            string[] headingDimensions = GetDimensionNamesFromMetaPropertyForLanguage(requestMeta.AdditionalProperties, PxFileConstants.HEADING, lang);
+            // Get stub and heading dimensions from requestMatrix
+            string[] stubDimensions = GetDimensionNamesFromMetaPropertyForLanguage(requestMatrix.Metadata.AdditionalProperties, PxFileConstants.STUB, lang);
+            string[] headingDimensions = GetDimensionNamesFromMetaPropertyForLanguage(requestMatrix.Metadata.AdditionalProperties, PxFileConstants.HEADING, lang);
 
-            string[] stubDimensionCodes = [.. stubDimensions.Select(s =>
-                requestMeta.Dimensions.FirstOrDefault(d => d.Name[lang] == s)?.Code ?? s)];
-            string[] headingDimensionCodes = [.. headingDimensions.Select(s =>
-                requestMeta.Dimensions.FirstOrDefault(d => d.Name[lang] == s)?.Code ?? s)];
-
-            List<IDimensionMap> orderedDimensionMaps = [];
-
-            // Add stub dimensions first (these become rows)
-            foreach (string stubDimCode in stubDimensionCodes)
-            {
-                IReadOnlyDimension? stubDim = requestMeta.Dimensions.FirstOrDefault(d => d.Code == stubDimCode);
-                if (stubDim != null)
-                {
-                    List<string> allValueCodes = [.. stubDim.Values.Select(v => v.Code)];
-                    orderedDimensionMaps.Add(new DimensionMap(stubDimCode, allValueCodes));
-                }
-            }
-
-            // Add heading dimensions last (these become columns)
-            foreach (string headingDimCode in headingDimensionCodes)
-            {
-                IReadOnlyDimension? headingDim = requestMeta.Dimensions.FirstOrDefault(d => d.Code == headingDimCode);
-                if (headingDim != null)
-                {
-                    List<string> allValueCodes = [.. headingDim.Values.Select(v => v.Code)];
-                    orderedDimensionMaps.Add(new DimensionMap(headingDimCode, allValueCodes));
-                }
-            }
-
-            // Create the ordered matrix map and transform requestMeta accordingly
-            MatrixMap csvOrderedMap = new(orderedDimensionMaps);
-            IReadOnlyMatrixMetadata orderedMetadata = requestMeta.GetTransform(csvOrderedMap);
-
-            // Find the ordered dimensions to stub and heading groups
+            // Find the ordered dimensions to stub and heading groups based on the requestMatrix dimension order
             List<IReadOnlyDimension> orderedStubDims = [];
             List<IReadOnlyDimension> orderedHeadingDims = [];
 
-            // Split the ordered dimensions to stub and heading groups
-            for (int i = 0; i < stubDimensions.Length && i < orderedMetadata.Dimensions.Count; i++)
+            // Split the dimensions to stub and heading groups based on their names
+            foreach (IReadOnlyDimension dimension in requestMatrix.Metadata.Dimensions)
             {
-                orderedStubDims.Add(orderedMetadata.Dimensions[i]);
+                string? dimensionName = dimension.Name[lang];
+                if (dimensionName != null && stubDimensions.Contains(dimensionName))
+                {
+                    orderedStubDims.Add(dimension);
+                }
+                else if (dimensionName != null && headingDimensions.Contains(dimensionName))
+                {
+                    orderedHeadingDims.Add(dimension);
+                }
             }
 
-            for (int i = stubDimensions.Length; i < orderedMetadata.Dimensions.Count; i++)
-            {
-                orderedHeadingDims.Add(orderedMetadata.Dimensions[i]);
-            }
+            // Reorder the matrix data to match the stub and heading dimension order
+            MatrixMap orderedDimensions = new(
+            [
+                ..orderedStubDims,
+                ..orderedHeadingDims
+            ]);
+            Matrix<DoubleDataValue> orderedMatrix = requestMatrix.GetTransform(orderedDimensions);
 
             // Filter out dimensions with only ELIMINATION value or if there's only one value available
             Dictionary<string, int> completeDimensionSizes = [];
@@ -93,7 +71,7 @@ namespace PxApi.ModelBuilders
             List<IReadOnlyDimension> filteredHeadingDims = FilterSingleValueDimensions(orderedHeadingDims, completeDimensionSizes, lang);
 
             BuildHeaderRow(csv, header, filteredHeadingDims, lang);
-            BuildDataRows(csv, data, filteredStubDims, filteredHeadingDims, lang);
+            BuildDataRows(csv, orderedMatrix.Data, filteredStubDims, filteredHeadingDims, lang);
 
             return csv.ToString();
         }
