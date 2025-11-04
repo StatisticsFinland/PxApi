@@ -696,6 +696,10 @@ namespace PxApi.UnitTests.ControllerTests
 
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "text/csv";
+            string expected =
+                $"\"table-description.en\",\"dim0-value1-name.en dim1-value0-name.en\"{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en\",1{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en\",2";
 
             // Act
             IActionResult result = await _controller.GetDataAsync(database, table, filters, lang);
@@ -708,10 +712,7 @@ namespace PxApi.UnitTests.ControllerTests
             {
                 Assert.That(contentResult.ContentType, Is.EqualTo("text/csv"));
                 Assert.That(contentResult.Content, Is.Not.Null.And.Not.Empty);
-                Assert.That(contentResult.Content, Does.StartWith("\"table-description.en\""));
-                Assert.That(contentResult.Content, Does.Contain("1,2"));
-                Assert.That(contentResult.Content, Does.Contain("time-value0-name.en"));
-                Assert.That(contentResult.Content, Does.Contain("time-value1-name.en"));
+                Assert.That(contentResult.Content, Is.EqualTo(expected));
             });
         }
 
@@ -726,6 +727,10 @@ namespace PxApi.UnitTests.ControllerTests
 
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "text/csv";
+            string expected =
+                $"\"table-description.en\",\"dim0-value1-name.en dim1-value0-name.en\"{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en\",1{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en\",2";
 
             // Act
             IActionResult result = await _controller.PostDataAsync(database, table, query, lang);
@@ -738,8 +743,7 @@ namespace PxApi.UnitTests.ControllerTests
             {
                 Assert.That(contentResult.ContentType, Is.EqualTo("text/csv"));
                 Assert.That(contentResult.Content, Is.Not.Null.And.Not.Empty);
-                Assert.That(contentResult.Content, Does.StartWith("\"table-description.en\""));
-                Assert.That(contentResult.Content, Does.Contain("1,2"));
+                Assert.That(contentResult.Content, Is.EqualTo(expected));
             });
         }
 

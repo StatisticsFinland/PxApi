@@ -200,13 +200,27 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
         private static MultilanguageStringListProperty CreateStubProperty()
         {
-            // STUB contains: content dimension, dim0, dim1
+            // STUB contains: content dimension and time dimension
             List<MultilanguageString> stubDimensionNames = [
                 new MultilanguageString([
                     new("fi", "content-name.fi"),
                     new("sv", "content-name.sv"),
                     new("en", "content-name.en")
                 ]),
+                new MultilanguageString([
+                    new("fi", "time-name.fi"),
+                    new("sv", "time-name.sv"),
+                    new("en", "time-name.en")
+                ])
+            ];
+
+            return new MultilanguageStringListProperty(stubDimensionNames);
+        }
+
+        private static MultilanguageStringListProperty CreateHeadingProperty(List<Dimension> additionalDimensions)
+        {
+            // HEADING contains: other dimensions starting from dim0
+            List<MultilanguageString> headingDimensionNames = [
                 new MultilanguageString([
                     new("fi", "dim0-name.fi"),
                     new("sv", "dim0-name.sv"),
@@ -216,20 +230,6 @@ namespace PxApi.UnitTests.ModelBuilderTests
                     new("fi", "dim1-name.fi"),
                     new("sv", "dim1-name.sv"),
                     new("en", "dim1-name.en")
-                ])
-            ];
-
-            return new MultilanguageStringListProperty(stubDimensionNames);
-        }
-
-        private static MultilanguageStringListProperty CreateHeadingProperty(List<Dimension> additionalDimensions)
-        {
-            // HEADING contains: time dimension + any additional dimensions
-            List<MultilanguageString> headingDimensionNames = [
-                new MultilanguageString([
-                    new("fi", "time-name.fi"),
-                    new("sv", "time-name.sv"),
-                    new("en", "time-name.en")
                 ])
             ];
 

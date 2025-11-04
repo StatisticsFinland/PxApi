@@ -24,15 +24,11 @@ namespace PxApi.UnitTests.ModelBuilderTests
             const string lang = "en";
 
             string expected =
-                $"\"table-description.en\",\"time-value0-name.en\",\"time-value1-name.en\"{Environment.NewLine}" +
-                $"\"content-value0-name.en dim0-value0-name.en dim1-value0-name.en\",1,5{Environment.NewLine}" +
-                $"\"content-value0-name.en dim0-value0-name.en dim1-value1-name.en\",2,6{Environment.NewLine}" +
-                $"\"content-value0-name.en dim0-value1-name.en dim1-value0-name.en\",3,7{Environment.NewLine}" +
-                $"\"content-value0-name.en dim0-value1-name.en dim1-value1-name.en\",4,8{Environment.NewLine}" +
-                $"\"content-value1-name.en dim0-value0-name.en dim1-value0-name.en\",9,13{Environment.NewLine}" +
-                $"\"content-value1-name.en dim0-value0-name.en dim1-value1-name.en\",10,14{Environment.NewLine}" +
-                $"\"content-value1-name.en dim0-value1-name.en dim1-value0-name.en\",11,15{Environment.NewLine}" +
-                "\"content-value1-name.en dim0-value1-name.en dim1-value1-name.en\",12,16";
+                $"\"table-description.en\",\"dim0-value0-name.en dim1-value0-name.en\",\"dim0-value0-name.en dim1-value1-name.en\",\"dim0-value1-name.en dim1-value0-name.en\",\"dim0-value1-name.en dim1-value1-name.en\"{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en\",1,2,3,4{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en\",5,6,7,8{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value0-name.en\",9,10,11,12{Environment.NewLine}" +
+                "\"content-value1-name.en time-value1-name.en\",13,14,15,16";
             Matrix<DoubleDataValue> requestMatrix = new(metadata, data);
 
             // Act
@@ -66,7 +62,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 [
                     (ContentDimensionValue)completeMeta.Dimensions[0].Values[0] // Content dimension with only one value
                 ]
-                );
+            );
 
             completeMeta.Dimensions[0] = singleValueContentDimension; // Force single value content dimension
 
@@ -75,22 +71,22 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 completeMeta.Dimensions[2].Name,
                 completeMeta.Dimensions[2].AdditionalProperties,
                 new ValueList(
-                    [
+                [
                     completeMeta.Dimensions[2].Values[0] // Note, only one of two dimensions
-                    ]),
+                ]),
                 completeMeta.Dimensions[3].Type
-                );
+            );
 
             Dimension filteredDimOne = new(
                 completeMeta.Dimensions[3].Code,
                 completeMeta.Dimensions[3].Name,
                 completeMeta.Dimensions[3].AdditionalProperties,
                 new ValueList(
-                    [
+                [
                     completeMeta.Dimensions[3].Values[0] // Note, only one of two dimensions (Elimination value)
-                    ]),
-                completeMeta.Dimensions[3].Type
-                );
+                ]),
+            completeMeta.Dimensions[3].Type
+            );
 
             MatrixMetadata filteredMeta = new(
                 completeMeta.DefaultLanguage,
@@ -100,13 +96,14 @@ namespace PxApi.UnitTests.ModelBuilderTests
                     completeMeta.Dimensions[1], // Time dimension
                     filteredDimZero, // Filtered dimension with only one value
                     filteredDimOne // Filtered dimension with only one elimination value
-                    ],
+                ],
                 completeMeta.AdditionalProperties
-                );
+            );
 
             string expected =
-                $"\"table-description.en\",\"time-value0-name.en\",\"time-value1-name.en\"{Environment.NewLine}" +
-                "\"dim0-value0-name.en\",1,2";
+                $"\"table-description.en\",\"dim0-value0-name.en\"{Environment.NewLine}" +
+                $"\"time-value0-name.en\",1{Environment.NewLine}" +
+                "\"time-value1-name.en\",2";
 
             Matrix<DoubleDataValue> requestMatrix = new(filteredMeta, data);
 
@@ -150,13 +147,13 @@ namespace PxApi.UnitTests.ModelBuilderTests
             string[] lines = result.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             Assert.Multiple(() =>
             {
-                Assert.That(lines, Has.Length.EqualTo(9));
+                Assert.That(lines, Has.Length.EqualTo(5));
                 Assert.That(lines[0], Does.Contain("table-description.en")); // Should have the table description
-                Assert.That(lines[0], Does.Contain("time-value0-name.en dim2-value0-name.en dim3-value0-name.en"));
-                Assert.That(lines[0], Does.Contain("time-value0-name.en dim2-value0-name.en dim3-value1-name.en"));
-                Assert.That(lines[0], Does.Contain("time-value0-name.en dim2-value1-name.en dim3-value0-name.en"));
-                Assert.That(lines[0], Does.Contain("time-value0-name.en dim2-value1-name.en dim3-value1-name.en"));
-                Assert.That(lines[0], Does.Contain("time-value1-name.en dim2-value1-name.en dim3-value1-name.en"));
+                Assert.That(lines[0], Does.Contain("dim0-value0-name.en dim1-value0-name.en dim2-value0-name.en dim3-value0-name.en"));
+                Assert.That(lines[0], Does.Contain("dim0-value0-name.en dim1-value0-name.en dim2-value0-name.en dim3-value1-name.en"));
+                Assert.That(lines[0], Does.Contain("dim0-value0-name.en dim1-value0-name.en dim2-value1-name.en dim3-value0-name.en"));
+                Assert.That(lines[0], Does.Contain("dim0-value0-name.en dim1-value0-name.en dim2-value1-name.en dim3-value1-name.en"));
+                Assert.That(lines[0], Does.Contain("dim0-value1-name.en dim1-value1-name.en dim2-value1-name.en dim3-value1-name.en"));
             });
         }
 
@@ -359,47 +356,48 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 complete.Dimensions[0].AdditionalProperties,
                 [
                     (ContentDimensionValue)complete.Dimensions[0].Values[1]
-                    ]
-                    );
+                ]
+            );
             Dimension filteredTime = new(
                 complete.Dimensions[1].Code,
                 complete.Dimensions[1].Name,
                 complete.Dimensions[1].AdditionalProperties,
                 [
                     complete.Dimensions[1].Values[1]
-                    ],
+                ],
                 complete.Dimensions[1].Type
-                );
+            );
             Dimension filteredDimZero = new(
                 complete.Dimensions[2].Code,
                 complete.Dimensions[2].Name,
                 complete.Dimensions[2].AdditionalProperties,
                 [
                     complete.Dimensions[2].Values[1]
-                    ],
+                ],
                 complete.Dimensions[2].Type
-                );
+            );
             Dimension filteredDimOne = new(
                 complete.Dimensions[3].Code,
                 complete.Dimensions[3].Name,
                 complete.Dimensions[3].AdditionalProperties,
                 [
                     complete.Dimensions[3].Values[1]
-                    ],
+                ],
                 complete.Dimensions[3].Type
-                );
+            );
 
             MatrixMetadata filteredMeta = new(
                 complete.DefaultLanguage,
                 complete.AvailableLanguages,
                 [filteredContent, filteredTime, filteredDimZero, filteredDimOne],
                 complete.AdditionalProperties
-                );
+            );
+
             string expected =
-                $"\"table-description.fi\",\"time-value1-name.fi\"{Environment.NewLine}" +
-                "\"content-value1-name.fi dim0-value1-name.fi dim1-value1-name.fi\",1";
+                $"\"table-description.fi\",\"dim0-value1-name.fi dim1-value1-name.fi\"{Environment.NewLine}" +
+                "\"content-value1-name.fi time-value1-name.fi\",1";
             Matrix<DoubleDataValue> requestMatrix = new(filteredMeta, [new(1, DataValueType.Exists)]);
-            
+
             // Act
             string result = CsvBuilder.BuildCsvResponse(requestMatrix, filteredMeta.DefaultLanguage, complete);
 
@@ -441,7 +439,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 new ValueList([completeMeta.Dimensions[2].Values[1]]), // Only elimination value
                 completeMeta.Dimensions[2].Type
                 );
-            
+
             MatrixMetadata filteredMeta = new(
                 completeMeta.DefaultLanguage,
                 completeMeta.AvailableLanguages,
@@ -455,11 +453,12 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 );
 
             string expected =
-                $"\"table-description.en\",\"time-value0-name.en\",\"time-value1-name.en\"{Environment.NewLine}" +
-                $"\"content-value0-name.en dim1-value0-name.en\",1,3{Environment.NewLine}" +
-                $"\"content-value0-name.en dim1-value1-name.en\",2,4{Environment.NewLine}" +
-                $"\"content-value1-name.en dim1-value0-name.en\",5,7{Environment.NewLine}" +
-                $"\"content-value1-name.en dim1-value1-name.en\",6,8";
+                $"\"table-description.en\",\"dim1-value0-name.en\",\"dim1-value1-name.en\"{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en\",1,2{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en\",3,4{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value0-name.en\",5,6{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value1-name.en\",7,8";
+
             Matrix<DoubleDataValue> requestMatrix = new(filteredMeta, data);
 
             // Act
@@ -470,7 +469,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             {
                 Assert.That(result, Is.Not.Null.And.Not.Empty);
                 Assert.That(result, Is.EqualTo(expected));
-                // Verify that elimination dimensions are filtered out from headers (they should not appear in row headers)
+                // Verify that elimination dimensions are filtered out from headers
                 Assert.That(result, Does.Not.Contain("dim0-value0-name.en"));
             });
         }
