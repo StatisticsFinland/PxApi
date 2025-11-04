@@ -1,4 +1,4 @@
-﻿using PxApi.Configuration;
+using PxApi.Configuration;
 using PxApi.Models;
 using PxApi.Utilities;
 
@@ -21,8 +21,8 @@ namespace PxApi.DataSources
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = database.Id,
-                    [LoggerConsts.CLASS_NAME] = nameof(DataBaseConnectorFactoryImpl),
-                    [LoggerConsts.METHOD_NAME] = nameof(GetConnector)
+                    [LoggerConsts.CONTROLLER] = nameof(DataBaseConnectorFactoryImpl),
+                    [LoggerConsts.FUNCTION] = nameof(GetConnector)
                 }))
             {
                 _logger.LogDebug("Getting database connector for database {DatabaseId}", database.Id);
@@ -44,8 +44,8 @@ namespace PxApi.DataSources
             using (_logger.BeginScope(
                 new Dictionary<string, object>
                 {
-                    [LoggerConsts.CLASS_NAME] = nameof(DataBaseConnectorFactoryImpl),
-                    [LoggerConsts.METHOD_NAME] = nameof(GetAvailableDatabases)
+                    [LoggerConsts.CONTROLLER] = nameof(DataBaseConnectorFactoryImpl),
+                    [LoggerConsts.FUNCTION] = nameof(GetAvailableDatabases)
                 }))
             {
                 _logger.LogDebug("Getting list of all available databases");

@@ -8,6 +8,7 @@ using PxApi.Models.JsonStat;
 using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
 using PxApi.UnitTests.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -15,13 +16,15 @@ namespace PxApi.UnitTests.ControllerTests
     internal class MetadataControllerTest
     {
         private Mock<ICachedDataSource> _mockDbConnector;
+        private Mock<ILogger<MetadataController>> _mockLogger;
         private MetadataController _controller;
 
         [SetUp]
         public void SetUp()
         {
             _mockDbConnector = new Mock<ICachedDataSource>();
-            _controller = new MetadataController(_mockDbConnector.Object)
+            _mockLogger = new Mock<ILogger<MetadataController>>();
+            _controller = new MetadataController(_mockDbConnector.Object, _mockLogger.Object)
             {
                 ControllerContext = new ControllerContext
                 {
