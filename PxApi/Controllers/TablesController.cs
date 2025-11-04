@@ -39,7 +39,7 @@ namespace PxApi.Controllers
         [HttpGet("{database}")]
         [OperationId("listTables")]
         [Produces("application/json")]
-        [ProducesResponseType(200)]
+        [ProducesResponseType(typeof(PagedTableList), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         public async Task<ActionResult<PagedTableList>> GetTablesAsync(

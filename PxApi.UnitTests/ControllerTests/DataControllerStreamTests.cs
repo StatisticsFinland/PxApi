@@ -370,7 +370,7 @@ namespace PxApi.UnitTests.ControllerTests
                 // Verify all values have correct DataValueType
                 Assert.That(dataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
-                // Compare actual data values against expected array
+                // Compare actual data values against expectedFi array
                 double[] actualValues = [.. dataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
@@ -437,7 +437,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse1.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 Assert.That(dataResponse2.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
-                // Compare actual data values against expected array for both calls
+                // Compare actual data values against expectedFi array for both calls
                 double[] actualValues1 = [.. dataResponse1.Value.Select(d => d.UnsafeValue)];
                 double[] actualValues2 = [.. dataResponse2.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualValues1, Is.EqualTo(expectedValues));
@@ -516,11 +516,11 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(supersetDataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 Assert.That(subsetDataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
-                // Compare actual superset data against expected array
+                // Compare actual superset data against expectedFi array
                 double[] actualSupersetValues = [.. supersetDataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualSupersetValues, Is.EqualTo(expectedSupersetValues));
                 
-                // Compare actual subset data against expected array
+                // Compare actual subset data against expectedFi array
                 double[] actualSubsetValues = [.. subsetDataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualSubsetValues, Is.EqualTo(expectedSubsetValues));
             });
@@ -577,7 +577,7 @@ namespace PxApi.UnitTests.ControllerTests
                 // Verify all values have correct DataValueType
                 Assert.That(dataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
-                // Compare actual data against expected array
+                // Compare actual data against expectedFi array
                 double[] actualValues = [.. dataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
@@ -648,7 +648,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(jsonStat.Dimension.ContainsKey("alue"));
                 Assert.That(jsonStat.Dimension.ContainsKey("tiedot"));
                 
-                // Verify size array matches expected dimensions
+                // Verify size array matches expectedFi dimensions
                 Assert.That(jsonStat.Size, Has.Count.EqualTo(3));
                 Assert.That(jsonStat.Size[0], Is.EqualTo(10)); // 10 Vuosineljännes values  
                 Assert.That(jsonStat.Size[1], Is.EqualTo(2)); // 2 Alue values
@@ -657,7 +657,7 @@ namespace PxApi.UnitTests.ControllerTests
                 // Verify all data points exist
                 Assert.That(jsonStat.Value.All(v => v.Type == DataValueType.Exists), Is.True);
                 
-                // Compare actual data against expected array
+                // Compare actual data against expectedFi array
                 double[] actualValues = [.. jsonStat.Value.Select(v => v.UnsafeValue)];
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
@@ -737,7 +737,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(jsonStat1.Value.All(v => v.Type == DataValueType.Exists), Is.True);
                 Assert.That(jsonStat2.Value.All(v => v.Type == DataValueType.Exists), Is.True);
                 
-                // Compare actual data against expected array for both calls
+                // Compare actual data against expectedFi array for both calls
                 double[] actualValues1 = [.. jsonStat1.Value.Select(v => v.UnsafeValue)];
                 double[] actualValues2 = [.. jsonStat2.Value.Select(v => v.UnsafeValue)];
                 Assert.That(actualValues1, Is.EqualTo(expectedValues));

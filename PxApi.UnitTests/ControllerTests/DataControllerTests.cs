@@ -39,7 +39,7 @@ namespace PxApi.UnitTests.ControllerTests
             SetupAppSettings();
         }
 
-        private static void SetupAppSettings(uint jsonMaxCells =0, uint jsonStatMaxCells =0)
+        private static void SetupAppSettings(uint jsonMaxCells = 0, uint jsonStatMaxCells = 0)
         {
             Dictionary<string, string?> baseConfig = TestConfigFactory.Base();
             Dictionary<string, string?> mountedDb = TestConfigFactory.MountedDb(0, "testdb", "datasource/root/");
@@ -53,12 +53,12 @@ namespace PxApi.UnitTests.ControllerTests
 
             Dictionary<string, string?> configData = TestConfigFactory.Merge(baseConfig, mountedDb, extraDbSettings);
 
-            if (jsonMaxCells >0)
+            if (jsonMaxCells > 0)
             {
                 configData["QueryLimits:JsonMaxCells"] = jsonMaxCells.ToString();
             }
 
-            if (jsonStatMaxCells >0)
+            if (jsonStatMaxCells > 0)
             {
                 configData["QueryLimits:JsonStatMaxCells"] = jsonStatMaxCells.ToString();
             }
@@ -113,7 +113,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             string[] filters = ["dim0-code:code=dim0-value1-code"];
             string lang = "en";
-            
+
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
@@ -141,7 +141,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             string[] filters = ["dim0-code:code=dim0-value1-code"];
             string lang = "en";
-            
+
             double[] expectedValues = [1.0, 2.0];
 
             SetupMockDataSourceForValidRequest(database, table);
@@ -156,7 +156,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(okResult, Is.Not.Null);
             JsonStat2? jsonStat = okResult.Value as JsonStat2;
             Assert.That(jsonStat, Is.Not.Null);
-            
+
             var series = jsonStat.Value.Select(v => v.UnsafeValue);
             Assert.That(series, Is.EquivalentTo(expectedValues));
         }
@@ -213,7 +213,7 @@ namespace PxApi.UnitTests.ControllerTests
             string database = "testdb";
             string table = "testtable";
             Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
-            
+
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
@@ -240,7 +240,7 @@ namespace PxApi.UnitTests.ControllerTests
             string database = "testdb";
             string table = "testtable";
             Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
-            
+
             double[] expectedValues = [1.0, 2.0];
 
             SetupMockDataSourceForValidRequest(database, table);
@@ -255,7 +255,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(okResult, Is.Not.Null);
             JsonStat2? jsonStat = okResult.Value as JsonStat2;
             Assert.That(jsonStat, Is.Not.Null);
-            
+
             var series = jsonStat.Value.Select(v => v.UnsafeValue);
             Assert.That(series, Is.EquivalentTo(expectedValues));
         }
@@ -328,7 +328,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             string[] filters = ["dim0:code=value1"];
             string lang = "invalid";
-            
+
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
@@ -350,7 +350,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
             string lang = "invalid";
-            
+
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
@@ -368,7 +368,6 @@ namespace PxApi.UnitTests.ControllerTests
 
         #region Exception Handling Tests
 
-        // TODO: TÄÄ
         [Test]
         public async Task GetDataAsync_FileNotFound_ReturnsNotFound()
         {
@@ -376,7 +375,7 @@ namespace PxApi.UnitTests.ControllerTests
             string database = "testdb";
             string table = "testtable";
             string[] filters = ["dim0:code=value1"];
-            
+
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             PxFileRef? pxFileRef = null;
 
@@ -399,7 +398,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             string[] filters = ["dim0:code=value1"];
             string errorMessage = "Invalid argument";
-            
+
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
 
@@ -446,7 +445,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
             string errorMessage = "Invalid argument";
-            
+
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
 
@@ -471,9 +470,9 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetDataAsync_RequestExceedsLimit_ReturnsContentTooLarge()
         {
             // Arrange
-            const uint limit = 1; 
+            const uint limit = 1;
             SetupAppSettings(jsonStatMaxCells: limit);
-            
+
             string database = "testdb";
             string table = "testtable";
             string[] filters = ["dim0-code:code=dim0-value1-code"];
@@ -503,7 +502,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Arrange
             const uint limit = 1;
             SetupAppSettings(jsonStatMaxCells: limit);
-            
+
             string database = "testdb";
             string table = "testtable";
             Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
@@ -679,6 +678,72 @@ namespace PxApi.UnitTests.ControllerTests
                 // Assert
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,POST,HEAD,OPTIONS"));
+            });
+        }
+
+        #endregion
+
+        #region CSV Tests
+
+        [Test]
+        public async Task GetDataAsync_CsvAcceptHeader_ReturnsCsvContent()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+            string lang = "en";
+
+            SetupMockDataSourceForValidRequest(database, table);
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "text/csv";
+            string expected =
+                $"\"table-description.en\",\"dim0-value1-name.en dim1-value0-name.en\"{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en\",1{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en\",2";
+
+            // Act
+            IActionResult result = await _controller.GetDataAsync(database, table, filters, lang);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ContentResult>());
+            ContentResult? contentResult = result as ContentResult;
+            Assert.That(contentResult, Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(contentResult.ContentType, Is.EqualTo("text/csv"));
+                Assert.That(contentResult.Content, Is.Not.Null.And.Not.Empty);
+                Assert.That(contentResult.Content, Is.EqualTo(expected));
+            });
+        }
+
+        [Test]
+        public async Task PostDataAsync_CsvAcceptHeader_ReturnsCsvContent()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+            string lang = "en";
+
+            SetupMockDataSourceForValidRequest(database, table);
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "text/csv";
+            string expected =
+                $"\"table-description.en\",\"dim0-value1-name.en dim1-value0-name.en\"{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en\",1{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en\",2";
+
+            // Act
+            IActionResult result = await _controller.PostDataAsync(database, table, query, lang);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ContentResult>());
+            ContentResult? contentResult = result as ContentResult;
+            Assert.That(contentResult, Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(contentResult.ContentType, Is.EqualTo("text/csv"));
+                Assert.That(contentResult.Content, Is.Not.Null.And.Not.Empty);
+                Assert.That(contentResult.Content, Is.EqualTo(expected));
             });
         }
 

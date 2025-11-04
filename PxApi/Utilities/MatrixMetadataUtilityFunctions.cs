@@ -1,4 +1,4 @@
-﻿using Px.Utils.Models.Metadata.Dimensions;
+using Px.Utils.Models.Metadata.Dimensions;
 using Px.Utils.Models.Metadata.Enums;
 using Px.Utils.Models.Metadata.MetaProperties;
 using Px.Utils.Models.Metadata;
@@ -62,6 +62,30 @@ namespace PxApi.Utilities
                 else if (property is StringProperty stringProperty)
                 {
                     return stringProperty.Value;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Gets a list of values from a property collection for a given language
+        /// </summary>
+        /// <param name="propertyCollection">This property collection</param>
+        /// <param name="key">The property key to search for</param>
+        /// <param name="lang">Language to flatten the string list for if property is multilingual</param>
+        /// <returns>Array of strings if found, otherwise null.</returns>
+        public static string[]? GetValueListByLanguage(this IReadOnlyDictionary<string, MetaProperty> propertyCollection, string key, string lang)
+        {
+            if (propertyCollection.TryGetValue(key, out MetaProperty? property))
+            {
+                if (property is MultilanguageStringListProperty multilanguageStringListProperty)
+                {
+                    return [.. multilanguageStringListProperty.Value.Select(item => item[lang])];
+                }
+                else if (property is StringListProperty stringListProperty)
+                {
+                    return [.. stringListProperty.Value];
                 }
             }
 

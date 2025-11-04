@@ -31,10 +31,12 @@ namespace PxApi.Controllers
         /// <param name="lang">Optional language code used to resolve name and description (defaults to fi when omitted).</param>
         /// <returns>A list of <see cref="DataBaseListingItem"/> objects describing each available database.</returns>
         /// <response code="200">Successful retrieval of database listing.</response>
+        /// <response code="400">Requested language not supported.</response>
         [HttpGet]
         [OperationId("listDatabases")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(List<DataBaseListingItem>),200, "application/json")]
+        [ProducesResponseType(400)]
         public async Task<ActionResult<List<DataBaseListingItem>>> GetDatabases([FromQuery] string? lang = null)
         {
             AppSettings settings = AppSettings.Active;

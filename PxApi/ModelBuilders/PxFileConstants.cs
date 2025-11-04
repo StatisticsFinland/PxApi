@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Collections.Generic;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Data;
@@ -51,6 +51,16 @@ namespace PxApi.ModelBuilders
         public const string DESCRIPTION = "DESCRIPTION";
 
         /// <summary>
+        /// Key for STUB in the Px files
+        /// </summary>
+        public const string STUB = "STUB";
+
+        /// <summary>
+        /// Key for HEADING in the Px files
+        /// </summary>
+        public const string HEADING = "HEADING";
+
+        /// <summary>
         /// Key for table META-ID in the Px files
         /// </summary>
         public const string META_ID = "META-ID";
@@ -64,6 +74,11 @@ namespace PxApi.ModelBuilders
         /// Nominal value for table META-ID in the Px files
         /// </summary>
         public const string NOMINAL_VALUE = "SCALE-TYPE=nominal";
+
+        /// <summary>
+        /// Key for ELIMINATION values in the Px files
+        /// </summary>
+        public const string ELIMINATION = "ELIMINATION";
 
         /// <summary>
         /// Dictionary containing translations for fi, sv and en for missing data value types.
