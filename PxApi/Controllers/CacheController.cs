@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.FeatureManagement.Mvc;
 using PxApi.Authentication;
 using PxApi.Caching;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Collections.Immutable;
+using PxApi.OpenApi;
 
 namespace PxApi.Controllers
 {
@@ -33,6 +34,7 @@ namespace PxApi.Controllers
         /// <param name="database">Name of the database with the table cache to clear</param>
         /// <param name="id">Id of the px file to be cleared</param>
         [HttpDelete("{database}/{id}")]
+        [OperationId("clearTableCache")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(object), 200)]
         [ProducesResponseType(typeof(object), 401)]
@@ -85,6 +87,7 @@ namespace PxApi.Controllers
         /// <response code="404">If the database was not found.</response>
         /// <response code="500">If an error occurs while clearing cache entries.</response>
         [HttpDelete("{database}")]
+        [OperationId("clearDatabaseCache")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(object), 200)]
         [ProducesResponseType(typeof(object), 401)]

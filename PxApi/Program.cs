@@ -173,6 +173,9 @@ namespace PxApi
 
                 // Global 500 response description for all operations (added via operation filter style hook)
                 c.OperationFilter<UnhandledErrorResponseOperationFilter>();
+
+                // Attribute-based operationId assignment
+                c.OperationFilter<OperationIdOperationFilter>();
             });
             
             // Configure MemoryCache with global cache size limit

@@ -10,6 +10,7 @@ using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Models;
 using PxApi.Utilities;
+using PxApi.OpenApi;
 
 namespace PxApi.Controllers
 {
@@ -39,6 +40,7 @@ namespace PxApi.Controllers
         /// <response code="413">Request exceeds maximum allowed cell count.</response>
         /// <response code="415">Unsupported Content-Type header.</response>
         [HttpGet("{database}/{table}")]
+        [OperationId("getData")]
         [Produces("application/json", "text/csv")]
         [ProducesResponseType(typeof(JsonStat2), 200, "application/json")]
         [ProducesResponseType(typeof(string), 200, "text/csv")]
@@ -81,6 +83,7 @@ namespace PxApi.Controllers
         /// <response code="413">Request exceeds maximum allowed cell count.</response>
         /// <response code="415">Unsupported Content-Type for request body.</response>
         [HttpPost("{database}/{table}")]
+        [OperationId("postData")]
         [Consumes("application/json")]
         [Produces("application/json", "text/csv")]
         [ProducesResponseType(typeof(JsonStat2), 200, "application/json")]
@@ -115,6 +118,7 @@ namespace PxApi.Controllers
         /// <param name="table">PX table identifier.</param>
         /// <response code="200">Returns allowed methods in the Allow response header.</response>
         [HttpOptions("{database}/{table}")]
+        [OperationId("optionsData")]
         [ProducesResponseType(200)]
         public IActionResult OptionsData(string database, string table)
         {
@@ -132,6 +136,7 @@ namespace PxApi.Controllers
         /// <response code="400">Invalid language requested.</response>
         /// <response code="404">Database or table not found.</response>
         [HttpHead("{database}/{table}")]
+        [OperationId("headData")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]

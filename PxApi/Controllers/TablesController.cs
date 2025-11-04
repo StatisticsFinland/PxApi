@@ -1,4 +1,3 @@
-
 using Microsoft.AspNetCore.Mvc;
 using Px.Utils.Models.Metadata.Dimensions;
 using Px.Utils.Models.Metadata.ExtensionMethods;
@@ -10,6 +9,7 @@ using PxApi.Models;
 using PxApi.Utilities;
 using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
+using PxApi.OpenApi;
 
 namespace PxApi.Controllers
 {
@@ -37,6 +37,7 @@ namespace PxApi.Controllers
         /// <response code="400">Invalid query parameter was provided (page &lt; 1, pageSize outside 1-100 or unsupported language).</response>
         /// <response code="404">Database not found.</response>
         [HttpGet("{database}")]
+        [OperationId("listTables")]
         [Produces("application/json")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
@@ -122,6 +123,7 @@ namespace PxApi.Controllers
         /// <response code="400">Invalid paging parameters.</response>
         /// <response code="404">Database not found.</response>
         [HttpHead("{database}")]
+        [OperationId("headTables")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
@@ -139,6 +141,7 @@ namespace PxApi.Controllers
         /// <param name="database">Unique identifier of the database.</param>
         /// <response code="200">Returns allowed methods in the Allow header.</response>
         [HttpOptions("{database}")]
+        [OperationId("optionsTables")]
         [ProducesResponseType(200)]
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Needs to match route signature.")]
         public IActionResult OptionsTables(string database)
