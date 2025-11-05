@@ -9,6 +9,7 @@ using PxApi.Models;
 using PxApi.Utilities;
 using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
+using PxApi.Services;
 using PxApi.OpenApi;
 
 namespace PxApi.Controllers
@@ -21,7 +22,7 @@ namespace PxApi.Controllers
     /// </remarks>
     [Route("tables")]
     [ApiController]
-    public class TablesController(ICachedDataSource cachedConnector, ILogger<TablesController> logger) : ControllerBase
+    public class TablesController(ICachedDataSource cachedConnector, ILogger<TablesController> logger, IAuditLogService auditLogger) : ControllerBase
     {
         private const int MAX_PAGE_SIZE = 100;
 
@@ -59,6 +60,10 @@ namespace PxApi.Controllers
             {
                 DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
                 if (dataBaseRef is null) return NotFound("Database not found.");
+
+                // Audit after validation and database existence confirmation.
+                auditLogger.LogAuditEvent(nameof(GetTablesAsync), dataBaseRef.Value.Id);
+
                 ImmutableSortedDictionary<string, PxFileRef> tableList = await cachedConnector.GetFileListCachedAsync(dataBaseRef.Value);
                 PagedTableList pagedTableList = new()
                 {
@@ -132,6 +137,9 @@ namespace PxApi.Controllers
             if (page < 1 || pageSize < 1 || pageSize > MAX_PAGE_SIZE) return BadRequest();
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
             if (dataBaseRef is null) return NotFound();
+
+            // Audit successful HEAD validation.
+            auditLogger.LogAuditEvent(nameof(HeadTablesAsync), dataBaseRef.Value.Id);
             return Ok();
         }
 
@@ -146,7 +154,12 @@ namespace PxApi.Controllers
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Needs to match route signature.")]
         public IActionResult OptionsTables(string database)
         {
-            Response.Headers.Allow = "GET,HEAD,OPTIONS";
+            DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
+            if (dataBaseRef is null) return NotFound();
+
+            const string methods = "GET,HEAD,OPTIONS";
+            Response.Headers.Allow = methods;
+            auditLogger.LogAuditEvent(nameof(OptionsTables), dataBaseRef.Value.Id);
             return Ok();
         }
 

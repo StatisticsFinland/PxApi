@@ -3,15 +3,16 @@ using Microsoft.Net.Http.Headers;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
+using Px.Utils.Models;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.ModelBuilders;
 using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Models;
-using PxApi.Utilities;
-using Px.Utils.Models;
 using PxApi.OpenApi;
+using PxApi.Services;
+using PxApi.Utilities;
 
 namespace PxApi.Controllers
 {
@@ -20,14 +21,15 @@ namespace PxApi.Controllers
     /// </summary>
     /// <param name="dataSource">Cached data source for accessing PX file metadata and values.</param>
     /// <param name="logger">Logger instance.</param>
+    /// <param name="auditLogService">Audit logging service.</param>
     [ApiController]
     [Route("data")]
-    public class DataController(ICachedDataSource dataSource, ILogger<DataController> logger) : ControllerBase
+    public class DataController(ICachedDataSource dataSource, ILogger<DataController> logger, IAuditLogService auditLogService) : ControllerBase
     {
         private static readonly string[] SupportedMediaTypes = ["application/json", "text/csv"];
 
         /// <summary>
-        /// Retrieves data using query string filters. Content negotiation based on the Accept header (application/json for JSON-stat, text/csv for CSV; */* treated as JSON).
+        /// Retrieve data using query string filters. Content negotiation based on the Accept header (application/json for JSON-stat, text/csv for CSV; */* treated as JSON).
         /// </summary>
         /// <param name="database">Database identifier containing the table.</param>
         /// <param name="table">PX table identifier.</param>
@@ -76,6 +78,8 @@ namespace PxApi.Controllers
                     logger.LogDebug(argEx, "Invalid filters provided: {Message}", argEx.Message);
                     return BadRequest(argEx.Message);
                 }
+
+                auditLogService.LogAuditEvent(nameof(GetDataAsync), $"{database}/{table}");
                 return await GenerateResponse(database, table, lang, query);
             }
         }
@@ -121,6 +125,7 @@ namespace PxApi.Controllers
                 { LoggerConsts.PX_FILE, table }
             }))
             {
+                auditLogService.LogAuditEvent(nameof(PostDataAsync), $"{database}/{table}");
                 return await GenerateResponse(database, table, lang, query);
             }
         }
@@ -147,6 +152,7 @@ namespace PxApi.Controllers
             }))
             {
                 Response.Headers.Allow = "GET,POST,HEAD,OPTIONS";
+                auditLogService.LogAuditEvent(nameof(OptionsData), $"{database}/{table}");
                 return Ok();
             }
         }
@@ -186,6 +192,7 @@ namespace PxApi.Controllers
                     IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
                     string actualLang = lang ?? meta.DefaultLanguage;
                     if (!meta.AvailableLanguages.Contains(actualLang)) return BadRequest();
+                    auditLogService.LogAuditEvent(nameof(HeadDataAsync), $"{database}/{table}");
                     return Ok();
                 }
                 catch (ArgumentException argEx)

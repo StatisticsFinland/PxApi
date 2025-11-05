@@ -14,6 +14,7 @@ using PxApi.Models.QueryFilters;
 using PxApi.Models;
 using PxApi.UnitTests.Utils;
 using System.Text;
+using PxApi.Services;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -254,6 +255,7 @@ namespace PxApi.UnitTests.ControllerTests
         private Mock<IDataBaseConnectorFactory> _mockConnectorFactory = null!;
         private Mock<IDataBaseConnector> _mockConnector = null!;
         private Mock<ILogger<DataController>> _mockLogger = null!;
+        private Mock<IAuditLogService> _mockAuditLogService = null!;
         private CachedDataSource _cachedDataSource = null!;
         private DataController _controller = null!;
         private DataBaseRef _testDatabase;
@@ -266,6 +268,7 @@ namespace PxApi.UnitTests.ControllerTests
             _mockConnectorFactory = new Mock<IDataBaseConnectorFactory>();
             _mockConnector = new Mock<IDataBaseConnector>();
             _mockLogger = new Mock<ILogger<DataController>>();
+            _mockAuditLogService = new Mock<IAuditLogService>();
 
             SetupConfiguration();
             SetupTestData();
@@ -275,7 +278,7 @@ namespace PxApi.UnitTests.ControllerTests
             DatabaseCache databaseCache = new(memoryCache);
             _cachedDataSource = new CachedDataSource(_mockConnectorFactory.Object, databaseCache);
             
-            _controller = new DataController(_cachedDataSource, _mockLogger.Object)
+            _controller = new DataController(_cachedDataSource, _mockLogger.Object, _mockAuditLogService.Object)
             {
                 ControllerContext = new ControllerContext
                 {

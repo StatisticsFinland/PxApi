@@ -9,6 +9,7 @@ using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
 using PxApi.UnitTests.Utils;
 using Microsoft.Extensions.Logging;
+using PxApi.Services;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -17,6 +18,7 @@ namespace PxApi.UnitTests.ControllerTests
     {
         private Mock<ICachedDataSource> _mockDbConnector;
         private Mock<ILogger<MetadataController>> _mockLogger;
+        private Mock<IAuditLogService> _mockAuditLogService;
         private MetadataController _controller;
 
         [SetUp]
@@ -24,7 +26,8 @@ namespace PxApi.UnitTests.ControllerTests
         {
             _mockDbConnector = new Mock<ICachedDataSource>();
             _mockLogger = new Mock<ILogger<MetadataController>>();
-            _controller = new MetadataController(_mockDbConnector.Object, _mockLogger.Object)
+            _mockAuditLogService = new Mock<IAuditLogService>();
+            _controller = new MetadataController(_mockDbConnector.Object, _mockLogger.Object, _mockAuditLogService.Object)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -45,6 +48,48 @@ namespace PxApi.UnitTests.ControllerTests
                 }
             );
             TestConfigFactory.BuildAndLoad(configData);
+        }
+
+        [Test]
+        public async Task GetTableMetadataById_ValidRequest_LogsAuditEvent()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            string lang = "en";
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+            List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file)).ReturnsAsync(groups);
+
+            // Act
+            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+            _mockAuditLogService.Verify(x => x.LogAuditEvent("GetTableMetadataById", $"{database.Id}/{file.Id}"), Times.Once);
+        }
+
+        [Test]
+        public async Task HeadMetadataAsync_ValidRequest_LogsAuditEvent()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
+            string lang = "en";
+
+            // Act
+            IActionResult result = await _controller.HeadMetadataAsync(database.Id, file.Id, lang);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkResult>());
+            _mockAuditLogService.Verify(x => x.LogAuditEvent("HeadMetadataAsync", $"{database.Id}/{file.Id}"), Times.Once);
         }
 
         [Test]
@@ -457,6 +502,25 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow.ToString(), Is.EqualTo("GET,HEAD,OPTIONS"));
             });
+        }
+
+        [Test]
+        public void OptionsMetadata_ReturnsOkWithAllowHeader_LogsAudit()
+        {
+            // Arrange
+            string database = "exampledb";
+            string table = "table1";
+
+            // Act
+            IActionResult result = _controller.OptionsMetadata(database, table);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.InstanceOf<OkResult>());
+                Assert.That(_controller.Response.Headers.Allow.ToString(), Is.EqualTo("GET,HEAD,OPTIONS"));
+            });
+            _mockAuditLogService.Verify(x => x.LogAuditEvent("OptionsMetadata", $"{database}/{table}"), Times.Once);
         }
     }
 }
