@@ -3,7 +3,7 @@ namespace PxApi.Utilities
     /// <summary>
     /// Constants to keep HTTP responses standardized.
     /// </summary>
-    public class HttpConsts
+    public static class HttpConsts
     {
         /// <summary>
         /// Use to indicate in http responses that an internal server error has occurred.

@@ -24,7 +24,6 @@ namespace PxApi.Services
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILogger<AuditLogService> _logger;
-        private readonly IConfiguration _configuration;
         private readonly bool _auditEnabled;
         private readonly IReadOnlyList<string> _headerWhitelist;
 
@@ -38,9 +37,8 @@ namespace PxApi.Services
         {
             _httpContextAccessor = httpContextAccessor;
             _logger = logger;
-            _configuration = configuration;
-            _auditEnabled = _configuration.GetValue<bool>("LogOptions:AuditLog:Enabled");
-            IEnumerable<string>? headers = _configuration.GetSection("LogOptions:AuditLog:Headers").Get<IEnumerable<string>>();
+            _auditEnabled = configuration.GetValue<bool>("LogOptions:AuditLog:Enabled");
+            IEnumerable<string>? headers = configuration.GetSection("LogOptions:AuditLog:Headers").Get<IEnumerable<string>>();
             _headerWhitelist = headers is null ? [] : headers.ToList();
         }
 

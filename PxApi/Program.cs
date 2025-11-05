@@ -41,15 +41,14 @@ namespace PxApi
             Logger logger = LogManager.GetCurrentClassLogger();
             try
             {
-                logger.Debug("Main called and logger initialized. Environment={Environment}", builder.Environment.EnvironmentName);
+                logger.Debug("Main called and logger initialized. Environment={Environment}", "AuditEnabled={AuditEnabled}",
+                    builder.Environment.EnvironmentName,
+                    builder.Configuration.GetValue<bool>("LogOptions:AuditLog:Enabled"));
 
                 // Add services to the container.
                 AddServices(builder.Services);
 
                 WebApplication app = builder.Build();
-
-                // Emit a startup info log to verify writing to file target.
-                logger.Info("Application starting. AuditEnabled={AuditEnabled}", builder.Configuration.GetValue<bool>("LogOptions:AuditLog:Enabled"));
 
                 // Validate database connections before starting the application
                 logger.Info("Validating database connections before starting application");
