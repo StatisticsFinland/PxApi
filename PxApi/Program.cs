@@ -41,7 +41,7 @@ namespace PxApi
             Logger logger = LogManager.GetCurrentClassLogger();
             try
             {
-                logger.Debug("Main called and logger initialized. Environment={Environment}", "AuditEnabled={AuditEnabled}",
+                logger.Debug("Main called and logger initialized. Environment={Environment} AuditEnabled={AuditEnabled}",
                     builder.Environment.EnvironmentName,
                     builder.Configuration.GetValue<bool>("LogOptions:AuditLog:Enabled"));
 

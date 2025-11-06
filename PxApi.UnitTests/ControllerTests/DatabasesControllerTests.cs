@@ -6,9 +6,9 @@ using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.Models;
+using PxApi.Services;
 using PxApi.UnitTests.Utils;
 using System.Collections.Immutable;
-using PxApi.Services; // Added for audit logging
 
 namespace PxApi.UnitTests.ControllerTests
 {

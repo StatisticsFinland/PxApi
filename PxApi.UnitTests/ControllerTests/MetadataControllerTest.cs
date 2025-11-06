@@ -1,15 +1,15 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Px.Utils.Models.Metadata;
 using PxApi.Caching;
 using PxApi.Controllers;
 using PxApi.Models.JsonStat;
 using PxApi.Models;
+using PxApi.Services;
 using PxApi.UnitTests.ModelBuilderTests;
 using PxApi.UnitTests.Utils;
-using Microsoft.Extensions.Logging;
-using PxApi.Services;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -17,17 +17,16 @@ namespace PxApi.UnitTests.ControllerTests
     internal class MetadataControllerTest
     {
         private Mock<ICachedDataSource> _mockDbConnector;
-        private Mock<ILogger<MetadataController>> _mockLogger;
         private Mock<IAuditLogService> _mockAuditLogService;
         private MetadataController _controller;
 
         [SetUp]
         public void SetUp()
         {
+            Mock<ILogger<MetadataController>> mockLogger = new();
             _mockDbConnector = new Mock<ICachedDataSource>();
-            _mockLogger = new Mock<ILogger<MetadataController>>();
             _mockAuditLogService = new Mock<IAuditLogService>();
-            _controller = new MetadataController(_mockDbConnector.Object, _mockLogger.Object, _mockAuditLogService.Object)
+            _controller = new MetadataController(_mockDbConnector.Object, mockLogger.Object, _mockAuditLogService.Object)
             {
                 ControllerContext = new ControllerContext
                 {

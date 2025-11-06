@@ -29,7 +29,7 @@ namespace PxApi.Controllers
         private static readonly string[] SupportedMediaTypes = ["application/json", "text/csv"];
 
         /// <summary>
-        /// Retrieve data using query string filters. Content negotiation based on the Accept header (application/json for JSON-stat, text/csv for CSV; */* treated as JSON).
+        /// Retrieves data using query string filters. Content negotiation based on the Accept header (application/json for JSON-stat, text/csv for CSV; */* treated as JSON).
         /// </summary>
         /// <param name="database">Database identifier containing the table.</param>
         /// <param name="table">PX table identifier.</param>
@@ -76,7 +76,7 @@ namespace PxApi.Controllers
                 catch (ArgumentException argEx)
                 {
                     logger.LogDebug(argEx, "Invalid filters provided: {Message}", argEx.Message);
-                    return BadRequest(argEx.Message);
+                    return BadRequest(HttpConsts.BAD_REQUEST_PARAMS);
                 }
 
                 auditLogService.LogAuditEvent(nameof(GetDataAsync), $"{database}/{table}");

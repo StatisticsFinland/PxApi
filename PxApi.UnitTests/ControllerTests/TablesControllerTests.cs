@@ -9,10 +9,10 @@ using PxApi.Caching;
 using PxApi.Controllers;
 using PxApi.ModelBuilders;
 using PxApi.Models;
+using PxApi.Services;
 using PxApi.UnitTests.ModelBuilderTests;
 using PxApi.UnitTests.Utils;
 using System.Collections.Immutable;
-using PxApi.Services; // Added for audit logging
 
 namespace PxApi.UnitTests.ControllerTests
 {
