@@ -13,6 +13,7 @@ using PxApi.Models.QueryFilters;
 using PxApi.Models;
 using PxApi.UnitTests.ModelBuilderTests;
 using PxApi.UnitTests.Utils;
+using PxApi.Services;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -21,6 +22,7 @@ namespace PxApi.UnitTests.ControllerTests
     {
         private Mock<ICachedDataSource> _cachedDbConnector = null!;
         private Mock<ILogger<DataController>> _mockLogger = null!;
+        private Mock<IAuditLogService> _mockAuditLogService = null!;
         private DataController _controller = null!;
 
         [SetUp]
@@ -28,7 +30,8 @@ namespace PxApi.UnitTests.ControllerTests
         {
             _cachedDbConnector = new Mock<ICachedDataSource>();
             _mockLogger = new Mock<ILogger<DataController>>();
-            _controller = new DataController(_cachedDbConnector.Object, _mockLogger.Object)
+            _mockAuditLogService = new Mock<IAuditLogService>();
+            _controller = new DataController(_cachedDbConnector.Object, _mockLogger.Object, _mockAuditLogService.Object)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -104,6 +107,24 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         #region GetDataAsync Tests
+
+        [Test]
+        public async Task GetDataAsync_ValidRequest_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+            SetupMockDataSourceForValidRequest(database, table);
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
+            // Act
+            IActionResult result = await _controller.GetDataAsync(database, table, filters, null);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            _mockAuditLogService.Verify(x => x.LogAuditEvent("GetDataAsync", $"{database}/{table}"), Times.Once);
+        }
 
         [Test]
         public async Task GetDataAsync_ValidRequest_ReturnsOkWithJsonStat2()
@@ -681,6 +702,41 @@ namespace PxApi.UnitTests.ControllerTests
             });
         }
 
+        [Test]
+        public async Task HeadDataAsync_ValidRequest_ReturnsOk_LogsAudit()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            SetupMockDataSourceForValidRequest(database, table);
+            string lang = "en";
+
+            // Act
+            IActionResult result = await _controller.HeadDataAsync(database, table, lang);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkResult>());
+            _mockAuditLogService.Verify(x => x.LogAuditEvent("HeadDataAsync", $"{database}/{table}"), Times.Once);
+        }
+
+        [Test]
+        public void OptionsData_ReturnsOkAndSetsAllowHeader_LogsAudit()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+
+            // Act
+            IActionResult result = _controller.OptionsData(database, table);
+
+            Assert.Multiple(() =>
+            {
+                // Assert
+                Assert.That(result, Is.InstanceOf<OkResult>());
+                Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,POST,HEAD,OPTIONS"));
+            });
+            _mockAuditLogService.Verify(x => x.LogAuditEvent("OptionsData", $"{database}/{table}"), Times.Once);
+        }
         #endregion
 
         #region CSV Tests

@@ -44,8 +44,8 @@ namespace PxApi.Controllers
         {
             using (_logger.BeginScope(new Dictionary<string, string>
             {
-                { LoggerConsts.CLASS_NAME, nameof(CacheController) },
-                { LoggerConsts.METHOD_NAME, nameof(ClearTableCacheAsync) },
+                { LoggerConsts.CONTROLLER, nameof(CacheController) },
+                { LoggerConsts.FUNCTION, nameof(ClearTableCacheAsync) },
                 { LoggerConsts.DB_ID, database },
                 { LoggerConsts.PX_FILE, id }
             }))
@@ -97,8 +97,8 @@ namespace PxApi.Controllers
         {
             using (_logger.BeginScope(new Dictionary<string, object>
             {
-                { LoggerConsts.CLASS_NAME, nameof(CacheController) },
-                { LoggerConsts.METHOD_NAME, nameof(ClearAllCacheAsync) },
+                { LoggerConsts.CONTROLLER, nameof(CacheController) },
+                { LoggerConsts.FUNCTION, nameof(ClearAllCacheAsync) },
                 { LoggerConsts.DB_ID, database }
             }))
             {

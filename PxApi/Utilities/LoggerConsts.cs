@@ -1,4 +1,4 @@
-﻿namespace PxApi.Utilities
+namespace PxApi.Utilities
 {
     /// <summary>
     /// Static class containing string constants for logging purposes.
@@ -8,11 +8,15 @@
         /// <summary>
         /// Used to identify a class scope in logging.
         /// </summary>
-        public const string CLASS_NAME = "Class";
+        public const string CONTROLLER = "Controller";
         /// <summary>
-        /// Used to identify a method scope in logging.
+        /// Used to identify a function scope in logging.
         /// </summary>
-        public const string METHOD_NAME = "Method";
+        public const string FUNCTION = "Function";
+        /// <summary>
+        /// Used to identify an action name in logging.
+        /// </summary>
+        public const string ACTION = "Action";
         /// <summary>
         /// Used to identify a database identifier in logging.
         /// </summary>
@@ -25,5 +29,6 @@
         /// Used to identify an auxiliary file path (e.g. groupings.json, Alias_{lang}.txt) in logging scopes.
         /// </summary>
         public const string AUXILIARY_PATH = "AuxPath";
+
     }
 }

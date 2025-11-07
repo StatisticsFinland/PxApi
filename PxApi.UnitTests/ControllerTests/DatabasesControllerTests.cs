@@ -6,6 +6,7 @@ using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.Models;
+using PxApi.Services;
 using PxApi.UnitTests.Utils;
 using System.Collections.Immutable;
 
@@ -15,13 +16,15 @@ namespace PxApi.UnitTests.ControllerTests
     public class DatabasesControllerTests
     {
         private Mock<ICachedDataSource> _mockCachedDataSource = null!;
+        private Mock<IAuditLogService> _mockAuditLogger = null!; // Added
         private DatabasesController _controller = null!;
 
         [SetUp]
         public void SetUp()
         {
             _mockCachedDataSource = new Mock<ICachedDataSource>();
-            _controller = new DatabasesController(_mockCachedDataSource.Object)
+            _mockAuditLogger = new Mock<IAuditLogService>();
+            _controller = new DatabasesController(_mockCachedDataSource.Object, _mockAuditLogger.Object)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -36,6 +39,56 @@ namespace PxApi.UnitTests.ControllerTests
             TestConfigFactory.MountedDb(1, "db2", "datasource/root2/")
             );
             TestConfigFactory.BuildAndLoad(configData);
+        }
+
+        [Test]
+        public async Task GetDatabases_ValidRequest_LogsAuditEvent()
+        {
+            // Arrange
+            DataBaseRef dbRef = DataBaseRef.Create("db1");
+            List<DataBaseRef> dbRefs = [dbRef];
+            _mockCachedDataSource.Setup(x => x.GetAllDataBaseReferences()).Returns(dbRefs);
+            MultilanguageString nameMulti = new(new Dictionary<string, string>
+            {
+                { "fi", "Nimi FI" },
+                { "en", "Name EN" }
+            });
+            _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef, string.Empty)).ReturnsAsync(nameMulti);
+            ImmutableSortedDictionary<string, PxFileRef> files = ImmutableSortedDictionary<string, PxFileRef>.Empty;
+            _mockCachedDataSource.Setup(x => x.GetFileListCachedAsync(dbRef)).ReturnsAsync(files);
+
+            // Act
+            ActionResult<List<DataBaseListingItem>> result = await _controller.GetDatabases("fi");
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+            _mockAuditLogger.Verify(x => x.LogAuditEvent("GetDatabases", "databases"), Times.Once);
+        }
+
+        [Test]
+        public void HeadDatabases_LogsAuditEvent()
+        {
+            // Act
+            IActionResult result = _controller.HeadDatabases();
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkResult>());
+            _mockAuditLogger.Verify(x => x.LogAuditEvent("HeadDatabases", "databases"), Times.Once);
+        }
+
+        [Test]
+        public void OptionsDatabases_LogsAuditEvent()
+        {
+            // Act
+            IActionResult result = _controller.OptionsDatabases();
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.InstanceOf<OkResult>());
+                Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,HEAD,OPTIONS"));
+            });
+            _mockAuditLogger.Verify(x => x.LogAuditEvent("OptionsDatabases", "databases"), Times.Once);
         }
 
         [Test]

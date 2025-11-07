@@ -1,4 +1,4 @@
-﻿using Px.Utils.ModelBuilders;
+using Px.Utils.ModelBuilders;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
@@ -58,7 +58,7 @@ namespace PxApi.Caching
         public async Task<DoubleDataValue[]> ReadDataAsync(PxFileRef file, long dataOffset, IMatrixMap targetMap, IMatrixMap fileMap)
         {
             using Stream stream = dbConnector.ReadPxFile(file);
-            using PxFileStreamDataReader dataReader = new(stream);
+            using PxFileStreamDataReader dataReader = new(stream, dataOffset);
             DoubleDataValue[] result = new DoubleDataValue[targetMap.GetSize()];
             await dataReader.ReadDoubleDataValuesAsync(result, 0, targetMap, fileMap);
             return result;

@@ -5,6 +5,7 @@ using PxApi.Configuration;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Collections.Immutable;
+using PxApi.Services;
 using PxApi.OpenApi;
 
 namespace PxApi.Controllers
@@ -23,7 +24,7 @@ namespace PxApi.Controllers
     /// </remarks>
     [Route("databases")]
     [ApiController]
-    public class DatabasesController(ICachedDataSource dataSource) : ControllerBase
+    public class DatabasesController(ICachedDataSource dataSource, IAuditLogService auditLogger) : ControllerBase
     {
         /// <summary>
         /// Retrieves a list of available databases. Each item contains its identifier, localized name, optional localized description, table count and HATEOAS link to the tables listing endpoint.
@@ -45,6 +46,10 @@ namespace PxApi.Controllers
             {
                 return BadRequest("The requested language is not supported.");
             }
+
+            // Audit only successful listing requests after input validation.
+            auditLogger.LogAuditEvent(nameof(GetDatabases), "databases");
+
             IReadOnlyCollection<DataBaseRef> dbRefs = dataSource.GetAllDataBaseReferences();
             List<DataBaseListingItem> result = [];
             foreach (DataBaseRef dbRef in dbRefs)
@@ -71,7 +76,7 @@ namespace PxApi.Controllers
                     Name = nameMulti[actualLang],
                     Description = description,
                     TableCount = tableCount,
-                    AvailableLanguages = [..languages],
+                    AvailableLanguages = [.. languages],
                     Links = [
                         new Link
                         {
@@ -94,7 +99,11 @@ namespace PxApi.Controllers
         [HttpHead]
         [OperationId("headDatabases")]
         [ProducesResponseType(200)]
-        public IActionResult HeadDatabases() => Ok();
+        public IActionResult HeadDatabases()
+        {
+            auditLogger.LogAuditEvent(nameof(HeadDatabases), "databases");
+            return Ok();
+        }
 
         /// <summary>
         /// Returns allowed HTTP methods for the databases resource in the Allow response header.
@@ -107,6 +116,7 @@ namespace PxApi.Controllers
         public IActionResult OptionsDatabases()
         {
             Response.Headers.Allow = "GET,HEAD,OPTIONS";
+            auditLogger.LogAuditEvent(nameof(OptionsDatabases), "databases");
             return Ok();
         }
     }

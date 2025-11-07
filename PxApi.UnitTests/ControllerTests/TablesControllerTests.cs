@@ -9,6 +9,7 @@ using PxApi.Caching;
 using PxApi.Controllers;
 using PxApi.ModelBuilders;
 using PxApi.Models;
+using PxApi.Services;
 using PxApi.UnitTests.ModelBuilderTests;
 using PxApi.UnitTests.Utils;
 using System.Collections.Immutable;
@@ -20,6 +21,7 @@ namespace PxApi.UnitTests.ControllerTests
     {
         private Mock<ICachedDataSource> _cachedDbConnector;
         private Mock<ILogger<TablesController>> _mockLogger;
+        private Mock<IAuditLogService> _mockAuditLogger; // Added mock for audit service
         private TablesController _controller;
 
         [SetUp]
@@ -27,7 +29,8 @@ namespace PxApi.UnitTests.ControllerTests
         {
             _cachedDbConnector = new Mock<ICachedDataSource>();
             _mockLogger = new Mock<ILogger<TablesController>>();
-            _controller = new TablesController(_cachedDbConnector.Object, _mockLogger.Object)
+            _mockAuditLogger = new Mock<IAuditLogService>();
+            _controller = new TablesController(_cachedDbConnector.Object, _mockLogger.Object, _mockAuditLogger.Object)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -47,6 +50,60 @@ namespace PxApi.UnitTests.ControllerTests
                 }
             );
             TestConfigFactory.BuildAndLoad(configData);
+        }
+
+        [Test]
+        public async Task GetTablesAsync_ValidRequest_LogsAuditEvent()
+        {
+            // Arrange
+            DataBaseRef db = DataBaseRef.Create("exampledb");
+            string lang = "en";
+            int page = 1;
+            int pageSize = 50;
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(db.Id)).Returns(db);
+            ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary<string, PxFileRef>.Empty;
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
+
+            // Act
+            ActionResult<PagedTableList> result = await _controller.GetTablesAsync(db.Id, lang, page, pageSize);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+            _mockAuditLogger.Verify(x => x.LogAuditEvent("GetTablesAsync", db.Id), Times.Once);
+        }
+
+        [Test]
+        public void HeadTablesAsync_ValidParameters_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "exampledb";
+            DataBaseRef db = DataBaseRef.Create(database);
+            int page = 1;
+            int pageSize = 50;
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(database)).Returns(db);
+
+            // Act
+            IActionResult result = _controller.HeadTablesAsync(database, page, pageSize);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkResult>());
+            _mockAuditLogger.Verify(x => x.LogAuditEvent("HeadTablesAsync", db.Id), Times.Once);
+        }
+
+        [Test]
+        public void OptionsTables_AnyDatabase_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "exampledb";
+            DataBaseRef db = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(database)).Returns(db);
+
+            // Act
+            IActionResult result = _controller.OptionsTables(database);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkResult>());
+            _mockAuditLogger.Verify(x => x.LogAuditEvent("OptionsTables", db.Id), Times.Once);
         }
 
         [Test]
@@ -472,6 +529,8 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             string database = "exampledb";
+            DataBaseRef db = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(database)).Returns(db);
 
             // Act
             IActionResult result = _controller.OptionsTables(database);

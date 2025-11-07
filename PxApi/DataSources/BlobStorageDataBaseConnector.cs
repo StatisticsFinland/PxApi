@@ -44,8 +44,8 @@ namespace PxApi.DataSources
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.CLASS_NAME] = nameof(BlobStorageDataBaseConnector),
-                    [LoggerConsts.METHOD_NAME] = nameof(GetAllFilesAsync)
+                    [LoggerConsts.CONTROLLER] = nameof(BlobStorageDataBaseConnector),
+                    [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync)
                 }))
             {
                 _logger.LogDebug("Getting all files from blob storage container {ContainerName}", _containerName);
@@ -76,8 +76,8 @@ namespace PxApi.DataSources
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.CLASS_NAME] = nameof(BlobStorageDataBaseConnector),
-                    [LoggerConsts.METHOD_NAME] = nameof(ReadPxFile),
+                    [LoggerConsts.CONTROLLER] = nameof(BlobStorageDataBaseConnector),
+                    [LoggerConsts.FUNCTION] = nameof(ReadPxFile),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
@@ -112,8 +112,8 @@ namespace PxApi.DataSources
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.CLASS_NAME] = nameof(BlobStorageDataBaseConnector),
-                    [LoggerConsts.METHOD_NAME] = nameof(GetLastWriteTimeAsync),
+                    [LoggerConsts.CONTROLLER] = nameof(BlobStorageDataBaseConnector),
+                    [LoggerConsts.FUNCTION] = nameof(GetLastWriteTimeAsync),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
@@ -138,8 +138,8 @@ namespace PxApi.DataSources
             using (_logger.BeginScope(new Dictionary<string, object>
             {
                 [LoggerConsts.DB_ID] = DataBase.Id,
-                [LoggerConsts.CLASS_NAME] = nameof(BlobStorageDataBaseConnector),
-                [LoggerConsts.METHOD_NAME] = nameof(TryReadAuxiliaryFileAsync),
+                [LoggerConsts.CONTROLLER] = nameof(BlobStorageDataBaseConnector),
+                [LoggerConsts.FUNCTION] = nameof(TryReadAuxiliaryFileAsync),
                 [LoggerConsts.AUXILIARY_PATH] = relativePath
             }))
             {

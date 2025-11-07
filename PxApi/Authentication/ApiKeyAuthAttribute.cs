@@ -25,8 +25,8 @@ namespace PxApi.Authentication
             
             using (logger.BeginScope(new Dictionary<string, object>
             {
-                { LoggerConsts.CLASS_NAME, nameof(ApiKeyAuthAttribute) },
-                { LoggerConsts.METHOD_NAME, nameof(OnActionExecutionAsync) }
+                { LoggerConsts.CONTROLLER, nameof(ApiKeyAuthAttribute) },
+                { LoggerConsts.FUNCTION, nameof(OnActionExecutionAsync) }
             }))
             {
                 // Check if authentication is configured

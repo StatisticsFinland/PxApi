@@ -5,6 +5,8 @@ using PxApi.ModelBuilders;
 using PxApi.Models.JsonStat;
 using PxApi.Models;
 using PxApi.OpenApi;
+using PxApi.Services;
+using PxApi.Utilities;
 
 namespace PxApi.Controllers
 {
@@ -13,7 +15,7 @@ namespace PxApi.Controllers
     /// </summary>
     [Route("meta")]
     [ApiController]
-    public class MetadataController(ICachedDataSource cachedConnector) : ControllerBase
+    public class MetadataController(ICachedDataSource cachedConnector, ILogger<MetadataController> logger, IAuditLogService auditLogService) : ControllerBase
     {
         /// <summary>
         /// Gets metadata for a single table in JSON-stat 2.0 format (no data values filtering applied).
@@ -38,33 +40,43 @@ namespace PxApi.Controllers
             [FromRoute] string table,
             [FromQuery] string? lang)
         {
-            try
-            {
-                DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
-                if (dbRef is null) return NotFound("Database not found.");
-                PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
-                if (fileRef is null) return NotFound("Table not found.");
-
-                IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
-
-                string resolvedLang = lang ?? meta.DefaultLanguage;
-                if (!meta.AvailableLanguages.Contains(resolvedLang))
+            using (logger.BeginScope(new Dictionary<string, object>
                 {
-                    return BadRequest("The content is not available in the requested language.");
+                    { LoggerConsts.CONTROLLER, nameof(MetadataController) },
+                    { LoggerConsts.ACTION, nameof(GetTableMetadataById) },
+                    { LoggerConsts.DB_ID, database },
+                    { LoggerConsts.PX_FILE, table }
+                }))
+            {
+                try
+                {
+                    DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
+                    if (dbRef is null) return NotFound("Database not found.");
+                    PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
+                    if (fileRef is null) return NotFound("Table not found.");
+
+                    IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
+
+                    string resolvedLang = lang ?? meta.DefaultLanguage;
+                    if (!meta.AvailableLanguages.Contains(resolvedLang))
+                    {
+                        return BadRequest("The content is not available in the requested language.");
+                    }
+
+                    IReadOnlyList<TableGroup> groupings = await cachedConnector.GetGroupingsCachedAsync(fileRef.Value);
+                    JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, groupings, resolvedLang);
+                    auditLogService.LogAuditEvent(nameof(GetTableMetadataById), $"{database}/{table}");
+                    return Ok(jsonStat2);
                 }
-
-                IReadOnlyList<TableGroup> groupings = await cachedConnector.GetGroupingsCachedAsync(fileRef.Value);
-                JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, groupings, resolvedLang);
-
-                return Ok(jsonStat2);
-            }
-            catch (FileNotFoundException)
-            {
-                return NotFound("Resource not found.");
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "Unexpected server error.");
+                catch (FileNotFoundException)
+                {
+                    return NotFound("Resource not found.");
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "An unexpected error occurred while processing the request.");
+                    return StatusCode(500, "Unexpected server error.");
+                }
             }
         }
 
@@ -91,6 +103,7 @@ namespace PxApi.Controllers
             IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
             string resolvedLang = lang ?? meta.DefaultLanguage;
             if (!meta.AvailableLanguages.Contains(resolvedLang)) return BadRequest();
+            auditLogService.LogAuditEvent(nameof(HeadMetadataAsync), $"{database}/{table}");
             return Ok();
         }
 
@@ -106,6 +119,7 @@ namespace PxApi.Controllers
         public IActionResult OptionsMetadata(string database, string table)
         {
             Response.Headers.Allow = "GET,HEAD,OPTIONS";
+            auditLogService.LogAuditEvent(nameof(OptionsMetadata), $"{database}/{table}");
             return Ok();
         }
     }

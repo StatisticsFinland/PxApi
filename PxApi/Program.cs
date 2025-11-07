@@ -11,6 +11,7 @@ using System.Text.Json.Serialization;
 using PxApi.OpenApi.DocumentFilters;
 using PxApi.OpenApi.SchemaFilters;
 using PxApi.OpenApi;
+using PxApi.Services;
 
 namespace PxApi
 {
@@ -25,22 +26,24 @@ namespace PxApi
         /// </summary>
         public static async Task Main()
         {
-            Logger logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
+            // Create the web application builder first so that configuration (including environment specific files)
+            // is available to NLog configuration variable resolution (${configsetting:...}).
+            WebApplicationBuilder builder = WebApplication.CreateBuilder();
+
+            // Explicitly access configuration to force load (appsettings.json + appsettings.{Environment}.json already added by CreateBuilder).
+            // Load strongly typed AppSettings from the aggregated configuration.
+            AppSettings.Load(builder.Configuration);
+
+            // Configure NLog integration AFTER configuration is available and folder exists.
+            builder.Logging.ClearProviders();
+            builder.Host.UseNLog();
+
+            Logger logger = LogManager.GetCurrentClassLogger();
             try
             {
-                logger.Debug("Main called and logger initialized.");
-
-                IConfiguration configuration = new ConfigurationBuilder()
-                    .AddJsonFile("appsettings.json")
-                    .AddEnvironmentVariables()
-                    .Build();
-
-                // This enables calling AppSettings.Active to access the configuration.
-                AppSettings.Load(configuration);
-
-                WebApplicationBuilder builder = WebApplication.CreateBuilder();
-                builder.Logging.ClearProviders();
-                builder.Host.UseNLog();
+                logger.Debug("Main called and logger initialized. Environment={Environment} AuditEnabled={AuditEnabled}",
+                    builder.Environment.EnvironmentName,
+                    builder.Configuration.GetValue<bool>("LogOptions:AuditLog:Enabled"));
 
                 // Add services to the container.
                 AddServices(builder.Services);
@@ -77,8 +80,7 @@ namespace PxApi
             catch (Exception ex)
             {
                 logger.Error(ex, "Stopped program because of exception");
-                // Make sure to exit with non-zero code to indicate failure
-                Environment.ExitCode = 1;
+                Environment.ExitCode =1; // Non-zero exit code indicates failure
             }
             finally
             {
@@ -117,7 +119,7 @@ namespace PxApi
                 {
                     Title = "PxApi",
                     Version = "v1",
-                    Description = "API for querying PX statistical datasets, providing JSON-stat 2.0 and CSV outputs with flexible dimension filtering (code, range, positional).",
+                    Description = "API for querying PX statistical datasets, providing JSON-stat2.0 and CSV outputs with flexible dimension filtering (code, range, positional).",
                     Contact = new OpenApiContact
                     {
                         Name = openApiConfig.ContactName,
@@ -141,9 +143,6 @@ namespace PxApi
                 // Add the custom schema filter for DoubleDataValue to ensure it appears as number type in OpenAPI
                 c.SchemaFilter<DoubleDataValueSchemaFilter>();
                 
-                // Add document filter to remove DoubleDataValue component schemas
-                // c.DocumentFilter<DoubleDataValueDocumentFilter>(); // merged into DataValueDocumentFilter
-
                 // Add document filter to remove DataValueType and DoubleDataValue component schemas
                 c.DocumentFilter<DataValueDocumentFilter>();
 
@@ -192,6 +191,10 @@ namespace PxApi
 
             // Register the database connector factory
             serviceCollection.AddScoped<IDataBaseConnectorFactory, DataBaseConnectorFactoryImpl>();
+
+            // Register HttpContextAccessor and audit logging service
+            serviceCollection.AddHttpContextAccessor();
+            serviceCollection.AddScoped<IAuditLogService, AuditLogService>();
         }
     }
 }

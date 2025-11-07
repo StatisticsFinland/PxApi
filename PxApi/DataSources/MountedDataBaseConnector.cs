@@ -21,8 +21,8 @@ namespace PxApi.DataSources
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.CLASS_NAME] = nameof(MountedDataBaseConnector),
-                    [LoggerConsts.METHOD_NAME] = nameof(GetAllFilesAsync)
+                    [LoggerConsts.CONTROLLER] = nameof(MountedDataBaseConnector),
+                    [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync)
                 }))
             {
                 logger.LogDebug("Listing all files");
@@ -47,8 +47,8 @@ namespace PxApi.DataSources
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.CLASS_NAME] = nameof(MountedDataBaseConnector),
-                    [LoggerConsts.METHOD_NAME] = nameof(ReadPxFile),
+                    [LoggerConsts.CONTROLLER] = nameof(MountedDataBaseConnector),
+                    [LoggerConsts.FUNCTION] = nameof(ReadPxFile),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
@@ -98,8 +98,8 @@ namespace PxApi.DataSources
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.CLASS_NAME] = nameof(MountedDataBaseConnector),
-                    [LoggerConsts.METHOD_NAME] = nameof(GetLastWriteTimeAsync),
+                    [LoggerConsts.CONTROLLER] = nameof(MountedDataBaseConnector),
+                    [LoggerConsts.FUNCTION] = nameof(GetLastWriteTimeAsync),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
@@ -123,8 +123,8 @@ namespace PxApi.DataSources
             using (logger.BeginScope(new Dictionary<string, object>
             {
                 [LoggerConsts.DB_ID] = DataBase.Id,
-                [LoggerConsts.CLASS_NAME] = nameof(MountedDataBaseConnector),
-                [LoggerConsts.METHOD_NAME] = nameof(TryReadAuxiliaryFileAsync),
+                [LoggerConsts.CONTROLLER] = nameof(MountedDataBaseConnector),
+                [LoggerConsts.FUNCTION] = nameof(TryReadAuxiliaryFileAsync),
                 [LoggerConsts.AUXILIARY_PATH] = relativePath
             }))
             {
