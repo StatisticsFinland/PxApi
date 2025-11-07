@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Px.Utils.Language;
+using System.ComponentModel.DataAnnotations;
 
 namespace PxApi.Models
 {
@@ -14,10 +15,10 @@ namespace PxApi.Models
         public required string Code { get; set; }
 
         /// <summary>
-        /// The name of the group.
+        /// Translated name of the group.
         /// </summary>
         [Required]
-        public required string Name { get; set; }
+        public required MultilanguageString Name { get; set; }
 
         /// <summary>
         /// The unique code for the grouping this group belongs to.
@@ -26,10 +27,10 @@ namespace PxApi.Models
         public required string GroupingCode { get; set; }
 
         /// <summary>
-        /// The name of the grouping this group belongs to.
+        /// Translated name of the grouping this group belongs to.
         /// </summary>
         [Required]
-        public required string GroupingName { get; set; }
+        public required MultilanguageString GroupingName { get; set; }
 
         /// <summary>
         /// Links to additional resources related to this group.

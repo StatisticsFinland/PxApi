@@ -1,4 +1,4 @@
-﻿using Px.Utils.Language;
+using Px.Utils.Language;
 using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.Dimensions;
 using Px.Utils.Models.Metadata.Enums;
@@ -17,14 +17,14 @@ namespace PxApi.UnitTests.ModelBuilderTests
             List<Dimension> additional = [];
             for(int i = 0; i < additionalDimensions?.Length; i++)
             {
-                additional.Add(GetMockDimension($"dim{1 + i}", additionalDimensions[i], dimensionAdditionalProps?[4 + i]));
+                additional.Add(GetMockDimension($"dim{2 + i}", additionalDimensions[i], dimensionAdditionalProps?[4 + i]));
             }
 
             List<Dimension> dimensions = [
                 GetMockContentDimension("content"),
                 GetMockTimeDimension("time"),
-                GetMockDimension("dim0", DimensionType.Ordinal),
-                GetMockDimension("dim1", DimensionType.Nominal),
+                GetMockDimension("dim0", DimensionType.Ordinal, dimensionAdditionalProps?[2]),
+                GetMockDimension("dim1", DimensionType.Nominal, dimensionAdditionalProps?[3]),
                 ..additional
                 ];
 
@@ -52,13 +52,18 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 new("en", "table-note.en"),
             ]);
 
+            string subjectcode = "subjcode";
+
             Dictionary<string, MetaProperty> props = new()
             {
                 { PxFileConstants.TABLEID, new StringProperty("table-tableid") },
                 { PxFileConstants.DESCRIPTION, new MultilanguageStringProperty(description) },
                 { PxFileConstants.CONTENTS, new MultilanguageStringProperty(contents) },
                 { PxFileConstants.SOURCE, new MultilanguageStringProperty(source) },
-                { PxFileConstants.NOTE, new MultilanguageStringProperty(note) }
+                { PxFileConstants.NOTE, new MultilanguageStringProperty(note) },
+                { PxFileConstants.SUBJECT_CODE, new StringProperty(subjectcode)   },
+                { PxFileConstants.STUB, CreateStubProperty() },
+                { PxFileConstants.HEADING, CreateHeadingProperty(additional) }
             };
 
             return new(defaultLang, availableLangs, dimensions, props);
@@ -191,6 +196,54 @@ namespace PxApi.UnitTests.ModelBuilderTests
             DateTime lastUpdated = new(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc);
 
             return new ContentDimensionValue(value, unit, lastUpdated, 2);
+        }
+
+        private static MultilanguageStringListProperty CreateStubProperty()
+        {
+            // STUB contains: content dimension and time dimension
+            List<MultilanguageString> stubDimensionNames = [
+                new MultilanguageString([
+                    new("fi", "content-name.fi"),
+                    new("sv", "content-name.sv"),
+                    new("en", "content-name.en")
+                ]),
+                new MultilanguageString([
+                    new("fi", "time-name.fi"),
+                    new("sv", "time-name.sv"),
+                    new("en", "time-name.en")
+                ])
+            ];
+
+            return new MultilanguageStringListProperty(stubDimensionNames);
+        }
+
+        private static MultilanguageStringListProperty CreateHeadingProperty(List<Dimension> additionalDimensions)
+        {
+            // HEADING contains: other dimensions starting from dim0
+            List<MultilanguageString> headingDimensionNames = [
+                new MultilanguageString([
+                    new("fi", "dim0-name.fi"),
+                    new("sv", "dim0-name.sv"),
+                    new("en", "dim0-name.en")
+                ]),
+                new MultilanguageString([
+                    new("fi", "dim1-name.fi"),
+                    new("sv", "dim1-name.sv"),
+                    new("en", "dim1-name.en")
+                ])
+            ];
+
+            // Add additional dimensions to HEADING
+            for (int i = 0; i < additionalDimensions.Count; i++)
+            {
+                headingDimensionNames.Add(new MultilanguageString([
+                    new("fi", $"dim{i + 2}-name.fi"),
+                    new("sv", $"dim{i + 2}-name.sv"),
+                    new("en", $"dim{i + 2}-name.en")
+                ]));
+            }
+
+            return new MultilanguageStringListProperty(headingDimensionNames);
         }
     }
 }

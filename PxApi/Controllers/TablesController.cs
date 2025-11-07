@@ -1,60 +1,74 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Px.Utils.Models.Metadata.Dimensions;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
+using PxApi.Caching;
 using PxApi.Configuration;
-using PxApi.DataSources;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
+using PxApi.Services;
+using PxApi.OpenApi;
 
 namespace PxApi.Controllers
 {
     /// <summary>
-    /// Controller for listing tables in a database.
+    /// Provides endpoints for retrieving tables and their metadata from a specified database.
     /// </summary>
-    /// <param name="dataSource">Connection to the databases</param>
-    /// <param name="logger">Logger</param>
+    /// <remarks>
+    /// Supports pagination and optional language-based metadata retrieval. Tables are ordered by their PX file name (ascending). If the requested page exceeds the last page an empty list is returned.
+    /// </remarks>
     [Route("tables")]
     [ApiController]
-    public class TablesController(IDataSource dataSource, ILogger<TablesController> logger) : ControllerBase
+    public class TablesController(ICachedDataSource cachedConnector, ILogger<TablesController> logger, IAuditLogService auditLogger) : ControllerBase
     {
         private const int MAX_PAGE_SIZE = 100;
 
         /// <summary>
-        /// List of tables and their essential metadata in a database.
+        /// Returns a paged list of tables and their essential metadata for a database.
         /// </summary>
-        /// <param name="databaseId">Unique identifier of the database.</param>
-        /// <param name="lang">[Optional] Language used to get the metadata, default is finnis (fi).</param>
-        /// <param name="page">[Optional] Ordinal number of the page to get, default value is 1.</param>
-        /// <param name="pageSize">[Optional] Number of items per page, minimum value is 1 and maximum value is 100, default value is 50.</param>
-        /// <returns>Object containing the table listing and paging information.</returns>
+        /// <param name="database">Unique identifier of the database.</param>
+        /// <param name="lang">Optional language used to get the metadata. If not provided, the default language is used.</param>
+        /// <param name="page">Optional 1-based page number to retrieve, default value is 1.</param>
+        /// <param name="pageSize">Optional number of items per page (1-100), default value is 50.</param>
+        /// <returns>Paged list containing table listing items and paging information.</returns>
         /// <response code="200">Returns the table listing.</response>
-        /// <response code="400">Invalid query parameter was provided.</response>
-        /// <response code="404">If database is not found.</response>
-        [HttpGet("{databaseId}")]
-        [Produces("application/json")] 
-        [ProducesResponseType(200)]
+        /// <response code="400">Invalid query parameter was provided (page &lt; 1, pageSize outside 1-100 or unsupported language).</response>
+        /// <response code="404">Database not found.</response>
+        [HttpGet("{database}")]
+        [OperationId("listTables")]
+        [Produces("application/json")]
+        [ProducesResponseType(typeof(PagedTableList), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         public async Task<ActionResult<PagedTableList>> GetTablesAsync(
-            [FromRoute] string databaseId,
-            [FromQuery] string lang = "fi",
+            [FromRoute] string database,
+            [FromQuery] string? lang = null,
             [FromQuery][Range(1, int.MaxValue)] int page = 1,
             [FromQuery][Range(1, 100)] int pageSize = 50)
         {
-            if (page < 1 || pageSize < 1) return BadRequest();
-            if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE; 
+            if (page < 1 || pageSize < 1) return BadRequest("Invalid paging values.");
+            if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
 
             AppSettings settings = AppSettings.Active;
+            string actualLang = lang ?? settings.Localization.DefaultLanguage;
+            if (!settings.Localization.SupportedLanguages.Contains(actualLang)) return BadRequest("The requested language is not supported.");
+
             try
             {
-                ImmutableSortedDictionary<string, PxTable> tableList = await dataSource.GetSortedTableDictCachedAsync(databaseId);
+                DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
+                if (dataBaseRef is null) return NotFound("Database not found.");
+
+                // Audit after validation and database existence confirmation.
+                auditLogger.LogAuditEvent(nameof(GetTablesAsync), dataBaseRef.Value.Id);
+
+                ImmutableSortedDictionary<string, PxFileRef> tableList = await cachedConnector.GetFileListCachedAsync(dataBaseRef.Value);
                 PagedTableList pagedTableList = new()
                 {
                     Tables = [],
-                    PagingInfo = new PagingInfo()
+                    PagingInfo = new PagingInfo
                     {
                         CurrentPage = page,
                         PageSize = pageSize,
@@ -62,26 +76,28 @@ namespace PxApi.Controllers
                     }
                 };
 
-                for (int i = pageSize * (page - 1); i < pageSize * page; i++)
+                int startIndex = pageSize * (page - 1);
+                int endExclusive = pageSize * page;
+                for (int i = startIndex; i < endExclusive; i++)
                 {
                     if (i >= tableList.Count) break;
-                    KeyValuePair<string, PxTable> table = tableList.ElementAt(i);
+                    KeyValuePair<string, PxFileRef> table = tableList.ElementAt(i);
 
                     try
                     {
                         try
                         {
-                            IReadOnlyMatrixMetadata tableMeta = await dataSource.GetMatrixMetadataCachedAsync(table.Value);
+                            IReadOnlyMatrixMetadata tableMeta = await cachedConnector.GetMetadataCachedAsync(table.Value);
 
                             Uri fileUri = settings.RootUrl
-                                .AddRelativePath("meta", databaseId, table.Key)
-                                .AddQueryParameters(("lang", lang));
-                            pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, lang, tableMeta, fileUri));
+                                .AddRelativePath("meta", database, table.Key)
+                                .AddQueryParameters(("lang", actualLang));
+                            pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, actualLang, tableMeta, fileUri));
                         }
-                        catch (Exception buildEx) // If the metaobject build failed, try to get the table ID from the table itself
+                        catch (Exception buildEx)
                         {
-                            logger.LogWarning(buildEx, "Building the structured metadata object for table {Table} failed, constructing error list entry.", tableList.ElementAt(i).Key);
-                            string id = (await dataSource.GetSingleStringValueFromTable(PxFileConstants.TABLEID, table.Value))
+                            logger.LogWarning(buildEx, "Building metadata for table {Table} failed, constructing error list entry.", tableList.ElementAt(i).Key);
+                            string id = (await cachedConnector.GetSingleStringValueAsync(PxFileConstants.TABLEID, table.Value))
                                 .Trim('"', ' ', '\r', '\n', '\t');
                             pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, id));
                         }
@@ -97,25 +113,80 @@ namespace PxApi.Controllers
             }
             catch (DirectoryNotFoundException dnfe)
             {
-                logger.LogInformation(dnfe, "Failed to get tables for database: {Database}", databaseId);
+                logger.LogInformation(dnfe, "Failed to get tables for database: {Database}", database);
                 return NotFound();
             }
         }
 
+        /// <summary>
+        /// HEAD endpoint to validate existence of database and optional page parameters without returning body content.
+        /// </summary>
+        /// <param name="database">Unique identifier of the database.</param>
+        /// <param name="page">Optional page number.</param>
+        /// <param name="pageSize">Optional page size.</param>
+        /// <response code="200">Resource exists.</response>
+        /// <response code="400">Invalid paging parameters.</response>
+        /// <response code="404">Database not found.</response>
+        [HttpHead("{database}")]
+        [OperationId("headTables")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public IActionResult HeadTablesAsync(string database, int page = 1, int pageSize = 50)
+        {
+            if (page < 1 || pageSize < 1 || pageSize > MAX_PAGE_SIZE) return BadRequest();
+            DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
+            if (dataBaseRef is null) return NotFound();
+
+            // Audit successful HEAD validation.
+            auditLogger.LogAuditEvent(nameof(HeadTablesAsync), dataBaseRef.Value.Id);
+            return Ok();
+        }
+
+        /// <summary>
+        /// Returns allowed HTTP methods for the tables resource.
+        /// </summary>
+        /// <param name="database">Unique identifier of the database.</param>
+        /// <response code="200">Returns allowed methods in the Allow header.</response>
+        [HttpOptions("{database}")]
+        [OperationId("optionsTables")]
+        [ProducesResponseType(200)]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Needs to match route signature.")]
+        public IActionResult OptionsTables(string database)
+        {
+            DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
+            if (dataBaseRef is null) return NotFound();
+
+            const string methods = "GET,HEAD,OPTIONS";
+            Response.Headers.Allow = methods;
+            auditLogger.LogAuditEvent(nameof(OptionsTables), dataBaseRef.Value.Id);
+            return Ok();
+        }
+
         private static TableListingItem BuildTableListingItemFromMeta(string tableName, string lang, IReadOnlyMatrixMetadata meta, Uri uri)
         {
+            TableStatus status = TableStatus.Current;
             string id = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang) ?? tableName;
+            DateTime lastUpdated = DateTime.MinValue;
+            if (meta.TryGetContentDimension(out ContentDimension? contDim))
+            {
+                lastUpdated = contDim.Values.Map(v => v.LastUpdated).Max();
+            }
+            else
+            {
+                status = TableStatus.Error;
+            }
 
-            return new TableListingItem()
+            return new TableListingItem
             {
                 ID = id,
                 Name = tableName,
-                Status = TableStatus.Current,
+                Status = status,
                 Title = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang) ?? null,
-                LastUpdated = meta.GetContentDimension().Values.Map(v => v.LastUpdated).Max(),
+                LastUpdated = lastUpdated,
                 Links =
                 [
-                    new()
+                    new Link
                     {
                         Rel = "describedby",
                         Href = uri.ToString(),
@@ -127,7 +198,7 @@ namespace PxApi.Controllers
 
         private static TableListingItem BuildErrorTableListingItem(string tableName, string id)
         {
-            return new TableListingItem()
+            return new TableListingItem
             {
                 ID = id,
                 Name = tableName,
@@ -137,6 +208,5 @@ namespace PxApi.Controllers
                 Links = []
             };
         }
-
     }
 }
