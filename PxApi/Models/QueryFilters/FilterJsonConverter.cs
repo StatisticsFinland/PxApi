@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace PxApi.Models.QueryFilters
@@ -133,13 +133,13 @@ namespace PxApi.Models.QueryFilters
                 throw new ArgumentException("Filter string exceeds maximum length of 50 characters");
             }
 
-            char[] allowedSpecialChars = ['*', '_'];
+            char[] allowedSpecialChars = ['*', '_', '-'];
 
             foreach (char c in input)
             {
                 if (!char.IsLetterOrDigit(c) && !allowedSpecialChars.Contains(c))
                 {
-                    throw new ArgumentException("Input string contains characters other than letters, numbers, '*' and '_'");
+                    throw new ArgumentException("Input string contains characters other than letters, numbers, '*', '_' and '-'");
                 }
             }
         }

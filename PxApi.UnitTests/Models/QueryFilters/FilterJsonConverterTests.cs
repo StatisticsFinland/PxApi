@@ -1,4 +1,4 @@
-﻿using PxApi.Models.QueryFilters;
+using PxApi.Models.QueryFilters;
 using System.Text.Json;
 
 namespace PxApi.UnitTests.Models.QueryFilters
@@ -83,7 +83,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
         [Test]
         public void Deserialize_CodeFilter_WithInvalidCharacter_Throws()
         {
-            const string json = "{\"type\":\"Code\",\"query\":[\"Valid\",\"In-valid\"]}"; // '-' not allowed
+            const string json = "{\"type\":\"Code\",\"query\":[\"Valid\",\"In!valid\"]}"; // '!' not allowed
             Assert.That(() => JsonSerializer.Deserialize<Filter>(json, _options), Throws.ArgumentException);
         }
 
