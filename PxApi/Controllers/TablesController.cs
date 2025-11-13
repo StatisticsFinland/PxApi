@@ -61,55 +61,62 @@ namespace PxApi.Controllers
                 DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
                 if (dataBaseRef is null) return NotFound("Database not found.");
 
-                // Audit after validation and database existence confirmation.
-                auditLogger.LogAuditEvent(nameof(GetTablesAsync), dataBaseRef.Value.Id);
-
-                ImmutableSortedDictionary<string, PxFileRef> tableList = await cachedConnector.GetFileListCachedAsync(dataBaseRef.Value);
-                PagedTableList pagedTableList = new()
+                using (logger.BeginScope(new Dictionary<string, object>
                 {
-                    Tables = [],
-                    PagingInfo = new PagingInfo
-                    {
-                        CurrentPage = page,
-                        PageSize = pageSize,
-                        TotalItems = tableList.Count,
-                    }
-                };
-
-                int startIndex = pageSize * (page - 1);
-                int endExclusive = pageSize * page;
-                for (int i = startIndex; i < endExclusive; i++)
+                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
+                    { LoggerConsts.ACTION, nameof(GetTablesAsync) },
+                    { LoggerConsts.DB_ID, dataBaseRef.Value.Id }
+                }))
                 {
-                    if (i >= tableList.Count) break;
-                    KeyValuePair<string, PxFileRef> table = tableList.ElementAt(i);
+                    auditLogger.LogAuditEvent();
 
-                    try
+                    ImmutableSortedDictionary<string, PxFileRef> tableList = await cachedConnector.GetFileListCachedAsync(dataBaseRef.Value);
+                    PagedTableList pagedTableList = new()
                     {
+                        Tables = [],
+                        PagingInfo = new PagingInfo
+                        {
+                            CurrentPage = page,
+                            PageSize = pageSize,
+                            TotalItems = tableList.Count,
+                        }
+                    };
+
+                    int startIndex = pageSize * (page - 1);
+                    int endExclusive = pageSize * page;
+                    for (int i = startIndex; i < endExclusive; i++)
+                    {
+                        if (i >= tableList.Count) break;
+                        KeyValuePair<string, PxFileRef> table = tableList.ElementAt(i);
+
                         try
                         {
-                            IReadOnlyMatrixMetadata tableMeta = await cachedConnector.GetMetadataCachedAsync(table.Value);
+                            try
+                            {
+                                IReadOnlyMatrixMetadata tableMeta = await cachedConnector.GetMetadataCachedAsync(table.Value);
 
-                            Uri fileUri = settings.RootUrl
-                                .AddRelativePath("meta", database, table.Key)
-                                .AddQueryParameters(("lang", actualLang));
-                            pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, actualLang, tableMeta, fileUri));
+                                Uri fileUri = settings.RootUrl
+                                    .AddRelativePath("meta", database, table.Key)
+                                    .AddQueryParameters(("lang", actualLang));
+                                pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, actualLang, tableMeta, fileUri));
+                            }
+                            catch (Exception buildEx)
+                            {
+                                logger.LogWarning(buildEx, "Building metadata for table {Table} failed, constructing error list entry.", tableList.ElementAt(i).Key);
+                                string id = (await cachedConnector.GetSingleStringValueAsync(PxFileConstants.TABLEID, table.Value))
+                                    .Trim('"', ' ', '\r', '\n', '\t');
+                                pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, id));
+                            }
                         }
-                        catch (Exception buildEx)
+                        catch (Exception idReadEx)
                         {
-                            logger.LogWarning(buildEx, "Building metadata for table {Table} failed, constructing error list entry.", tableList.ElementAt(i).Key);
-                            string id = (await cachedConnector.GetSingleStringValueAsync(PxFileConstants.TABLEID, table.Value))
-                                .Trim('"', ' ', '\r', '\n', '\t');
-                            pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, id));
+                            pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, table.Key));
+                            logger.LogWarning(idReadEx, "Failed to get metadata for table: {Table}", tableList.ElementAt(i).Key);
                         }
                     }
-                    catch (Exception idReadEx)
-                    {
-                        pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, table.Key));
-                        logger.LogWarning(idReadEx, "Failed to get metadata for table: {Table}", tableList.ElementAt(i).Key);
-                    }
-                }
 
-                return Ok(pagedTableList);
+                    return Ok(pagedTableList);
+                }
             }
             catch (DirectoryNotFoundException dnfe)
             {
@@ -138,9 +145,17 @@ namespace PxApi.Controllers
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
             if (dataBaseRef is null) return NotFound();
 
-            // Audit successful HEAD validation.
-            auditLogger.LogAuditEvent(nameof(HeadTablesAsync), dataBaseRef.Value.Id);
-            return Ok();
+            using (logger.BeginScope(new Dictionary<string, object>
+                {
+                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
+                    { LoggerConsts.ACTION, nameof(HeadTablesAsync) },
+                    { LoggerConsts.DB_ID, dataBaseRef.Value.Id }
+                }))
+            {
+                // Audit successful HEAD validation.
+                auditLogger.LogAuditEvent();
+                return Ok();
+            }
         }
 
         /// <summary>
@@ -157,10 +172,18 @@ namespace PxApi.Controllers
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
             if (dataBaseRef is null) return NotFound();
 
-            const string methods = "GET,HEAD,OPTIONS";
-            Response.Headers.Allow = methods;
-            auditLogger.LogAuditEvent(nameof(OptionsTables), dataBaseRef.Value.Id);
-            return Ok();
+            using (logger.BeginScope(new Dictionary<string, object>
+                {
+                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
+                    { LoggerConsts.ACTION, nameof(OptionsTables) },
+                    { LoggerConsts.DB_ID, dataBaseRef.Value.Id }
+                }))
+            {
+                const string methods = "GET,HEAD,OPTIONS";
+                Response.Headers.Allow = methods;
+                auditLogger.LogAuditEvent();
+                return Ok();
+            }
         }
 
         private static TableListingItem BuildTableListingItemFromMeta(string tableName, string lang, IReadOnlyMatrixMetadata meta, Uri uri)

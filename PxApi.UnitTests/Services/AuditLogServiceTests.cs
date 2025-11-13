@@ -75,7 +75,7 @@ namespace PxApi.UnitTests.Services
             AuditLogService service = new(_httpContextAccessor, _testLogger, configuration);
 
             // Act
-            service.LogAuditEvent("GetData", "db/table");
+            service.LogAuditEvent();
 
             // Assert
             Assert.That(_testLogger.Entries, Is.Empty);
@@ -89,7 +89,7 @@ namespace PxApi.UnitTests.Services
             AuditLogService service = new(_httpContextAccessor, _testLogger, configuration);
 
             // Act
-            service.LogAuditEvent("GetData", "db/table");
+            service.LogAuditEvent();
 
             // Assert
             Assert.That(_testLogger.Entries, Is.Empty);
@@ -110,7 +110,7 @@ namespace PxApi.UnitTests.Services
             AuditLogService service = new(_httpContextAccessor, _testLogger, configuration);
 
             // Act
-            service.LogAuditEvent("GetData", "db/table");
+            service.LogAuditEvent();
 
             // Assert scope
             Dictionary<string, string>? scope = _testLogger.LastScope;
@@ -132,12 +132,8 @@ namespace PxApi.UnitTests.Services
             Dictionary<string, object> dict = infoEntry.State.ToDictionary(k => k.Key, v => v.Value);
             Assert.Multiple(() =>
             {
-                Assert.That(dict.ContainsKey("Action"), Is.True);
-                Assert.That(dict.ContainsKey("Resource"), Is.True);
                 Assert.That(dict.ContainsKey("User"), Is.True);
                 Assert.That(dict.ContainsKey("ClientIP"), Is.True);
-                Assert.That(dict["Action"], Is.EqualTo("GetData"));
-                Assert.That(dict["Resource"], Is.EqualTo("db/table"));
                 Assert.That(dict["User"], Is.EqualTo("TestUser"));
                 Assert.That(dict["ClientIP"], Is.EqualTo("127.0.0.1"));
             });

@@ -123,7 +123,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<OkObjectResult>());
-            _mockAuditLogService.Verify(x => x.LogAuditEvent("GetDataAsync", $"{database}/{table}"), Times.Once);
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         [Test]
@@ -716,7 +716,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<OkResult>());
-            _mockAuditLogService.Verify(x => x.LogAuditEvent("HeadDataAsync", $"{database}/{table}"), Times.Once);
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         [Test]
@@ -735,7 +735,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,POST,HEAD,OPTIONS"));
             });
-            _mockAuditLogService.Verify(x => x.LogAuditEvent("OptionsData", $"{database}/{table}"), Times.Once);
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
         #endregion
 
