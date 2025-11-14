@@ -69,7 +69,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
-            _mockAuditLogger.Verify(x => x.LogAuditEvent("GetTablesAsync", db.Id), Times.Once);
+            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         [Test]
@@ -87,7 +87,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<OkResult>());
-            _mockAuditLogger.Verify(x => x.LogAuditEvent("HeadTablesAsync", db.Id), Times.Once);
+            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         [Test]
@@ -103,7 +103,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<OkResult>());
-            _mockAuditLogger.Verify(x => x.LogAuditEvent("OptionsTables", db.Id), Times.Once);
+            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         [Test]
