@@ -65,7 +65,7 @@ namespace PxApi.Controllers
 
                     IReadOnlyList<TableGroup> groupings = await cachedConnector.GetGroupingsCachedAsync(fileRef.Value);
                     JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, groupings, resolvedLang);
-                    auditLogService.LogAuditEvent(nameof(GetTableMetadataById), $"{database}/{table}");
+                    auditLogService.LogAuditEvent();
                     return Ok(jsonStat2);
                 }
                 catch (FileNotFoundException)
@@ -103,7 +103,7 @@ namespace PxApi.Controllers
             IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
             string resolvedLang = lang ?? meta.DefaultLanguage;
             if (!meta.AvailableLanguages.Contains(resolvedLang)) return BadRequest();
-            auditLogService.LogAuditEvent(nameof(HeadMetadataAsync), $"{database}/{table}");
+            auditLogService.LogAuditEvent();
             return Ok();
         }
 
@@ -119,7 +119,7 @@ namespace PxApi.Controllers
         public IActionResult OptionsMetadata(string database, string table)
         {
             Response.Headers.Allow = "GET,HEAD,OPTIONS";
-            auditLogService.LogAuditEvent(nameof(OptionsMetadata), $"{database}/{table}");
+            auditLogService.LogAuditEvent();
             return Ok();
         }
     }

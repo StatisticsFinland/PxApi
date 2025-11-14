@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Px.Utils.Language;
 using PxApi.Caching;
@@ -16,6 +17,7 @@ namespace PxApi.UnitTests.ControllerTests
     public class DatabasesControllerTests
     {
         private Mock<ICachedDataSource> _mockCachedDataSource = null!;
+        private Mock<ILogger<DatabasesController>> _mockLogger = null!;
         private Mock<IAuditLogService> _mockAuditLogger = null!; // Added
         private DatabasesController _controller = null!;
 
@@ -23,8 +25,9 @@ namespace PxApi.UnitTests.ControllerTests
         public void SetUp()
         {
             _mockCachedDataSource = new Mock<ICachedDataSource>();
+            _mockLogger = new Mock<ILogger<DatabasesController>>();
             _mockAuditLogger = new Mock<IAuditLogService>();
-            _controller = new DatabasesController(_mockCachedDataSource.Object, _mockAuditLogger.Object)
+            _controller = new DatabasesController(_mockCachedDataSource.Object, _mockLogger.Object, _mockAuditLogger.Object)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -62,7 +65,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
-            _mockAuditLogger.Verify(x => x.LogAuditEvent("GetDatabases", "databases"), Times.Once);
+            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         [Test]
@@ -73,7 +76,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<OkResult>());
-            _mockAuditLogger.Verify(x => x.LogAuditEvent("HeadDatabases", "databases"), Times.Once);
+            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         [Test]
@@ -88,7 +91,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,HEAD,OPTIONS"));
             });
-            _mockAuditLogger.Verify(x => x.LogAuditEvent("OptionsDatabases", "databases"), Times.Once);
+            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         [Test]

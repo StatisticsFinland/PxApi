@@ -79,7 +79,7 @@ namespace PxApi.Controllers
                     return BadRequest(HttpConsts.BAD_REQUEST_PARAMS);
                 }
 
-                auditLogService.LogAuditEvent(nameof(GetDataAsync), $"{database}/{table}");
+                auditLogService.LogAuditEvent();
                 return await GenerateResponse(database, table, lang, query);
             }
         }
@@ -125,7 +125,7 @@ namespace PxApi.Controllers
                 { LoggerConsts.PX_FILE, table }
             }))
             {
-                auditLogService.LogAuditEvent(nameof(PostDataAsync), $"{database}/{table}");
+                auditLogService.LogAuditEvent();
                 return await GenerateResponse(database, table, lang, query);
             }
         }
@@ -152,7 +152,7 @@ namespace PxApi.Controllers
             }))
             {
                 Response.Headers.Allow = "GET,POST,HEAD,OPTIONS";
-                auditLogService.LogAuditEvent(nameof(OptionsData), $"{database}/{table}");
+                auditLogService.LogAuditEvent();
                 return Ok();
             }
         }
@@ -192,7 +192,7 @@ namespace PxApi.Controllers
                     IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
                     string actualLang = lang ?? meta.DefaultLanguage;
                     if (!meta.AvailableLanguages.Contains(actualLang)) return BadRequest();
-                    auditLogService.LogAuditEvent(nameof(HeadDataAsync), $"{database}/{table}");
+                    auditLogService.LogAuditEvent();
                     return Ok();
                 }
                 catch (ArgumentException argEx)

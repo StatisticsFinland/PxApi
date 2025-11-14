@@ -68,7 +68,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
-            _mockAuditLogService.Verify(x => x.LogAuditEvent("GetTableMetadataById", $"{database.Id}/{file.Id}"), Times.Once);
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         [Test]
@@ -88,7 +88,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<OkResult>());
-            _mockAuditLogService.Verify(x => x.LogAuditEvent("HeadMetadataAsync", $"{database.Id}/{file.Id}"), Times.Once);
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         [Test]
@@ -519,7 +519,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow.ToString(), Is.EqualTo("GET,HEAD,OPTIONS"));
             });
-            _mockAuditLogService.Verify(x => x.LogAuditEvent("OptionsMetadata", $"{database}/{table}"), Times.Once);
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
     }
 }

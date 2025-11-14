@@ -11,9 +11,7 @@ namespace PxApi.Services
         /// <summary>
         /// Writes an audit log entry describing an action performed on a resource.
         /// </summary>
-        /// <param name="action">Logical action name (e.g. GetData, GetMetadata).</param>
-        /// <param name="resource">Resource identifier (e.g. database/table).</param>
-        void LogAuditEvent(string action, string resource);
+        void LogAuditEvent();
     }
 
     /// <summary>
@@ -43,7 +41,7 @@ namespace PxApi.Services
         }
 
         /// <inheritdoc />
-        public void LogAuditEvent(string action, string resource)
+        public void LogAuditEvent()
         {
             if (!_auditEnabled) return;
 
@@ -63,9 +61,7 @@ namespace PxApi.Services
 
             using (_logger.BeginScope(context))
             {
-                _logger.LogInformation("Audit Event: action={Action}, resource={Resource}, user={User}, clientIP={ClientIP}",
-                    action,
-                    resource,
+                _logger.LogInformation("Audit Event: user={User}, clientIP={ClientIP}",
                     httpContext.User.Identity?.Name ?? "Anonymous",
                     httpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown"
                     );
