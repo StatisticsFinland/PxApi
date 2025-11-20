@@ -42,31 +42,26 @@ namespace PxApi.Controllers
 
             if (exception is InvalidModelException modelEx)
             {
-                logger.LogDebug(modelEx, "Invalid model in {Path}: {Message}", path, modelEx.Message);
+                logger.LogInformation(modelEx, "Invalid model in {Path}: {Message}", path, modelEx.Message);
                 return BadRequest(new
                 {
                     error = "Invalid model",
                     message = "The request model is invalid.",
-                    details = modelEx.ModelState,
                     path
                 });
             }
-
-            // Handle JSON deserialization errors that occur outside model binding
-            if (exception is JsonException jsonEx)
+            else if (exception is JsonException jsonEx)
             {
-                logger.LogDebug(jsonEx, "JSON deserialization error occurred in {Path}: {Message}", path, jsonEx.Message);
-
+                logger.LogInformation(jsonEx, "Malformed JSON in {Path}: {Message}", path, jsonEx.Message);
                 return BadRequest(new
                 {
-                    error = "Invalid JSON format",
-                    message = "The request body contains malformed JSON.",
+                    error = "Malformed JSON",
+                    message = "The request contains malformed JSON.",
                     path
                 });
             }
-
             // Handle IO errors with critical logging
-            if (exception is IOException)
+            else if (exception is IOException)
             {
                 logger.LogCritical(exception, "An IO error occurred in {Path}", path);
                 return StatusCode(500, new { error = "Internal server error", message = "A system error occurred." });
