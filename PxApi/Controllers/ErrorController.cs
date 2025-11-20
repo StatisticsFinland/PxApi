@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+using PxApi.Exceptions;
 
 namespace PxApi.Controllers
 {
@@ -15,14 +17,16 @@ namespace PxApi.Controllers
     {
         /// <summary>
         /// Handle unexpected errors in the API.
-        /// If the endpoint is requested derectly, will return <see cref="StatusCodes.Status200OK"/>
-        /// If an error occurred, will log the error and return <see cref="StatusCodes.Status400BadRequest"/>
+        /// If the endpoint is requested directly, will return <see cref="StatusCodes.Status200OK"/>
+        /// If an error occurred, will log the error and return appropriate status code based on error type.
         /// </summary>
-        /// <returns><see cref="StatusCodes.Status200OK"/> or <see cref="StatusCodes.Status400BadRequest"/> depending how it was called.</returns>
+        /// <returns>Appropriate HTTP status code based on the error type.</returns>
         /// <response code="200">If the endpoint was called directly</response>
-        /// <response code="400">If error occured in some other controller, the error has been logged.</response>
+        /// <response code="400">If a client error occurred (e.g., malformed JSON or invalid model)</response>
+        /// <response code="500">If an internal server error occurred</response>
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
+        [ProducesResponseType(500)]
         public IActionResult Error()
         {
             IExceptionHandlerPathFeature? exceptionHandlerPathFeature = HttpContext.Features.Get<IExceptionHandlerPathFeature>();
@@ -32,16 +36,45 @@ namespace PxApi.Controllers
                 logger.LogError("Error handler requested without exception.");
                 return Ok();
             }
-            if (exceptionHandlerPathFeature.Error is IOException)
+
+            Exception exception = exceptionHandlerPathFeature.Error;
+            string path = exceptionHandlerPathFeature.Path ?? "unknown";
+
+            if (exception is InvalidModelException modelEx)
             {
-                logger.LogCritical(exceptionHandlerPathFeature.Error, "An IO error occurred in {Path}", exceptionHandlerPathFeature.Path);
-            }
-            else
-            {
-                logger.LogError(exceptionHandlerPathFeature.Error, "Error in {Path}", exceptionHandlerPathFeature.Path);
+                logger.LogDebug(modelEx, "Invalid model in {Path}: {Message}", path, modelEx.Message);
+                return BadRequest(new
+                {
+                    error = "Invalid model",
+                    message = "The request model is invalid.",
+                    details = modelEx.ModelState,
+                    path
+                });
             }
 
-            return BadRequest();
+            // Handle JSON deserialization errors that occur outside model binding
+            if (exception is JsonException jsonEx)
+            {
+                logger.LogDebug(jsonEx, "JSON deserialization error occurred in {Path}: {Message}", path, jsonEx.Message);
+
+                return BadRequest(new
+                {
+                    error = "Invalid JSON format",
+                    message = "The request body contains malformed JSON.",
+                    path
+                });
+            }
+
+            // Handle IO errors with critical logging
+            if (exception is IOException)
+            {
+                logger.LogCritical(exception, "An IO error occurred in {Path}", path);
+                return StatusCode(500, new { error = "Internal server error", message = "A system error occurred." });
+            }
+
+            // Handle other exceptions
+            logger.LogError(exception, "Error in {Path}", path);
+            return StatusCode(500, new { error = "Internal server error", message = "An unexpected error occurred." });
         }
     }
 }
