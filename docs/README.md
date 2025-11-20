@@ -203,7 +203,7 @@ PxApi supports controller-specific API key authentication. Each controller can b
     },
     "Databases": {
       "Hash": "base64-encoded-hash-of-api-key",
-      "Salt": "base64-encoded-salt", 
+      "Salt": "base64-encoded-salt",
       "HeaderName": "X-Databases-API-Key"
     },
     "Tables": {
@@ -237,7 +237,7 @@ PxApi supports controller-specific API key authentication. Each controller can b
 ### Controller Default Headers
 
 - **Cache**: `X-Cache-API-Key`
-- **Databases**: `X-Databases-API-Key` 
+- **Databases**: `X-Databases-API-Key`
 - **Tables**: `X-Tables-API-Key`
 - **Metadata**: `X-Metadata-API-Key`
 - **Data**: `X-Data-API-Key`

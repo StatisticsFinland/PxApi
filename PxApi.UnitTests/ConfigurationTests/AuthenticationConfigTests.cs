@@ -303,7 +303,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             };
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(configData)
-                .Build(); ;
+                .Build();
 
             // Act
             CacheApiKeyConfig config = new(configuration.GetSection("Authentication:Cache"));
