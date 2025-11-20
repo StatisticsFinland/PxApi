@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using PxApi.Configuration;
+using PxApi.Controllers;
 using PxApi.Utilities;
 using System.Security.Cryptography;
 using System.Text;
@@ -37,10 +38,11 @@ namespace PxApi.Authentication
                     return;
                 }
 
-                CacheApiKeyConfig apiKeyConfig = AppSettings.Active.Authentication.Cache;
-                if (!apiKeyConfig.IsEnabled)
+                // Determine which controller is being called and get the appropriate config
+                ApiKeyConfig? apiKeyConfig = GetApiKeyConfigForController(context);
+                if (apiKeyConfig is null || !apiKeyConfig.IsEnabled)
                 {
-                    logger.LogDebug("API key authentication is not enabled, allowing request to proceed");
+                    logger.LogDebug("API key authentication is not enabled for this controller, allowing request to proceed");
                     await next();
                     return;
                 }
@@ -77,6 +79,27 @@ namespace PxApi.Authentication
                 logger.LogDebug("API key authentication successful");
                 await next();
             }
+        }
+        
+        /// <summary>
+        /// Determines which API key configuration to use based on the controller being called.
+        /// </summary>
+        /// <param name="context">The action executing context.</param>
+        /// <returns>The appropriate API key configuration, or null if no matching controller is found.</returns>
+        private static ApiKeyConfig? GetApiKeyConfigForController(ActionExecutingContext context)
+        {
+            string controllerName = context.Controller.GetType().Name;
+            AuthenticationConfig authConfig = AppSettings.Active.Authentication;
+            
+            return controllerName switch
+            {
+                nameof(DatabasesController) => authConfig.Databases,
+                nameof(TablesController) => authConfig.Tables,
+                nameof(MetadataController) => authConfig.Metadata,
+                nameof(DataController) => authConfig.Data,
+                nameof(CacheController) => authConfig.Cache,
+                _ => null
+            };
         }
         
         /// <summary>
