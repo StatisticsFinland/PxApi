@@ -11,6 +11,12 @@ using System.Text;
 
 namespace PxApi.UnitTests.Authentication
 {
+    public class CacheController : ControllerBase { }
+    public class DatabasesController : ControllerBase { }
+    public class TablesController : ControllerBase { }
+    public class MetadataController : ControllerBase { }
+    public class DataController : ControllerBase { }
+
     [TestFixture]
     public class ApiKeyAuthAttributeTests
     {
@@ -18,7 +24,6 @@ namespace PxApi.UnitTests.Authentication
         private Mock<IServiceProvider> _mockServiceProvider = null!;
         private Mock<HttpContext> _mockHttpContext = null!;
         private Mock<HttpRequest> _mockRequest = null!;
-        private ActionExecutingContext _actionContext = null!;
         private ApiKeyAuthAttribute _attribute = null!;
         private bool _nextCalled;
 
@@ -31,7 +36,19 @@ namespace PxApi.UnitTests.Authentication
                 {
                     ["Authentication:Cache:Hash"] = null,
                     ["Authentication:Cache:Salt"] = null,
-                    ["Authentication:Cache:HeaderName"] = "X-API-KEY"
+                    ["Authentication:Cache:HeaderName"] = "X-Cache-API-Key",
+                    ["Authentication:Databases:Hash"] = null,
+                    ["Authentication:Databases:Salt"] = null,
+                    ["Authentication:Databases:HeaderName"] = "X-Databases-API-Key",
+                    ["Authentication:Tables:Hash"] = null,
+                    ["Authentication:Tables:Salt"] = null,
+                    ["Authentication:Tables:HeaderName"] = "X-Tables-API-Key",
+                    ["Authentication:Metadata:Hash"] = null,
+                    ["Authentication:Metadata:Salt"] = null,
+                    ["Authentication:Metadata:HeaderName"] = "X-Metadata-API-Key",
+                    ["Authentication:Data:Hash"] = null,
+                    ["Authentication:Data:Salt"] = null,
+                    ["Authentication:Data:HeaderName"] = "X-Data-API-Key"
                 }
             );
             TestConfigFactory.BuildAndLoad(configData);
@@ -50,28 +67,31 @@ namespace PxApi.UnitTests.Authentication
             HeaderDictionary headers = [];
             _mockRequest.Setup(r => r.Headers).Returns(headers);
 
-            _actionContext = new ActionExecutingContext(
+            _attribute = new();
+            _nextCalled = false;
+        }
+
+        private ActionExecutingContext CreateActionContext(object controller)
+        {
+            return new ActionExecutingContext(
                 new ActionContext(_mockHttpContext.Object, new Microsoft.AspNetCore.Routing.RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor()),
                 [],
                 new Dictionary<string, object>()!,
-                new object()
+                controller
             );
-
-            _attribute = new();
-            _nextCalled = false;
         }
 
         private Task<ActionExecutedContext> NextDelegate()
         {
             _nextCalled = true;
             return Task.FromResult(new ActionExecutedContext(
-                _actionContext,
+                CreateActionContext(new CacheController()),
                 [],
                 new object()
             ));
         }
 
-        private static void SetupAppSettingsWithApiKeyAuthEnabled(string headerName = "X-API-KEY")
+        private static void SetupAppSettingsWithApiKeyAuthEnabled(string controllerType, string headerName)
         {
             const string testKey = "test-api-key";
             const string testSalt = "test-salt";
@@ -81,9 +101,9 @@ namespace PxApi.UnitTests.Authentication
                 TestConfigFactory.Base(),
                 new Dictionary<string, string?>
                 {
-                    ["Authentication:Cache:Hash"] = hashedKey,
-                    ["Authentication:Cache:Salt"] = testSalt,
-                    ["Authentication:Cache:HeaderName"] = headerName
+                    [$"Authentication:{controllerType}:Hash"] = hashedKey,
+                    [$"Authentication:{controllerType}:Salt"] = testSalt,
+                    [$"Authentication:{controllerType}:HeaderName"] = headerName
                 }
             );
             TestConfigFactory.BuildAndLoad(configData);
@@ -103,24 +123,29 @@ namespace PxApi.UnitTests.Authentication
                 TestConfigFactory.Base(),
                 new Dictionary<string, string?>
                 {
-                    ["Authentication:Cache"] = null
+                    ["Authentication:Cache"] = null,
+                    ["Authentication:Databases"] = null,
+                    ["Authentication:Tables"] = null,
+                    ["Authentication:Metadata"] = null,
+                    ["Authentication:Data"] = null
                 }
             );
             TestConfigFactory.BuildAndLoad(configData);
+            ActionExecutingContext actionContext = CreateActionContext(new CacheController());
 
             // Act
-            await _attribute.OnActionExecutionAsync(_actionContext, NextDelegate);
+            await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
             Assert.Multiple(() =>
             {
                 Assert.That(_nextCalled, Is.True);
-                Assert.That(_actionContext.Result, Is.Null);
+                Assert.That(actionContext.Result, Is.Null);
             });
         }
 
         [Test]
-        public async Task OnActionExecutionAsync_WhenApiKeyAuthDisabled_ShouldProceed()
+        public async Task OnActionExecutionAsync_WhenCacheApiKeyAuthDisabled_ShouldProceed()
         {
             // Arrange
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
@@ -132,139 +157,164 @@ namespace PxApi.UnitTests.Authentication
                 }
             );
             TestConfigFactory.BuildAndLoad(configData);
+            ActionExecutingContext actionContext = CreateActionContext(new CacheController());
 
             // Act
-            await _attribute.OnActionExecutionAsync(_actionContext, NextDelegate);
+            await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
             Assert.Multiple(() =>
             {
                 Assert.That(_nextCalled, Is.True);
-                Assert.That(_actionContext.Result, Is.Null);
+                Assert.That(actionContext.Result, Is.Null);
             });
         }
 
         [Test]
-        public async Task OnActionExecutionAsync_WhenHeaderMissing_ShouldReturnUnauthorized()
+        public async Task OnActionExecutionAsync_WhenDatabasesControllerHeaderMissing_ShouldReturnUnauthorized()
         {
             // Arrange
-            SetupAppSettingsWithApiKeyAuthEnabled();
+            const string headerName = "X-Databases-API-Key";
+            SetupAppSettingsWithApiKeyAuthEnabled("Databases", headerName);
+            ActionExecutingContext actionContext = CreateActionContext(new DatabasesController());
 
             // Act
-            await _attribute.OnActionExecutionAsync(_actionContext, NextDelegate);
+            await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
             Assert.Multiple(() =>
             {
                 Assert.That(_nextCalled, Is.False);
-                Assert.That(_actionContext.Result, Is.TypeOf<UnauthorizedObjectResult>());
-                
-                UnauthorizedObjectResult result = (UnauthorizedObjectResult)_actionContext.Result!;
-                string expectedMessage = $"Missing X-API-KEY header";
+                Assert.That(actionContext.Result, Is.TypeOf<UnauthorizedObjectResult>());
+
+                UnauthorizedObjectResult result = (UnauthorizedObjectResult)actionContext.Result!;
+                string expectedMessage = $"Missing {headerName} header";
                 Assert.That(result.Value?.ToString(), Does.Contain(expectedMessage));
             });
         }
 
         [Test]
-        public async Task OnActionExecutionAsync_WhenApiKeyEmpty_ShouldReturnUnauthorized()
+        public async Task OnActionExecutionAsync_WhenTablesControllerApiKeyEmpty_ShouldReturnUnauthorized()
         {
             // Arrange
-            SetupAppSettingsWithApiKeyAuthEnabled();
-            _mockRequest.Setup(r => r.Headers.TryGetValue("X-API-KEY", out It.Ref<StringValues>.IsAny))
-                       .Returns(new TryGetValueDelegate((string key, out StringValues values) =>
-                       {
-                           values = new StringValues("");
-                           return true;
-                       }));
+            const string headerName = "X-Tables-API-Key";
+            SetupAppSettingsWithApiKeyAuthEnabled("Tables", headerName);
+            ActionExecutingContext actionContext = CreateActionContext(new TablesController());
+            _mockRequest.Setup(r => r.Headers.TryGetValue(headerName, out It.Ref<StringValues>.IsAny))
+                .Returns(new TryGetValueDelegate((string key, out StringValues values) =>
+                {
+                    values = new StringValues("");
+                    return true;
+                }));
 
             // Act
-            await _attribute.OnActionExecutionAsync(_actionContext, NextDelegate);
+            await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
             Assert.Multiple(() =>
             {
                 Assert.That(_nextCalled, Is.False);
-                Assert.That(_actionContext.Result, Is.TypeOf<UnauthorizedObjectResult>());
-                
-                UnauthorizedObjectResult result = (UnauthorizedObjectResult)_actionContext.Result!;
+                Assert.That(actionContext.Result, Is.TypeOf<UnauthorizedObjectResult>());
+
+                UnauthorizedObjectResult result = (UnauthorizedObjectResult)actionContext.Result!;
                 Assert.That(result.Value?.ToString(), Does.Contain("Invalid API key"));
             });
         }
 
         [Test]
-        public async Task OnActionExecutionAsync_WhenApiKeyInvalid_ShouldReturnUnauthorized()
+        public async Task OnActionExecutionAsync_WhenMetadataControllerApiKeyInvalid_ShouldReturnUnauthorized()
         {
             // Arrange
-            const string headerName = "X-API-KEY";
-            SetupAppSettingsWithApiKeyAuthEnabled(headerName);
+            const string headerName = "X-Metadata-API-Key";
+            SetupAppSettingsWithApiKeyAuthEnabled("Metadata", headerName);
+            ActionExecutingContext actionContext = CreateActionContext(new MetadataController());
             _mockRequest.Setup(r => r.Headers.TryGetValue(headerName, out It.Ref<StringValues>.IsAny))
-                       .Returns(new TryGetValueDelegate((string key, out StringValues values) =>
-                       {
-                           values = new StringValues("invalid-api-key");
-                           return true;
-                       }));
+                .Returns(new TryGetValueDelegate((string key, out StringValues values) =>
+                {
+                    values = new StringValues("invalid-api-key");
+                    return true;
+                }));
 
             // Act
-            await _attribute.OnActionExecutionAsync(_actionContext, NextDelegate);
+            await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
             Assert.Multiple(() =>
             {
                 Assert.That(_nextCalled, Is.False);
-                Assert.That(_actionContext.Result, Is.TypeOf<UnauthorizedObjectResult>());
-                
-                UnauthorizedObjectResult result = (UnauthorizedObjectResult)_actionContext.Result!;
+                Assert.That(actionContext.Result, Is.TypeOf<UnauthorizedObjectResult>());
+
+                UnauthorizedObjectResult result = (UnauthorizedObjectResult)actionContext.Result!;
                 Assert.That(result.Value?.ToString(), Does.Contain("Invalid API key"));
             });
         }
 
         [Test]
-        public async Task OnActionExecutionAsync_WhenApiKeyValid_ShouldProceed()
+        public async Task OnActionExecutionAsync_WhenDataControllerApiKeyValid_ShouldProceed()
         {
             // Arrange
-            const string headerName = "X-API-KEY";
+            const string headerName = "X-Data-API-Key";
             const string validApiKey = "test-api-key";
-            SetupAppSettingsWithApiKeyAuthEnabled(headerName);
+            SetupAppSettingsWithApiKeyAuthEnabled("Data", headerName);
+            ActionExecutingContext actionContext = CreateActionContext(new DataController());
             _mockRequest.Setup(r => r.Headers.TryGetValue(headerName, out It.Ref<StringValues>.IsAny))
-                       .Returns(new TryGetValueDelegate((string key, out StringValues values) =>
-                       {
-                           values = new StringValues(validApiKey);
-                           return true;
-                       }));
+                .Returns(new TryGetValueDelegate((string key, out StringValues values) =>
+                {
+                    values = new StringValues(validApiKey);
+                    return true;
+                }));
 
             // Act
-            await _attribute.OnActionExecutionAsync(_actionContext, NextDelegate);
+            await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
             Assert.Multiple(() =>
             {
                 Assert.That(_nextCalled, Is.True);
-                Assert.That(_actionContext.Result, Is.Null);
+                Assert.That(actionContext.Result, Is.Null);
             });
         }
 
         [Test]
-        public async Task OnActionExecutionAsync_WhenApiKeyValidWithCustomHeader_ShouldProceed()
+        public async Task OnActionExecutionAsync_WhenCacheControllerApiKeyValid_ShouldProceed()
         {
             // Arrange
-            const string customHeaderName = "X-CUSTOM-API-KEY";
+            const string headerName = "X-Cache-API-Key";
             const string validApiKey = "test-api-key";
-            SetupAppSettingsWithApiKeyAuthEnabled(customHeaderName);
-            _mockRequest.Setup(r => r.Headers.TryGetValue(customHeaderName, out It.Ref<StringValues>.IsAny))
-                       .Returns(new TryGetValueDelegate((string key, out StringValues values) =>
-                       {
-                           values = new StringValues(validApiKey);
-                           return true;
-                       }));
+            SetupAppSettingsWithApiKeyAuthEnabled("Cache", headerName);
+            ActionExecutingContext actionContext = CreateActionContext(new CacheController());
+            _mockRequest.Setup(r => r.Headers.TryGetValue(headerName, out It.Ref<StringValues>.IsAny))
+                .Returns(new TryGetValueDelegate((string key, out StringValues values) =>
+                {
+                    values = new StringValues(validApiKey);
+                    return true;
+                }));
 
             // Act
-            await _attribute.OnActionExecutionAsync(_actionContext, NextDelegate);
+            await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
             Assert.Multiple(() =>
             {
                 Assert.That(_nextCalled, Is.True);
-                Assert.That(_actionContext.Result, Is.Null);
+                Assert.That(actionContext.Result, Is.Null);
+            });
+        }
+
+        [Test]
+        public async Task OnActionExecutionAsync_WhenUnknownController_ShouldProceed()
+        {
+            // Arrange
+            ActionExecutingContext actionContext = CreateActionContext(new object()); // Unknown controller type
+
+            // Act
+            await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(_nextCalled, Is.True);
+                Assert.That(actionContext.Result, Is.Null);
             });
         }
 
