@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Px.Utils.Language;
+using PxApi.Authentication;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Models;
@@ -22,6 +23,7 @@ namespace PxApi.Controllers
     /// </list>
     /// Content negotiation: Only application/json is produced.
     /// </remarks>
+    [ApiKeyAuth]
     [Route("databases")]
     [ApiController]
     public class DatabasesController(ICachedDataSource dataSource, ILogger<DatabasesController> logger, IAuditLogService auditLogger) : ControllerBase
