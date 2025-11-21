@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.FeatureManagement;
 using Microsoft.OpenApi.Models;
 using NLog.Web;
@@ -12,6 +13,7 @@ using PxApi.OpenApi.DocumentFilters;
 using PxApi.OpenApi.SchemaFilters;
 using PxApi.OpenApi;
 using PxApi.Services;
+using PxApi.Exceptions;
 
 namespace PxApi
 {
@@ -80,7 +82,7 @@ namespace PxApi
             catch (Exception ex)
             {
                 logger.Error(ex, "Stopped program because of exception");
-                Environment.ExitCode =1; // Non-zero exit code indicates failure
+                Environment.ExitCode = 1; // Non-zero exit code indicates failure
             }
             finally
             {
@@ -110,6 +112,16 @@ namespace PxApi
                 {
                     options.JsonSerializerOptions.Converters.Add(converter);
                 }
+            });
+
+            // Configure API behavior to handle model validation errors through custom exception
+            // that gets caught by the global error handler (ErrorController)
+            serviceCollection.Configure<ApiBehaviorOptions>(options =>
+            {
+                options.InvalidModelStateResponseFactory = context =>
+                {
+                    throw new InvalidModelException(context.ModelState, context.HttpContext.Request.Path);
+                };
             });
 
             serviceCollection.AddSwaggerGen(c =>

@@ -192,7 +192,7 @@ Specify desired format with `Accept` header:
 - `*/*` or empty -> JSON-stat 2.0
 
 ## Error Handling
-Central exception handling returns standardized 500 responses. Specific endpoints return 400/404/406/413/415 as described.
+Central exception handling returns standardized 500 responses and 400 responses for invalid requests. Specific endpoints return 400/404/406/413/415 as described.
 
 ## Development
 1. Configure `appsettings.json` with databases and cache settings.
