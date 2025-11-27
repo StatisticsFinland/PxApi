@@ -7,12 +7,14 @@ using PxApi.Models;
 using PxApi.OpenApi;
 using PxApi.Services;
 using PxApi.Utilities;
+using PxApi.Authentication;
 
 namespace PxApi.Controllers
 {
     /// <summary>
     /// Provides metadata endpoints for PX tables.
     /// </summary>
+    [ApiKeyAuth]
     [Route("meta")]
     [ApiController]
     public class MetadataController(ICachedDataSource cachedConnector, ILogger<MetadataController> logger, IAuditLogService auditLogService) : ControllerBase

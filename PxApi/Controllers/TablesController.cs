@@ -11,6 +11,7 @@ using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
 using PxApi.Services;
 using PxApi.OpenApi;
+using PxApi.Authentication;
 
 namespace PxApi.Controllers
 {
@@ -20,6 +21,7 @@ namespace PxApi.Controllers
     /// <remarks>
     /// Supports pagination and optional language-based metadata retrieval. Tables are ordered by their PX file name (ascending). If the requested page exceeds the last page an empty list is returned.
     /// </remarks>
+    [ApiKeyAuth]
     [Route("tables")]
     [ApiController]
     public class TablesController(ICachedDataSource cachedConnector, ILogger<TablesController> logger, IAuditLogService auditLogger) : ControllerBase

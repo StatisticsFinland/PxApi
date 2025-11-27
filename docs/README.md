@@ -11,7 +11,7 @@ PxApi is a .NET 9.0 Web API for accessing PX statistical datasets. It provides t
 - Cache management endpoints (database level and single table) (`/cache/{database}` / `/cache/{database}/{id}`)
 - Global and per-database caching (file lists, metadata, data, last updated timestamps, grouping metadata)
 - Feature flags (Swagger visibility of cache endpoints)
-- API key authentication for cache endpoints
+- Controller-specific API key authentication for all endpoints
 - Multiple storage types: Mounted (local / network), Azure File Share, Azure Blob Storage
 - Query size limits returning HTTP 413 when exceeded
 - Swagger / OpenAPI documentation with custom schema & document filters
@@ -23,12 +23,15 @@ PxApi is a .NET 9.0 Web API for accessing PX statistical datasets. It provides t
 `GET /databases?lang=fi`
 Returns a list of available databases with their metadata.
 
+**Authentication**: Requires valid API key in `X-Databases-API-Key` header when databases authentication is enabled.
+
 Query parameters:
 - `lang` (optional, default `fi`): Language used for name and description resolution.
 
 Responses:
 - `200 OK` JSON array containing database listing items
 - `400 Bad Request` requested language not supported
+- `401 Unauthorized` missing / invalid API key (when authentication configured)
 
 Additional methods:
 - `HEAD /databases` validates existence of the database collection resource
@@ -38,6 +41,8 @@ Additional methods:
 `GET /tables/{database}?lang=fi&page=1&pageSize=50`
 Returns a paged list of tables ordered by PX file name.
 
+**Authentication**: Requires valid API key in `X-Tables-API-Key` header when tables authentication is enabled.
+
 Query parameters:
 - `lang` (optional, default `fi`): Language used for metadata resolution.
 - `page` (optional, >=1, default `1`)
@@ -46,6 +51,7 @@ Query parameters:
 Responses:
 - `200 OK` JSON body containing table listing and paging info
 - `400 Bad Request` invalid paging values or unsupported language
+- `401 Unauthorized` missing / invalid API key (when authentication configured)
 - `404 Not Found` database missing
 
 Additional methods:
@@ -56,12 +62,15 @@ Additional methods:
 `GET /meta/{database}/{table}?lang=fi`
 Returns JSON-stat 2.0 metadata (structure only, no data filtering).
 
+**Authentication**: Requires valid API key in `X-Metadata-API-Key` header when metadata authentication is enabled.
+
 Query parameters:
 - `lang` (optional): If omitted uses table default language
 
 Responses:
 - `200 OK` JSON-stat 2.0 metadata
 - `400 Bad Request` language not available
+- `401 Unauthorized` missing / invalid API key (when authentication configured)
 - `404 Not Found` database or table missing
 - `500 Internal Server Error` unexpected error
 
@@ -73,6 +82,9 @@ Additional methods:
 `GET /data/{database}/{table}?filters=TIME:from=2020&filters=TIME:to=2024&filters=REGION:code=001,002`
 
 Retrieves data values applying filters to dimensions. Content negotiation support for json and csv:
+
+**Authentication**: Requires valid API key in `X-Data-API-Key` header when data authentication is enabled.
+
 - `Accept: application/json` or `*/*` -> JSON-stat 2.0
 - `Accept: text/csv` -> CSV format with containing table description, selected value names and data.
 
@@ -112,6 +124,7 @@ Query parameters (POST):
 Responses (GET & POST):
 - `200 OK` JSON-stat 2.0 object or CSV text
 - `400 Bad Request` invalid filters / language not available
+- `401 Unauthorized` missing / invalid API key (when authentication configured)
 - `404 Not Found` database or table missing
 - `406 Not Acceptable` unsupported `Accept` header value
 - `413 Payload Too Large` request cell count exceeds configured limit
@@ -123,6 +136,8 @@ Additional methods:
 
 ### Cache
 Requires feature flag `CacheController = true` and valid API key when authentication is enabled.
+
+**Authentication**: Requires valid API key in `X-Cache-API-Key` header when cache authentication is enabled.
 
 - `DELETE /cache/{database}` clears all cache entries (file list, metadata, data, last updated) for a database.
 - `DELETE /cache/{database}/{id}` clears all cache entries for a single table.
@@ -169,8 +184,80 @@ Key sections:
   - `JsonMaxCells` (used for any future JSON minimal format endpoints)
   - `JsonStatMaxCells` (enforced in current data endpoints; exceeding returns 413)
 - `FeatureManagement` Feature flags (e.g. `CacheController`)
-- `Authentication` API key settings (enable / key / header name)
+- `Authentication` Controller-specific API key settings - see Authentication section below
 - `OpenApi` Metadata (contact, license) for Swagger document
+
+## Authentication
+
+PxApi supports controller-specific API key authentication. Each controller can be independently configured with its own API key and header name. Authentication is optional and disabled by default.
+
+### Configuration Structure
+
+```json
+{
+  "Authentication": {
+    "Cache": {
+      "Key": "your-cache-api-key",
+      "HeaderName": "X-Cache-API-Key"
+    },
+    "Databases": {
+      "Key": "your-databases-api-key",
+      "HeaderName": "X-Databases-API-Key"
+    },
+ "Tables": {
+      "Key": "your-tables-api-key",
+      "HeaderName": "X-Tables-API-Key"
+    },
+    "Metadata": {
+      "Key": "your-metadata-api-key",
+      "HeaderName": "X-Metadata-API-Key"
+    },
+    "Data": {
+      "Key": "your-data-api-key",
+      "HeaderName": "X-Data-API-Key"
+    }
+  }
+}
+```
+
+### Authentication Rules
+
+- Authentication is **optional** - if no key is provided for a controller, that controller's endpoints will not require authentication
+- Each controller can be independently configured
+- When configured, clients must provide the correct API key in the specified header
+- API keys are compared directly with the configured values
+- Custom header names can be configured for each controller (defaults shown above)
+- Environment variables can override configuration values using the pattern: `Authentication__<Controller>__<Property>` (e.g., `Authentication__Data__Key`)
+
+### Controller Default Headers
+
+- **Cache**: `X-Cache-API-Key`
+- **Databases**: `X-Databases-API-Key`
+- **Tables**: `X-Tables-API-Key`
+- **Metadata**: `X-Metadata-API-Key`
+- **Data**: `X-Data-API-Key`
+
+### Environment Variable Configuration
+
+You can configure authentication via environment variables:
+
+```
+# Example: Configure Data controller authentication
+Authentication__Data__Key=your-data-api-key
+Authentication__Data__HeaderName=X-Custom-Data-Key
+
+# Example: Configure Databases controller authentication
+Authentication__Databases__Key=your-databases-api-key
+```
+
+### Security Notes
+
+- Store API keys securely and never commit them to version control
+- Use environment variables or secure configuration management for production deployments
+- Rotate API keys periodically
+- Use HTTPS in production to protect API keys in transit
+- Consider using different API keys for different controllers based on access requirements
+- Ensure API keys are sufficiently long and randomly generated for security
 
 ## Caching
 Global cache size limit controlled via `Cache.MaxSizeBytes`. Individual item sizes use defaults above or per-database overrides. Cached entities:
@@ -195,7 +282,7 @@ Specify desired format with `Accept` header:
 Central exception handling returns standardized 500 responses and 400 responses for invalid requests. Specific endpoints return 400/404/406/413/415 as described.
 
 ## Development
-1. Configure `appsettings.json` with databases and cache settings.
+1. Configure `appsettings.json` with databases, cache settings, and optionally authentication.
 2. Run the application.
 3. Access Swagger UI at root (`/`) for interactive documentation (`openapi/document.json`).
 
