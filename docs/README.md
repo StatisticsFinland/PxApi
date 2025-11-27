@@ -197,28 +197,23 @@ PxApi supports controller-specific API key authentication. Each controller can b
 {
   "Authentication": {
     "Cache": {
-      "Hash": "base64-encoded-hash-of-api-key",
-      "Salt": "base64-encoded-salt",
+      "Key": "your-cache-api-key",
       "HeaderName": "X-Cache-API-Key"
     },
     "Databases": {
-      "Hash": "base64-encoded-hash-of-api-key",
-      "Salt": "base64-encoded-salt",
+      "Key": "your-databases-api-key",
       "HeaderName": "X-Databases-API-Key"
     },
-    "Tables": {
-      "Hash": "base64-encoded-hash-of-api-key",
-      "Salt": "base64-encoded-salt",
+ "Tables": {
+      "Key": "your-tables-api-key",
       "HeaderName": "X-Tables-API-Key"
     },
     "Metadata": {
-    "Hash": "base64-encoded-hash-of-api-key",
-    "Salt": "base64-encoded-salt",
+      "Key": "your-metadata-api-key",
       "HeaderName": "X-Metadata-API-Key"
     },
     "Data": {
-      "Hash": "base64-encoded-hash-of-api-key",
-      "Salt": "base64-encoded-salt",
+      "Key": "your-data-api-key",
       "HeaderName": "X-Data-API-Key"
     }
   }
@@ -227,12 +222,12 @@ PxApi supports controller-specific API key authentication. Each controller can b
 
 ### Authentication Rules
 
-- Authentication is **optional** - if no hash and salt are provided for a controller, that controller's endpoints will not require authentication
+- Authentication is **optional** - if no key is provided for a controller, that controller's endpoints will not require authentication
 - Each controller can be independently configured
 - When configured, clients must provide the correct API key in the specified header
-- API keys are hashed using SHA256 with a salt for secure storage
+- API keys are compared directly with the configured values
 - Custom header names can be configured for each controller (defaults shown above)
-- Environment variables can override configuration values using the pattern: `Authentication__<Controller>__<Property>` (e.g., `Authentication__Data__Hash`)
+- Environment variables can override configuration values using the pattern: `Authentication__<Controller>__<Property>` (e.g., `Authentication__Data__Key`)
 
 ### Controller Default Headers
 
@@ -246,24 +241,23 @@ PxApi supports controller-specific API key authentication. Each controller can b
 
 You can configure authentication via environment variables:
 
-```bash
+```
 # Example: Configure Data controller authentication
-Authentication__Data__Hash=your-base64-hash
-Authentication__Data__Salt=your-base64-salt
+Authentication__Data__Key=your-data-api-key
 Authentication__Data__HeaderName=X-Custom-Data-Key
 
 # Example: Configure Databases controller authentication
-Authentication__Databases__Hash=your-base64-hash
-Authentication__Databases__Salt=your-base64-salt
+Authentication__Databases__Key=your-databases-api-key
 ```
 
 ### Security Notes
 
-- API keys should be stored as SHA256 hashes, never as plain text
-- Use a cryptographically secure salt for each installation
+- Store API keys securely and never commit them to version control
+- Use environment variables or secure configuration management for production deployments
 - Rotate API keys periodically
 - Use HTTPS in production to protect API keys in transit
 - Consider using different API keys for different controllers based on access requirements
+- Ensure API keys are sufficiently long and randomly generated for security
 
 ## Caching
 Global cache size limit controlled via `Cache.MaxSizeBytes`. Individual item sizes use defaults above or per-database overrides. Cached entities:
