@@ -12,19 +12,14 @@ namespace PxApi.UnitTests.ConfigurationTests
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["Authentication:Cache:Hash"] = null,
-                ["Authentication:Cache:Salt"] = null,
-                ["Authentication:Databases:Hash"] = null,
-                ["Authentication:Databases:Salt"] = null,
-                ["Authentication:Tables:Hash"] = null,
-                ["Authentication:Tables:Salt"] = null,
-                ["Authentication:Metadata:Hash"] = null,
-                ["Authentication:Metadata:Salt"] = null,
-                ["Authentication:Data:Hash"] = null,
-                ["Authentication:Data:Salt"] = null
+                ["Authentication:Cache:Key"] = null,
+                ["Authentication:Databases:Key"] = null,
+                ["Authentication:Tables:Key"] = null,
+                ["Authentication:Metadata:Key"] = null,
+                ["Authentication:Data:Key"] = null
             };
             IConfiguration configuration = new ConfigurationBuilder()
-           .AddInMemoryCollection(configData)
+                .AddInMemoryCollection(configData)
                 .Build();
 
             // Act
@@ -48,12 +43,11 @@ namespace PxApi.UnitTests.ConfigurationTests
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["Authentication:Cache:Hash"] = "test-hash",
-                ["Authentication:Cache:Salt"] = "test-salt"
+                ["Authentication:Cache:Key"] = "test-key"
             };
             IConfiguration configuration = new ConfigurationBuilder()
-           .AddInMemoryCollection(configData)
-             .Build();
+                .AddInMemoryCollection(configData)
+                .Build();
 
             // Act
             AuthenticationConfig config = new(configuration.GetSection("Authentication"));
@@ -76,14 +70,12 @@ namespace PxApi.UnitTests.ConfigurationTests
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["Authentication:Databases:Hash"] = "db-hash",
-                ["Authentication:Databases:Salt"] = "db-salt",
-                ["Authentication:Data:Hash"] = "data-hash",
-                ["Authentication:Data:Salt"] = "data-salt"
+                ["Authentication:Databases:Key"] = "db-key",
+                ["Authentication:Data:Key"] = "data-key"
             };
             IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(configData)
-                  .Build();
+                .AddInMemoryCollection(configData)
+                .Build();
 
             // Act
             AuthenticationConfig config = new(configuration.GetSection("Authentication"));
@@ -101,18 +93,17 @@ namespace PxApi.UnitTests.ConfigurationTests
         }
 
         [Test]
-        public void CacheApiKeyConfig_WhenOnlyHashProvided_ShouldBeDisabled()
+        public void CacheApiKeyConfig_WhenNoKeyProvided_ShouldBeDisabled()
         {
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["Authentication:Cache:Hash"] = "test-hash",
-                ["Authentication:Cache:Salt"] = null,
+                ["Authentication:Cache:Key"] = null,
                 ["Authentication:Cache:HeaderName"] = null
             };
             IConfiguration configuration = new ConfigurationBuilder()
-              .AddInMemoryCollection(configData)
-              .Build();
+                .AddInMemoryCollection(configData)
+                .Build();
 
             // Act
             CacheApiKeyConfig config = new(configuration.GetSection("Authentication:Cache"));
@@ -121,19 +112,17 @@ namespace PxApi.UnitTests.ConfigurationTests
             Assert.Multiple(() =>
             {
                 Assert.That(config.IsEnabled, Is.False);
-                Assert.That(config.Hash, Is.EqualTo("test-hash"));
-                Assert.That(config.Salt, Is.Null);
+                Assert.That(config.Key, Is.Null);
             });
         }
 
         [Test]
-        public void DatabasesApiKeyConfig_WhenBothHashAndSaltProvided_ShouldBeEnabled()
+        public void DatabasesApiKeyConfig_WhenKeyProvided_ShouldBeEnabled()
         {
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["Authentication:Databases:Hash"] = "test-hash",
-                ["Authentication:Databases:Salt"] = "test-salt",
+                ["Authentication:Databases:Key"] = "test-key",
                 ["Authentication:Databases:HeaderName"] = null
             };
             IConfiguration configuration = new ConfigurationBuilder()
@@ -147,8 +136,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             Assert.Multiple(() =>
             {
                 Assert.That(config.IsEnabled, Is.True);
-                Assert.That(config.Hash, Is.EqualTo("test-hash"));
-                Assert.That(config.Salt, Is.EqualTo("test-salt"));
+                Assert.That(config.Key, Is.EqualTo("test-key"));
                 Assert.That(config.HeaderName, Is.EqualTo("X-Databases-API-Key"));
             });
         }
@@ -159,8 +147,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["Authentication:Tables:Hash"] = "test-hash",
-                ["Authentication:Tables:Salt"] = "test-salt",
+                ["Authentication:Tables:Key"] = "test-key",
                 ["Authentication:Tables:HeaderName"] = "Custom-Tables-Key"
             };
             IConfiguration configuration = new ConfigurationBuilder()
@@ -180,8 +167,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["Authentication:Metadata:Hash"] = "test-hash",
-                ["Authentication:Metadata:Salt"] = "test-salt"
+                ["Authentication:Metadata:Key"] = "test-key"
             };
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(configData)
@@ -200,12 +186,11 @@ namespace PxApi.UnitTests.ConfigurationTests
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["Authentication:Data:Hash"] = "test-hash",
-                ["Authentication:Data:Salt"] = "test-salt"
+                ["Authentication:Data:Key"] = "test-key"
             };
             IConfiguration configuration = new ConfigurationBuilder()
-              .AddInMemoryCollection(configData)
-                 .Build();
+                .AddInMemoryCollection(configData)
+                .Build();
 
             // Act
             DataApiKeyConfig config = new(configuration.GetSection("Authentication:Data"));
@@ -219,13 +204,12 @@ namespace PxApi.UnitTests.ConfigurationTests
         }
 
         [Test]
-        public void CacheApiKeyConfig_WhenOnlySaltProvided_ShouldBeDisabled()
+        public void CacheApiKeyConfig_WhenEmptyKeyProvided_ShouldBeDisabled()
         {
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["Authentication:Cache:Hash"] = null,
-                ["Authentication:Cache:Salt"] = "test-salt",
+                ["Authentication:Cache:Key"] = "",
                 ["Authentication:Cache:HeaderName"] = null
             };
             IConfiguration configuration = new ConfigurationBuilder()
@@ -239,19 +223,17 @@ namespace PxApi.UnitTests.ConfigurationTests
             Assert.Multiple(() =>
             {
                 Assert.That(config.IsEnabled, Is.False);
-                Assert.That(config.Hash, Is.Null);
-                Assert.That(config.Salt, Is.EqualTo("test-salt"));
+                Assert.That(config.Key, Is.EqualTo(""));
             });
         }
 
         [Test]
-        public void CacheApiKeyConfig_WhenBothHashAndSaltProvided_ShouldBeEnabled()
+        public void CacheApiKeyConfig_WhenKeyProvided_ShouldBeEnabled()
         {
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["Authentication:Cache:Hash"] = "test-hash",
-                ["Authentication:Cache:Salt"] = "test-salt",
+                ["Authentication:Cache:Key"] = "test-key",
                 ["Authentication:Cache:HeaderName"] = null
             };
             IConfiguration configuration = new ConfigurationBuilder()
@@ -265,8 +247,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             Assert.Multiple(() =>
             {
                 Assert.That(config.IsEnabled, Is.True);
-                Assert.That(config.Hash, Is.EqualTo("test-hash"));
-                Assert.That(config.Salt, Is.EqualTo("test-salt"));
+                Assert.That(config.Key, Is.EqualTo("test-key"));
                 Assert.That(config.HeaderName, Is.EqualTo("X-Cache-API-Key"));
             });
         }
@@ -277,8 +258,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["Authentication:Cache:Hash"] = "test-hash",
-                ["Authentication:Cache:Salt"] = "test-salt",
+                ["Authentication:Cache:Key"] = "test-key",
                 ["Authentication:Cache:HeaderName"] = "Custom-Cache-Key"
             };
             IConfiguration configuration = new ConfigurationBuilder()
@@ -298,8 +278,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["Authentication:Cache:Hash"] = "test-hash",
-                ["Authentication:Cache:Salt"] = "test-salt"
+                ["Authentication:Cache:Key"] = "test-key"
             };
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(configData)
@@ -316,32 +295,27 @@ namespace PxApi.UnitTests.ConfigurationTests
         public void AllApiKeyConfigs_WhenEnvironmentVariablesProvided_ShouldUseEnvironmentVariables()
         {
             // Arrange
-            const string cacheHashEnvVar = "Authentication__Cache__Hash";
-            const string databasesHashEnvVar = "Authentication__Databases__Hash";
-            const string tablesHashEnvVar = "Authentication__Tables__Hash";
-            const string metadataHashEnvVar = "Authentication__Metadata__Hash";
-            const string dataHashEnvVar = "Authentication__Data__Hash";
+            const string cacheKeyEnvVar = "Authentication__Cache__Key";
+            const string databasesKeyEnvVar = "Authentication__Databases__Key";
+            const string tablesKeyEnvVar = "Authentication__Tables__Key";
+            const string metadataKeyEnvVar = "Authentication__Metadata__Key";
+            const string dataKeyEnvVar = "Authentication__Data__Key";
 
-            Environment.SetEnvironmentVariable(cacheHashEnvVar, "env-cache-hash");
-            Environment.SetEnvironmentVariable(databasesHashEnvVar, "env-databases-hash");
-            Environment.SetEnvironmentVariable(tablesHashEnvVar, "env-tables-hash");
-            Environment.SetEnvironmentVariable(metadataHashEnvVar, "env-metadata-hash");
-            Environment.SetEnvironmentVariable(dataHashEnvVar, "env-data-hash");
+            Environment.SetEnvironmentVariable(cacheKeyEnvVar, "env-cache-key");
+            Environment.SetEnvironmentVariable(databasesKeyEnvVar, "env-databases-key");
+            Environment.SetEnvironmentVariable(tablesKeyEnvVar, "env-tables-key");
+            Environment.SetEnvironmentVariable(metadataKeyEnvVar, "env-metadata-key");
+            Environment.SetEnvironmentVariable(dataKeyEnvVar, "env-data-key");
 
             try
             {
                 Dictionary<string, string?> configData = new()
                 {
-                    ["Authentication:Cache:Hash"] = "config-cache-hash",
-                    ["Authentication:Cache:Salt"] = "cache-salt",
-                    ["Authentication:Databases:Hash"] = "config-databases-hash",
-                    ["Authentication:Databases:Salt"] = "databases-salt",
-                    ["Authentication:Tables:Hash"] = "config-tables-hash",
-                    ["Authentication:Tables:Salt"] = "tables-salt",
-                    ["Authentication:Metadata:Hash"] = "config-metadata-hash",
-                    ["Authentication:Metadata:Salt"] = "metadata-salt",
-                    ["Authentication:Data:Hash"] = "config-data-hash",
-                    ["Authentication:Data:Salt"] = "data-salt"
+                    ["Authentication:Cache:Key"] = "config-cache-key",
+                    ["Authentication:Databases:Key"] = "config-databases-key",
+                    ["Authentication:Tables:Key"] = "config-tables-key",
+                    ["Authentication:Metadata:Key"] = "config-metadata-key",
+                    ["Authentication:Data:Key"] = "config-data-key"
                 };
                 IConfiguration configuration = new ConfigurationBuilder()
                     .AddInMemoryCollection(configData)
@@ -354,21 +328,21 @@ namespace PxApi.UnitTests.ConfigurationTests
                 // Assert
                 Assert.Multiple(() =>
                 {
-                    Assert.That(config.Cache.Hash, Is.EqualTo("env-cache-hash"));
-                    Assert.That(config.Databases.Hash, Is.EqualTo("env-databases-hash"));
-                    Assert.That(config.Tables.Hash, Is.EqualTo("env-tables-hash"));
-                    Assert.That(config.Metadata.Hash, Is.EqualTo("env-metadata-hash"));
-                    Assert.That(config.Data.Hash, Is.EqualTo("env-data-hash"));
+                    Assert.That(config.Cache.Key, Is.EqualTo("env-cache-key"));
+                    Assert.That(config.Databases.Key, Is.EqualTo("env-databases-key"));
+                    Assert.That(config.Tables.Key, Is.EqualTo("env-tables-key"));
+                    Assert.That(config.Metadata.Key, Is.EqualTo("env-metadata-key"));
+                    Assert.That(config.Data.Key, Is.EqualTo("env-data-key"));
                 });
             }
             finally
             {
                 // Cleanup
-                Environment.SetEnvironmentVariable(cacheHashEnvVar, null);
-                Environment.SetEnvironmentVariable(databasesHashEnvVar, null);
-                Environment.SetEnvironmentVariable(tablesHashEnvVar, null);
-                Environment.SetEnvironmentVariable(metadataHashEnvVar, null);
-                Environment.SetEnvironmentVariable(dataHashEnvVar, null);
+                Environment.SetEnvironmentVariable(cacheKeyEnvVar, null);
+                Environment.SetEnvironmentVariable(databasesKeyEnvVar, null);
+                Environment.SetEnvironmentVariable(tablesKeyEnvVar, null);
+                Environment.SetEnvironmentVariable(metadataKeyEnvVar, null);
+                Environment.SetEnvironmentVariable(dataKeyEnvVar, null);
             }
         }
     }

@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.Utilities;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace PxApi.Authentication
 {
@@ -63,13 +61,8 @@ namespace PxApi.Authentication
                     return;
                 }
 
-                // Compute hash of provided key and compare with stored hash
-                string computedHash = ComputeHash(providedKey, apiKeyConfig.Salt!);
-
-                ReadOnlySpan<byte> computedHashBytes = [.. Convert.FromBase64String(computedHash)];
-                ReadOnlySpan<byte> apiKeyConfigHashBytes = [.. Convert.FromBase64String(apiKeyConfig.Hash!)];
-
-                if (!CryptographicOperations.FixedTimeEquals(computedHashBytes, apiKeyConfigHashBytes))
+                // Compare provided key directly with configured key
+                if (!string.Equals(providedKey, apiKeyConfig.Key, StringComparison.Ordinal))
                 {
                     logger.LogWarning("API key authentication failed: Invalid API key provided");
                     context.Result = new UnauthorizedObjectResult(new { message = "Invalid API key" });
@@ -100,18 +93,6 @@ namespace PxApi.Authentication
                 nameof(CacheController) => authConfig.Cache,
                 _ => null
             };
-        }
-        
-        /// <summary>
-        /// Computes a SHA256 hash of the input string combined with the salt.
-        /// </summary>
-        /// <param name="input">The input string to hash.</param>
-        /// <param name="salt">The salt to add to the input.</param>
-        /// <returns>Base64-encoded hash of the salted input.</returns>
-        private static string ComputeHash(string input, string salt)
-        {
-            byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input + salt));
-            return Convert.ToBase64String(bytes);
         }
     }
 }

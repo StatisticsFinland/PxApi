@@ -6,8 +6,6 @@ using Microsoft.Extensions.Primitives;
 using Moq;
 using PxApi.Authentication;
 using PxApi.UnitTests.Utils;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace PxApi.UnitTests.Authentication
 {
@@ -34,23 +32,18 @@ namespace PxApi.UnitTests.Authentication
                 TestConfigFactory.Base(),
                 new Dictionary<string, string?>
                 {
-                    ["Authentication:Cache:Hash"] = null,
-                    ["Authentication:Cache:Salt"] = null,
+                    ["Authentication:Cache:Key"] = null,
                     ["Authentication:Cache:HeaderName"] = "X-Cache-API-Key",
-                    ["Authentication:Databases:Hash"] = null,
-                    ["Authentication:Databases:Salt"] = null,
+                    ["Authentication:Databases:Key"] = null,
                     ["Authentication:Databases:HeaderName"] = "X-Databases-API-Key",
-                    ["Authentication:Tables:Hash"] = null,
-                    ["Authentication:Tables:Salt"] = null,
+                    ["Authentication:Tables:Key"] = null,
                     ["Authentication:Tables:HeaderName"] = "X-Tables-API-Key",
-                    ["Authentication:Metadata:Hash"] = null,
-                    ["Authentication:Metadata:Salt"] = null,
+                    ["Authentication:Metadata:Key"] = null,
                     ["Authentication:Metadata:HeaderName"] = "X-Metadata-API-Key",
-                    ["Authentication:Data:Hash"] = null,
-                    ["Authentication:Data:Salt"] = null,
+                    ["Authentication:Data:Key"] = null,
                     ["Authentication:Data:HeaderName"] = "X-Data-API-Key"
                 }
-            );
+                );
             TestConfigFactory.BuildAndLoad(configData);
 
             _mockLogger = new();
@@ -59,7 +52,7 @@ namespace PxApi.UnitTests.Authentication
             _mockRequest = new();
 
             _mockServiceProvider.Setup(s => s.GetService(typeof(ILogger<ApiKeyAuthAttribute>)))
-                               .Returns(_mockLogger.Object);
+                .Returns(_mockLogger.Object);
 
             _mockHttpContext.Setup(c => c.RequestServices).Returns(_mockServiceProvider.Object);
             _mockHttpContext.Setup(c => c.Request).Returns(_mockRequest.Object);
@@ -78,7 +71,7 @@ namespace PxApi.UnitTests.Authentication
                 [],
                 new Dictionary<string, object>()!,
                 controller
-            );
+                );
         }
 
         private Task<ActionExecutedContext> NextDelegate()
@@ -88,31 +81,22 @@ namespace PxApi.UnitTests.Authentication
                 CreateActionContext(new CacheController()),
                 [],
                 new object()
-            ));
+                ));
         }
 
         private static void SetupAppSettingsWithApiKeyAuthEnabled(string controllerType, string headerName)
         {
             const string testKey = "test-api-key";
-            const string testSalt = "test-salt";
-            string hashedKey = ComputeTestHash(testKey, testSalt);
 
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
                 TestConfigFactory.Base(),
                 new Dictionary<string, string?>
                 {
-                    [$"Authentication:{controllerType}:Hash"] = hashedKey,
-                    [$"Authentication:{controllerType}:Salt"] = testSalt,
+                    [$"Authentication:{controllerType}:Key"] = testKey,
                     [$"Authentication:{controllerType}:HeaderName"] = headerName
                 }
-            );
+                );
             TestConfigFactory.BuildAndLoad(configData);
-        }
-
-        private static string ComputeTestHash(string input, string salt)
-        {
-            byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input + salt));
-            return Convert.ToBase64String(bytes);
         }
 
         [Test]
@@ -129,7 +113,7 @@ namespace PxApi.UnitTests.Authentication
                     ["Authentication:Metadata"] = null,
                     ["Authentication:Data"] = null
                 }
-            );
+                );
             TestConfigFactory.BuildAndLoad(configData);
             ActionExecutingContext actionContext = CreateActionContext(new CacheController());
 
@@ -152,10 +136,9 @@ namespace PxApi.UnitTests.Authentication
                 TestConfigFactory.Base(),
                 new Dictionary<string, string?>
                 {
-                    ["Authentication:Cache:Hash"] = null,
-                    ["Authentication:Cache:Salt"] = "test-salt",
+                    ["Authentication:Cache:Key"] = null,
                 }
-            );
+                );
             TestConfigFactory.BuildAndLoad(configData);
             ActionExecutingContext actionContext = CreateActionContext(new CacheController());
 

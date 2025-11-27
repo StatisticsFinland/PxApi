@@ -59,16 +59,10 @@ namespace PxApi.Configuration
     public abstract class ApiKeyConfig(IConfigurationSection configuration)
     {
         /// <summary>
-        /// The hashed API key value for comparison with client-provided keys.
+        /// The API key value for comparison with client-provided keys.
         /// If not provided, API key authentication is disabled.
         /// </summary>
-        public string? Hash { get; protected set; } = configuration.GetValue<string>(nameof(Hash));
-
-        /// <summary>
-        /// The salt value used for hashing API keys.
-        /// Required when Hash is provided.
-        /// </summary>
-        public string? Salt { get; protected set; } = configuration.GetValue<string>(nameof(Salt));
+        public string? Key { get; protected set; } = configuration.GetValue<string>(nameof(Key));
 
         /// <summary>
         /// The name of the HTTP header that should contain the API key.
@@ -78,9 +72,9 @@ namespace PxApi.Configuration
 
         /// <summary>
         /// Gets a value indicating whether API key authentication is enabled.
-        /// Enabled when both Hash and Salt are provided.
+        /// Enabled when Key is provided.
         /// </summary>
-        public bool IsEnabled => !string.IsNullOrEmpty(Hash) && !string.IsNullOrEmpty(Salt);
+        public bool IsEnabled => !string.IsNullOrEmpty(Key);
     }
 
     /// <summary>
@@ -99,8 +93,7 @@ namespace PxApi.Configuration
         /// <param name="configuration">The configuration section containing cache API key settings.</param>
         public CacheApiKeyConfig(IConfigurationSection configuration) : base(configuration)
         {
-            Hash = configuration.GetValue<string>(nameof(Hash));
-            Salt = configuration.GetValue<string>(nameof(Salt));
+            Key = configuration.GetValue<string>(nameof(Key));
             HeaderName = configuration.GetValue<string>(nameof(HeaderName)) ?? DEFAULT_HEADER_NAME;
         }
     }
@@ -121,8 +114,7 @@ namespace PxApi.Configuration
         /// <param name="configuration">The configuration section containing databases API key settings.</param>
         public DatabasesApiKeyConfig(IConfigurationSection configuration) : base(configuration)
         {
-            Hash = configuration.GetValue<string>(nameof(Hash));
-            Salt = configuration.GetValue<string>(nameof(Salt));
+            Key = configuration.GetValue<string>(nameof(Key));
             HeaderName = configuration.GetValue<string>(nameof(HeaderName)) ?? DEFAULT_HEADER_NAME;
         }
     }
@@ -143,8 +135,7 @@ namespace PxApi.Configuration
         /// <param name="configuration">The configuration section containing tables API key settings.</param>
         public TablesApiKeyConfig(IConfigurationSection configuration) : base(configuration)
         {
-            Hash = configuration.GetValue<string>(nameof(Hash));
-            Salt = configuration.GetValue<string>(nameof(Salt));
+            Key = configuration.GetValue<string>(nameof(Key));
             HeaderName = configuration.GetValue<string>(nameof(HeaderName)) ?? DEFAULT_HEADER_NAME;
         }
     }
@@ -165,8 +156,7 @@ namespace PxApi.Configuration
         /// <param name="configuration">The configuration section containing metadata API key settings.</param>
         public MetadataApiKeyConfig(IConfigurationSection configuration) : base(configuration)
         {
-            Hash = configuration.GetValue<string>(nameof(Hash));
-            Salt = configuration.GetValue<string>(nameof(Salt));
+            Key = configuration.GetValue<string>(nameof(Key));
             HeaderName = configuration.GetValue<string>(nameof(HeaderName)) ?? DEFAULT_HEADER_NAME;
         }
     }
@@ -187,8 +177,7 @@ namespace PxApi.Configuration
         /// <param name="configuration">The configuration section containing data API key settings.</param>
         public DataApiKeyConfig(IConfigurationSection configuration) : base(configuration)
         {
-            Hash = configuration.GetValue<string>(nameof(Hash));
-            Salt = configuration.GetValue<string>(nameof(Salt));
+            Key = configuration.GetValue<string>(nameof(Key));
             HeaderName = configuration.GetValue<string>(nameof(HeaderName)) ?? DEFAULT_HEADER_NAME;
         }
     }
