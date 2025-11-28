@@ -13,6 +13,7 @@ using PxApi.Models;
 using PxApi.OpenApi;
 using PxApi.Services;
 using PxApi.Utilities;
+using PxApi.Authentication;
 
 namespace PxApi.Controllers
 {
@@ -22,6 +23,7 @@ namespace PxApi.Controllers
     /// <param name="dataSource">Cached data source for accessing PX file metadata and values.</param>
     /// <param name="logger">Logger instance.</param>
     /// <param name="auditLogService">Audit logging service.</param>
+    [ApiKeyAuth]
     [ApiController]
     [Route("data")]
     public class DataController(ICachedDataSource dataSource, ILogger<DataController> logger, IAuditLogService auditLogService) : ControllerBase
