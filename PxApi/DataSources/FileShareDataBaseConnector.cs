@@ -47,7 +47,6 @@ namespace PxApi.DataSources
 
                 List<string> fileNames = [];
 
-                await _shareClient.CreateIfNotExistsAsync();
                 ShareDirectoryClient rootDirectory = _shareClient.GetRootDirectoryClient();
 
                 await ListAllFilesRecursivelyAsync(rootDirectory, "", fileNames);
