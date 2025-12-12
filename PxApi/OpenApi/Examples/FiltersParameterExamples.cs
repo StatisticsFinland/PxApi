@@ -1,4 +1,4 @@
-﻿using Microsoft.OpenApi.Any;
+using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using System.Diagnostics.CodeAnalysis;
 
@@ -30,7 +30,7 @@ namespace PxApi.OpenApi.Examples
             ["from-filter"] = new OpenApiExample
             {
                 Summary = "From filter",
-                Description = "Years from2020 onward; time codes starting with202.",
+                Description = "Years from 2020 onward; time codes starting with 202.",
                 Value = new OpenApiArray
                 {
                     new OpenApiString("year:from=2020"),
@@ -40,7 +40,7 @@ namespace PxApi.OpenApi.Examples
             ["to-filter"] = new OpenApiExample
             {
                 Summary = "To filter",
-                Description = "Years up to2023; time codes up to first match starting with2022.",
+                Description = "Years up to 2023; time codes up to first match starting with 2022.",
                 Value = new OpenApiArray
                 {
                     new OpenApiString("year:to=2023"),
@@ -50,7 +50,7 @@ namespace PxApi.OpenApi.Examples
             ["first-filter"] = new OpenApiExample
             {
                 Summary = "First filter",
-                Description = "First10 region codes.",
+                Description = "First 10 region codes.",
                 Value = new OpenApiArray
                 {
                     new OpenApiString("region:first=10")
@@ -59,7 +59,7 @@ namespace PxApi.OpenApi.Examples
             ["last-filter"] = new OpenApiExample
             {
                 Summary = "Last filter",
-                Description = "Last5 region codes.",
+                Description = "Last 5 region codes.",
                 Value = new OpenApiArray
                 {
                     new OpenApiString("region:last=5")
