@@ -1,4 +1,4 @@
-﻿using Microsoft.OpenApi.Any;
+using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using System.Diagnostics.CodeAnalysis;
 using static PxApi.Models.QueryFilters.FilterJsonConverter;
@@ -83,7 +83,7 @@ namespace PxApi.OpenApi.Examples
             ["first-filter"] = new OpenApiExample
             {
                 Summary = "First filter",
-                Description = "First N values (N >0).",
+                Description = "First N values (N > 0).",
                 Value = new OpenApiObject
                 {
                     ["region"] = new OpenApiObject
@@ -96,7 +96,7 @@ namespace PxApi.OpenApi.Examples
             ["last-filter"] = new OpenApiExample
             {
                 Summary = "Last filter",
-                Description = "Last N values (N >0).",
+                Description = "Last N values (N > 0).",
                 Value = new OpenApiObject
                 {
                     ["region"] = new OpenApiObject
