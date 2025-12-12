@@ -122,7 +122,7 @@ namespace PxApi.Controllers
             }
             catch (DirectoryNotFoundException dnfe)
             {
-                logger.LogInformation(dnfe, "Failed to get tables for database: {Database}", database);
+                logger.LogInformation(dnfe, "Failed to get tables for database.");
                 return NotFound();
             }
         }
