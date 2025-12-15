@@ -319,8 +319,8 @@ namespace PxApi.UnitTests.ControllerTests
         private void SetupMocks()
         {
             _mockConnector.Setup(c => c.DataBase).Returns(_testDatabase);
-            _mockConnector.Setup(c => c.ReadPxFile(_testTable))
-                .Returns(CreateTestDataStream);
+            _mockConnector.Setup(c => c.ReadPxFileAsync(_testTable))
+                .ReturnsAsync(CreateTestDataStream);
             _mockConnector.Setup(c => c.GetLastWriteTimeAsync(_testTable))
                 .ReturnsAsync(DateTime.UtcNow.AddMinutes(-10));
             _mockConnector.Setup(c => c.GetAllFilesAsync())
@@ -384,7 +384,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "alue"));
             });
 
-            _mockConnector.Verify(c => c.ReadPxFile(_testTable), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadPxFileAsync(_testTable), Times.AtLeastOnce);
         }
 
         [Test]
@@ -449,7 +449,7 @@ namespace PxApi.UnitTests.ControllerTests
             });
 
             // Should have read from stream at least once, but cache should reduce subsequent reads
-            _mockConnector.Verify(c => c.ReadPxFile(_testTable), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadPxFileAsync(_testTable), Times.AtLeastOnce);
         }
 
         [Test]
@@ -528,7 +528,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(actualSubsetValues, Is.EqualTo(expectedSubsetValues));
             });
 
-            _mockConnector.Verify(c => c.ReadPxFile(_testTable), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadPxFileAsync(_testTable), Times.AtLeastOnce);
         }
 
         [Test]
@@ -588,7 +588,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse.Dimension, Has.Count.EqualTo(3));
             });
 
-            _mockConnector.Verify(c => c.ReadPxFile(_testTable), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadPxFileAsync(_testTable), Times.AtLeastOnce);
         }
 
         [Test]
@@ -672,7 +672,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(translations![DataValueType.Missing], Is.EqualTo("Missing"));
             });
 
-            _mockConnector.Verify(c => c.ReadPxFile(_testTable), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadPxFileAsync(_testTable), Times.AtLeastOnce);
         }
 
         [Test]
@@ -748,7 +748,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(actualValues1, Is.EqualTo(actualValues2));
             });
 
-            _mockConnector.Verify(c => c.ReadPxFile(_testTable), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadPxFileAsync(_testTable), Times.AtLeastOnce);
         }
 
         [Test]

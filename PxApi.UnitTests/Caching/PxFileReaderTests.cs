@@ -1,4 +1,4 @@
-﻿using Moq;
+using Moq;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Metadata;
@@ -21,7 +21,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             Mock<IDataBaseConnector> mockFileSystem = new();
-            mockFileSystem.Setup(fs => fs.ReadPxFile(It.IsAny<PxFileRef>())).Returns(new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
+            mockFileSystem.Setup(fs => fs.ReadPxFileAsync(It.IsAny<PxFileRef>())).ReturnsAsync(new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
             PxFileReader reader = new(mockFileSystem.Object);
             string[] expectedLanguages = ["fi", "en"];
 
@@ -49,7 +49,7 @@ namespace PxApi.UnitTests.Caching
 
             // Arrange
             Mock<IDataBaseConnector> mockFileSystem = new();
-            mockFileSystem.Setup(fs => fs.ReadPxFile(It.IsAny<PxFileRef>())).Returns(new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
+            mockFileSystem.Setup(fs => fs.ReadPxFileAsync(It.IsAny<PxFileRef>())).ReturnsAsync(new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
             PxFileReader reader = new(mockFileSystem.Object);
 
             // Act
@@ -67,8 +67,8 @@ namespace PxApi.UnitTests.Caching
             // Arrange
             Mock<IDataBaseConnector> mockFileSystem = new();
             mockFileSystem
-                .Setup(fs => fs.ReadPxFile(It.IsAny<PxFileRef>()))
-                .Returns(() => new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
+                .Setup(fs => fs.ReadPxFileAsync(It.IsAny<PxFileRef>()))
+                .ReturnsAsync(() => new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
             PxFileReader reader = new(mockFileSystem.Object);
             long startOffset = (long)await reader.GetDataSectionOffsetAsync(fileRef);
             MatrixMap targetMap = new([

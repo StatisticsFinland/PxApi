@@ -41,14 +41,14 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public Stream ReadPxFile(PxFileRef file)
+        public async Task<Stream> ReadPxFileAsync(PxFileRef file)
         {
             using (logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
                     [LoggerConsts.CONTROLLER] = nameof(MountedDataBaseConnector),
-                    [LoggerConsts.FUNCTION] = nameof(ReadPxFile),
+                    [LoggerConsts.FUNCTION] = nameof(ReadPxFileAsync),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
@@ -58,13 +58,13 @@ namespace PxApi.DataSources
                     logger.LogWarning("The file does not belong to the database.");
                     throw new InvalidOperationException("The file does not belong to the database.");
                 }
-                
+
                 // Use the FilePath property if it exists and points to a valid file
                 if (!string.IsNullOrEmpty(file.FilePath) && File.Exists(file.FilePath))
                 {
-                    return new FileStream(file.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    return await Task.FromResult<Stream>(File.OpenRead(file.FilePath));
                 }
-                
+
                 // Fall back to constructing the path from components
                 string path = Path.Combine(rootPath, file.DataBase.Id, file.Id);
                 
