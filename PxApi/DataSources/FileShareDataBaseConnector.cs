@@ -6,6 +6,7 @@ using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics;
 
 namespace PxApi.DataSources
 {
@@ -57,14 +58,14 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public Stream ReadPxFile(PxFileRef file)
+        public async Task<Stream> ReadPxFileAsync(PxFileRef file)
         {
             using (_logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
                     [LoggerConsts.CONTROLLER] = nameof(FileShareDataBaseConnector),
-                    [LoggerConsts.FUNCTION] = nameof(ReadPxFile),
+                    [LoggerConsts.FUNCTION] = nameof(ReadPxFileAsync),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
@@ -75,21 +76,14 @@ namespace PxApi.DataSources
                 }
 
                 _logger.LogDebug("Reading PX file {FileId} from file share", file.Id);
-
                 ShareDirectoryClient directoryClient = _shareClient.GetRootDirectoryClient();
-                ShareFileClient? fileClient = FindPxFileAsync(directoryClient, file.Id).GetAwaiter().GetResult();
-                if (fileClient == null || !fileClient.Exists())
+                ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id);
+                if (fileClient == null || !await fileClient.ExistsAsync())
                 {
                     _logger.LogError("PX file {FileId} not found in file share", file.Id);
                     throw new FileNotFoundException($"File {file.Id} not found in file share {_sharePath}");
                 }
-
-                MemoryStream memoryStream = new();
-                Response<ShareFileDownloadInfo> dl = fileClient.Download();
-                dl.Value.Content.CopyTo(memoryStream);
-                memoryStream.Position = 0;
-
-                return memoryStream;
+                return await fileClient.OpenReadAsync();
             }
         }
 

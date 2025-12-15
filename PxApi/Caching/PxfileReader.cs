@@ -25,7 +25,7 @@ namespace PxApi.Caching
         public async Task<IReadOnlyMatrixMetadata> ReadMetadataAsync(PxFileRef file)
         {
             PxFileMetadataReader metaReader = new();
-            using Stream stream = dbConnector.ReadPxFile(file);
+            using Stream stream = await dbConnector.ReadPxFileAsync(file);
             Encoding encoding = await metaReader.GetEncodingAsync(stream);
             if (stream.CanSeek) stream.Seek(0, SeekOrigin.Begin);
             IAsyncEnumerable<KeyValuePair<string, string>> entries = metaReader.ReadMetadataAsync(stream, encoding);
@@ -40,7 +40,7 @@ namespace PxApi.Caching
         /// <returns>Long value representing the offset of the data section</returns>
         public async Task<long?> GetDataSectionOffsetAsync(PxFileRef file)
         {
-            using Stream stream = dbConnector.ReadPxFile(file);
+            using Stream stream = await dbConnector.ReadPxFileAsync(file);
             PxFileConfiguration conf = PxFileConfiguration.Default;
             string dataKey = conf.Tokens.KeyWords.Data;
             long offset = await StreamUtilities.FindKeywordPositionAsync(stream, dataKey, conf);
@@ -57,7 +57,7 @@ namespace PxApi.Caching
         /// <returns>Array of <see cref="DoubleDataValue"/> containing the data values.</returns>
         public async Task<DoubleDataValue[]> ReadDataAsync(PxFileRef file, long dataOffset, IMatrixMap targetMap, IMatrixMap fileMap)
         {
-            using Stream stream = dbConnector.ReadPxFile(file);
+            using Stream stream = await dbConnector.ReadPxFileAsync(file);
             using PxFileStreamDataReader dataReader = new(stream, dataOffset);
             DoubleDataValue[] result = new DoubleDataValue[targetMap.GetSize()];
             await dataReader.ReadDoubleDataValuesAsync(result, 0, targetMap, fileMap);

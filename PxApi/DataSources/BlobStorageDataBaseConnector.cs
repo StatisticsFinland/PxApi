@@ -70,14 +70,14 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public Stream ReadPxFile(PxFileRef file)
+        public async Task<Stream> ReadPxFileAsync(PxFileRef file)
         {
             using (_logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
                     [LoggerConsts.CONTROLLER] = nameof(BlobStorageDataBaseConnector),
-                    [LoggerConsts.FUNCTION] = nameof(ReadPxFile),
+                    [LoggerConsts.FUNCTION] = nameof(ReadPxFileAsync),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
@@ -91,17 +91,14 @@ namespace PxApi.DataSources
 
                 BlobClient blobClient = _containerClient.GetBlobClient(file.Id);
 
-                if (!blobClient.Exists())
+                if (!await blobClient.ExistsAsync())
                 {
                     _logger.LogError("PX file {FileId} not found in blob storage", file.Id);
                     throw new FileNotFoundException($"File {file.Id} not found in blob storage container {_containerName}");
                 }
 
-                MemoryStream memoryStream = new();
-                blobClient.DownloadTo(memoryStream);
-                memoryStream.Position = 0;
-
-                return memoryStream;
+                Stream stream = await blobClient.OpenReadAsync();
+                return stream;
             }
         }
 
