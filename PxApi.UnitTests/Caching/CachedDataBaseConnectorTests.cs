@@ -258,7 +258,7 @@ namespace PxApi.UnitTests.Caching
             MemoryStream pxStream = new (Encoding.UTF8.GetBytes(pxContent));
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.Setup(c => c.DataBase).Returns(dataBase);
-            mockConnector.Setup(c => c.ReadPxFile(fileRef)).Returns(pxStream);
+            mockConnector.Setup(c => c.ReadPxFileAsync(fileRef)).ReturnsAsync(pxStream);
             mockConnector.Setup(c => c.GetLastWriteTimeAsync(fileRef)).ReturnsAsync(DateTime.UtcNow);
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
@@ -302,7 +302,7 @@ namespace PxApi.UnitTests.Caching
             MemoryStream pxStream = new (Encoding.UTF8.GetBytes(pxContent));
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.Setup(c => c.DataBase).Returns(dbRef);
-            mockConnector.Setup(c => c.ReadPxFile(fileRef)).Returns(pxStream);
+            mockConnector.Setup(c => c.ReadPxFileAsync(fileRef)).ReturnsAsync(pxStream);
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dbRef)).Returns(mockConnector.Object);
             CachedDataSource dbConnector = new(mockFactory.Object, new DatabaseCache(new MemoryCache(new MemoryCacheOptions())));
@@ -325,7 +325,7 @@ namespace PxApi.UnitTests.Caching
             Stream unseekableStream = new UnseekableMemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N));
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.Setup(c => c.DataBase).Returns(dbRef);
-            mockConnector.Setup(c => c.ReadPxFile(fileRef)).Returns(unseekableStream);
+            mockConnector.Setup(c => c.ReadPxFileAsync(fileRef)).ReturnsAsync(unseekableStream);
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dbRef)).Returns(mockConnector.Object);
             CachedDataSource dbConnector = new(mockFactory.Object, new DatabaseCache(new MemoryCache(new MemoryCacheOptions())));
@@ -348,7 +348,7 @@ namespace PxApi.UnitTests.Caching
             MemoryStream pxStream = new (Encoding.UTF8.GetBytes(pxContent));
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.Setup(c => c.DataBase).Returns(dbRef);
-            mockConnector.Setup(c => c.ReadPxFile(fileRef)).Returns(pxStream);
+            mockConnector.Setup(c => c.ReadPxFileAsync(fileRef)).ReturnsAsync(pxStream);
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dbRef)).Returns(mockConnector.Object);
             CachedDataSource dbConnector = new(mockFactory.Object, new DatabaseCache(new MemoryCache(new MemoryCacheOptions())));
@@ -396,7 +396,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
             });
-            mockConnector.Verify(c => c.ReadPxFile(It.IsAny<PxFileRef>()), Times.Never);
+            mockConnector.Verify(c => c.ReadPxFileAsync(It.IsAny<PxFileRef>()), Times.Never);
         }
 
         [Test]
@@ -438,7 +438,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2)); // The value for 2025
             });
-            mockConnector.Verify(c => c.ReadPxFile(It.IsAny<PxFileRef>()), Times.Never);
+            mockConnector.Verify(c => c.ReadPxFileAsync(It.IsAny<PxFileRef>()), Times.Never);
         }
 
         [Test]
@@ -454,8 +454,8 @@ namespace PxApi.UnitTests.Caching
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
             Mock<IDataBaseConnector> mockConnector = new();
-            mockConnector.Setup(c => c.ReadPxFile(pxFile))
-                .Returns(() => new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
+            mockConnector.Setup(c => c.ReadPxFileAsync(pxFile))
+                .ReturnsAsync(() => new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             CachedDataSource connector = new(mockFactory.Object, dbCache);

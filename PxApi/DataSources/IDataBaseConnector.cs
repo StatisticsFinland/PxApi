@@ -23,7 +23,7 @@ namespace PxApi.DataSources
         /// </summary>
         /// <param name="file"><see cref="PxFileRef"/> reference to the Px file.</param>
         /// <returns>Stream to read the contents of the Px file.</returns>
-        public Stream ReadPxFile(PxFileRef file);
+        public Task<Stream> ReadPxFileAsync(PxFileRef file);
 
         /// <summary>
         /// Gets the last write time of a Px file.

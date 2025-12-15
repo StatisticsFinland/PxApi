@@ -114,7 +114,7 @@ namespace PxApi.Caching
         public async Task<string> GetSingleStringValueAsync(string key, PxFileRef file)
         {
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(file.DataBase);
-            using Stream fileStream = dbConnector.ReadPxFile(file);
+            using Stream fileStream = await dbConnector.ReadPxFileAsync(file);
             PxFileMetadataReader reader = new();
             Encoding encoding = await reader.GetEncodingAsync(fileStream);
 
