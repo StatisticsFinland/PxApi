@@ -41,12 +41,13 @@ namespace PxApi.UnitTests.Utils
         /// <summary>
         /// Creates configuration entries for a file share database with optional share path.
         /// </summary>
-        public static Dictionary<string, string?> FileShareDb(int index, string id, string? sharePath = "//server/share/path")
+        public static Dictionary<string, string?> FileShareDb(int index, string id, string? sharePath = "//storage/path", string? shareName = "sharename")
         {
             Dictionary<string, string?> config = CommonDatabaseCacheConfig(index, id, "FileShare");
             if (sharePath is not null)
             {
-                config[$"DataBases:{index}:Custom:SharePath"] = sharePath;
+                config[$"DataBases:{index}:Custom:StoragePath"] = sharePath;
+                config[$"DataBases:{index}:Custom:ShareName"] = shareName;
             }
             return config;
         }

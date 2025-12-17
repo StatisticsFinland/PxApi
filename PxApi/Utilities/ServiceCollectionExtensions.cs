@@ -1,6 +1,11 @@
-﻿using PxApi.Configuration;
+using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Models;
+using Microsoft.Extensions.Azure;
+using Azure.Identity;
+using Azure.Storage.Files.Shares;
+using Azure.Storage.Files.Shares.Models;
+using Azure.Storage.Blobs;
 
 namespace PxApi.Utilities
 {
@@ -51,34 +56,61 @@ namespace PxApi.Utilities
 
         private static void AddFileShareConnector(IServiceCollection services, DataBaseConfig dbConfig, DataBaseRef db)
         {
+            if (!dbConfig.Custom.TryGetValue("StoragePath", out string? storagePath) || string.IsNullOrEmpty(storagePath))
+            {
+                throw new InvalidOperationException($"Missing required custom configuration value 'StoragePath' for database {dbConfig.Id}");
+            }
+
+            if (!dbConfig.Custom.TryGetValue("ShareName", out string? shareName) || string.IsNullOrEmpty(shareName))
+            {
+                throw new InvalidOperationException($"Missing required custom configuration value 'ShareName' for database {dbConfig.Id}");
+            }
+
+            // Register a named ShareServiceClient for this database using DefaultAzureCredential and ShareTokenIntent
+            services.AddAzureClients(clientBuilder =>
+            {
+                clientBuilder.UseCredential(new DefaultAzureCredential());
+                Uri storageUri = new(storagePath);
+
+                clientBuilder
+                    .AddClient<ShareServiceClient, ShareClientOptions>((options, credential, sp) => new ShareServiceClient(storageUri, credential, options))
+                    .ConfigureOptions(o => o.ShareTokenIntent = ShareTokenIntent.Backup)
+                    .WithName(dbConfig.Id);
+            });
+
             services.AddKeyedScoped<IDataBaseConnector>(dbConfig.Id, (serviceProvider, key) =>
             {
-                if (!dbConfig.Custom.TryGetValue("SharePath", out string? sharePath) || string.IsNullOrEmpty(sharePath))
-                {
-                    throw new InvalidOperationException($"Missing required custom configuration value 'SharePath' for database {dbConfig.Id}");
-                }
-
                 ILogger<FileShareDataBaseConnector> logger = serviceProvider.GetRequiredService<ILogger<FileShareDataBaseConnector>>();
-                return new FileShareDataBaseConnector(db, sharePath, logger);
+                IAzureClientFactory<ShareServiceClient> factory = serviceProvider.GetRequiredService<IAzureClientFactory<ShareServiceClient>>();
+                return new FileShareDataBaseConnector(db, shareName, factory, logger);
             });
         }
 
         private static void AddBlobStorageConnector(IServiceCollection services, DataBaseConfig dbConfig, DataBaseRef db)
         {
+            if (!dbConfig.Custom.TryGetValue("ConnectionString", out string? connectionString) || string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException($"Missing required custom configuration value 'ConnectionString' for database {dbConfig.Id}");
+            }
+
+            if (!dbConfig.Custom.TryGetValue("ContainerName", out string? containerName) || string.IsNullOrEmpty(containerName))
+            {
+                throw new InvalidOperationException($"Missing required custom configuration value 'ContainerName' for database {dbConfig.Id}");
+            }
+
+            // Register a named BlobServiceClient for this database
+            services.AddAzureClients(clientBuilder =>
+            {
+                clientBuilder
+                    .AddBlobServiceClient(connectionString)
+                    .WithName(dbConfig.Id);
+            });
+
             services.AddKeyedScoped<IDataBaseConnector>(dbConfig.Id, (serviceProvider, key) =>
             {
-                if (!dbConfig.Custom.TryGetValue("ConnectionString", out string? connectionString) || string.IsNullOrEmpty(connectionString))
-                {
-                    throw new InvalidOperationException($"Missing required custom configuration value 'ConnectionString' for database {dbConfig.Id}");
-                }
-
-                if (!dbConfig.Custom.TryGetValue("ContainerName", out string? containerName) || string.IsNullOrEmpty(containerName))
-                {
-                    throw new InvalidOperationException($"Missing required custom configuration value 'ContainerName' for database {dbConfig.Id}");
-                }
-
                 ILogger<BlobStorageDataBaseConnector> logger = serviceProvider.GetRequiredService<ILogger<BlobStorageDataBaseConnector>>();
-                return new BlobStorageDataBaseConnector(db, connectionString, containerName, logger);
+                IAzureClientFactory<BlobServiceClient> factory = serviceProvider.GetRequiredService<IAzureClientFactory<BlobServiceClient>>();
+                return new BlobStorageDataBaseConnector(db, containerName, factory, logger);
             });
         }
     }
