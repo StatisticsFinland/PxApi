@@ -1,12 +1,10 @@
-using Azure.Identity;
 using Azure.Storage.Files.Shares.Models;
 using Azure.Storage.Files.Shares;
-using Azure;
+using Microsoft.Extensions.Azure;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics;
 
 namespace PxApi.DataSources
 {
@@ -17,18 +15,15 @@ namespace PxApi.DataSources
     /// Initializes a new instance of the <see cref="FileShareDataBaseConnector"/> class.
     /// </remarks>
     /// <param name="dataBase">The database ID.</param>
-    /// <param name="sharePath">File share path.</param>
+    /// <param name="shareName">File share name.</param>
+    /// <param name="shareServiceClientFactory">Azure client factory for ShareServiceClient.</param>
     /// <param name="logger">Logger for the connector.</param>
     [ExcludeFromCodeCoverage]
-    public class FileShareDataBaseConnector(DataBaseRef dataBase, string sharePath, ILogger<FileShareDataBaseConnector> logger) : IDataBaseConnector
+    public class FileShareDataBaseConnector(DataBaseRef dataBase, string shareName, IAzureClientFactory<ShareServiceClient> shareServiceClientFactory, ILogger<FileShareDataBaseConnector> logger) : IDataBaseConnector
     {
         private readonly DataBaseRef _dataBase = dataBase;
-        private readonly string _sharePath = sharePath;
         private readonly ILogger<FileShareDataBaseConnector> _logger = logger;
-        private readonly ShareClient _shareClient = new(new(sharePath), new DefaultAzureCredential(), new()
-        {
-            ShareTokenIntent = ShareTokenIntent.Backup
-        });
+        private readonly IAzureClientFactory<ShareServiceClient> _shareServiceClientFactory = shareServiceClientFactory;
 
         /// <inheritdoc/>
         public DataBaseRef DataBase => _dataBase;
@@ -44,15 +39,15 @@ namespace PxApi.DataSources
                     [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync)
                 }))
             {
-                _logger.LogDebug("Getting all files from file share {SharePath}", _sharePath);
+                _logger.LogDebug("Getting all files from file share {ShareName}", shareName);
 
                 List<string> fileNames = [];
 
-                ShareDirectoryClient rootDirectory = _shareClient.GetRootDirectoryClient();
+                ShareDirectoryClient rootDirectory = CreateShareClient().GetRootDirectoryClient();
 
-                await ListAllFilesRecursivelyAsync(rootDirectory, "", fileNames);
+                await ListAllFilesRecursivelyAsync(rootDirectory, string.Empty, fileNames);
 
-                _logger.LogDebug("Found {Count} PX files in file share {SharePath}", fileNames.Count, _sharePath);
+                _logger.LogDebug("Found {Count} PX files in file share {ShareName}", fileNames.Count, shareName);
                 return [.. fileNames];
             }
         }
@@ -76,12 +71,12 @@ namespace PxApi.DataSources
                 }
 
                 _logger.LogDebug("Reading PX file {FileId} from file share", file.Id);
-                ShareDirectoryClient directoryClient = _shareClient.GetRootDirectoryClient();
+                ShareDirectoryClient directoryClient = CreateShareClient().GetRootDirectoryClient();
                 ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id);
                 if (fileClient == null || !await fileClient.ExistsAsync())
                 {
                     _logger.LogError("PX file {FileId} not found in file share", file.Id);
-                    throw new FileNotFoundException($"File {file.Id} not found in file share {_sharePath}");
+                    throw new FileNotFoundException($"File {file.Id} not found in file share {shareName}");
                 }
                 return await fileClient.OpenReadAsync();
             }
@@ -101,12 +96,12 @@ namespace PxApi.DataSources
             {
                 _logger.LogDebug("Getting last write time for PX file {FileId} from file share", file.Id);
 
-                ShareDirectoryClient directoryClient = _shareClient.GetRootDirectoryClient();
+                ShareDirectoryClient directoryClient = CreateShareClient().GetRootDirectoryClient();
                 ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id);
                 if (fileClient == null || !await fileClient.ExistsAsync())
                 {
                     _logger.LogError("PX file {FileId} not found in file share", file.Id);
-                    throw new FileNotFoundException($"File {file.Id} not found in file share {_sharePath}");
+                    throw new FileNotFoundException($"File {file.Id} not found in file share {shareName}");
                 }
 
                 ShareFileProperties properties = await fileClient.GetPropertiesAsync();
@@ -126,7 +121,7 @@ namespace PxApi.DataSources
             }))
             {
                 string normalized = relativePath.Replace('\\', '/');
-                ShareDirectoryClient root = _shareClient.GetRootDirectoryClient();
+                ShareDirectoryClient root = CreateShareClient().GetRootDirectoryClient();
                 if (string.IsNullOrEmpty(normalized))
                 {
                     _logger.LogWarning("Auxiliary path empty");
@@ -193,6 +188,12 @@ namespace PxApi.DataSources
                     }
                 }
             }
+        }
+
+        private ShareClient CreateShareClient()
+        {
+            ShareServiceClient serviceClient = _shareServiceClientFactory.CreateClient(_dataBase.Id);
+            return serviceClient.GetShareClient(shareName);
         }
     }
 }

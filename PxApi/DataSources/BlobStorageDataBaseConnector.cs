@@ -5,6 +5,7 @@ using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.Azure;
 
 namespace PxApi.DataSources
 {
@@ -17,7 +18,7 @@ namespace PxApi.DataSources
         private readonly DataBaseRef _dataBase; 
         private readonly string _containerName;
         private readonly ILogger<BlobStorageDataBaseConnector> _logger;
-        private readonly BlobContainerClient _containerClient;
+        private readonly IAzureClientFactory<BlobServiceClient> _blobServiceClientFactory;
 
         /// <inheritdoc/>
         public DataBaseRef DataBase => _dataBase;
@@ -26,15 +27,15 @@ namespace PxApi.DataSources
         /// Initializes a new instance of the <see cref="BlobStorageDataBaseConnector"/> class.
         /// </summary>
         /// <param name="dataBase">The database ID.</param>
-        /// <param name="connectionString">Azure Storage connection string.</param>
         /// <param name="containerName">Blob container name.</param>
+        /// <param name="blobServiceClientFactory">Azure client factory for <see cref="BlobServiceClient"/>.</param>
         /// <param name="logger">Logger for the connector.</param>
-        public BlobStorageDataBaseConnector(DataBaseRef dataBase, string connectionString, string containerName, ILogger<BlobStorageDataBaseConnector> logger)
+        public BlobStorageDataBaseConnector(DataBaseRef dataBase, string containerName, IAzureClientFactory<BlobServiceClient> blobServiceClientFactory, ILogger<BlobStorageDataBaseConnector> logger)
         {
             _dataBase = dataBase;
             _containerName = containerName;
             _logger = logger;
-            _containerClient = new BlobContainerClient(connectionString, _containerName);
+            _blobServiceClientFactory = blobServiceClientFactory;
         }
 
         /// <inheritdoc/>
@@ -52,9 +53,10 @@ namespace PxApi.DataSources
 
                 List<string> fileNames = [];
 
-                await _containerClient.CreateIfNotExistsAsync();
+                BlobContainerClient containerClient = GetContainerClient();
+                await containerClient.CreateIfNotExistsAsync();
 
-                AsyncPageable<BlobItem> blobs = _containerClient.GetBlobsAsync();
+                AsyncPageable<BlobItem> blobs = containerClient.GetBlobsAsync();
 
                 await foreach (BlobItem blob in blobs)
                 {
@@ -89,7 +91,8 @@ namespace PxApi.DataSources
                     throw new InvalidOperationException("The file does not belong to the database.");
                 }
 
-                BlobClient blobClient = _containerClient.GetBlobClient(file.Id);
+                BlobContainerClient containerClient = GetContainerClient();
+                BlobClient blobClient = containerClient.GetBlobClient(file.Id);
 
                 if (!await blobClient.ExistsAsync())
                 {
@@ -116,7 +119,8 @@ namespace PxApi.DataSources
             {
                 _logger.LogDebug("Getting last write time for PX file {FileId} from blob storage", file.Id);
 
-                BlobClient blobClient = _containerClient.GetBlobClient(file.Id);
+                BlobContainerClient containerClient = GetContainerClient();
+                BlobClient blobClient = containerClient.GetBlobClient(file.Id);
 
                 if (!await blobClient.ExistsAsync())
                 {
@@ -140,9 +144,10 @@ namespace PxApi.DataSources
                 [LoggerConsts.AUXILIARY_PATH] = relativePath
             }))
             {
-                await _containerClient.CreateIfNotExistsAsync();
+                BlobContainerClient containerClient = GetContainerClient();
+                await containerClient.CreateIfNotExistsAsync();
                 string blobName = relativePath.Replace('\\', '/');
-                BlobClient blob = _containerClient.GetBlobClient(blobName);
+                BlobClient blob = containerClient.GetBlobClient(blobName);
                 if (!await blob.ExistsAsync())
                 {
                     _logger.LogWarning("Aux file {AuxFile} not found", blobName);
@@ -153,6 +158,12 @@ namespace PxApi.DataSources
                 ms.Position = 0;
                 return ms;
             }
+        }
+
+        private BlobContainerClient GetContainerClient()
+        {
+            BlobServiceClient serviceClient = _blobServiceClientFactory.CreateClient(_dataBase.Id);
+            return serviceClient.GetBlobContainerClient(_containerName);
         }
     }
 }
