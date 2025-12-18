@@ -1,0 +1,45 @@
+namespace PxApi.Configuration
+{
+    /// <summary>
+    /// Configuration for localization settings including default language and supported languages.
+    /// </summary>
+    public class LocalizationConfig
+    {
+        /// <summary>
+        /// Gets the default language code used when a request does not specify a language.
+        /// </summary>
+        public string DefaultLanguage { get; }
+
+        /// <summary>
+        /// Gets the collection of globally supported language codes.
+        /// </summary>
+        public IReadOnlyList<string> SupportedLanguages { get; }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LocalizationConfig"/> class from configuration.
+        /// </summary>
+        /// <param name="section">The configuration section representing the localization settings.</param>
+        /// <exception cref="InvalidOperationException">Thrown when required values are missing or invalid.</exception>
+        internal LocalizationConfig(IConfigurationSection section)
+        {
+            string? defaultLanguage = section.GetValue<string>(nameof(DefaultLanguage));
+            if (string.IsNullOrWhiteSpace(defaultLanguage))
+            {
+                throw new InvalidOperationException("Missing required configuration value: Localization:DefaultLanguage");
+            }
+
+            string[] supportedLanguages = section.GetSection(nameof(SupportedLanguages)).Get<string[]>() ?? [];
+            if (supportedLanguages.Length == 0)
+            {
+                throw new InvalidOperationException("Missing required configuration value: Localization:SupportedLanguages");
+            }
+            if (!supportedLanguages.Contains(defaultLanguage))
+            {
+                throw new InvalidOperationException("Default language must be contained in SupportedLanguages.");
+            }
+
+            DefaultLanguage = defaultLanguage;
+            SupportedLanguages = supportedLanguages;
+        }
+    }
+}

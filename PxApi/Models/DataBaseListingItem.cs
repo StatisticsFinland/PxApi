@@ -1,0 +1,45 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace PxApi.Models
+{
+    /// <summary>
+    /// Represents a database entry in the database listing endpoint.
+    /// </summary>
+    public class DataBaseListingItem
+    {
+        /// <summary>
+        /// Unique identifier of the database.
+        /// </summary>
+        [Required]
+        public required string ID { get; set; }
+
+        /// <summary>
+        /// Localized database name resolved for the requested language.
+        /// </summary>
+        [Required]
+        public required string Name { get; set; }
+
+        /// <summary>
+        /// Localized database description resolved for the requested language; null if not available.
+        /// </summary>
+        public string? Description { get; set; }
+
+        /// <summary>
+        /// Number of tables available in the database.
+        /// </summary>
+        [Required]
+        public required int TableCount { get; set; }
+
+        /// <summary>
+        /// Languages available for this database (intersection of translated name languages and globally supported languages).
+        /// </summary>
+        [Required]
+        public required List<string> AvailableLanguages { get; set; }
+
+        /// <summary>
+        /// HATEOAS links related to the database (e.g., tables listing endpoint).
+        /// </summary>
+        [Required]
+        public required List<Link> Links { get; set; }
+    }
+}

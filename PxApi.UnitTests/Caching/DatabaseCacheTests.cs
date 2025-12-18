@@ -1,0 +1,853 @@
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Moq;
+using Px.Utils.Models.Data;
+using Px.Utils.Models.Data.DataValue;
+using Px.Utils.Models.Metadata;
+using PxApi.Caching;
+using PxApi.Configuration;
+using PxApi.Models;
+using PxApi.UnitTests.Models;
+using PxApi.UnitTests.Utils;
+using System.Collections.Immutable;
+using Px.Utils.Language;
+
+namespace PxApi.UnitTests.Caching
+{
+    [TestFixture]
+    internal class DatabaseCacheTests
+    {
+        private const string FILE_LIST_SEED_VARNAME = "FILE_LIST_SEED";
+        private const string LAST_UPDATED_SEED_VARNAME = "LAST_UPDATED_SEED";
+        private const string DATA_SEED_VARNAME = "DATA_SEED";
+        private const string META_SEED_VARNAME = "META_SEED";
+        private const string DATABASE_NAME_SEED_VARNAME = "DATABASE_NAME_SEED";
+
+        private readonly PxFileRef _file1 = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), DataBaseRef.Create("PxApiUnitTestsDb"));
+        private readonly PxFileRef _file2 = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file2.px"), DataBaseRef.Create("PxApiUnitTestsDb"));
+
+        [SetUp]
+        public void SetUp()
+        {
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                TestConfigFactory.MountedDb(0, "PxApiUnitTestsDb", "datasource/root/"),
+                new Dictionary<string, string?>
+                {
+                    ["Cache:MaxSizeBytes"] = "524288000",
+                    ["DataBases:0:CacheConfig:RevalidationIntervalMs"] = "1000",
+                    ["DataBases:0:Custom:ModifiedCheckIntervalMs"] = "1000",
+                    ["DataBases:0:Custom:FileListingCacheDurationMs"] = "10000"
+                }
+            );
+            TestConfigFactory.BuildAndLoad(configData);
+        }
+
+        #region TryGetFileList
+
+        [Test]
+        public void TryGetFileList_WithCacheHit_ReturnsTrueWithFileList()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            Task<ImmutableSortedDictionary<string, PxFileRef>> expectedFiles = Task.FromResult(
+                ImmutableSortedDictionary<string, PxFileRef>.Empty
+                    .Add("file1", _file1)
+                    .Add("file2", _file2));
+            string fileListSeed = GetSeedForKeyword(FILE_LIST_SEED_VARNAME);
+            memoryCache.Set(HashCode.Combine(fileListSeed, database), expectedFiles);
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetFileList(database, out Task<ImmutableSortedDictionary<string, PxFileRef>>? actualFiles);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(actualFiles, Is.SameAs(expectedFiles));
+            });
+        }
+
+        [Test]
+        public void TryGetFileList_WithCacheMiss_ReturnsFalse()
+        {
+            // Arrange
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+
+            // Act
+            bool result = dbCache.TryGetFileList(database, out Task<ImmutableSortedDictionary<string, PxFileRef>>? actualFiles);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(actualFiles, Is.Null);
+            });
+        }
+
+        #endregion
+
+        #region SetFileList
+
+        [Test]
+        public void SetFileList_WithDataBaseAndFiles_SetsCacheWithExpectedValues()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            Task<ImmutableSortedDictionary<string, PxFileRef>> files = Task.FromResult(
+                ImmutableSortedDictionary<string, PxFileRef>.Empty
+                    .Add("file1", _file1)
+                    .Add("file2", _file2));
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            string fileListSeed = GetSeedForKeyword(FILE_LIST_SEED_VARNAME);
+
+            // Act
+            dbCache.SetFileList(database, files);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(memoryCache.TryGetValue(
+                    HashCode.Combine(fileListSeed, database),
+                    out Task<ImmutableSortedDictionary<string, PxFileRef>>? cachedFiles),
+                    Is.True);
+                Assert.That(cachedFiles, Is.SameAs(files));
+            });
+        }
+
+        #endregion
+
+        #region TryGetLastUpdated
+
+        [Test]
+        public void TryGetLastUpdated_WithCacheHit_ReturnsTruewithLastUpdated()
+        {
+            // Arrange
+            Task<DateTime> expectedLastUpdated = Task.FromResult(DateTime.UtcNow);
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);
+            memoryCache.Set(HashCode.Combine(lastUpdatedSeed, _file1), expectedLastUpdated);
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetLastUpdated(_file1, out Task<DateTime>? actualLastUpdated);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(actualLastUpdated, Is.SameAs(expectedLastUpdated));
+            });
+        }
+
+        [Test]
+        public void TryGetLastUpdated_WithCacheMiss_ReturnsFalse()
+        {
+            // Arrange
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetLastUpdated(_file1, out Task<DateTime>? actualLastUpdated);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(actualLastUpdated, Is.Null);
+            });
+        }
+
+        #endregion
+
+        #region SetLastUpdated
+
+        [Test]
+        public void SetLastUpdated_WithFileRefAndTimeStamp_SetsCacheWithExpectedValues()
+        {
+            // Arrange
+            Task<DateTime> lastUpdated = Task.FromResult(DateTime.UtcNow);
+            string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+                
+            // Act
+            dbCache.SetLastUpdated(_file1, lastUpdated);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, _file1), out Task<DateTime>? cachedLastUpdated), Is.True);
+                Assert.That(cachedLastUpdated, Is.SameAs(lastUpdated));
+            });
+        }
+
+        #endregion
+
+        #region TryGetMetadata
+
+        [Test]
+        public void TryGetMetadata_WithCacheHit_ReturnsTrueWithMetadataContainer()
+        {
+            // Arrange
+            Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
+            MetaCacheContainer expectedMetaContainer = new(Task.FromResult(mockMetadata.Object));
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
+            int metaKey = HashCode.Combine(metaSeed, _file1);
+            memoryCache.Set(metaKey, expectedMetaContainer);
+            
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetMetadata(_file1, out MetaCacheContainer? actualMetaContainer);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(actualMetaContainer, Is.SameAs(expectedMetaContainer));
+            });
+        }
+
+        [Test]
+        public void TryGetMetadata_WithCacheMiss_ReturnsFalse()
+        {
+            // Arrange
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetMetadata(_file1, out MetaCacheContainer? actualMetaContainer);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(actualMetaContainer, Is.Null);
+            });
+        }
+
+        #endregion
+
+        #region SetMetadata
+
+        [Test]
+        public void SetMetadata_WithPxFileRefAndMetadataContainer_SetsCacheWithExpectedValues()
+        {
+            // Arrange
+            Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
+            MetaCacheContainer metaContainer = new(Task.FromResult(mockMetadata.Object));
+            
+            MemoryCache cache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(cache);
+            string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
+            int cacheKey = HashCode.Combine(metaSeed, _file1);
+            
+            // Act
+            dbCache.SetMetadata(_file1, metaContainer);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(cache.TryGetValue(cacheKey, out MetaCacheContainer? cachedMetaContainer), Is.True);
+                Assert.That(cachedMetaContainer, Is.SameAs(metaContainer));
+            });
+        }
+
+        #endregion
+
+        #region TryRemoveMeta
+
+        [Test]
+        public void TryRemoveMeta_WithCacheHit_RemovesMetaFromCache()
+        {
+            // Arrange
+            Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
+            MetaCacheContainer metaContainer = new(Task.FromResult(mockMetadata.Object));
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
+            int cacheKey = HashCode.Combine(metaSeed, _file1);
+            memoryCache.Set(cacheKey, metaContainer);
+            
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            dbCache.TryRemoveMeta(_file1);
+
+            // Assert
+            Assert.That(memoryCache.TryGetValue(cacheKey, out _), Is.False);
+        }
+
+        [Test]
+        public void TryRemoveMeta_WithCacheMiss_DoesNotThrow()
+        {
+            // Arrange
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act & Assert
+            Assert.Multiple(() =>
+            {  
+                Assert.That(memoryCache.Keys.Count, Is.EqualTo(0));
+                Assert.That(dbCache.TryGetMetadata(_file1, out _), Is.False);
+                Assert.DoesNotThrow(() => dbCache.TryRemoveMeta(_file1));
+            });
+        }
+
+        #endregion
+
+        #region TryGetData
+
+        [Test]
+        public void TryGetData_WithCacheHit_ReturnsTrueWithDataContainer()
+        {
+            // Arrange
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            DoubleDataValue[] expectedData = [new DoubleDataValue(2, DataValueType.Exists)];
+            Task<DoubleDataValue[]> expectedDataTask = Task.FromResult(expectedData);
+            DataCacheContainer<DoubleDataValue> dataContainer = new(map, expectedDataTask);
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string dataSeed = GetSeedForKeyword(DATA_SEED_VARNAME);
+            int mapHash = GetMapHash(map);
+            memoryCache.Set(HashCode.Combine(dataSeed, mapHash), dataContainer);
+            
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(actualData, Is.SameAs(expectedDataTask));
+                Assert.That(actualCached, Is.Not.Null);
+            });
+        }
+
+        [Test]
+        public void TryGetData_WithCacheMiss_ReturnsFalse()
+        {
+            // Arrange
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(actualData, Is.Null);
+                Assert.That(actualCached, Is.Null);
+            });
+        }
+
+        #endregion
+
+        #region TryGetDataSuperset
+
+        [Test]
+        public void TryGetDataSuperSet_WithCacheMiss_ReturnsFalse()
+        {
+            // Arrange
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetDataSuperset(_file1, map, out IMatrixMap? actualSupersetMap, 
+                out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(actualSupersetMap, Is.Null);
+                Assert.That(actualData, Is.Null);
+                Assert.That(actualCached, Is.Null);
+            });
+        }
+
+        [Test]
+        public void TryGetDataSuperSet_WithCacheHitWithoutSuperMap_ReturnsFalse()
+        {
+            // Arrange
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            
+            Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
+            MetaCacheContainer metaContainer = new(Task.FromResult(mockMetadata.Object));
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
+            memoryCache.Set(HashCode.Combine(metaSeed, _file1), metaContainer);
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetDataSuperset(_file1, map, out IMatrixMap? actualSupersetMap, 
+                out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(actualSupersetMap, Is.Null);
+                Assert.That(actualData, Is.Null);
+                Assert.That(actualCached, Is.Null);
+            });
+        }
+
+        [Test]
+        public void TryGetDataSuperSet_WithCacheHitWithSuperMapWithContainerMiss_ReturnsFalse()
+        {
+            // Arrange
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            MatrixMap superMap = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2024", "2025"])
+            ]);
+            
+            Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
+            
+            MetaCacheContainer metaContainer = new(Task.FromResult(mockMetadata.Object));
+            DataCacheContainer<DoubleDataValue> dataContainer = new(superMap, Task.FromResult<DoubleDataValue[]>([
+                new DoubleDataValue(1, DataValueType.Exists),
+                new DoubleDataValue(2, DataValueType.Exists)
+            ]));
+            metaContainer.AddDataContainer(dataContainer);
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
+            memoryCache.Set(HashCode.Combine(metaSeed, _file1), metaContainer);
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetDataSuperset(_file1, map, out IMatrixMap? actualSupersetMap, 
+                out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(actualSupersetMap, Is.Null);
+                Assert.That(actualData, Is.Null);
+                Assert.That(actualCached, Is.Null);
+            });
+        }
+
+        [Test]
+        public void TryGetDataSuperSet_WithCachedSuperSetMap_ReturnsTrueWithSupersetDataContainer()
+        {
+            // Arrange
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            MatrixMap superMap = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2024", "2025"])
+            ]);
+            
+            Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
+            DoubleDataValue[] expectedData = [
+                new DoubleDataValue(1, DataValueType.Exists),
+                new DoubleDataValue(2, DataValueType.Exists)
+            ];
+            Task<DoubleDataValue[]> expectedDataTask = Task.FromResult(expectedData);
+            DataCacheContainer<DoubleDataValue> dataContainer = new(superMap, expectedDataTask);
+            MetaCacheContainer metaContainer = new(Task.FromResult(mockMetadata.Object));
+            
+            metaContainer.AddDataContainer(dataContainer);
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            
+            int metaKey = MetaCacheUtils.GetCacheKey(_file1);
+            memoryCache.Set(metaKey, metaContainer);
+
+            int dataKey = MetaCacheUtils.GetCacheKey(superMap);
+            memoryCache.Set(dataKey, dataContainer);
+            
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetDataSuperset(_file1, map, out IMatrixMap? actualSupersetMap, 
+                out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(actualSupersetMap, Is.SameAs(superMap));
+                Assert.That(actualData, Is.SameAs(expectedDataTask));
+                Assert.That(actualCached, Is.Not.Null);
+            });
+        }
+
+        #endregion
+
+        #region SetData
+
+        [Test]
+        public void SetData_WithoutMetaCacheHit_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            DoubleDataValue[] data = [new DoubleDataValue(2, DataValueType.Exists)];
+            Task<DoubleDataValue[]> dataTask = Task.FromResult(data);
+            
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => 
+                dbCache.SetData(_file1, map, dataTask));
+        }
+
+        [Test]
+        public async Task SetData_WithMetaCacheHit_UpdatesCacheWithExpectedValues()
+        {
+            // Arrange
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            DoubleDataValue[] data = [new DoubleDataValue(2, DataValueType.Exists)];
+            Task<DoubleDataValue[]> dataTask = Task.FromResult(data);
+
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            memoryCache.Set(HashCode.Combine(GetSeedForKeyword(META_SEED_VARNAME), _file1), metaContainer);
+            int mapCode = MetaCacheUtils.GetCacheKey(map);
+
+            // Act
+            dbCache.SetData(_file1, map, dataTask);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(metaContainer.GetRelatedMaps(), Has.Count.EqualTo(1));
+                Assert.That(metaContainer.GetRelatedMaps()[0], Is.SameAs(map));
+                Assert.That(memoryCache.TryGetValue(mapCode, out DataCacheContainer<DoubleDataValue>? cachedContainer), Is.True);
+                Assert.That(cachedContainer!.Data, Is.SameAs(dataTask));
+            });
+        }
+
+        [Test]
+        public async Task SetData_WithSubMaps_RemovesSubMapsFromCache()
+        {
+            // Arrange
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2024", "2025"])
+            ]);
+            MatrixMap subMap1 = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2024"])
+            ]);
+            DoubleDataValue[] data = [
+                new DoubleDataValue(1, DataValueType.Exists),
+                new DoubleDataValue(2, DataValueType.Exists)
+            ];
+            Task<DoubleDataValue[]> dataTask = Task.FromResult(data);
+
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
+            
+            DataCacheContainer<DoubleDataValue> subContainer = new(
+                subMap1,
+                Task.FromResult<DoubleDataValue[]>([new DoubleDataValue(1, DataValueType.Exists)])
+            );
+            metaContainer.AddDataContainer(subContainer);
+
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Pre-populate the cache with the meta container
+            string metaSeed = GetSeedForKeyword(META_SEED_VARNAME);
+            memoryCache.Set(HashCode.Combine(metaSeed, _file1), metaContainer);
+
+            // Pre-populate the cache with the submap data container
+            int subMapKey = MetaCacheUtils.GetCacheKey(subMap1);
+            int mapKey = MetaCacheUtils.GetCacheKey(map);
+            memoryCache.Set(subMapKey, subContainer);
+
+            // Act
+            dbCache.SetData(_file1, map, dataTask);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                // The submap should have been removed from the cache
+                Assert.That(memoryCache.TryGetValue(subMapKey, out _), Is.False);
+                // The new map should be present
+                Assert.That(memoryCache.TryGetValue(mapKey, out DataCacheContainer<DoubleDataValue>? cachedContainer), Is.True);
+                Assert.That(cachedContainer!.Data, Is.SameAs(dataTask));
+            });
+        }
+
+        #endregion
+
+        #region ClearFileListCache
+
+        [Test]
+        public void ClearFileListCache_RemovesCachedFileList()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string fileListSeed = GetSeedForKeyword(FILE_LIST_SEED_VARNAME);
+            int cacheKey = HashCode.Combine(fileListSeed, database);
+            
+            Task<ImmutableSortedDictionary<string, PxFileRef>> fileList = Task.FromResult(
+                ImmutableSortedDictionary<string, PxFileRef>.Empty
+                    .Add("file1", _file1));
+            
+            memoryCache.Set(cacheKey, fileList);
+            DatabaseCache dbCache = new(memoryCache);
+            
+            // Verify that cache has the file list
+            Assert.That(memoryCache.TryGetValue(cacheKey, out _), Is.True);
+
+            // Act
+            dbCache.ClearFileListCache(database);
+
+            // Assert
+            Assert.That(memoryCache.TryGetValue(cacheKey, out _), Is.False);
+        }
+
+        #endregion
+
+        #region ClearLastUpdatedCache
+
+        [Test]
+        public void ClearLastUpdatedCache_ClearsLastUpdatedForFile()
+        {
+            // Arrange
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);
+            
+            DateTime now = DateTime.UtcNow;
+            memoryCache.Set(HashCode.Combine(lastUpdatedSeed, _file1), Task.FromResult(now));
+            
+            DatabaseCache dbCache = new(memoryCache);
+            
+            // Verify that cache has the last updated timestamp
+            Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, _file1), out _), Is.True);
+
+            // Act
+            dbCache.ClearLastUpdatedCache(_file1);
+
+            // Assert
+            Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, _file1), out _), Is.False);
+        }
+
+        #endregion
+
+        #region OnMetaCacheEvicted Tests
+
+        [Test]
+        public void OnMetaCacheEvicted_WithPxFileRefKey_RemovesGroupingsFromCache()
+        {
+            // Arrange
+            Mock<IReadOnlyMatrixMetadata> mockMetadata = new();
+            MetaCacheContainer metaContainer = new(Task.FromResult(mockMetadata.Object));
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Add groupings to cache
+            Mock<IReadOnlyList<TableGroup>> mockGroupings = new();
+            Task<IReadOnlyList<TableGroup>> groupingsTask = Task.FromResult(mockGroupings.Object);
+            dbCache.SetGroupings(_file1, groupingsTask);
+
+            // Verify groupings are cached
+            bool hasGroupingsBefore = dbCache.TryGetGroupings(_file1, out Task<IReadOnlyList<TableGroup>>? cachedGroupingsBefore);
+            Assert.Multiple(() =>
+            {
+                Assert.That(hasGroupingsBefore, Is.True);
+                Assert.That(cachedGroupingsBefore, Is.SameAs(groupingsTask));
+            });
+
+            // Act
+            dbCache.SetMetadata(_file1, metaContainer);
+
+            // Manually trigger the eviction callback to test the functionality using reflection
+            System.Reflection.MethodInfo? evictionMethod = typeof(DatabaseCache)
+                .GetMethod("OnMetaCacheEvicted", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            evictionMethod!.Invoke(dbCache, [_file1, metaContainer, Microsoft.Extensions.Caching.Memory.EvictionReason.Removed, null]);
+
+            // Assert - Groupings should be removed from cache
+            bool hasGroupingsAfter = dbCache.TryGetGroupings(_file1, out Task<IReadOnlyList<TableGroup>>? cachedGroupingsAfter);
+            Assert.Multiple(() =>
+            {
+                Assert.That(hasGroupingsAfter, Is.False);
+                Assert.That(cachedGroupingsAfter, Is.Null);
+            });
+        }
+
+        #endregion
+
+        #region TryGetDatabaseName
+
+        [Test]
+        public void TryGetDatabaseName_WithCacheHit_ReturnsTrueWithNameTask()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            MultilanguageString expectedName = new(new Dictionary<string, string>
+            {
+                {"fi", "Suomi"},
+                {"sv", "Sverige"},
+                {"en", "Finland"}
+            });
+            Task<MultilanguageString> nameTask = Task.FromResult(expectedName);
+            string seed = GetSeedForKeyword(DATABASE_NAME_SEED_VARNAME);
+            memoryCache.Set(HashCode.Combine(seed, database), nameTask);
+
+            // Act
+            bool result = dbCache.TryGetDatabaseName(database, out Task<MultilanguageString>? actualTask);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(actualTask, Is.SameAs(nameTask));
+            });
+        }
+
+        [Test]
+        public void TryGetDatabaseName_WithCacheMiss_ReturnsFalse()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            // Act
+            bool result = dbCache.TryGetDatabaseName(database, out Task<MultilanguageString>? actualTask);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(actualTask, Is.Null);
+            });
+        }
+
+        #endregion
+
+        #region SetDatabaseName
+
+        [Test]
+        public void SetDatabaseName_WithValidName_SetsCache()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            MultilanguageString nameValue = new(new Dictionary<string, string>
+            {
+                {"fi", "Suomi"},
+                {"sv", "Sverige"},
+                {"en", "Finland"}
+            });
+            Task<MultilanguageString> nameTask = Task.FromResult(nameValue);
+            string seed = GetSeedForKeyword(DATABASE_NAME_SEED_VARNAME);
+            int key = HashCode.Combine(seed, database);
+
+            // Act
+            dbCache.SetDatabaseName(database, nameTask);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(memoryCache.TryGetValue(key, out Task<MultilanguageString>? cachedTask), Is.True);
+                Assert.That(cachedTask, Is.SameAs(nameTask));
+            });
+        }
+
+        #endregion
+
+        #region ClearDatabaseNameCache
+
+        [Test]
+        public void ClearDatabaseNameCache_RemovesCachedName()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            MultilanguageString nameValue = new(new Dictionary<string, string>
+            {
+                {"fi", "Suomi"}
+            });
+            Task<MultilanguageString> nameTask = Task.FromResult(nameValue);
+            dbCache.SetDatabaseName(database, nameTask);
+            string seed = GetSeedForKeyword(DATABASE_NAME_SEED_VARNAME);
+            int key = HashCode.Combine(seed, database);
+            Assert.That(memoryCache.TryGetValue(key, out _), Is.True);
+
+            // Act
+            dbCache.ClearDatabaseNameCache(database);
+
+            // Assert
+            Assert.That(memoryCache.TryGetValue(key, out _), Is.False);
+        }
+
+        #endregion
+
+        private static string GetSeedForKeyword(string keyword)
+        {
+            // Use reflection to get the private field for the keyword hash seed
+            string keywordSeed = typeof(DatabaseCache)
+                .GetField(keyword, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+                .GetValue(null)!.ToString()!;
+            return keywordSeed;
+        }
+
+        private static int GetMapHash(IMatrixMap map)
+        {
+            // Use reflection to get the private function for generating a matrix map hash code
+            System.Reflection.MethodInfo? mapHashMethod = typeof(DatabaseCache)
+                .GetMethod("MapHash", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            return (int)mapHashMethod!.Invoke(null, [map])!;
+        }
+    }
+}

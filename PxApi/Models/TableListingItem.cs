@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace PxApi.Models
 {
     /// <summary>
-    /// Reresents a table and its essential metadata meant for listing.
+    /// Represents a table and its essential metadata used in listings.
     /// </summary>
     public class TableListingItem
     {
@@ -12,33 +12,34 @@ namespace PxApi.Models
         /// The unique identifier for the table.
         /// </summary>
         [Required]
-        public required string ID { get; set;  }
+        public required string ID { get; set; }
 
         /// <summary>
-        /// The name of the table.
+        /// Human-readable short name of the table.
         /// </summary>
         [Required]
         public required string Name { get; set; }
 
         /// <summary>
-        /// The status of the table. If the <see cref="TableStatus.Error"/>, <see cref="Title"/> and <see cref="LastUpdated"/> are null.
+        /// Current lifecycle status of the table. If <see cref="TableStatus.Error"/>, <see cref="Title"/> and <see cref="LastUpdated"/> are null.
         /// </summary>
+        [Required]
         public required TableStatus Status { get; set; }
 
         /// <summary>
-        /// The title of the table, if available.
+        /// Localized title of the table, if available.
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Title { get; set; }
 
         /// <summary>
-        /// When was the table last updated, null if the information is not available.
+        /// Last update timestamp (UTC) or null if not available.
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public DateTime? LastUpdated { get; set; }
 
         /// <summary>
-        /// Links to additional resources related to this table.
+        /// HATEOAS links related to the table (e.g., self, metadata, data endpoints).
         /// </summary>
         [Required]
         public required List<Link> Links { get; set; }
