@@ -16,6 +16,16 @@ namespace PxApi.UnitTests.Utils
             Dictionary<string, string?> config = new()
             {
                 ["RootUrl"] = "https://testurl.fi",
+                ["AllowedHosts"] = "*",
+                ["Cache:MaxSizeBytes"] = "524288000",
+                ["Cache:DefaultDataCellSize"] = "16",
+                ["Cache:DefaultUpdateTaskSize"] = "50",
+                ["Cache:DefaultTableGroupSize"] = "100",
+                ["Cache:DefaultFileListSize"] = "350000",
+                ["Cache:DefaultMetaSize"] = "200000",
+                ["FeatureManagement:CacheController"] = "true",
+                ["QueryLimits:JsonMaxCells"] = "100000",
+                ["QueryLimits:JsonStatMaxCells"] = "50000",
                 ["Localization:DefaultLanguage"] = "fi",
                 ["Localization:SupportedLanguages:0"] = "fi",
                 ["Localization:SupportedLanguages:1"] = "sv",
@@ -25,10 +35,9 @@ namespace PxApi.UnitTests.Utils
         }
 
         /// <summary>
-        /// Creates configuration entries for a mounted database with optional root path.
-        /// If rootPath is null the key is omitted. If empty string is provided it is added with empty value.
+        /// Creates configuration entries for a mounted database.
         /// </summary>
-        public static Dictionary<string, string?> MountedDb(int index, string id, string? rootPath = "/test/root/path")
+        public static Dictionary<string, string?> MountedDb(int index, string id, string? rootPath = "D:/UD/saarimaa/DataBases")
         {
             Dictionary<string, string?> config = CommonDatabaseCacheConfig(index, id, "Mounted");
             if (rootPath is not null)
@@ -39,9 +48,9 @@ namespace PxApi.UnitTests.Utils
         }
 
         /// <summary>
-        /// Creates configuration entries for a file share database with optional share path.
+        /// Creates configuration entries for a file share database with optional storage path and share name.
         /// </summary>
-        public static Dictionary<string, string?> FileShareDb(int index, string id, string? sharePath = "//storage/path", string? shareName = "sharename")
+        public static Dictionary<string, string?> FileShareDb(int index, string id, string? sharePath = "https://test.file.core.windows.net/", string shareName = "testshare")
         {
             Dictionary<string, string?> config = CommonDatabaseCacheConfig(index, id, "FileShare");
             if (sharePath is not null)
@@ -53,14 +62,14 @@ namespace PxApi.UnitTests.Utils
         }
 
         /// <summary>
-        /// Creates configuration entries for a blob storage database with optional connection string and container name.
+        /// Creates configuration entries for a blob storage database with optional storage uri and container name.
         /// </summary>
-        public static Dictionary<string, string?> BlobStorageDb(int index, string id, string? connectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=key;", string? containerName = "test-container")
+        public static Dictionary<string, string?> BlobStorageDb(int index, string id, string? storagePath = "https://test.blob.core.windows.net", string? containerName = "test-container")
         {
             Dictionary<string, string?> config = CommonDatabaseCacheConfig(index, id, "BlobStorage");
-            if (connectionString is not null)
+            if (storagePath is not null)
             {
-                config[$"DataBases:{index}:Custom:ConnectionString"] = connectionString;
+                config[$"DataBases:{index}:Custom:StoragePath"] = storagePath;
             }
             if (containerName is not null)
             {
