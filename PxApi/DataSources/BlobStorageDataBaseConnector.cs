@@ -50,12 +50,9 @@ namespace PxApi.DataSources
                 }))
             {
                 _logger.LogDebug("Getting all files from blob storage container {ContainerName}", _containerName);
-
                 List<string> fileNames = [];
 
                 BlobContainerClient containerClient = GetContainerClient();
-                await containerClient.CreateIfNotExistsAsync();
-
                 AsyncPageable<BlobItem> blobs = containerClient.GetBlobsAsync();
 
                 await foreach (BlobItem blob in blobs)
@@ -92,7 +89,7 @@ namespace PxApi.DataSources
                 }
 
                 BlobContainerClient containerClient = GetContainerClient();
-                BlobClient blobClient = containerClient.GetBlobClient(file.Id);
+                BlobClient blobClient = containerClient.GetBlobClient(file.FilePath);
 
                 if (!await blobClient.ExistsAsync())
                 {
@@ -118,7 +115,7 @@ namespace PxApi.DataSources
                 _logger.LogDebug("Getting last write time for PX file {FileId} from blob storage", file.Id);
 
                 BlobContainerClient containerClient = GetContainerClient();
-                BlobClient blobClient = containerClient.GetBlobClient(file.Id);
+                BlobClient blobClient = containerClient.GetBlobClient(file.FilePath);
 
                 if (!await blobClient.ExistsAsync())
                 {
@@ -143,7 +140,6 @@ namespace PxApi.DataSources
             }))
             {
                 BlobContainerClient containerClient = GetContainerClient();
-                await containerClient.CreateIfNotExistsAsync();
                 string blobName = relativePath.Replace('\\', '/');
                 BlobClient blob = containerClient.GetBlobClient(blobName);
                 if (!await blob.ExistsAsync())
