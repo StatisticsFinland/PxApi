@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -237,16 +236,16 @@ namespace PxApi.UnitTests.UtilitiesTests
         }
 
         [Test]
-        public void AddDataBaseConnectors_BlobStorageDatabaseMissingConnectionString_ThrowsInvalidOperationException()
+        public void AddDataBaseConnectors_BlobStorageDatabaseMissingStoragePath_ThrowsInvalidOperationException()
         {
             // Arrange
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
                 TestConfigFactory.Base(),
-                TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", null, "test-container") // omit connection string
+                TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", null, "test-container") // omit storage path
             );
             TestConfigFactory.BuildAndLoad(configData);
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(_services.AddDataBaseConnectors);
-            Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'ConnectionString' for database TestBlobStorageDb"));
+            Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'StoragePath' for database TestBlobStorageDb"));
         }
 
         [Test]
@@ -255,7 +254,7 @@ namespace PxApi.UnitTests.UtilitiesTests
             // Arrange
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
                 TestConfigFactory.Base(),
-                TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=key;", null) // omit container name
+                TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", "https://test.blob.core.windows.net", null) // omit container name
             );
             TestConfigFactory.BuildAndLoad(configData);
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(_services.AddDataBaseConnectors);
@@ -340,7 +339,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         }
 
         [Test]
-        public void AddDataBaseConnectors_BlobStorageDatabaseEmptyConnectionString_ThrowsInvalidOperationException()
+        public void AddDataBaseConnectors_BlobStorageDatabaseEmptyStoragePath_ThrowsInvalidOperationException()
         {
             // Arrange
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
@@ -349,7 +348,7 @@ namespace PxApi.UnitTests.UtilitiesTests
             );
             TestConfigFactory.BuildAndLoad(configData);
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(_services.AddDataBaseConnectors);
-            Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'ConnectionString' for database TestBlobStorageDb"));
+            Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'StoragePath' for database TestBlobStorageDb"));
         }
 
         [Test]
@@ -358,7 +357,7 @@ namespace PxApi.UnitTests.UtilitiesTests
             // Arrange
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
                 TestConfigFactory.Base(),
-                TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=key;", string.Empty)
+                TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", "https://test.blob.core.windows.net", string.Empty)
             );
             TestConfigFactory.BuildAndLoad(configData);
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(_services.AddDataBaseConnectors);

@@ -99,9 +99,7 @@ namespace PxApi.DataSources
                     _logger.LogError("PX file {FileId} not found in blob storage", file.Id);
                     throw new FileNotFoundException($"File {file.Id} not found in blob storage container {_containerName}");
                 }
-
-                Stream stream = await blobClient.OpenReadAsync();
-                return stream;
+                return await blobClient.OpenReadAsync();
             }
         }
 

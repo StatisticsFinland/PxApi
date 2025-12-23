@@ -88,9 +88,9 @@ namespace PxApi.Utilities
 
         private static void AddBlobStorageConnector(IServiceCollection services, DataBaseConfig dbConfig, DataBaseRef db)
         {
-            if (!dbConfig.Custom.TryGetValue("ConnectionString", out string? connectionString) || string.IsNullOrEmpty(connectionString))
+            if (!dbConfig.Custom.TryGetValue("StoragePath", out string? storagePath) || string.IsNullOrEmpty(storagePath))
             {
-                throw new InvalidOperationException($"Missing required custom configuration value 'ConnectionString' for database {dbConfig.Id}");
+                throw new InvalidOperationException($"Missing required custom configuration value 'StoragePath' for database {dbConfig.Id}");
             }
 
             if (!dbConfig.Custom.TryGetValue("ContainerName", out string? containerName) || string.IsNullOrEmpty(containerName))
@@ -98,11 +98,14 @@ namespace PxApi.Utilities
                 throw new InvalidOperationException($"Missing required custom configuration value 'ContainerName' for database {dbConfig.Id}");
             }
 
-            // Register a named BlobServiceClient for this database
+            // Register a named BlobServiceClient for this database using DefaultAzureCredential
             services.AddAzureClients(clientBuilder =>
             {
+                clientBuilder.UseCredential(new DefaultAzureCredential());
+                Uri storageUri = new(storagePath);
+
                 clientBuilder
-                    .AddBlobServiceClient(connectionString)
+                    .AddClient<BlobServiceClient, BlobClientOptions>((options, credential, sp) => new BlobServiceClient(storageUri, credential, options))
                     .WithName(dbConfig.Id);
             });
 
