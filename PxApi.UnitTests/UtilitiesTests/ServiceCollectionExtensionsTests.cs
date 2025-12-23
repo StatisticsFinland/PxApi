@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -221,43 +220,32 @@ namespace PxApi.UnitTests.UtilitiesTests
         }
 
         [Test]
-        public void AddDataBaseConnectors_FileShareDatabaseMissingSharePath_ThrowsInvalidOperationException()
+        public void AddDataBaseConnectors_FileShareDatabaseMissingStoragePath_ThrowsInvalidOperationException()
         {
             // Arrange
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
                 TestConfigFactory.Base(),
                 TestConfigFactory.FileShareDb(0, "TestFileShareDb", null) // omit share path
             );
+
             TestConfigFactory.BuildAndLoad(configData);
-            _services.AddDataBaseConnectors();
-            ServiceDescriptor serviceDescriptor = _services.First(sd =>
-                sd.ServiceType == typeof(IDataBaseConnector) &&
-                sd.ServiceKey?.ToString() == "TestFileShareDb");
 
             // Act & Assert
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                serviceDescriptor.KeyedImplementationFactory!(_mockServiceProvider.Object, "TestFileShareDb"));
-            Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'SharePath' for database TestFileShareDb"));
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(_services.AddDataBaseConnectors);
+            Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'StoragePath' for database TestFileShareDb"));
         }
 
         [Test]
-        public void AddDataBaseConnectors_BlobStorageDatabaseMissingConnectionString_ThrowsInvalidOperationException()
+        public void AddDataBaseConnectors_BlobStorageDatabaseMissingStoragePath_ThrowsInvalidOperationException()
         {
             // Arrange
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
                 TestConfigFactory.Base(),
-                TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", null, "test-container") // omit connection string
+                TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", null, "test-container") // omit storage path
             );
             TestConfigFactory.BuildAndLoad(configData);
-            _services.AddDataBaseConnectors();
-            ServiceDescriptor serviceDescriptor = _services.First(sd =>
-                sd.ServiceType == typeof(IDataBaseConnector) &&
-                sd.ServiceKey?.ToString() == "TestBlobStorageDb");
-
-            // Act & Assert
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                serviceDescriptor.KeyedImplementationFactory!(_mockServiceProvider.Object, "TestBlobStorageDb"));
-            Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'ConnectionString' for database TestBlobStorageDb"));
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(_services.AddDataBaseConnectors);
+            Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'StoragePath' for database TestBlobStorageDb"));
         }
 
         [Test]
@@ -266,17 +254,10 @@ namespace PxApi.UnitTests.UtilitiesTests
             // Arrange
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
                 TestConfigFactory.Base(),
-                TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=key;", null) // omit container name
+                TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", "https://test.blob.core.windows.net", null) // omit container name
             );
             TestConfigFactory.BuildAndLoad(configData);
-            _services.AddDataBaseConnectors();
-            ServiceDescriptor serviceDescriptor = _services.First(sd =>
-                sd.ServiceType == typeof(IDataBaseConnector) &&
-                sd.ServiceKey?.ToString() == "TestBlobStorageDb");
-
-            // Act & Assert
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                serviceDescriptor.KeyedImplementationFactory!(_mockServiceProvider.Object, "TestBlobStorageDb"));
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(_services.AddDataBaseConnectors);
             Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'ContainerName' for database TestBlobStorageDb"));
         }
 
@@ -345,7 +326,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         }
 
         [Test]
-        public void AddDataBaseConnectors_FileShareDatabaseEmptySharePath_ThrowsInvalidOperationException()
+        public void AddDataBaseConnectors_FileShareDatabaseEmptyStoragePath_ThrowsInvalidOperationException()
         {
             // Arrange
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
@@ -353,19 +334,12 @@ namespace PxApi.UnitTests.UtilitiesTests
                 TestConfigFactory.FileShareDb(0, "TestFileShareDb", string.Empty)
             );
             TestConfigFactory.BuildAndLoad(configData);
-            _services.AddDataBaseConnectors();
-            ServiceDescriptor serviceDescriptor = _services.First(sd =>
-                sd.ServiceType == typeof(IDataBaseConnector) &&
-                sd.ServiceKey?.ToString() == "TestFileShareDb");
-
-            // Act & Assert
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                serviceDescriptor.KeyedImplementationFactory!(_mockServiceProvider.Object, "TestFileShareDb"));
-            Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'SharePath' for database TestFileShareDb"));
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(_services.AddDataBaseConnectors);
+            Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'StoragePath' for database TestFileShareDb"));
         }
 
         [Test]
-        public void AddDataBaseConnectors_BlobStorageDatabaseEmptyConnectionString_ThrowsInvalidOperationException()
+        public void AddDataBaseConnectors_BlobStorageDatabaseEmptyStoragePath_ThrowsInvalidOperationException()
         {
             // Arrange
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
@@ -373,15 +347,8 @@ namespace PxApi.UnitTests.UtilitiesTests
                 TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", string.Empty, "test-container")
             );
             TestConfigFactory.BuildAndLoad(configData);
-            _services.AddDataBaseConnectors();
-            ServiceDescriptor serviceDescriptor = _services.First(sd =>
-                sd.ServiceType == typeof(IDataBaseConnector) &&
-                sd.ServiceKey?.ToString() == "TestBlobStorageDb");
-
-            // Act & Assert
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                serviceDescriptor.KeyedImplementationFactory!(_mockServiceProvider.Object, "TestBlobStorageDb"));
-            Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'ConnectionString' for database TestBlobStorageDb"));
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(_services.AddDataBaseConnectors);
+            Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'StoragePath' for database TestBlobStorageDb"));
         }
 
         [Test]
@@ -390,17 +357,10 @@ namespace PxApi.UnitTests.UtilitiesTests
             // Arrange
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
                 TestConfigFactory.Base(),
-                TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=key;", string.Empty)
+                TestConfigFactory.BlobStorageDb(0, "TestBlobStorageDb", "https://test.blob.core.windows.net", string.Empty)
             );
             TestConfigFactory.BuildAndLoad(configData);
-            _services.AddDataBaseConnectors();
-            ServiceDescriptor serviceDescriptor = _services.First(sd =>
-                sd.ServiceType == typeof(IDataBaseConnector) &&
-                sd.ServiceKey?.ToString() == "TestBlobStorageDb");
-
-            // Act & Assert
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                serviceDescriptor.KeyedImplementationFactory!(_mockServiceProvider.Object, "TestBlobStorageDb"));
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(_services.AddDataBaseConnectors);
             Assert.That(exception.Message, Is.EqualTo("Missing required custom configuration value 'ContainerName' for database TestBlobStorageDb"));
         }
 
