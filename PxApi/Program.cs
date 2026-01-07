@@ -1,19 +1,21 @@
+using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.ApplicationInsights;
 using Microsoft.FeatureManagement;
 using Microsoft.OpenApi.Models;
-using NLog.Web;
 using NLog;
+using NLog.Web;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.DataSources;
+using PxApi.Exceptions;
+using PxApi.OpenApi;
+using PxApi.OpenApi.DocumentFilters;
+using PxApi.OpenApi.SchemaFilters;
+using PxApi.Services;
 using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
-using PxApi.OpenApi.DocumentFilters;
-using PxApi.OpenApi.SchemaFilters;
-using PxApi.OpenApi;
-using PxApi.Services;
-using PxApi.Exceptions;
 
 namespace PxApi
 {
@@ -95,7 +97,24 @@ namespace PxApi
         {
             // Add feature management first and API explorer conventions to control Swagger visibility
             serviceCollection.AddFeatureManagement();
-            
+
+            // Configure Application Insights if connection string is available
+            ApplicationInsightsConfig aiConfig = AppSettings.Active.ApplicationInsights;
+            if (aiConfig.IsEnabled)
+            {
+                ApplicationInsightsServiceOptions aiOptions = new()
+                {
+                    ConnectionString = aiConfig.ConnectionString,
+                    EnableAdaptiveSampling = aiConfig.EnableAdaptiveSampling
+                };
+                serviceCollection.AddApplicationInsightsTelemetry(aiOptions);
+
+                serviceCollection.Configure<LoggerFilterOptions>(options =>
+                {
+                    options.AddFilter<ApplicationInsightsLoggerProvider>("", aiConfig.MinimumLevel);
+                });
+            }
+
             serviceCollection.AddControllers(options =>
             {
                 options.Conventions.Add(new ApiExplorerConventionsFactory());
