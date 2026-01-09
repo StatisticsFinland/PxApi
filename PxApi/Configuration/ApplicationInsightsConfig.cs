@@ -29,15 +29,12 @@ namespace PxApi.Configuration
         /// <param name="configurationSection">Configuration section containing ApplicationInsights settings.</param>
         public ApplicationInsightsConfig(IConfigurationSection configurationSection)
         {
-            // Check environment variable first, then config
             ConnectionString = Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING")
                ?? configurationSection.GetValue<string>(nameof(ConnectionString));
 
-            // Parse minimum level, default to Information
             string levelString = configurationSection.GetValue<string>(nameof(MinimumLevel)) ?? "Information";
             MinimumLevel = Enum.TryParse<LogLevel>(levelString, true, out LogLevel parsedLevel) ? parsedLevel : LogLevel.Information;
 
-            // Get adaptive sampling setting, default to false
             EnableAdaptiveSampling = configurationSection.GetValue<bool>(nameof(EnableAdaptiveSampling), false);
         }
 
