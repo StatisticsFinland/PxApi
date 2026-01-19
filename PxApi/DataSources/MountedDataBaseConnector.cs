@@ -9,15 +9,14 @@ namespace PxApi.DataSources
     /// Data source for using database on the local file system.
     /// </summary>
     [ExcludeFromCodeCoverage] // This class is not unit tested because it relies on file system access.
-    public class MountedDataBaseConnector(DataBaseRef dataBase, string rootPath, ILogger<MountedDataBaseConnector> logger) : IDataBaseConnector
+    public class MountedDataBaseConnector(DataBaseRef dataBase, string rootPath, ILogger<MountedDataBaseConnector> logger) : DataBaseConnector(dataBase)
     {
-        /// <inheritdoc/>
-        public DataBaseRef DataBase { get; } = dataBase;
+        protected override ILogger Logger => logger;
 
         /// <inheritdoc/>
-        public Task<string[]> GetAllFilesAsync()
+        public override Task<string[]> GetAllFilesAsync()
         {
-            using (logger.BeginScope(
+            using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
@@ -25,11 +24,11 @@ namespace PxApi.DataSources
                     [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync)
                 }))
             {
-                logger.LogDebug("Listing all files");
+                Logger.LogDebug("Listing all files");
                 string fullPath = Path.GetFullPath(Path.Combine(rootPath, DataBase.Id));
                 if (!fullPath.StartsWith(rootPath))
                 {
-                    logger.LogWarning("Unauthorized access attempt: The database is not in the root path.");
+                    Logger.LogWarning("Unauthorized access attempt: The database is not in the root path.");
                     throw new UnauthorizedAccessException("The database is not in the root path");
                 }
 
@@ -40,22 +39,21 @@ namespace PxApi.DataSources
             }
         }
 
-        /// <inheritdoc/>
-        public async Task<Stream> ReadPxFileAsync(PxFileRef file)
+        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file)
         {
-            using (logger.BeginScope(
+            using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
                     [LoggerConsts.CONTROLLER] = nameof(MountedDataBaseConnector),
-                    [LoggerConsts.FUNCTION] = nameof(ReadPxFileAsync),
+                    [LoggerConsts.FUNCTION] = nameof(OpenPxFileStreamAsync),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
-                logger.LogDebug("Opening file stream");
+                Logger.LogDebug("Opening file stream");
                 if(file.DataBase.Id != DataBase.Id)
                 {
-                    logger.LogWarning("The file does not belong to the database.");
+                    Logger.LogWarning("The file does not belong to the database.");
                     throw new InvalidOperationException("The file does not belong to the database.");
                 }
 
@@ -92,9 +90,9 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file)
+        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file)
         {
-            using (logger.BeginScope(
+            using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
@@ -103,7 +101,7 @@ namespace PxApi.DataSources
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
-                logger.LogDebug("Getting last write time");
+                Logger.LogDebug("Getting last write time");
                 
                 // Use the FilePath property if it exists and points to a valid file
                 if (!string.IsNullOrEmpty(file.FilePath) && File.Exists(file.FilePath))
@@ -118,9 +116,9 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public Task<Stream> TryReadAuxiliaryFileAsync(string relativePath)
+        public override Task<Stream> TryReadAuxiliaryFileAsync(string relativePath)
         {
-            using (logger.BeginScope(new Dictionary<string, object>
+            using (Logger.BeginScope(new Dictionary<string, object>
             {
                 [LoggerConsts.DB_ID] = DataBase.Id,
                 [LoggerConsts.CONTROLLER] = nameof(MountedDataBaseConnector),
@@ -132,12 +130,12 @@ namespace PxApi.DataSources
                 string fullPath = Path.GetFullPath(Path.Combine(dbRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)));
                 if (!fullPath.StartsWith(dbRoot))
                 {
-                    logger.LogWarning("Aux file path escaped database root");
+                    Logger.LogWarning("Aux file path escaped database root");
                     throw new UnauthorizedAccessException("Auxiliary file path escaped database root.");
                 }
                 if (!File.Exists(fullPath))
                 {
-                    logger.LogWarning("Aux file {AuxFile} not found", fullPath);
+                    Logger.LogWarning("Aux file {AuxFile} not found", fullPath);
                     throw new FileNotFoundException("Auxiliary file not found", fullPath);
                 }
                 Stream s = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);

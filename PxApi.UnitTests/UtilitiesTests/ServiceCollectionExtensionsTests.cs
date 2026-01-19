@@ -24,8 +24,8 @@ namespace PxApi.UnitTests.UtilitiesTests
                 .Returns(new Mock<ILogger<MountedDataBaseConnector>>().Object);
             _mockServiceProvider.Setup(sp => sp.GetService(typeof(ILogger<FileShareDataBaseConnector>)))
                .Returns(new Mock<ILogger<FileShareDataBaseConnector>>().Object);
-            _mockServiceProvider.Setup(sp => sp.GetService(typeof(ILogger<BlobStorageDataBaseConnector>)))
-               .Returns(new Mock<ILogger<BlobStorageDataBaseConnector>>().Object);
+            _mockServiceProvider.Setup(sp => sp.GetService(typeof(ILogger<PxBlobDataBaseConnector>)))
+               .Returns(new Mock<ILogger<PxBlobDataBaseConnector>>().Object);
         }
 
         [TearDown]

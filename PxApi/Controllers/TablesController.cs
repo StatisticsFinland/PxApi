@@ -93,22 +93,13 @@ namespace PxApi.Controllers
 
                         try
                         {
-                            try
-                            {
-                                IReadOnlyMatrixMetadata tableMeta = await cachedConnector.GetMetadataCachedAsync(table.Value);
+                            IReadOnlyMatrixMetadata tableMeta = await cachedConnector.GetMetadataCachedAsync(table.Value);
 
-                                Uri fileUri = settings.RootUrl
-                                    .AddRelativePath("meta", database, table.Key)
-                                    .AddQueryParameters(("lang", actualLang));
-                                pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, actualLang, tableMeta, fileUri));
-                            }
-                            catch (Exception buildEx)
-                            {
-                                logger.LogWarning(buildEx, "Building metadata for table {Table} failed, constructing error list entry.", tableList.ElementAt(i).Key);
-                                string id = (await cachedConnector.GetSingleStringValueAsync(PxFileConstants.TABLEID, table.Value))
-                                    .Trim('"', ' ', '\r', '\n', '\t');
-                                pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, id));
-                            }
+                            Uri fileUri = settings.RootUrl
+                                .AddRelativePath("meta", database, table.Key)
+                                .AddQueryParameters(("lang", actualLang));
+                            pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, actualLang, tableMeta, fileUri));
+
                         }
                         catch (Exception idReadEx)
                         {

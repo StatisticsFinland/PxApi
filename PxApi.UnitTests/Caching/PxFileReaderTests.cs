@@ -1,11 +1,12 @@
+using Microsoft.Extensions.Logging;
 using Moq;
-using Px.Utils.Models.Data;
 using Px.Utils.Models.Data.DataValue;
+using Px.Utils.Models.Data;
 using Px.Utils.Models.Metadata;
-using PxApi.Caching;
 using PxApi.DataSources;
 using PxApi.Models;
 using PxApi.UnitTests.Models;
+using PxApi.UnitTests.Utils;
 using System.Text;
 
 namespace PxApi.UnitTests.Caching
@@ -13,20 +14,34 @@ namespace PxApi.UnitTests.Caching
     [TestFixture]
     internal class PxFileReaderTests
     {
-
         private static readonly PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "test.px"), DataBaseRef.Create("testDatabase"));
+
+        private sealed class TestStreamConnector(DataBaseRef db, string content, string filePath) : DataBaseConnector(db)
+        {
+            protected override ILogger Logger { get; } = new Mock<ILogger>().Object;
+
+            public override Task<string[]> GetAllFilesAsync() => Task.FromResult<string[]>([filePath]);
+
+            public override Task<DateTime> GetLastWriteTimeAsync(PxFileRef file) => Task.FromResult(DateTime.UtcNow);
+
+            public override Task<Stream> TryReadAuxiliaryFileAsync(string relativePath) => throw new FileNotFoundException();
+
+            protected override Task<Stream> OpenPxFileStreamAsync(PxFileRef file)
+            {
+                MemoryStream ms = new(Encoding.UTF8.GetBytes(content));
+                return Task.FromResult<Stream>(ms);
+            }
+        }
 
         [Test]
         public async Task ReadMetadata_WhenCalledWithValidFile_ReturnsMetadata()
         {
             // Arrange
-            Mock<IDataBaseConnector> mockFileSystem = new();
-            mockFileSystem.Setup(fs => fs.ReadPxFileAsync(It.IsAny<PxFileRef>())).ReturnsAsync(new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
-            PxFileReader reader = new(mockFileSystem.Object);
+            TestStreamConnector connector = new(fileRef.DataBase, PxFixtures.MinimalPx.MINIMAL_UTF8_N, fileRef.FilePath);
             string[] expectedLanguages = ["fi", "en"];
 
             // Act
-            IReadOnlyMatrixMetadata result = await reader.ReadMetadataAsync(fileRef);
+            IReadOnlyMatrixMetadata result = await connector.ReadMetadataAsync(fileRef);
 
             // Assert
             Assert.Multiple(() =>
@@ -44,44 +59,19 @@ namespace PxApi.UnitTests.Caching
         }
 
         [Test]
-        public async Task GetDataSectionStart_WhenCalledWithValidFile_ReturnsCorrectValue()
-        {
-
-            // Arrange
-            Mock<IDataBaseConnector> mockFileSystem = new();
-            mockFileSystem.Setup(fs => fs.ReadPxFileAsync(It.IsAny<PxFileRef>())).ReturnsAsync(new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
-            PxFileReader reader = new(mockFileSystem.Object);
-
-            // Act
-            long? result = await reader.GetDataSectionOffsetAsync(fileRef);
-
-            // Assert
-            Assert.That(result, Is.Not.Null);
-            Assert.That(result, Is.InstanceOf<long>());
-            Assert.That(result, Is.EqualTo(392));
-        }
-
-        [Test]
         public async Task ReadDataAsync_WhenCalledWithValidFile_ReturnsData()
         {
             // Arrange
-            Mock<IDataBaseConnector> mockFileSystem = new();
-            mockFileSystem
-                .Setup(fs => fs.ReadPxFileAsync(It.IsAny<PxFileRef>()))
-                .ReturnsAsync(() => new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
-            PxFileReader reader = new(mockFileSystem.Object);
-            long startOffset = (long)await reader.GetDataSectionOffsetAsync(fileRef);
+            TestStreamConnector connector = new(fileRef.DataBase, PxFixtures.MinimalPx.MINIMAL_UTF8_N, fileRef.FilePath);
             MatrixMap targetMap = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
             ]);
-            MatrixMap fileMap = new([
-                new DimensionMap("dim1", ["value1"]),
-                new DimensionMap("dim2", ["2024", "2025"])
-            ]);
+
+            IReadOnlyMatrixMetadata meta = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
 
             // Act
-            DoubleDataValue[] result = await reader.ReadDataAsync(fileRef, startOffset, targetMap, fileMap);
+            DoubleDataValue[] result = await connector.ReadDataAsync(fileRef, targetMap, meta);
 
             // Assert
             Assert.Multiple(() =>

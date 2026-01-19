@@ -111,9 +111,9 @@ namespace PxApi.Utilities
 
             services.AddKeyedScoped<IDataBaseConnector>(dbConfig.Id, (serviceProvider, key) =>
             {
-                ILogger<BlobStorageDataBaseConnector> logger = serviceProvider.GetRequiredService<ILogger<BlobStorageDataBaseConnector>>();
+                ILogger<PxBlobDataBaseConnector> logger = serviceProvider.GetRequiredService<ILogger<PxBlobDataBaseConnector>>();
                 IAzureClientFactory<BlobServiceClient> factory = serviceProvider.GetRequiredService<IAzureClientFactory<BlobServiceClient>>();
-                return new BlobStorageDataBaseConnector(db, containerName, factory, logger);
+                return new PxBlobDataBaseConnector(db, containerName, factory, logger);
             });
         }
     }

@@ -1,7 +1,6 @@
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Metadata;
 using Px.Utils.PxFile.Data;
-using Px.Utils.PxFile.Metadata;
 using PxApi.DataSources;
 using PxApi.Models;
 using System.Collections.Immutable;
@@ -111,21 +110,6 @@ namespace PxApi.Caching
         }
 
         /// <inheritdoc/>
-        public async Task<string> GetSingleStringValueAsync(string key, PxFileRef file)
-        {
-            IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(file.DataBase);
-            using Stream fileStream = await dbConnector.ReadPxFileAsync(file);
-            PxFileMetadataReader reader = new();
-            Encoding encoding = await reader.GetEncodingAsync(fileStream);
-
-            if (fileStream.CanSeek) fileStream.Seek(0, SeekOrigin.Begin);
-            else throw new InvalidOperationException("Not able to seek in the filestream");
-
-            IAsyncEnumerable<KeyValuePair<string, string>> metaEntries = reader.ReadMetadataAsync(fileStream, encoding);
-            return (await metaEntries.FirstAsync(pair => pair.Key == key)).Value;
-        }
-
-        /// <inheritdoc/>
         public async Task<DoubleDataValue[]> GetDataCachedAsync(PxFileRef pxFile, IMatrixMap map)
         {
             if (cache.TryGetData(map, out Task<DoubleDataValue[]>? data, out DateTime? cached))
@@ -153,10 +137,7 @@ namespace PxApi.Caching
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
             MetaCacheContainer metaContainer = await GetMetaContainer(pxFile);
-            PxFileReader reader = new(dbConnector);
-            metaContainer.DataSectionOffset ??= await reader.GetDataSectionOffsetAsync(pxFile);
-
-            Task<DoubleDataValue[]> dataTask = reader.ReadDataAsync(pxFile, metaContainer.DataSectionOffset.Value, map, await metaContainer.Metadata);
+            Task<DoubleDataValue[]> dataTask = dbConnector.ReadDataAsync(pxFile, map, await metaContainer.Metadata);
             cache.SetData(pxFile, new MatrixMap([.. map.DimensionMaps]), dataTask);
             return await dataTask;
         }
@@ -201,8 +182,7 @@ namespace PxApi.Caching
             }
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
-            PxFileReader reader = new(dbConnector);
-            Task<IReadOnlyMatrixMetadata> meta = reader.ReadMetadataAsync(pxFile);
+            Task<IReadOnlyMatrixMetadata> meta = dbConnector.ReadMetadataAsync(pxFile);
             metaContainer = new MetaCacheContainer(meta);
             cache.SetMetadata(pxFile, metaContainer);
             return metaContainer;

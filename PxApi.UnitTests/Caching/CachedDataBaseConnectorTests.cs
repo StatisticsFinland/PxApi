@@ -1,7 +1,8 @@
 using Microsoft.Extensions.Caching.Memory;
 using Moq;
-using Px.Utils.Models.Data;
+using Px.Utils.Language;
 using Px.Utils.Models.Data.DataValue;
+using Px.Utils.Models.Data;
 using Px.Utils.Models.Metadata;
 using PxApi.Caching;
 using PxApi.DataSources;
@@ -9,8 +10,6 @@ using PxApi.Models;
 using PxApi.UnitTests.Models;
 using PxApi.UnitTests.Utils;
 using System.Collections.Immutable;
-using System.Text;
-using Px.Utils.Language;
 
 namespace PxApi.UnitTests.Caching
 {
@@ -254,11 +253,10 @@ namespace PxApi.UnitTests.Caching
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
             PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase);
-            string pxContent = PxFixtures.MinimalPx.MINIMAL_UTF8_N;
-            MemoryStream pxStream = new (Encoding.UTF8.GetBytes(pxContent));
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.Setup(c => c.DataBase).Returns(dataBase);
-            mockConnector.Setup(c => c.ReadPxFileAsync(fileRef)).ReturnsAsync(pxStream);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            mockConnector.Setup(c => c.ReadMetadataAsync(fileRef)).ReturnsAsync(metadata);
             mockConnector.Setup(c => c.GetLastWriteTimeAsync(fileRef)).ReturnsAsync(DateTime.UtcNow);
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
@@ -284,79 +282,6 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result.Dimensions[1].Values, Has.Count.EqualTo(2));
                 Assert.That(result.Dimensions[1].Values[0].Code, Is.EqualTo("2024"));
                 Assert.That(result.Dimensions[1].Values[1].Code, Is.EqualTo("2025"));
-            });
-        }
-
-        #endregion
-
-        #region GetSingleStringValueAsync
-
-        [Test]
-        public async Task GetSingleStringValueAsync_WithValidReferenceAndKey_ReturnsStringValue()
-        {
-            // Arrange
-            string key = "LANGUAGE";
-            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dbRef);
-            string pxContent = PxFixtures.MinimalPx.MINIMAL_UTF8_N;
-            MemoryStream pxStream = new (Encoding.UTF8.GetBytes(pxContent));
-            Mock<IDataBaseConnector> mockConnector = new();
-            mockConnector.Setup(c => c.DataBase).Returns(dbRef);
-            mockConnector.Setup(c => c.ReadPxFileAsync(fileRef)).ReturnsAsync(pxStream);
-            Mock<IDataBaseConnectorFactory> mockFactory = new();
-            mockFactory.Setup(f => f.GetConnector(dbRef)).Returns(mockConnector.Object);
-            CachedDataSource dbConnector = new(mockFactory.Object, new DatabaseCache(new MemoryCache(new MemoryCacheOptions())));
-
-            // Act
-            string result = await dbConnector.GetSingleStringValueAsync(key, fileRef);
-
-            // Assert
-            Assert.That(result, Is.EqualTo("\"fi\""));
-        }
-
-        [Test]
-        public void GetSingleStringValueAsync_WithUnseekableStream_ThrowsInvalidOperationException()
-        {
-            // Arrange
-            string key = "LANGUAGE";
-            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dbRef);
-            // Create a stream that cannot seek
-            Stream unseekableStream = new UnseekableMemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N));
-            Mock<IDataBaseConnector> mockConnector = new();
-            mockConnector.Setup(c => c.DataBase).Returns(dbRef);
-            mockConnector.Setup(c => c.ReadPxFileAsync(fileRef)).ReturnsAsync(unseekableStream);
-            Mock<IDataBaseConnectorFactory> mockFactory = new();
-            mockFactory.Setup(f => f.GetConnector(dbRef)).Returns(mockConnector.Object);
-            CachedDataSource dbConnector = new(mockFactory.Object, new DatabaseCache(new MemoryCache(new MemoryCacheOptions())));
-
-            // Act & Assert
-            Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            {
-                await dbConnector.GetSingleStringValueAsync(key, fileRef);
-            });
-        }
-
-        [Test]
-        public void GetSingleStringValueAsync_WithMissingKey_ThrowsInvalidOperationException()
-        {
-            // Arrange
-            string key = "TEST";
-            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dbRef);
-            string pxContent = PxFixtures.MinimalPx.MINIMAL_UTF8_N;
-            MemoryStream pxStream = new (Encoding.UTF8.GetBytes(pxContent));
-            Mock<IDataBaseConnector> mockConnector = new();
-            mockConnector.Setup(c => c.DataBase).Returns(dbRef);
-            mockConnector.Setup(c => c.ReadPxFileAsync(fileRef)).ReturnsAsync(pxStream);
-            Mock<IDataBaseConnectorFactory> mockFactory = new();
-            mockFactory.Setup(f => f.GetConnector(dbRef)).Returns(mockConnector.Object);
-            CachedDataSource dbConnector = new(mockFactory.Object, new DatabaseCache(new MemoryCache(new MemoryCacheOptions())));
-
-            // Act & Assert
-            Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            {
-                await dbConnector.GetSingleStringValueAsync(key, fileRef);
             });
         }
 
@@ -396,7 +321,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
             });
-            mockConnector.Verify(c => c.ReadPxFileAsync(It.IsAny<PxFileRef>()), Times.Never);
+            mockConnector.Verify(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.Never);
         }
 
         [Test]
@@ -438,7 +363,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2)); // The value for 2025
             });
-            mockConnector.Verify(c => c.ReadPxFileAsync(It.IsAny<PxFileRef>()), Times.Never);
+            mockConnector.Verify(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.Never);
         }
 
         [Test]
@@ -454,8 +379,9 @@ namespace PxApi.UnitTests.Caching
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
             Mock<IDataBaseConnector> mockConnector = new();
-            mockConnector.Setup(c => c.ReadPxFileAsync(pxFile))
-                .ReturnsAsync(() => new MemoryStream(Encoding.UTF8.GetBytes(PxFixtures.MinimalPx.MINIMAL_UTF8_N)));
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            mockConnector.Setup(c => c.ReadMetadataAsync(pxFile)).ReturnsAsync(metadata);
+            mockConnector.Setup(c => c.ReadDataAsync(pxFile, map, metadata)).ReturnsAsync([new DoubleDataValue(2, DataValueType.Exists)]);
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             CachedDataSource connector = new(mockFactory.Object, dbCache);

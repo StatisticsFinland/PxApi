@@ -236,7 +236,7 @@ namespace PxApi.Controllers
                 MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
 
                 long maxSize = AppSettings.Active.QueryLimits.JsonStatMaxCells;
-                int size = requestMap.GetSize();
+                long size = requestMap.GetSize();
                 if (size > maxSize)
                 {
                     logger.LogInformation("Too large request received. Size: {Size}.", size);

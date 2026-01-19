@@ -15,6 +15,11 @@ using PxApi.Models;
 using PxApi.UnitTests.Utils;
 using System.Text;
 using PxApi.Services;
+using Px.Utils.PxFile;
+using Px.Utils.PxFile.Data;
+using Px.Utils.Models.Data.DataValue; // for DoubleDataValue and DataValueType
+using Px.Utils.Models.Metadata;       // for IMatrixMap
+using Px.Utils.Models.Metadata.ExtensionMethods; // for GetSize()
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -311,16 +316,36 @@ namespace PxApi.UnitTests.ControllerTests
             _testTable = PxFileRef.CreateFromPath(Path.Combine("c:", "foo", "testtable"), _testDatabase);
         }
 
-        private static MemoryStream CreateTestDataStream()
+        private static long ComputeDataOffset()
         {
-            return new MemoryStream(Encoding.UTF8.GetBytes(PX_FILE_FIXTURE));
+            using MemoryStream ms = new(Encoding.UTF8.GetBytes(PX_FILE_FIXTURE));
+            PxFileConfiguration conf = PxFileConfiguration.Default;
+            string dataKey = conf.Tokens.KeyWords.Data;
+            long pos = StreamUtilities.FindKeywordPositionAsync(ms, dataKey, conf).GetAwaiter().GetResult();
+            return pos + dataKey.Length + 1;
+        }
+
+        private static DoubleDataValue[] ReadFixtureData(IMatrixMap targetMap, IMatrixMap fileMap)
+        {
+            using MemoryStream ms = new(Encoding.UTF8.GetBytes(PX_FILE_FIXTURE));
+            using PxFileStreamDataReader reader = new(ms);
+            DoubleDataValue[] arr = new DoubleDataValue[targetMap.GetSize()];
+            reader.ReadDoubleDataValuesAsync(arr, 0, targetMap, fileMap).GetAwaiter().GetResult();
+            return arr;
         }
 
         private void SetupMocks()
         {
             _mockConnector.Setup(c => c.DataBase).Returns(_testDatabase);
-            _mockConnector.Setup(c => c.ReadPxFileAsync(_testTable))
-                .ReturnsAsync(CreateTestDataStream);
+            // Provide high-level API mocks
+            _mockConnector.Setup(c => c.ReadMetadataAsync(_testTable))
+                .Returns(async () => await MatrixMetadataUtils.GetMetadataFromFixture(PX_FILE_FIXTURE));
+            long offset = ComputeDataOffset();
+            _mockConnector.Setup(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()))
+                .Returns<PxFileRef, IMatrixMap, IMatrixMap>((_, targetMap, fileMap) =>
+                {
+                    return Task.FromResult(ReadFixtureData(targetMap, fileMap));
+                });
             _mockConnector.Setup(c => c.GetLastWriteTimeAsync(_testTable))
                 .ReturnsAsync(DateTime.UtcNow.AddMinutes(-10));
             _mockConnector.Setup(c => c.GetAllFilesAsync())
@@ -373,7 +398,7 @@ namespace PxApi.UnitTests.ControllerTests
                 // Verify all values have correct DataValueType
                 Assert.That(dataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
-                // Compare actual data values against expectedFi array
+                // Compare actual data values against expected array
                 double[] actualValues = [.. dataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
@@ -384,7 +409,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "alue"));
             });
 
-            _mockConnector.Verify(c => c.ReadPxFileAsync(_testTable), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.AtLeastOnce);
         }
 
         [Test]
@@ -407,7 +432,7 @@ namespace PxApi.UnitTests.ControllerTests
                 1.3, 1.2, 1.5, 1.2, 1.7   // 2022Q2: neljmuut for all regions
             ];
 
-            // Act - First call should read from stream
+            // Act - First call should read
             IActionResult result1 = await _controller.GetDataAsync(database, table, filters);
             
             // Act - Second call should use cache
@@ -440,7 +465,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse1.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 Assert.That(dataResponse2.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
-                // Compare actual data values against expectedFi array for both calls
+                // Compare actual data values against expected array for both calls
                 double[] actualValues1 = [.. dataResponse1.Value.Select(d => d.UnsafeValue)];
                 double[] actualValues2 = [.. dataResponse2.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualValues1, Is.EqualTo(expectedValues));
@@ -448,8 +473,8 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(actualValues1, Is.EqualTo(actualValues2));
             });
 
-            // Should have read from stream at least once, but cache should reduce subsequent reads
-            _mockConnector.Verify(c => c.ReadPxFileAsync(_testTable), Times.AtLeastOnce);
+            // Should have read at least once, but cache reduces subsequent reads
+            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.AtLeastOnce);
         }
 
         [Test]
@@ -519,16 +544,16 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(supersetDataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 Assert.That(subsetDataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
-                // Compare actual superset data against expectedFi array
+                // Compare actual superset data against expected array
                 double[] actualSupersetValues = [.. supersetDataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualSupersetValues, Is.EqualTo(expectedSupersetValues));
                 
-                // Compare actual subset data against expectedFi array
+                // Compare actual subset data against expected array
                 double[] actualSubsetValues = [.. subsetDataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualSubsetValues, Is.EqualTo(expectedSubsetValues));
             });
 
-            _mockConnector.Verify(c => c.ReadPxFileAsync(_testTable), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.AtLeastOnce);
         }
 
         [Test]
@@ -580,7 +605,7 @@ namespace PxApi.UnitTests.ControllerTests
                 // Verify all values have correct DataValueType
                 Assert.That(dataResponse.Value.All(d => d.Type == DataValueType.Exists), Is.True);
                 
-                // Compare actual data against expectedFi array
+                // Compare actual data against expected array
                 double[] actualValues = [.. dataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
@@ -588,7 +613,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse.Dimension, Has.Count.EqualTo(3));
             });
 
-            _mockConnector.Verify(c => c.ReadPxFileAsync(_testTable), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.AtLeastOnce);
         }
 
         [Test]
@@ -651,7 +676,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(jsonStat.Dimension.ContainsKey("alue"));
                 Assert.That(jsonStat.Dimension.ContainsKey("tiedot"));
                 
-                // Verify size array matches expectedFi dimensions
+                // Verify size array matches expected dimensions
                 Assert.That(jsonStat.Size, Has.Count.EqualTo(3));
                 Assert.That(jsonStat.Size[0], Is.EqualTo(10)); // 10 Vuosineljännes values  
                 Assert.That(jsonStat.Size[1], Is.EqualTo(2)); // 2 Alue values
@@ -660,7 +685,7 @@ namespace PxApi.UnitTests.ControllerTests
                 // Verify all data points exist
                 Assert.That(jsonStat.Value.All(v => v.Type == DataValueType.Exists), Is.True);
                 
-                // Compare actual data against expectedFi array
+                // Compare actual data against expected array
                 double[] actualValues = [.. jsonStat.Value.Select(v => v.UnsafeValue)];
                 Assert.That(actualValues, Is.EqualTo(expectedValues));
                 
@@ -672,7 +697,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(translations![DataValueType.Missing], Is.EqualTo("Missing"));
             });
 
-            _mockConnector.Verify(c => c.ReadPxFileAsync(_testTable), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.AtLeastOnce);
         }
 
         [Test]
@@ -740,15 +765,13 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(jsonStat1.Value.All(v => v.Type == DataValueType.Exists), Is.True);
                 Assert.That(jsonStat2.Value.All(v => v.Type == DataValueType.Exists), Is.True);
                 
-                // Compare actual data against expectedFi array for both calls
+                // Compare actual data against expected arrays for both calls
                 double[] actualValues1 = [.. jsonStat1.Value.Select(v => v.UnsafeValue)];
                 double[] actualValues2 = [.. jsonStat2.Value.Select(v => v.UnsafeValue)];
                 Assert.That(actualValues1, Is.EqualTo(expectedValues));
                 Assert.That(actualValues2, Is.EqualTo(expectedValues));
                 Assert.That(actualValues1, Is.EqualTo(actualValues2));
             });
-
-            _mockConnector.Verify(c => c.ReadPxFileAsync(_testTable), Times.AtLeastOnce);
         }
 
         [Test]

@@ -293,49 +293,6 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetTablesAsync_BuildingMetadataIsNotPossible_ReturnsTableObjectWithErrorState_ReadIdFromTable()
-        {
-            // Arrange
-            string dbId = "exampledb";
-            DataBaseRef db = DataBaseRef.Create(dbId);
-            string lang = "en";
-            int page = 1;
-            int pageSize = 50;
-            
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "table1.px"), db);
-            ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
-                new Dictionary<string, PxFileRef> { { file.Id, file } });
-
-            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
-            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ThrowsAsync(new Exception("Metaobject build error!"));
-            _cachedDbConnector.Setup(ds => ds.GetSingleStringValueAsync(PxFileConstants.TABLEID, file)).ReturnsAsync("\"table-tableid\"");
-
-            // Act
-            ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
-            OkObjectResult? objectResult = result.Result as OkObjectResult;
-            Assert.That(objectResult, Is.Not.Null);
-            Assert.Multiple(() =>
-            {
-                Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
-                if (objectResult.Value is not PagedTableList pageTableList)
-                {
-                    Assert.Fail("PagedTableList is null");
-                }
-                else
-                {
-                    Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
-                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
-                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1"));
-                    Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
-                }
-            });
-        }
-
-        [Test]
         public async Task GetTablesAsync_BuildingMetadataIsNotPossible_TableNotReadable_ReturnsTableObjectWithErrorState_TableIdIsName()
         {
             // Arrange
@@ -352,7 +309,6 @@ namespace PxApi.UnitTests.ControllerTests
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
             _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
             _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ThrowsAsync(new Exception("Metaobject build error!"));
-            _cachedDbConnector.Setup(ds => ds.GetSingleStringValueAsync(PxFileConstants.TABLEID, file)).ThrowsAsync(new Exception("Table not readable!"));
 
             // Act
             ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);

@@ -29,6 +29,10 @@ namespace PxApi.Utilities
         /// Used to identify an auxiliary file path (e.g. groupings.json, Alias_{lang}.txt) in logging scopes.
         /// </summary>
         public const string AUXILIARY_PATH = "AuxPath";
+        /// <summary>
+        /// Unique name of the blob container in logging scopes.
+        /// </summary>
+        public const string CONTAINER_NAME = "ContainerName";
 
     }
 }

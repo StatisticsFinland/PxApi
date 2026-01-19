@@ -77,15 +77,6 @@ namespace PxApi.Caching
         Task<IReadOnlyList<TableGroup>> GetGroupingsCachedAsync(PxFileRef pxFile);
 
         /// <summary>
-        /// Asynchronously retrieves a single string value associated with the specified key from the provided file.
-        /// </summary>
-        /// <param name="key">The key used to locate the string value within the file. Cannot be null or empty.</param>
-        /// <param name="file">The file from which the string value is retrieved. Must be a valid <see cref="PxFileRef"/> instance.</param>
-        /// <returns>A task that represents the asynchronous operation. The task result contains the string value associated with
-        /// the specified key.</returns>
-        Task<string> GetSingleStringValueAsync(string key, PxFileRef file);
-
-        /// <summary>
         /// Retrieves a cached multilanguage database name composed from Alias_*.txt files in the given database folder.
         /// Builds and caches it if not already cached.
         /// </summary>
