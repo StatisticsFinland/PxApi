@@ -20,13 +20,13 @@ namespace PxApi.UnitTests.Caching
         {
             protected override ILogger Logger { get; } = new Mock<ILogger>().Object;
 
-            public override Task<string[]> GetAllFilesAsync() => Task.FromResult<string[]>([filePath]);
+            public override Task<string[]> GetAllFilesAsync(CancellationToken ct) => Task.FromResult<string[]>([filePath]);
 
-            public override Task<DateTime> GetLastWriteTimeAsync(PxFileRef file) => Task.FromResult(DateTime.UtcNow);
+            public override Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct) => Task.FromResult(DateTime.UtcNow);
 
-            public override Task<Stream> TryReadAuxiliaryFileAsync(string relativePath) => throw new FileNotFoundException();
+            public override Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct) => throw new FileNotFoundException();
 
-            protected override Task<Stream> OpenPxFileStreamAsync(PxFileRef file)
+            protected override Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct)
             {
                 MemoryStream ms = new(Encoding.UTF8.GetBytes(content));
                 return Task.FromResult<Stream>(ms);
@@ -41,7 +41,7 @@ namespace PxApi.UnitTests.Caching
             string[] expectedLanguages = ["fi", "en"];
 
             // Act
-            IReadOnlyMatrixMetadata result = await connector.ReadMetadataAsync(fileRef);
+            IReadOnlyMatrixMetadata result = await connector.ReadMetadataAsync(fileRef, CancellationToken.None);
 
             // Assert
             Assert.Multiple(() =>
@@ -71,7 +71,7 @@ namespace PxApi.UnitTests.Caching
             IReadOnlyMatrixMetadata meta = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
 
             // Act
-            DoubleDataValue[] result = await connector.ReadDataAsync(fileRef, targetMap, meta);
+            DoubleDataValue[] result = await connector.ReadDataAsync(fileRef, targetMap, meta, CancellationToken.None);
 
             // Assert
             Assert.Multiple(() =>

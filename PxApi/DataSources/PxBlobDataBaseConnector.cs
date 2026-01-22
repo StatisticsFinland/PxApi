@@ -25,7 +25,7 @@ namespace PxApi.DataSources
         protected override ILogger Logger => logger;
 
         /// <inheritdoc/>
-        public override async Task<string[]> GetAllFilesAsync()
+        public override async Task<string[]> GetAllFilesAsync(CancellationToken ct)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -40,7 +40,7 @@ namespace PxApi.DataSources
                 List<string> fileNames = [];
 
                 BlobContainerClient containerClient = GetContainerClient();
-                AsyncPageable<BlobItem> blobs = containerClient.GetBlobsAsync();
+                AsyncPageable<BlobItem> blobs = containerClient.GetBlobsAsync(cancellationToken: ct);
 
                 await foreach (BlobItem blob in blobs)
                 {
@@ -55,7 +55,7 @@ namespace PxApi.DataSources
             }
         }
 
-        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file)
+        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -88,7 +88,7 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file)
+        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>

@@ -18,19 +18,21 @@ namespace PxApi.Caching
         /// </summary>
         /// <param name="pxFile">The PX file containing the data to be processed. Cannot be null.</param>
         /// <param name="map">The matrix map that defines the structure and mapping of the data. Cannot be null.</param>
+        /// <param name="ct">A cancellation token to cancel the operation.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains an array of  <see
         /// cref="DoubleDataValue"/> objects representing the processed data. The array will be empty if no data is
         /// available.</returns>
-        Task<DoubleDataValue[]> GetDataCachedAsync(PxFileRef pxFile, IMatrixMap map);
+        Task<DoubleDataValue[]> GetDataCachedAsync(PxFileRef pxFile, IMatrixMap map, CancellationToken ct = default);
 
         /// <summary>
         /// Retrieves a cached list of files associated with the specified database.
         /// </summary>
         /// <param name="dataBase">The database for which to retrieve the file list. Cannot be null.</param>
+        /// <param name="ct">A cancellation token to cancel the operation.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains an immutable list of  <see
         /// cref="PxFileRef"/> objects associated with the specified database. The list will be empty if no files are
         /// found.</returns>
-        Task<ImmutableSortedDictionary<string, PxFileRef>> GetFileListCachedAsync(DataBaseRef dataBase);
+        Task<ImmutableSortedDictionary<string, PxFileRef>> GetFileListCachedAsync(DataBaseRef dataBase, CancellationToken ct = default);
 
         /// <summary>
         /// Retrieves a reference to a database object based on the specified database identifier.
@@ -56,25 +58,28 @@ namespace PxApi.Caching
         /// existing file.</remarks>
         /// <param name="fileId">The unique identifier of the file to retrieve. Cannot be null or empty.</param>
         /// <param name="db">The database instance used to query the file reference. Cannot be null.</param>
+        /// <param name="ct">A cancellation token to cancel the operation.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains the <see cref="PxFileRef"/> object 
         /// corresponding to the specified <paramref name="fileId"/>.</returns>
-        Task<PxFileRef?> GetFileReferenceCachedAsync(string fileId, DataBaseRef db);
+        Task<PxFileRef?> GetFileReferenceCachedAsync(string fileId, DataBaseRef db, CancellationToken ct = default);
 
         /// <summary>
         /// Asynchronously retrieves the metadata for the specified PX file, utilizing caching to improve performance.
         /// </summary>
         /// <param name="pxFile">The PX file for which metadata is to be retrieved. Cannot be null.</param>
+        /// <param name="ct">A cancellation token to cancel the operation.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains the metadata for the specified
         /// PX file as an <see cref="IReadOnlyMatrixMetadata"/> object.</returns>
-        Task<IReadOnlyMatrixMetadata> GetMetadataCachedAsync(PxFileRef pxFile);
+        Task<IReadOnlyMatrixMetadata> GetMetadataCachedAsync(PxFileRef pxFile, CancellationToken ct = default);
 
         /// <summary>
         /// Retrieves cached groupings for a table. The group membership is currently determined by the folder that contains the PX file.
         /// Placeholder values are used for translated names and grouping metadata until the actual file-based implementation is added.
         /// </summary>
         /// <param name="pxFile">The PX file for which to get the cached groupings.</param>
+        /// <param name="ct">A cancellation token to cancel the operation.</param>
         /// <returns>A task resolving to a read-only list of <see cref="TableGroup"/> objects the table belongs to.</returns>
-        Task<IReadOnlyList<TableGroup>> GetGroupingsCachedAsync(PxFileRef pxFile);
+        Task<IReadOnlyList<TableGroup>> GetGroupingsCachedAsync(PxFileRef pxFile, CancellationToken ct = default);
 
         /// <summary>
         /// Retrieves a cached multilanguage database name composed from Alias_*.txt files in the given database folder.
@@ -82,8 +87,9 @@ namespace PxApi.Caching
         /// </summary>
         /// <param name="dataBase">Reference to the database whose translated name is requested.</param>
         /// <param name="folderRelativePath">Folder path relative to the database root containing the Alias_*.txt files.</param>
+        /// <param name="ct">A cancellation token to cancel the operation.</param>
         /// <returns>A task resolving to a <see cref="MultilanguageString"/> containing the translated database name (may be empty).</returns>
-        Task<MultilanguageString> GetDatabaseNameAsync(DataBaseRef dataBase, string folderRelativePath);
+        Task<MultilanguageString> GetDatabaseNameAsync(DataBaseRef dataBase, string folderRelativePath, CancellationToken ct = default);
 
         /// <summary>
         /// Clears all cache entries for the specified database, including file lists, metadata, and data.

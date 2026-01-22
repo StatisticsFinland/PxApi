@@ -14,7 +14,7 @@ namespace PxApi.DataSources
         protected override ILogger Logger => logger;
 
         /// <inheritdoc/>
-        public override Task<string[]> GetAllFilesAsync()
+        public override Task<string[]> GetAllFilesAsync(CancellationToken ct)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -35,11 +35,12 @@ namespace PxApi.DataSources
                 return Task.Run(() => Directory.GetFiles(
                     fullPath,
                     $"*{PxFileConstants.FILE_ENDING}",
-                    SearchOption.AllDirectories));
+                    SearchOption.AllDirectories), ct);
             }
         }
 
-        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file)
+        /// <inheritdoc/>
+        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -60,37 +61,41 @@ namespace PxApi.DataSources
                 // Use the FilePath property if it exists and points to a valid file
                 if (!string.IsNullOrEmpty(file.FilePath) && File.Exists(file.FilePath))
                 {
-                    return await Task.FromResult<Stream>(File.OpenRead(file.FilePath));
+                    return await Task.Run(() => File.OpenRead(file.FilePath), ct);
                 }
 
                 // Fall back to constructing the path from components
                 string path = Path.Combine(rootPath, file.DataBase.Id, file.Id);
                 
-                // If the file doesn't exist with just the ID (which is now potentially different from the filename),
-                // try to find it by searching for the ID with the file extension
-                if (!File.Exists(path))
+                return await Task.Run(() =>
                 {
-                    string searchPath = Path.Combine(rootPath, file.DataBase.Id);
-                    if (Directory.Exists(searchPath))
+                    // If the file doesn't exist with just the ID (which is now potentially different from the filename),
+                    // try to find it by searching for the ID with the file extension
+                    if (!File.Exists(path))
                     {
-                        string[] matchingFiles = Directory.GetFiles(
-                            searchPath, 
-                            $"*{file.Id}*{PxFileConstants.FILE_ENDING}", 
-                            SearchOption.AllDirectories);
-                        
-                        if (matchingFiles.Length > 0)
+                        string searchPath = Path.Combine(rootPath, file.DataBase.Id);
+                        if (Directory.Exists(searchPath))
                         {
-                            path = matchingFiles[0];
+                            string[] matchingFiles = Directory.GetFiles(
+                                searchPath,
+                                $"*{file.Id}*{PxFileConstants.FILE_ENDING}",
+                                SearchOption.AllDirectories);
+
+                            if (matchingFiles.Length > 0)
+                            {
+                                path = matchingFiles[0];
+                            }
                         }
                     }
-                }
-                
-                return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+                    return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+                }, ct);
             }
         }
 
         /// <inheritdoc/>
-        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file)
+        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -106,17 +111,17 @@ namespace PxApi.DataSources
                 // Use the FilePath property if it exists and points to a valid file
                 if (!string.IsNullOrEmpty(file.FilePath) && File.Exists(file.FilePath))
                 {
-                    return await Task.Run(() => File.GetLastWriteTimeUtc(file.FilePath));
+                    return await Task.Run(() => File.GetLastWriteTimeUtc(file.FilePath), ct);
                 }
                 
                 // Fall back to constructing the path from components
                 string path = Path.Combine(rootPath, file.DataBase.Id, file.Id);
-                return await Task.Run(() => File.GetLastWriteTimeUtc(path));
+                return await Task.Run(() => File.GetLastWriteTimeUtc(path), ct);
             }
         }
 
         /// <inheritdoc/>
-        public override Task<Stream> TryReadAuxiliaryFileAsync(string relativePath)
+        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct)
         {
             using (Logger.BeginScope(new Dictionary<string, object>
             {
@@ -133,13 +138,16 @@ namespace PxApi.DataSources
                     Logger.LogWarning("Aux file path escaped database root");
                     throw new UnauthorizedAccessException("Auxiliary file path escaped database root.");
                 }
-                if (!File.Exists(fullPath))
+
+                return await Task.Run(() =>
                 {
-                    Logger.LogWarning("Aux file {AuxFile} not found", fullPath);
-                    throw new FileNotFoundException("Auxiliary file not found", fullPath);
-                }
-                Stream s = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                return Task.FromResult(s);
+                    if (!File.Exists(fullPath))
+                    {
+                        Logger.LogWarning("Aux file {AuxFile} not found", fullPath);
+                        throw new FileNotFoundException("Auxiliary file not found", fullPath);
+                    }
+                    return new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                }, ct);
             }
         }
     }

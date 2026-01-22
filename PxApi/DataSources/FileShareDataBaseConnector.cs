@@ -25,7 +25,7 @@ namespace PxApi.DataSources
         protected override ILogger Logger => logger;
 
         /// <inheritdoc/>
-        public override async Task<string[]> GetAllFilesAsync()
+        public override async Task<string[]> GetAllFilesAsync(CancellationToken ct)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -40,14 +40,15 @@ namespace PxApi.DataSources
 
                 ShareDirectoryClient rootDirectory = CreateShareClient().GetRootDirectoryClient();
 
-                await ListAllFilesRecursivelyAsync(rootDirectory, string.Empty, fileNames);
+                await ListAllFilesRecursivelyAsync(rootDirectory, string.Empty, fileNames, ct);
 
                 Logger.LogDebug("Found {Count} PX files in file share {ShareName}", fileNames.Count, shareName);
                 return [.. fileNames];
             }
         }
 
-        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file)
+        /// <inheritdoc/>
+        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -67,17 +68,17 @@ namespace PxApi.DataSources
                 Logger.LogDebug("Reading PX file {FileId} from file share", file.Id);
                 ShareDirectoryClient directoryClient = CreateShareClient().GetRootDirectoryClient();
                 ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id);
-                if (fileClient == null || !await fileClient.ExistsAsync())
+                if (fileClient == null || !await fileClient.ExistsAsync(ct))
                 {
                     Logger.LogError("PX file {FileId} not found in file share", file.Id);
                     throw new FileNotFoundException($"File {file.Id} not found in file share {shareName}");
                 }
-                return await fileClient.OpenReadAsync();
+                return await fileClient.OpenReadAsync(cancellationToken: ct);
             }
         }
 
         /// <inheritdoc/>
-        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file)
+        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -92,19 +93,19 @@ namespace PxApi.DataSources
 
                 ShareDirectoryClient directoryClient = CreateShareClient().GetRootDirectoryClient();
                 ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id);
-                if (fileClient == null || !await fileClient.ExistsAsync())
+                if (fileClient == null || !await fileClient.ExistsAsync(ct))
                 {
                     Logger.LogError("PX file {FileId} not found in file share", file.Id);
                     throw new FileNotFoundException($"File {file.Id} not found in file share {shareName}");
                 }
 
-                ShareFileProperties properties = await fileClient.GetPropertiesAsync();
+                ShareFileProperties properties = await fileClient.GetPropertiesAsync(cancellationToken: ct);
                 return properties.LastModified.DateTime;
             }
         }
 
         /// <inheritdoc/>
-        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath)
+        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct)
         {
             using (Logger.BeginScope(new Dictionary<string, object>
             {
@@ -128,16 +129,13 @@ namespace PxApi.DataSources
                     currentDir = currentDir.GetSubdirectoryClient(parts[i]);
                 }
                 ShareFileClient fileClient = currentDir.GetFileClient(parts[^1]);
-                if (!await fileClient.ExistsAsync())
+                if (!await fileClient.ExistsAsync(ct))
                 {
                     Logger.LogWarning("Aux file {AuxFile} not found", normalized);
                     throw new FileNotFoundException("Auxiliary file not found", normalized);
                 }
-                MemoryStream ms = new();
-                ShareFileDownloadInfo dl = (await fileClient.DownloadAsync()).Value;
-                await dl.Content.CopyToAsync(ms);
-                ms.Position = 0;
-                return ms;
+
+                return await fileClient.OpenReadAsync(cancellationToken: ct);
             }
         }
 
@@ -162,17 +160,17 @@ namespace PxApi.DataSources
             return null;
         }
 
-        private static async Task ListAllFilesRecursivelyAsync(ShareDirectoryClient directory, string path, List<string> fileNames)
+        private static async Task ListAllFilesRecursivelyAsync(ShareDirectoryClient directory, string path, List<string> fileNames, CancellationToken ct)
         {
-                // List all files in current directory
-                await foreach (ShareFileItem item in directory.GetFilesAndDirectoriesAsync())
-                {
+            // List all files in current directory
+            await foreach (ShareFileItem item in directory.GetFilesAndDirectoriesAsync(cancellationToken: ct))
+            {
                 if (item.IsDirectory)
                 {
                     // Recursively traverse subdirectories
                     string subDirPath = string.IsNullOrEmpty(path) ? item.Name : $"{path}/{item.Name}";
                     ShareDirectoryClient subDir = directory.GetSubdirectoryClient(item.Name);
-                    await ListAllFilesRecursivelyAsync(subDir, subDirPath, fileNames);
+                    await ListAllFilesRecursivelyAsync(subDir, subDirPath, fileNames, ct);
                 }
                 else
                 {

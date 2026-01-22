@@ -4,7 +4,12 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Data;
+using Px.Utils.Models.Metadata.ExtensionMethods;
+using Px.Utils.Models.Metadata;
+using Px.Utils.PxFile.Data;
+using Px.Utils.PxFile;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
@@ -12,14 +17,9 @@ using PxApi.DataSources;
 using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Models;
+using PxApi.Services;
 using PxApi.UnitTests.Utils;
 using System.Text;
-using PxApi.Services;
-using Px.Utils.PxFile;
-using Px.Utils.PxFile.Data;
-using Px.Utils.Models.Data.DataValue; // for DoubleDataValue and DataValueType
-using Px.Utils.Models.Metadata;       // for IMatrixMap
-using Px.Utils.Models.Metadata.ExtensionMethods; // for GetSize()
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -338,19 +338,19 @@ namespace PxApi.UnitTests.ControllerTests
         {
             _mockConnector.Setup(c => c.DataBase).Returns(_testDatabase);
             // Provide high-level API mocks
-            _mockConnector.Setup(c => c.ReadMetadataAsync(_testTable))
+            _mockConnector.Setup(c => c.ReadMetadataAsync(_testTable, CancellationToken.None))
                 .Returns(async () => await MatrixMetadataUtils.GetMetadataFromFixture(PX_FILE_FIXTURE));
             long offset = ComputeDataOffset();
-            _mockConnector.Setup(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()))
-                .Returns<PxFileRef, IMatrixMap, IMatrixMap>((_, targetMap, fileMap) =>
+            _mockConnector.Setup(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), CancellationToken.None))
+                .Returns((PxFileRef _, IMatrixMap targetMap, IReadOnlyMatrixMetadata meta, CancellationToken __) =>
                 {
-                    return Task.FromResult(ReadFixtureData(targetMap, fileMap));
+                    return Task.FromResult(ReadFixtureData(targetMap, meta));
                 });
-            _mockConnector.Setup(c => c.GetLastWriteTimeAsync(_testTable))
+            _mockConnector.Setup(c => c.GetLastWriteTimeAsync(_testTable, CancellationToken.None))
                 .ReturnsAsync(DateTime.UtcNow.AddMinutes(-10));
-            _mockConnector.Setup(c => c.GetAllFilesAsync())
+            _mockConnector.Setup(c => c.GetAllFilesAsync(CancellationToken.None))
                 .ReturnsAsync([_testTable.FilePath]);
-            _mockConnector.Setup(c => c.TryReadAuxiliaryFileAsync(It.IsAny<string>()))
+            _mockConnector.Setup(c => c.TryReadAuxiliaryFileAsync(It.IsAny<string>(), CancellationToken.None))
                 .ThrowsAsync(new FileNotFoundException());
             _mockConnectorFactory.Setup(f => f.GetAvailableDatabases())
                 .Returns([_testDatabase]);
@@ -409,7 +409,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "alue"));
             });
 
-            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
 
         [Test]
@@ -474,7 +474,7 @@ namespace PxApi.UnitTests.ControllerTests
             });
 
             // Should have read at least once, but cache reduces subsequent reads
-            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
 
         [Test]
@@ -553,7 +553,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(actualSubsetValues, Is.EqualTo(expectedSubsetValues));
             });
 
-            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
 
         [Test]
@@ -613,7 +613,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse.Dimension, Has.Count.EqualTo(3));
             });
 
-            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
 
         [Test]
@@ -697,7 +697,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(translations![DataValueType.Missing], Is.EqualTo("Missing"));
             });
 
-            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.AtLeastOnce);
+            _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
 
         [Test]

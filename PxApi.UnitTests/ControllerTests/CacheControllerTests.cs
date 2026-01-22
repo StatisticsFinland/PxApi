@@ -39,7 +39,7 @@ namespace PxApi.UnitTests.ControllerTests
             DataBaseRef dbRef = DataBaseRef.Create(database);
             PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("c:", "foo", id), dbRef);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
-            _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef))
+            _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef, CancellationToken.None))
                 .ReturnsAsync(ImmutableSortedDictionary<string, PxFileRef>.Empty.Add(id, fileRef));
             _cachedDbConnector.Setup(x => x.ClearTableCache(fileRef));
 
@@ -75,7 +75,7 @@ namespace PxApi.UnitTests.ControllerTests
             const string id = "nonexistentfile";
             DataBaseRef dbRef = DataBaseRef.Create(database);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
-            _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef))
+            _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef, CancellationToken.None))
                 .ReturnsAsync(ImmutableSortedDictionary<string, PxFileRef>.Empty);
 
             // Act
@@ -94,7 +94,7 @@ namespace PxApi.UnitTests.ControllerTests
             const string id = "table1";
             DataBaseRef dbRef = DataBaseRef.Create(database);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
-            _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef))
+            _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef, CancellationToken.None))
                 .ThrowsAsync(new Exception("Test exception"));
 
             // Act

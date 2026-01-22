@@ -11,9 +11,9 @@ using PxApi.Controllers;
 using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Models;
+using PxApi.Services;
 using PxApi.UnitTests.ModelBuilderTests;
 using PxApi.UnitTests.Utils;
-using PxApi.Services;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -100,10 +100,10 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
-            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(mockMetadata);
-            _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>())).ReturnsAsync(mockData);
-            _cachedDbConnector.Setup(x => x.GetGroupingsCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(groupingsFixture);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>(), CancellationToken.None)).ReturnsAsync(mockMetadata);
+            _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>(), CancellationToken.None)).ReturnsAsync(mockData);
+            _cachedDbConnector.Setup(x => x.GetGroupingsCachedAsync(It.IsAny<PxFileRef>(), CancellationToken.None)).ReturnsAsync(groupingsFixture);
         }
 
         #region GetDataAsync Tests
@@ -214,7 +214,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync((PxFileRef?)null);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
 
             // Act
             IActionResult result = await _controller.GetDataAsync(database, table, filters);
@@ -328,7 +328,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync((PxFileRef?)null);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
 
             // Act
             IActionResult result = await _controller.PostDataAsync(database, table, query);
@@ -401,7 +401,7 @@ namespace PxApi.UnitTests.ControllerTests
             PxFileRef? pxFileRef = null;
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
 
             // Accept header not needed since this test expects NotFound before content negotiation
             // Act
@@ -424,8 +424,8 @@ namespace PxApi.UnitTests.ControllerTests
             PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ThrowsAsync(new ArgumentException(errorMessage));
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef, CancellationToken.None)).ThrowsAsync(new ArgumentException(errorMessage));
 
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
@@ -448,7 +448,7 @@ namespace PxApi.UnitTests.ControllerTests
             PxFileRef? pxFileRef = null;
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
 
             // Accept header not needed since this test expects NotFound before content negotiation
             // Act
@@ -471,8 +471,8 @@ namespace PxApi.UnitTests.ControllerTests
             PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ThrowsAsync(new ArgumentException(errorMessage));
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef, CancellationToken.None)).ThrowsAsync(new ArgumentException(errorMessage));
 
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 

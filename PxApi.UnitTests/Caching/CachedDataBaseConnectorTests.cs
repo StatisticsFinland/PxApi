@@ -151,7 +151,7 @@ namespace PxApi.UnitTests.Caching
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            mockConnector.Setup(c => c.GetAllFilesAsync()).ReturnsAsync(fileNames);
+            mockConnector.Setup(c => c.GetAllFilesAsync(CancellationToken.None)).ReturnsAsync(fileNames);
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
             CachedDataSource connector = new(mockFactory.Object, dbCache);
             string[] expected = ["file1", "file2"];
@@ -256,8 +256,8 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.Setup(c => c.DataBase).Returns(dataBase);
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
-            mockConnector.Setup(c => c.ReadMetadataAsync(fileRef)).ReturnsAsync(metadata);
-            mockConnector.Setup(c => c.GetLastWriteTimeAsync(fileRef)).ReturnsAsync(DateTime.UtcNow);
+            mockConnector.Setup(c => c.ReadMetadataAsync(fileRef, CancellationToken.None)).ReturnsAsync(metadata);
+            mockConnector.Setup(c => c.GetLastWriteTimeAsync(fileRef, CancellationToken.None)).ReturnsAsync(DateTime.UtcNow);
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
@@ -321,7 +321,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
             });
-            mockConnector.Verify(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.Never);
+            mockConnector.Verify(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Test]
@@ -363,7 +363,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2)); // The value for 2025
             });
-            mockConnector.Verify(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>()), Times.Never);
+            mockConnector.Verify(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Test]
@@ -380,8 +380,8 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
             Mock<IDataBaseConnector> mockConnector = new();
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
-            mockConnector.Setup(c => c.ReadMetadataAsync(pxFile)).ReturnsAsync(metadata);
-            mockConnector.Setup(c => c.ReadDataAsync(pxFile, map, metadata)).ReturnsAsync([new DoubleDataValue(2, DataValueType.Exists)]);
+            mockConnector.Setup(c => c.ReadMetadataAsync(pxFile, CancellationToken.None)).ReturnsAsync(metadata);
+            mockConnector.Setup(c => c.ReadDataAsync(pxFile, map, metadata, CancellationToken.None)).ReturnsAsync([new DoubleDataValue(2, DataValueType.Exists)]);
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             CachedDataSource connector = new(mockFactory.Object, dbCache);
@@ -417,7 +417,7 @@ namespace PxApi.UnitTests.Caching
                     .Add("file2", PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file2.px"), dataBase))));
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
-            mockConnector.Setup(c => c.GetAllFilesAsync()).ReturnsAsync([]);
+            mockConnector.Setup(c => c.GetAllFilesAsync(CancellationToken.None)).ReturnsAsync([]);
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             CachedDataSource connector = new(mockFactory.Object, dbCache);
 
@@ -546,7 +546,7 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
             // This should never be called since revalidation is disabled
-            mockConnector.Setup(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()))
+            mockConnector.Setup(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
                 .ReturnsAsync(DateTime.UtcNow.AddDays(1)); // Future date to make cache invalid if checked
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
@@ -565,7 +565,7 @@ namespace PxApi.UnitTests.Caching
             });
 
             // Verify that GetLastWriteTimeAsync was never called since revalidation is disabled
-            mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()), Times.Never);
+            mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None), Times.Never);
         }
 
         [Test]
@@ -601,7 +601,7 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
             // This should never be called since revalidation is disabled
-            mockConnector.Setup(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()))
+            mockConnector.Setup(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
                 .ReturnsAsync(DateTime.UtcNow.AddDays(1)); // Future date to make cache invalid if checked
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
@@ -618,7 +618,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
             });
-            mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()), Times.Never);
+            mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None), Times.Never);
         }
 
         [Test]
@@ -647,7 +647,7 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
             // This should never be called since revalidation is disabled
-            mockConnector.Setup(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()))
+            mockConnector.Setup(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
                 .ReturnsAsync(DateTime.UtcNow.AddDays(1)); // Future date to make cache invalid if checked
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
@@ -663,7 +663,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Is.EqualTo(metadata));
             });
-            mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>()), Times.Never);
+            mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None), Times.Never);
         }
 
         [Test]
@@ -687,7 +687,7 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
             // Cache was created now, but file was modified in the past (cache is valid)
-            mockConnector.Setup(c => c.GetLastWriteTimeAsync(pxFile))
+            mockConnector.Setup(c => c.GetLastWriteTimeAsync(pxFile, CancellationToken.None))
                 .ReturnsAsync(DateTime.UtcNow.AddMinutes(-5));
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
@@ -706,7 +706,7 @@ namespace PxApi.UnitTests.Caching
             });
 
             // Verify that GetLastWriteTimeAsync was called since revalidation is enabled
-            mockConnector.Verify(c => c.GetLastWriteTimeAsync(pxFile), Times.Once);
+            mockConnector.Verify(c => c.GetLastWriteTimeAsync(pxFile, CancellationToken.None), Times.Once);
         }
 
         #endregion
@@ -723,9 +723,9 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnectorFactory> factoryMock = new();
             Mock<IDataBaseConnector> connectorMock = new();
             connectorMock.SetupGet(c => c.DataBase).Returns(dbRef);
-            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_fi.txt")).Returns(BuildStream("Suomi"));
-            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_sv.txt")).Returns(BuildStream("Finland"));
-            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_en.txt")).Returns(BuildStream("Finland"));
+            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_fi.txt", CancellationToken.None)).Returns(BuildStream("Suomi"));
+            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_sv.txt", CancellationToken.None)).Returns(BuildStream("Finland"));
+            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_en.txt", CancellationToken.None)).Returns(BuildStream("Finland"));
             factoryMock.Setup(f => f.GetConnector(dbRef)).Returns(connectorMock.Object);
             CachedDataSource dataSource = new(factoryMock.Object, dbCache);
 
@@ -739,7 +739,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(name, Is.Not.Null);
                 Assert.That(cachedName, Is.SameAs(name));
             });
-            connectorMock.Verify(c => c.TryReadAuxiliaryFileAsync(It.IsAny<string>()), Times.Exactly(3));
+            connectorMock.Verify(c => c.TryReadAuxiliaryFileAsync(It.IsAny<string>(), CancellationToken.None), Times.Exactly(3));
         }
 
         [Test]
@@ -777,7 +777,7 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnectorFactory> factoryMock = new();
             Mock<IDataBaseConnector> connectorMock = new();
             connectorMock.SetupGet(c => c.DataBase).Returns(dbRef);
-            connectorMock.Setup(c => c.GetAllFilesAsync()).ReturnsAsync([]); // For ClearDatabaseCacheAsync
+            connectorMock.Setup(c => c.GetAllFilesAsync(CancellationToken.None)).ReturnsAsync([]); // For ClearDatabaseCacheAsync
             factoryMock.Setup(f => f.GetConnector(dbRef)).Returns(connectorMock.Object);
             CachedDataSource dataSource = new(factoryMock.Object, dbCache);
 
@@ -798,6 +798,265 @@ namespace PxApi.UnitTests.Caching
             {
                 Assert.That(nameStillCached, Is.False);
                 Assert.That(afterTask, Is.Null);
+            });
+        }
+
+        #endregion
+
+        #region EvictionOnFailedOrCanceledTasks
+
+        [Test]
+        public void SetFileList_FaultedTask_IsEvicted()
+        {
+            // Arrange
+            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            TaskCompletionSource<ImmutableSortedDictionary<string, PxFileRef>> tcs = new();
+            dbCache.SetFileList(dbRef, tcs.Task);
+
+            // Pre-assert: present in cache
+            bool before = dbCache.TryGetFileList(dbRef, out Task<ImmutableSortedDictionary<string, PxFileRef>>? beforeTask);
+            Assert.Multiple(() =>
+            {
+                Assert.That(before, Is.True, "File list should be present in cache before faulting the task.");
+                Assert.That(beforeTask, Is.Not.Null, "File list task should not be null before faulting the task.");
+            });
+
+            // Act: fault the task
+            tcs.SetException(new InvalidOperationException("failure"));
+
+            // Assert: evicted
+            bool after = dbCache.TryGetFileList(dbRef, out Task<ImmutableSortedDictionary<string, PxFileRef>>? afterTask);
+            Assert.Multiple(() =>
+            {
+                Assert.That(after, Is.False, "File list should be evicted from cache after faulting the task.");
+                Assert.That(afterTask, Is.Null, "File list task should be null after faulting the task.");
+            });
+        }
+
+        [Test]
+        public void SetDatabaseName_CanceledTask_IsEvicted()
+        {
+            // Arrange
+            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            TaskCompletionSource<MultilanguageString> tcs = new();
+            dbCache.SetDatabaseName(dbRef, tcs.Task);
+
+            // Pre-assert: present in cache
+            bool before = dbCache.TryGetDatabaseName(dbRef, out Task<MultilanguageString>? beforeTask);
+            Assert.Multiple(() =>
+            {
+                Assert.That(before, Is.True, "Database name should be present in cache before canceling the task.");
+                Assert.That(beforeTask, Is.Not.Null, "Database name task should not be null before canceling the task.");
+            });
+
+            // Act: cancel the task
+            tcs.SetCanceled();
+
+            // Assert: evicted
+            bool after = dbCache.TryGetDatabaseName(dbRef, out Task<MultilanguageString>? afterTask);
+            Assert.Multiple(() =>
+            {
+                Assert.That(after, Is.False, "Database name should be evicted from cache after canceling the task.");
+                Assert.That(afterTask, Is.Null, "Database name task should be null after canceling the task.");
+            });
+        }
+
+        [Test]
+        public void SetMetadata_FaultedTask_IsEvicted()
+        {
+            // Arrange
+            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef fileRef = BuildTestFileRef("table1", dbRef);
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            TaskCompletionSource<IReadOnlyMatrixMetadata> metaTcs = new();
+            MetaCacheContainer container = new(metaTcs.Task);
+            dbCache.SetMetadata(fileRef, container);
+
+            // Pre-assert: present in cache
+            bool before = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? beforeMeta);
+            Assert.Multiple(() =>
+            {
+                Assert.That(before, Is.True, "Metadata should be present in cache before faulting the task.");
+                Assert.That(beforeMeta, Is.Not.Null, "Metadata container should not be null before faulting the task.");
+            });
+
+            // Act: fault metadata task
+            metaTcs.SetException(new InvalidOperationException("meta failure"));
+
+            // Assert: evicted
+            bool after = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? afterMeta);
+            Assert.Multiple(() =>
+            {
+                Assert.That(after, Is.False, "Metadata should be evicted from cache after faulting the task.");
+                Assert.That(afterMeta, Is.Null, "Metadata container should be null after faulting the task.");
+            });
+        }
+
+        [Test]
+        public void SetMetadata_CanceledTask_IsEvicted()
+        {
+            // Arrange
+            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef fileRef = BuildTestFileRef("table1", dbRef);
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            TaskCompletionSource<IReadOnlyMatrixMetadata> metaTcs = new();
+            MetaCacheContainer container = new(metaTcs.Task);
+            dbCache.SetMetadata(fileRef, container);
+
+            // Pre-assert: present in cache
+            bool before = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? beforeMeta);
+            Assert.Multiple(() =>
+            {
+                Assert.That(before, Is.True);
+                Assert.That(beforeMeta, Is.Not.Null);
+            });
+
+            // Act: cancel metadata task
+            metaTcs.SetCanceled();
+
+            // Assert: evicted
+            bool after = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? afterMeta);
+            Assert.Multiple(() =>
+            {
+                Assert.That(after, Is.False);
+                Assert.That(afterMeta, Is.Null);
+            });
+        }
+
+        [Test]
+        public void SetData_FaultedTask_IsEvicted()
+        {
+            // Arrange
+            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef fileRef = BuildTestFileRef("table1", dbRef);
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            // Need metadata in cache for SetData
+            IReadOnlyMatrixMetadata metadata = MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N).GetAwaiter().GetResult();
+            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
+            dbCache.SetMetadata(fileRef, metaContainer);
+
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"]) 
+            ]);
+            TaskCompletionSource<DoubleDataValue[]> dataTcs = new();
+            dbCache.SetData(fileRef, map, dataTcs.Task);
+
+            // Pre-assert: present in cache
+            bool before = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? beforeTask, out DateTime? beforeCached);
+            Assert.Multiple(() =>
+            {
+                Assert.That(before, Is.True);
+                Assert.That(beforeTask, Is.Not.Null);
+                Assert.That(beforeCached, Is.Not.Null);
+            });
+
+            // Act: fault data task
+            dataTcs.SetException(new InvalidOperationException("data failure"));
+
+            // Assert: evicted
+            bool after = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? afterTask, out DateTime? afterCached);
+            Assert.Multiple(() =>
+            {
+                Assert.That(after, Is.False);
+                Assert.That(afterTask, Is.Null);
+                Assert.That(afterCached, Is.Null);
+            });
+        }
+
+        [Test]
+        public void SetData_CanceledTask_IsEvicted()
+        {
+            // Arrange
+            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef fileRef = BuildTestFileRef("table1", dbRef);
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            // Need metadata in cache for SetData
+            IReadOnlyMatrixMetadata metadata = MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N).GetAwaiter().GetResult();
+            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
+            dbCache.SetMetadata(fileRef, metaContainer);
+
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"]) 
+            ]);
+            TaskCompletionSource<DoubleDataValue[]> dataTcs = new();
+            dbCache.SetData(fileRef, map, dataTcs.Task);
+
+            // Pre-assert: present in cache
+            bool before = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? beforeTask, out DateTime? beforeCached);
+            Assert.Multiple(() =>
+            {
+                Assert.That(before, Is.True);
+                Assert.That(beforeTask, Is.Not.Null);
+                Assert.That(beforeCached, Is.Not.Null);
+            });
+
+            // Act: cancel data task
+            dataTcs.SetCanceled();
+
+            // Assert: evicted
+            bool after = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? afterTask, out DateTime? afterCached);
+            Assert.Multiple(() =>
+            {
+                Assert.That(after, Is.False);
+                Assert.That(afterTask, Is.Null);
+                Assert.That(afterCached, Is.Null);
+            });
+        }
+
+        [Test]
+        public async Task SetMetadata_Race_NewerEntryNotEvicted_ByPreviousFault()
+        {
+            // Arrange
+            DataBaseRef dbRef = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef fileRef = BuildTestFileRef("table1", dbRef);
+            MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            // First metadata task (will fault later)
+            TaskCompletionSource<IReadOnlyMatrixMetadata> metaTcs1 = new();
+            MetaCacheContainer container1 = new(metaTcs1.Task);
+            dbCache.SetMetadata(fileRef, container1);
+
+            // Ensure first is set
+            bool firstPresent = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? first);
+            Assert.Multiple(() =>
+            {
+                Assert.That(firstPresent, Is.True);
+                Assert.That(first, Is.SameAs(container1));
+            });
+
+            // Second metadata task (successful) set before first faults
+            IReadOnlyMatrixMetadata metadata2 = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            MetaCacheContainer container2 = new(Task.FromResult(metadata2));
+            dbCache.SetMetadata(fileRef, container2);
+
+            // Verify second replaced first
+            bool secondPresent = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? current);
+            Assert.Multiple(() =>
+            {
+                Assert.That(secondPresent, Is.True);
+                Assert.That(current, Is.SameAs(container2));
+            });
+
+            // Act: fault the first task; eviction continuation must not remove the newer entry
+            metaTcs1.SetException(new InvalidOperationException("meta failure"));
+
+            // Assert: still the newer entry present
+            bool afterPresent = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? afterMeta);
+            Assert.Multiple(() =>
+            {
+                Assert.That(afterPresent, Is.True, "Newer metadata should remain in cache after previous task faults.");
+                Assert.That(afterMeta, Is.SameAs(container2), "Newer metadata container should not be evicted by previous task's continuation.");
             });
         }
 

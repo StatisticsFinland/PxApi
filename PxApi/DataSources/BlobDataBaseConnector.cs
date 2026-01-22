@@ -10,7 +10,7 @@ namespace PxApi.DataSources
         protected string ContainerName => containerName;
 
         /// <inheritdoc/>
-        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath)
+        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct)
         {
             using (Logger.BeginScope(new Dictionary<string, object>
             {
@@ -28,10 +28,7 @@ namespace PxApi.DataSources
                     Logger.LogWarning("Aux file {AuxFile} not found", blobName);
                     throw new FileNotFoundException("Auxiliary file not found", blobName);
                 }
-                MemoryStream ms = new();
-                await blob.DownloadToAsync(ms);
-                ms.Position = 0;
-                return ms;
+                return await blob.OpenReadAsync(cancellationToken: ct);
             }
         }
 
