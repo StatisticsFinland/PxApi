@@ -34,6 +34,9 @@ namespace PxApi.Utilities
                     case DataBaseType.BlobStorage:
                         AddBlobStorageConnector(services, dbConfig, db);
                         break;
+                    case DataBaseType.BinaryBlobStorage:
+                        AddBinaryBlobStorageConnector(services, dbConfig, db);
+                        break;
                     default:
                         throw new InvalidOperationException($"Unsupported database type: {dbConfig.Type} for database {dbConfig.Id}");
                 }
@@ -88,6 +91,31 @@ namespace PxApi.Utilities
 
         private static void AddBlobStorageConnector(IServiceCollection services, DataBaseConfig dbConfig, DataBaseRef db)
         {
+            AddBlobStorageConnectorInternal<PxBlobDataBaseConnector>(
+                services,
+                dbConfig,
+                db,
+                (dataBaseRef, containerName, factory, logger) =>
+                    new PxBlobDataBaseConnector(dataBaseRef, containerName, factory, logger));
+        }
+
+        private static void AddBinaryBlobStorageConnector(IServiceCollection services, DataBaseConfig dbConfig, DataBaseRef db)
+        {
+            AddBlobStorageConnectorInternal<BinaryBlobDataBaseConnector>(
+                services,
+                dbConfig,
+                db,
+                (dataBaseRef, containerName, factory, logger) =>
+                    new BinaryBlobDataBaseConnector(dataBaseRef, containerName, factory, logger));
+        }
+
+        private static void AddBlobStorageConnectorInternal<TConnector>(
+            IServiceCollection services,
+            DataBaseConfig dbConfig,
+            DataBaseRef db,
+            Func<DataBaseRef, string, IAzureClientFactory<BlobServiceClient>, ILogger<PxBlobDataBaseConnector>, TConnector> connectorFactory)
+            where TConnector : BlobDataBaseConnector
+        {
             if (!dbConfig.Custom.TryGetValue("StoragePath", out string? storagePath) || string.IsNullOrEmpty(storagePath))
             {
                 throw new InvalidOperationException($"Missing required custom configuration value 'StoragePath' for database {dbConfig.Id}");
@@ -98,7 +126,18 @@ namespace PxApi.Utilities
                 throw new InvalidOperationException($"Missing required custom configuration value 'ContainerName' for database {dbConfig.Id}");
             }
 
-            // Register a named BlobServiceClient for this database using DefaultAzureCredential
+            RegisterBlobServiceClient(services, dbConfig.Id, storagePath);
+
+            services.AddKeyedScoped<IDataBaseConnector>(dbConfig.Id, (serviceProvider, key) =>
+            {
+                ILogger<PxBlobDataBaseConnector> logger = serviceProvider.GetRequiredService<ILogger<PxBlobDataBaseConnector>>();
+                IAzureClientFactory<BlobServiceClient> factory = serviceProvider.GetRequiredService<IAzureClientFactory<BlobServiceClient>>();
+                return connectorFactory(db, containerName, factory, logger);
+            });
+        }
+
+        private static void RegisterBlobServiceClient(IServiceCollection services, string databaseId, string storagePath)
+        {
             services.AddAzureClients(clientBuilder =>
             {
                 clientBuilder.UseCredential(new DefaultAzureCredential());
@@ -106,14 +145,7 @@ namespace PxApi.Utilities
 
                 clientBuilder
                     .AddClient<BlobServiceClient, BlobClientOptions>((options, credential, sp) => new BlobServiceClient(storageUri, credential, options))
-                    .WithName(dbConfig.Id);
-            });
-
-            services.AddKeyedScoped<IDataBaseConnector>(dbConfig.Id, (serviceProvider, key) =>
-            {
-                ILogger<PxBlobDataBaseConnector> logger = serviceProvider.GetRequiredService<ILogger<PxBlobDataBaseConnector>>();
-                IAzureClientFactory<BlobServiceClient> factory = serviceProvider.GetRequiredService<IAzureClientFactory<BlobServiceClient>>();
-                return new PxBlobDataBaseConnector(db, containerName, factory, logger);
+                    .WithName(databaseId);
             });
         }
     }
