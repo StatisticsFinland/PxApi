@@ -12,6 +12,7 @@ using PxApi.Exceptions;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Text.Json;
+using PxApi.Configuration;
 
 namespace PxApi.DataSources
 {
@@ -73,19 +74,9 @@ namespace PxApi.DataSources
                 }))
             {
                 Logger.LogDebug("Getting last write time for meta file {FileId} from blob storage", file.Id);
-
-                BlobContainerClient containerClient = GetContainerClient();
-                string blobName = MetaPrefix + file.Id + MetaFileSuffix;
-                BlobClient blobClient = containerClient.GetBlobClient(blobName);
-
-                if (!await blobClient.ExistsAsync(ct))
-                {
-                    Logger.LogError("Meta file for id {FileId} not found in blob storage", file.Id);
-                    throw new FileNotFoundException($"Meta file for id {file.Id} not found in blob storage container.");
-                }
-
-                BlobProperties properties = await blobClient.GetPropertiesAsync(cancellationToken: ct);
-                return properties.LastModified.DateTime;
+                IReadOnlyMatrixMetadata metadata = await ReadMetadataAsync(file, ct);
+                ContentValueList contentDimensionValues = metadata.GetContentDimension().Values;
+                return contentDimensionValues.Map(value => value.LastUpdated).Max();
             }
         }
 
@@ -160,7 +151,7 @@ namespace PxApi.DataSources
                 Logger.LogDebug("Reading metadata for meta file {FileId} from blob storage", file.Id);
 
                 BlobContainerClient containerClient = GetContainerClient();
-                string blobName = MetaPrefix + file.Id + MetaFileSuffix;
+                string blobName = MetaPrefix + file.DataBase + file.Id + MetaFileSuffix;
                 BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
                 if (!await blobClient.ExistsAsync(ct))
@@ -170,11 +161,8 @@ namespace PxApi.DataSources
                 }
 
                 using Stream stream = await blobClient.OpenReadAsync(cancellationToken: ct);
-                JsonSerializerOptions options = new() // TODO: Use shared options
-                {
-                    PropertyNameCaseInsensitive = true
-                };
-                MatrixMetadata? metadata = await JsonSerializer.DeserializeAsync<MatrixMetadata>(stream, options, ct);
+                
+                MatrixMetadata? metadata = await JsonSerializer.DeserializeAsync<MatrixMetadata>(stream, GlobalJsonConverterOptions.Default, ct);
                 if (metadata is null)
                 {
                     Logger.LogError("Failed to deserialize metadata for id {FileId}", file.Id);

@@ -23,7 +23,7 @@ namespace PxApi.DataSources
                 BlobContainerClient containerClient = GetContainerClient();
                 string blobName = relativePath.Replace('\\', '/');
                 BlobClient blob = containerClient.GetBlobClient(blobName);
-                if (!await blob.ExistsAsync())
+                if (!await blob.ExistsAsync(ct))
                 {
                     Logger.LogWarning("Aux file {AuxFile} not found", blobName);
                     throw new FileNotFoundException("Auxiliary file not found", blobName);
