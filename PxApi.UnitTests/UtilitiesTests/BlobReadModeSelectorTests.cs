@@ -281,6 +281,167 @@ namespace PxApi.UnitTests.UtilitiesTests
 
             Assert.That(result, Is.EqualTo(expected));
         }
+
+        [Test]
+        public void LargeGapsInMiddleDimensionProduceNonZeroCombinedGaps()
+        {
+            // Mirrors ReadStreamingWithSparseSelectionAndLargeGapsReturnsFalse scenario
+            int[] sizes = [10, 10, 1000, 200, 200];
+            int[] rcsp = ComputeRcsp(sizes); // [10*1000*200*200, 1000*200*200, 200*200, 200, 1]
+            int[][] selected =
+            [
+                [0],
+                [0],
+                // dim2: indices 0,100,200,...,900
+                [0, 100, 200, 300, 400, 500, 600, 700, 800, 900],
+                // dim3 and dim4: dense selections increase repeating block gaps
+                CreateConsecutiveIndices(200),
+                CreateConsecutiveIndices(200)
+            ];
+            long minLen = 500000; // same order as ReadWindowGap used by streaming decision
+
+            long result = BlobReadModeSelector.GetCombinedGaps(selected, sizes, rcsp, minLen);
+
+            Assert.That(result, Is.GreaterThan(0));
+        }
+        #endregion
+
+        // Additional targeted tests for GetCombinedGaps focusing on middle-dimension behavior
+        #region GetCombinedGaps_MiddleDimensionFocus
+        [Test]
+        public void MiddleDimensionGapsJustBelowThresholdReturnZero()
+        {
+            int[] sizes = [2, 2, 1000, 10, 10];
+            int[] rcsp = ComputeRcsp(sizes); // [200000, 100000, 100, 10, 1]
+            // dim2 stepBetween = 49 -> gap = 49 * 100 = 4900 < 5000 threshold
+            int[][] selected =
+            [
+                [0],
+                [0],
+                [0, 50],
+                CreateConsecutiveIndices(10),
+                CreateConsecutiveIndices(10)
+            ];
+            long minLen = 5000;
+
+            long result = BlobReadModeSelector.GetCombinedGaps(selected, sizes, rcsp, minLen);
+
+            Assert.That(result, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void MiddleDimensionGapsEqualThresholdAreIncluded()
+        {
+            int[] sizes = [2, 2, 1000, 10, 10];
+            int[] rcsp = ComputeRcsp(sizes); // [200000, 100000, 100, 10, 1]
+            // dim2 stepBetween = 50 - 0 - 1 = 49 -> 49*100=4900 (below)
+            // Use 51 to make stepBetween=50 -> 50*100=5000 equals threshold
+            int[][] selected =
+            [
+                [0],
+                [0],
+                [0, 51],
+                CreateConsecutiveIndices(10),
+                CreateConsecutiveIndices(10)
+            ];
+            long minLen = 5000;
+
+            long result = BlobReadModeSelector.GetCombinedGaps(selected, sizes, rcsp, minLen);
+
+            Assert.That(result, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void MiddleDimensionSteppedStartingAtOneStillProducesGaps()
+        {
+            int[] sizes = [2, 2, 1000, 200, 200];
+            int[] rcsp = ComputeRcsp(sizes); // rcsp[2] = 200*200 = 40000
+            // Start at 1 to catch off-by-one issues: indices 1,101 -> stepBetween = 101-1-1 = 99
+            int[][] selected =
+            [
+                [0],
+                [0],
+                [1, 101],
+                CreateConsecutiveIndices(200),
+                CreateConsecutiveIndices(200)
+            ];
+            long minLen = 500000; // 99*40000=3,960,000 >= threshold
+
+            long result = BlobReadModeSelector.GetCombinedGaps(selected, sizes, rcsp, minLen);
+
+            Assert.That(result, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void MiddleDimensionLargeGapsWithMoreSignificantSelectionsScaleResult()
+        {
+            int[] sizes = [3, 3, 1000, 100, 100];
+            int[] rcsp = ComputeRcsp(sizes); // rcsp[2] = 100*100 = 10000
+            // More significant dims have multiple selections -> repeat factor = 3*3 = 9 for i=2
+            int[][] selected =
+            [
+                [0, 2],
+                [0, 1, 2],
+                [0, 200], // stepBetween=199 -> 199*10000 = 1,990,000
+                CreateConsecutiveIndices(100),
+                CreateConsecutiveIndices(100)
+            ];
+            long minLen = 1_000_000;
+
+            long result = BlobReadModeSelector.GetCombinedGaps(selected, sizes, rcsp, minLen);
+
+            // Base gap qualifies; with repeat factor 9 it should scale beyond base
+            Assert.That(result, Is.GreaterThanOrEqualTo(1_990_000 * 9));
+        }
+        #endregion
+
+        // Precise expectation tests to pinpoint failures in middle-dimension gap handling
+        #region GetCombinedGaps_MiddleDimensionPreciseExpectations
+
+        [Test]
+        public void MiddleDimensionGapEqualThresholdExactValue()
+        {
+            // sizes: [2, 2, 1000, 10, 10] => rcsp: [200000, 100000, 100, 10, 1]
+            int[] sizes = [2, 2, 1000, 10, 10];
+            int[] rcsp = ComputeRcsp(sizes);
+            int[][] selected =
+            [
+                [0],
+                [0],
+                [0, 51], // stepBetween = 50 -> 50 * rcsp[2] = 50 * 100 = 5000
+                CreateConsecutiveIndices(10),
+                CreateConsecutiveIndices(10)
+            ];
+            long minLen = 5000;
+
+            long result = BlobReadModeSelector.GetCombinedGaps(selected, sizes, rcsp, minLen);
+
+            // Less significant dims are fully selected (0..9), so repeating block gaps = 0; repeat factor from dims 0..1 = 1
+            Assert.That(result, Is.EqualTo(5000));
+        }
+
+        [Test]
+        public void MiddleDimensionStartAtOneExactValue()
+        {
+            // sizes: [2, 2, 1000, 200, 200] => rcsp: [8000000, 4000000, 40000, 200, 1]
+            int[] sizes = [2, 2, 1000, 200, 200];
+            int[] rcsp = ComputeRcsp(sizes);
+            int[][] selected =
+            [
+                [0],
+                [0],
+                [1, 101], // stepBetween = 99 -> 99 * rcsp[2] = 99 * 40000 = 3,960,000
+                CreateConsecutiveIndices(200),
+                CreateConsecutiveIndices(200)
+            ];
+            long minLen = 500000;
+
+            long result = BlobReadModeSelector.GetCombinedGaps(selected, sizes, rcsp, minLen);
+
+            // Less significant dims fully selected (0..199) => repeating block gaps = 0; repeat factor = 1
+            Assert.That(result, Is.EqualTo(3_960_000));
+        }
+
         #endregion
 
         private static List<string> CreateValueCodes(string dimCode, int count)
@@ -314,6 +475,16 @@ namespace PxApi.UnitTests.UtilitiesTests
                 rcsp[i] = rcsp[i + 1] * sizes[i + 1];
             }
             return rcsp;
+        }
+
+        private static int[] CreateConsecutiveIndices(int count)
+        {
+            int[] indices = new int[count];
+            for (int i = 0; i < count; i++)
+            {
+                indices[i] = i;
+            }
+            return indices;
         }
     }
 }

@@ -100,7 +100,7 @@ namespace PxApi.Utilities
             long combinedGaps = 0;
             for (int i = 0; i < selectedIndices.Length; i++)
             {
-                if ((long)(selectedIndices[i][^1] - selectedIndices[i][0]) * rcsp[i] < minLen) break; // No more relevant gaps possible
+                if ((long)(selectedIndices[i][^1] - selectedIndices[i][0] + 1) * rcsp[i] < minLen) break; // No more relevant gaps possible
                 long repeat = moreSignificantRepeatFactors[i];
                 for (int j = 1; j < selectedIndices[i].Length; j++)
                 {
