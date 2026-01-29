@@ -15,7 +15,8 @@ using System.Text.Json;
 
 namespace PxApi.DataSources
 {
-    public class BinaryBlobDataBaseConnector(DataBaseRef dataBase, string containerName, IAzureClientFactory<BlobServiceClient> blobServiceClientFactory, ILogger<PxBlobDataBaseConnector> logger) : BlobDataBaseConnector(dataBase, containerName, blobServiceClientFactory)
+    public class BinaryBlobDataBaseConnector(DataBaseRef dataBase, string containerName, IAzureClientFactory<BlobServiceClient> blobServiceClientFactory, ILogger<PxBlobDataBaseConnector> logger)
+        : BlobDataBaseConnector(dataBase, containerName, blobServiceClientFactory)
     {
         protected override ILogger Logger => logger;
 
@@ -111,7 +112,18 @@ namespace PxApi.DataSources
                 IMatrixMap readMap = targetMap.CollapseDimension(contentDimension.Code, cValCode);
                 IMatrixMap blobMap = meta.CollapseDimension(contentDimension.Code, cValCode);
 
-                if (BlobReadModeSelector.UseWindowedRead(readMap, blobMap))
+                if (BlobReadModeSelector.ReadStreaming(readMap, blobMap, out long startIndex))
+                { 
+                    using Stream blobStream = await blob.OpenReadAsync(cancellationToken: ct);
+                    byte[] headerBytes = new byte[8];
+                    await blobStream.ReadExactlyAsync(headerBytes, ct);
+                    uint headerLength = BitConverter.ToUInt32(headerBytes, 0);
+                    BinaryValueCodecType codec = (BinaryValueCodecType)BitConverter.ToUInt32(headerBytes, 4);
+                    BinaryDataReader reader = BinaryDataReader.Create(codec);
+
+                    await reader.ReadFromStreamAsync(blobStream, readMap, blobMap, targetMap, result, ct);
+                }
+                else
                 {
                     async Task<Stream> readerFunc(long offset, long length, CancellationToken ct)
                     {
@@ -128,17 +140,6 @@ namespace PxApi.DataSources
 
                     BinaryDataReader reader = BinaryDataReader.Create(codec, headerLengthBytes: headerLength);
                     await reader.ReadByChunkAsync(readerFunc, readMap, blobMap, targetMap, result, ct);
-                }
-                else
-                {
-                    using Stream blobStream = await blob.OpenReadAsync(cancellationToken: ct);
-                    byte[] headerBytes = new byte[8];
-                    await blobStream.ReadExactlyAsync(headerBytes, ct);
-                    uint headerLength = BitConverter.ToUInt32(headerBytes, 0);
-                    BinaryValueCodecType codec = (BinaryValueCodecType)BitConverter.ToUInt32(headerBytes, 4);
-                    BinaryDataReader reader = BinaryDataReader.Create(codec);
-
-                    await reader.ReadFromStreamAsync(blobStream, readMap, blobMap, targetMap, result, ct);
                 }
             }
             throw new NotImplementedException("BinaryBlobDataBaseConnector does not support reading data.");
