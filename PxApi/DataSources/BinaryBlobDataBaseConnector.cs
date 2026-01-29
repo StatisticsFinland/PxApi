@@ -13,6 +13,7 @@ using PxApi.Models;
 using PxApi.Utilities;
 using System.Text.Json;
 using PxApi.Configuration;
+using System.Linq;
 
 namespace PxApi.DataSources
 {
@@ -51,7 +52,10 @@ namespace PxApi.DataSources
                 {
                     if (blob.Name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase))
                     {
-                        fileNames.Add(blob.Name);
+                        // Take only the file identifier without prefix (path) and suffix (timestamp)
+                        string fileName = blob.Name[(MetaPrefix.Length)..^MetaFileSuffix.Length]
+                            .Split('_')[0]; // Split to remove timestamp if any
+                        fileNames.Add(fileName);
                     }
                 }
 
@@ -83,14 +87,14 @@ namespace PxApi.DataSources
         /// <inheritdoc/>
         public async override Task<DoubleDataValue[]> ReadDataAsync(PxFileRef file, IMatrixMap targetMap, IReadOnlyMatrixMetadata meta, CancellationToken ct)
         {
-            IReadOnlyDimension contentDimension = meta.GetContentDimension();
+            ContentDimension contentDimension = meta.GetContentDimension();
+            string timestamp = GetTimestamp(contentDimension.Values);
             DoubleDataValue[] result = new DoubleDataValue[targetMap.GetSize()];
 
-            foreach (string cValCode in contentDimension.ValueCodes)
+            foreach (string cValCode in contentDimension.Values.Select(val => val.Code))
             {
                 ct.ThrowIfCancellationRequested();
-
-                string blobName = DataPrefix + cValCode;
+                string blobName = $"{DataPrefix}{file.DataBase.Id}/{file.Id}_{cValCode}_{timestamp}{DataFileSuffix}";
                 DateTime lastUpdated = DateTime.Now;
                 BlobContainerClient containerClient = GetContainerClient();
                 BlobClient blob = containerClient.GetBlobClient(blobName);
@@ -151,15 +155,28 @@ namespace PxApi.DataSources
                 Logger.LogDebug("Reading metadata for meta file {FileId} from blob storage", file.Id);
 
                 BlobContainerClient containerClient = GetContainerClient();
-                string blobName = MetaPrefix + file.DataBase + file.Id + MetaFileSuffix;
-                BlobClient blobClient = containerClient.GetBlobClient(blobName);
+                string prefix = $"{MetaPrefix}{file.DataBase.Id}/{file.Id}_";
+                IAsyncEnumerable<BlobItem> blobs = containerClient.GetBlobsAsync(prefix: prefix, cancellationToken: ct)
+                    .Where(blob => blob.Name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase));
 
-                if (!await blobClient.ExistsAsync(ct))
+                BlobItem? blobItem = null;
+
+                if (!await blobs.AnyAsync(ct))
                 {
                     Logger.LogError("Meta file for id {FileId} not found in blob storage", file.Id);
                     throw new FileNotFoundException($"Meta file for id {file.Id} not found in blob storage container.");
                 }
+                else if (await blobs.CountAsync(ct) > 1)
+                {
+                    Logger.LogWarning("Multiple meta files for id {FileId} found in blob storage", file.Id);
+                    blobItem = await blobs
+                        .OrderByDescending(blob => blob.Properties.LastModified)
+                        .FirstAsync(ct);
+                }
+                
+                blobItem ??= await blobs.FirstAsync(ct);
 
+                BlobClient blobClient = containerClient.GetBlobClient(blobItem.Name);
                 using Stream stream = await blobClient.OpenReadAsync(cancellationToken: ct);
                 
                 MatrixMetadata? metadata = await JsonSerializer.DeserializeAsync<MatrixMetadata>(stream, GlobalJsonConverterOptions.Default, ct);
@@ -171,7 +188,13 @@ namespace PxApi.DataSources
                 return metadata;
             }
         }
-        
+
+        private static string GetTimestamp(ContentValueList values)
+        {
+            DateTime timestamp = values.Map(value => value.LastUpdated).Max();
+            return timestamp.ToString("yyyyMMddHHmm");
+        }
+
         private async Task<string[]> GetBinaryFilesAsync(string prefix, string timestamp, CancellationToken ct)
         {
             using (Logger.BeginScope(
