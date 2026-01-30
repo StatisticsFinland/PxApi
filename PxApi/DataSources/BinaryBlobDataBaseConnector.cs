@@ -136,6 +136,7 @@ namespace PxApi.DataSources
                                 BinaryDataReader reader = BinaryDataReader.Create(codec, headerLengthBytes: headerLength);
                                 using Stream dataStream = await blob.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false)
                                 {
+                                    Position = headerLength + startIndex * reader.ByteCount
                                 }, cancellationToken: ct);
 
                                 await reader.ReadFromStreamAsync(headerStream, readMap, blobMap, targetMap, result, startIndex, ct);
