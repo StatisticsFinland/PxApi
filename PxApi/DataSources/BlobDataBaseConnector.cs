@@ -21,6 +21,7 @@ namespace PxApi.DataSources
             }))
             {
                 BlobContainerClient containerClient = GetContainerClient();
+                // TODO: This needs to take into account the database name and px prefix
                 string blobName = relativePath.Replace('\\', '/');
                 BlobClient blob = containerClient.GetBlobClient(blobName);
                 if (!await blob.ExistsAsync(ct))
