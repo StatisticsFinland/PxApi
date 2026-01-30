@@ -8,6 +8,7 @@ namespace PxApi.DataSources
     public abstract class BlobDataBaseConnector(DataBaseRef dataBase, string containerName, IAzureClientFactory<BlobServiceClient> blobServiceClientFactory) : DataBaseConnector(dataBase)
     {
         protected string ContainerName => containerName;
+        protected const string PxBlobPrefix = "px/";
 
         /// <inheritdoc/>
         public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct)
@@ -21,8 +22,7 @@ namespace PxApi.DataSources
             }))
             {
                 BlobContainerClient containerClient = GetContainerClient();
-                // TODO: This needs to take into account the database name and px prefix
-                string blobName = relativePath.Replace('\\', '/');
+                string blobName = Path.Combine(PxBlobPrefix, relativePath);
                 BlobClient blob = containerClient.GetBlobClient(blobName);
                 if (!await blob.ExistsAsync(ct))
                 {
@@ -33,6 +33,9 @@ namespace PxApi.DataSources
             }
         }
 
+        /// <summary>
+        /// Returns a BlobContainerClient for the configured container.
+        /// </summary>
         protected BlobContainerClient GetContainerClient()
         {
             BlobServiceClient serviceClient = blobServiceClientFactory.CreateClient(DataBase.Id);

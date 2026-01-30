@@ -113,7 +113,7 @@ namespace PxApi.Utilities
             IServiceCollection services,
             DataBaseConfig dbConfig,
             DataBaseRef db,
-            Func<DataBaseRef, string, IAzureClientFactory<BlobServiceClient>, ILogger<PxBlobDataBaseConnector>, TConnector> connectorFactory)
+            Func<DataBaseRef, string, IAzureClientFactory<BlobServiceClient>, ILogger<TConnector>, TConnector> connectorFactory)
             where TConnector : BlobDataBaseConnector
         {
             if (!dbConfig.Custom.TryGetValue("StoragePath", out string? storagePath) || string.IsNullOrEmpty(storagePath))
@@ -130,7 +130,7 @@ namespace PxApi.Utilities
 
             services.AddKeyedScoped<IDataBaseConnector>(dbConfig.Id, (serviceProvider, key) =>
             {
-                ILogger<PxBlobDataBaseConnector> logger = serviceProvider.GetRequiredService<ILogger<PxBlobDataBaseConnector>>();
+                ILogger<TConnector> logger = serviceProvider.GetRequiredService<ILogger<TConnector>>();
                 IAzureClientFactory<BlobServiceClient> factory = serviceProvider.GetRequiredService<IAzureClientFactory<BlobServiceClient>>();
                 return connectorFactory(db, containerName, factory, logger);
             });

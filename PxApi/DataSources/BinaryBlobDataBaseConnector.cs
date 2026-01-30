@@ -16,7 +16,7 @@ using PxApi.Configuration;
 
 namespace PxApi.DataSources
 {
-    public class BinaryBlobDataBaseConnector(DataBaseRef dataBase, string containerName, IAzureClientFactory<BlobServiceClient> blobServiceClientFactory, ILogger<PxBlobDataBaseConnector> logger)
+    public class BinaryBlobDataBaseConnector(DataBaseRef dataBase, string containerName, IAzureClientFactory<BlobServiceClient> blobServiceClientFactory, ILogger<BinaryBlobDataBaseConnector> logger)
         : BlobDataBaseConnector(dataBase, containerName, blobServiceClientFactory)
     {
         protected override ILogger Logger => logger;
@@ -26,8 +26,6 @@ namespace PxApi.DataSources
 
         private const string DataPrefix = "bin/";
         private const string DataFileSuffix = ".pxb";
-
-        private const string PxPrefix = "px/";
 
         private const int DefaultMaxDegreeOfParallelism = 4;
 
