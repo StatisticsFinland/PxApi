@@ -13,8 +13,6 @@ using PxApi.Models;
 using PxApi.Utilities;
 using System.Text.Json;
 using PxApi.Configuration;
-using System.Linq;
-using System.Globalization;
 
 namespace PxApi.DataSources
 {
