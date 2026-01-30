@@ -31,3 +31,6 @@ msbuild.wrn
 /PxApi/internal-nlog-pxapi.txt
 /PxApi/Properties/PublishProfiles
 /PxApi/.config/dotnet-tools.json
+publish/
+PxApi/Logs/
+PxApi/Properties/

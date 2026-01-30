@@ -168,6 +168,10 @@ Provided via `appsettings.json`.
 
 Key sections:
 - `RootUrl` Base absolute URL used for generated links & OpenAPI servers.
+- `ApplicationInsights` Application Insights telemetry and logging configuration:
+  - `ConnectionString` Application Insights connection string (can be overridden by `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable)
+  - `MinimumLevel` Minimum log level to send to Application Insights (Debug, Information, Warning, Error, Critical). Defaults to Information.
+  - `EnableAdaptiveSampling` Whether to enable adaptive sampling. Defaults to false to ensure all configured logs are captured.
 - `DataBases` Array of database definitions:
   - `Type` One of `Mounted`, `FileShare`, `BlobStorage`
   - `Id` Unique id
@@ -186,6 +190,45 @@ Key sections:
 - `FeatureManagement` Feature flags (e.g. `CacheController`)
 - `Authentication` Controller-specific API key settings - see Authentication section below
 - `OpenApi` Metadata (contact, license) for Swagger document
+- `LogOptions` NLog file logging configuration:
+  - `Folder` Directory for log files (empty disables file logging)
+  - `SysId` System identifier for log entries
+  - `Level` Minimum log level for file logging (Debug, Information, Warning, Error, Critical)
+  - `AuditLog` Audit logging settings
+
+### Application Insights Configuration
+
+Application Insights integration is optional and automatically enabled when a connection string is provided.
+
+```json
+{
+  "ApplicationInsights": {
+    "ConnectionString": "InstrumentationKey=your-key;IngestionEndpoint=https://...",
+    "MinimumLevel": "Information",
+    "EnableAdaptiveSampling": false
+  }
+}
+```
+
+**Configuration Sources (in order of priority):**
+1. `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable
+2. `ApplicationInsights:ConnectionString` in appsettings.json
+
+**Settings:**
+- **ConnectionString**: Application Insights connection string. If empty or missing, Application Insights is disabled.
+- **MinimumLevel**: Minimum log level to send (Debug, Information, Warning, Error, Critical). Defaults to Information.
+- **EnableAdaptiveSampling**: When true, Application Insights may drop some logs to reduce volume. Defaults to false to ensure all configured logs are captured.
+
+**Environment Variable Configuration:**
+```bash
+# Enable Application Insights via environment variable
+APPLICATIONINSIGHTS_CONNECTION_STRING="InstrumentationKey=your-key;IngestionEndpoint=https://..."
+```
+
+**Logging Architecture:**
+- **File Logs**: Controlled by NLog configuration and `LogOptions` section
+- **Application Insights**: Controlled by Application Insights SDK and `ApplicationInsights` section
+- Both systems operate independently - you can have file logging without AI, AI without file logging, or both together
 
 ## Authentication
 

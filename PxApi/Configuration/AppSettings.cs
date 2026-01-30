@@ -49,6 +49,11 @@ namespace PxApi.Configuration
         public LocalizationConfig Localization { get; }
 
         /// <summary>
+        /// Application Insights configuration for telemetry and logging.
+        /// </summary>
+        public ApplicationInsightsConfig ApplicationInsights { get; }
+
+        /// <summary>
         /// The currently active configuration for the application.
         /// </summary>
         public static AppSettings Active
@@ -92,6 +97,7 @@ namespace PxApi.Configuration
             Cache = new MemoryCacheConfig(configuration.GetSection(nameof(Cache)));
             OpenApi = new OpenApiConfig(configuration.GetSection(nameof(OpenApi)));
             Localization = new LocalizationConfig(configuration.GetSection(nameof(Localization)));
+            ApplicationInsights = new ApplicationInsightsConfig(configuration.GetSection(nameof(ApplicationInsights)));
         }
 
         /// <summary>
