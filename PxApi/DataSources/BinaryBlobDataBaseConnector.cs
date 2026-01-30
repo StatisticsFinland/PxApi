@@ -89,14 +89,16 @@ namespace PxApi.DataSources
         public async override Task<DoubleDataValue[]> ReadDataAsync(PxFileRef file, IMatrixMap targetMap, IReadOnlyMatrixMetadata meta, CancellationToken ct)
         {
             ContentDimension contentDimension = meta.GetContentDimension();
+            IReadOnlyList<string> contentDimensionCodes = targetMap.DimensionMaps
+                .First(dimMap => dimMap.Code == contentDimension.Code).ValueCodes;
+
             string timestamp = GetTimestamp(contentDimension.Values);
             DoubleDataValue[] result = new DoubleDataValue[targetMap.GetSize()];
 
             int maxDegreeOfParallelism = DefaultMaxDegreeOfParallelism;
             using SemaphoreSlim throttler = new(maxDegreeOfParallelism, maxDegreeOfParallelism);
 
-            Task[] tasks = contentDimension.Values
-                .Select(val => val.Code)
+            Task[] tasks = contentDimensionCodes
                 .Select(async (string cValCode) =>
                 {
                     await throttler.WaitAsync(ct);
