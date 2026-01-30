@@ -14,6 +14,7 @@ using PxApi.Utilities;
 using System.Text.Json;
 using PxApi.Configuration;
 using System.Linq;
+using System.Globalization;
 
 namespace PxApi.DataSources
 {
@@ -29,6 +30,8 @@ namespace PxApi.DataSources
         private const string DataFileSuffix = ".pxb";
 
         private const string PxPrefix = "px/";
+
+        private const int DefaultMaxDegreeOfParallelism = 4;
 
         /// <inheritdoc/>
         public override async Task<string[]> GetAllFilesAsync(CancellationToken ct)
@@ -91,53 +94,87 @@ namespace PxApi.DataSources
             string timestamp = GetTimestamp(contentDimension.Values);
             DoubleDataValue[] result = new DoubleDataValue[targetMap.GetSize()];
 
-            foreach (string cValCode in contentDimension.Values.Select(val => val.Code))
-            {
-                ct.ThrowIfCancellationRequested();
-                string blobName = $"{DataPrefix}{file.DataBase.Id}/{file.Id}_{cValCode}_{timestamp}{DataFileSuffix}";
-                DateTime lastUpdated = DateTime.Now;
-                BlobContainerClient containerClient = GetContainerClient();
-                BlobClient blob = containerClient.GetBlobClient(blobName);
-                if (!await blob.ExistsAsync(ct))
+            int maxDegreeOfParallelism = DefaultMaxDegreeOfParallelism;
+            using SemaphoreSlim throttler = new(maxDegreeOfParallelism, maxDegreeOfParallelism);
+
+            Task[] tasks = contentDimension.Values
+                .Select(val => val.Code)
+                .Select(async (string cValCode) =>
                 {
-                    Logger.LogError("Data blob {BlobName} not found in blob storage.", blobName);
-                    throw new BinaryBlobSynchronizationException(file, lastUpdated);
-                }
-
-                IMatrixMap readMap = targetMap.CollapseDimension(contentDimension.Code, cValCode);
-                IMatrixMap blobMap = meta.CollapseDimension(contentDimension.Code, cValCode);
-
-                if (BlobReadModeSelector.ReadStreaming(readMap, blobMap, out long startIndex))
-                { 
-                    using Stream blobStream = await blob.OpenReadAsync(cancellationToken: ct);
-                    byte[] headerBytes = new byte[8];
-                    await blobStream.ReadExactlyAsync(headerBytes, ct);
-                    uint headerLength = BitConverter.ToUInt32(headerBytes, 0);
-                    BinaryValueCodecType codec = (BinaryValueCodecType)BitConverter.ToUInt32(headerBytes, 4);
-                    BinaryDataReader reader = BinaryDataReader.Create(codec);
-
-                    await reader.ReadFromStreamAsync(blobStream, readMap, blobMap, targetMap, result, ct);
-                }
-                else
-                {
-                    async Task<Stream> readerFunc(long offset, long length, CancellationToken ct)
+                    await throttler.WaitAsync(ct);
+                    try
                     {
-                        Response<BlobDownloadStreamingResult> result = await blob.DownloadStreamingAsync(new HttpRange(offset, length), null, false, ct);
-                        return result.Value.Content;
+                        ct.ThrowIfCancellationRequested();
+                        string blobName = $"{DataPrefix}{file.DataBase.Id}/{file.Id}_{cValCode}_{timestamp}{DataFileSuffix}";
+                        DateTime lastUpdated = DateTime.Now;
+                        BlobContainerClient containerClient = GetContainerClient();
+                        BlobClient blob = containerClient.GetBlobClient(blobName);
+                        if (!await blob.ExistsAsync(ct))
+                        {
+                            Logger.LogError("Data blob {BlobName} not found in blob storage.", blobName);
+                            throw new BinaryBlobSynchronizationException(file, lastUpdated);
+                        }
+
+                        IMatrixMap readMap = targetMap.CollapseDimension(contentDimension.Code, cValCode);
+                        IMatrixMap blobMap = meta.CollapseDimension(contentDimension.Code, cValCode);
+
+                        async Task<Stream> readerFunc(long offset, long length, CancellationToken ct)
+                        {
+                            Response<BlobDownloadStreamingResult> result = await blob.DownloadStreamingAsync(new HttpRange(offset, length), null, false, ct);
+                            return result.Value.Content;
+                        }
+
+                        if (BlobReadModeSelector.ReadStreaming(readMap, blobMap, out long startIndex))
+                        {
+                            if (startIndex > 0)
+                            {
+                                byte[] headerBytes = new byte[8];
+                                using Stream headerStream = await readerFunc(0, 8, ct);
+                                await headerStream.ReadExactlyAsync(headerBytes, ct);
+
+                                uint headerLength = BitConverter.ToUInt32(headerBytes, 0);
+                                BinaryValueCodecType codec = (BinaryValueCodecType)BitConverter.ToUInt32(headerBytes, 4);
+
+                                BinaryDataReader reader = BinaryDataReader.Create(codec, headerLengthBytes: headerLength);
+                                using Stream dataStream = await blob.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false)
+                                {
+                                }, cancellationToken: ct);
+
+                                await reader.ReadFromStreamAsync(headerStream, readMap, blobMap, targetMap, result, startIndex, ct);
+                            }
+                            else
+                            {
+                                using Stream blobStream = await blob.OpenReadAsync(cancellationToken: ct);
+                                byte[] headerBytes = new byte[8];
+                                await blobStream.ReadExactlyAsync(headerBytes, ct);
+                                BinaryValueCodecType codec = (BinaryValueCodecType)BitConverter.ToUInt32(headerBytes, 4);
+                                BinaryDataReader reader = BinaryDataReader.Create(codec);
+
+                                await reader.ReadFromStreamAsync(blobStream, readMap, blobMap, targetMap, result, ct);
+                            }
+                        }
+                        else
+                        {
+                            byte[] headerBytes = new byte[8];
+                            using Stream headerStream = await readerFunc(0, 8, ct);
+                            await headerStream.ReadExactlyAsync(headerBytes, ct);
+
+                            uint headerLength = BitConverter.ToUInt32(headerBytes, 0);
+                            BinaryValueCodecType codec = (BinaryValueCodecType)BitConverter.ToUInt32(headerBytes, 4);
+
+                            BinaryDataReader reader = BinaryDataReader.Create(codec, headerLengthBytes: headerLength);
+                            await reader.ReadByChunkAsync(readerFunc, readMap, blobMap, targetMap, result, ct);
+                        }
                     }
+                    finally
+                    {
+                        throttler.Release();
+                    }
+                })
+                .ToArray();
 
-                    byte[] headerBytes = new byte[8];
-                    using Stream headerStream = await readerFunc(0, 8, ct);
-                    await headerStream.ReadExactlyAsync(headerBytes, ct);
-
-                    uint headerLength = BitConverter.ToUInt32(headerBytes, 0);
-                    BinaryValueCodecType codec = (BinaryValueCodecType)BitConverter.ToUInt32(headerBytes, 4);
-
-                    BinaryDataReader reader = BinaryDataReader.Create(codec, headerLengthBytes: headerLength);
-                    await reader.ReadByChunkAsync(readerFunc, readMap, blobMap, targetMap, result, ct);
-                }
-            }
-            throw new NotImplementedException("BinaryBlobDataBaseConnector does not support reading data.");
+            await Task.WhenAll(tasks);
+            return result;
         }
 
         /// <inheritdoc/>
