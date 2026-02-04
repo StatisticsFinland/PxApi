@@ -33,6 +33,14 @@ namespace PxApi.Utilities
         /// Unique name of the blob container in logging scopes.
         /// </summary>
         public const string CONTAINER_NAME = "ContainerName";
+        /// <summary>
+        /// Used to identify a content dimension value code in logging scopes.
+        /// </summary>
+        public const string CONTENT_VALUE_CODE = "ContentValueCode";
+        /// <summary>
+        /// Used to identify a blob name in logging scopes.
+        /// </summary>
+        public const string BLOB_NAME = "BlobName";
 
     }
 }

@@ -22,16 +22,16 @@ namespace PxApi.DataSources
     public class FileShareDataBaseConnector(DataBaseRef dataBase, string shareName, IAzureClientFactory<ShareServiceClient> shareServiceClientFactory, ILogger<FileShareDataBaseConnector> logger) : DataBaseConnector(dataBase)
     {
 
+        /// <inheritdoc/>
         protected override ILogger Logger => logger;
 
         /// <inheritdoc/>
-        public override async Task<string[]> GetAllFilesAsync(CancellationToken ct)
+        public override async Task<string[]> GetAllFilesAsync(CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.CONTROLLER] = nameof(FileShareDataBaseConnector),
                     [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync)
                 }))
             {
@@ -48,13 +48,12 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct)
+        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.CONTROLLER] = nameof(FileShareDataBaseConnector),
                     [LoggerConsts.FUNCTION] = nameof(OpenPxFileStreamAsync),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
@@ -67,7 +66,7 @@ namespace PxApi.DataSources
 
                 Logger.LogDebug("Reading PX file {FileId} from file share", file.Id);
                 ShareDirectoryClient directoryClient = CreateShareClient().GetRootDirectoryClient();
-                ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id);
+                ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id, ct);
                 if (fileClient == null || !await fileClient.ExistsAsync(ct))
                 {
                     Logger.LogError("PX file {FileId} not found in file share", file.Id);
@@ -78,13 +77,12 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct)
+        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.CONTROLLER] = nameof(FileShareDataBaseConnector),
                     [LoggerConsts.FUNCTION] = nameof(GetLastWriteTimeAsync),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
@@ -92,7 +90,7 @@ namespace PxApi.DataSources
                 Logger.LogDebug("Getting last write time for PX file {FileId} from file share", file.Id);
 
                 ShareDirectoryClient directoryClient = CreateShareClient().GetRootDirectoryClient();
-                ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id);
+                ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id, ct);
                 if (fileClient == null || !await fileClient.ExistsAsync(ct))
                 {
                     Logger.LogError("PX file {FileId} not found in file share", file.Id);
@@ -105,12 +103,11 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct)
+        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct = default)
         {
             using (Logger.BeginScope(new Dictionary<string, object>
             {
                 [LoggerConsts.DB_ID] = DataBase.Id,
-                [LoggerConsts.CONTROLLER] = nameof(FileShareDataBaseConnector),
                 [LoggerConsts.FUNCTION] = nameof(TryReadAuxiliaryFileAsync),
                 [LoggerConsts.AUXILIARY_PATH] = relativePath
             }))
@@ -139,14 +136,15 @@ namespace PxApi.DataSources
             }
         }
 
-        private static async Task<ShareFileClient?> FindPxFileAsync(ShareDirectoryClient directory, string fileId)
+        private static async Task<ShareFileClient?> FindPxFileAsync(ShareDirectoryClient directory, string fileId, CancellationToken ct = default)
         {
-            await foreach (ShareFileItem item in directory.GetFilesAndDirectoriesAsync())
+            await foreach (ShareFileItem item in directory.GetFilesAndDirectoriesAsync(cancellationToken: ct))
             {
+                ct.ThrowIfCancellationRequested();
                 if (item.IsDirectory)
                 {
                     ShareDirectoryClient subDir = directory.GetSubdirectoryClient(item.Name);
-                    ShareFileClient? found = await FindPxFileAsync(subDir, fileId);
+                    ShareFileClient? found = await FindPxFileAsync(subDir, fileId, ct);
                     if (found != null)
                     {
                         return found;

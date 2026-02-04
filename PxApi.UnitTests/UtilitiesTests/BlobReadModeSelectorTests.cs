@@ -110,7 +110,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         public void ReadStreamingFromEndOfBlobStreamsAndSetsStartIndex()
         {
             // Arrange: fix most-significant dimension to last value and take all in others -> contiguous large span
-            int[] sizes = new int[] { 10, 1000, 1000, 10, 10 };
+            int[] sizes = [10, 1000, 1000, 10, 10];
             MatrixMap blob = new([
                 new DimensionMap("dim0", CreateValueCodes("dim0", sizes[0])),
                 new DimensionMap("dim1", CreateValueCodes("dim1", sizes[1])),

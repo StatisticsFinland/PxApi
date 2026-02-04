@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Px.Utils.Language;
 using Px.Utils.Models.Data.DataValue;
@@ -41,6 +42,33 @@ namespace PxApi.UnitTests.Caching
             return PxFileRef.CreateFromPath(Path.Combine("C:", "DbRoot", "folder", $"{name}.px"), dbRef);
         }
 
+        private static Mock<ILogger<CachedDataSource>> CreateLoggerMock()
+        {
+            Mock<ILogger<CachedDataSource>> loggerMock = new(MockBehavior.Strict);
+            loggerMock
+                .Setup(l => l.Log(
+                    It.IsAny<LogLevel>(),
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception?>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()))
+                .Verifiable();
+
+            return loggerMock;
+        }
+
+        private static void VerifyDebugLogged(Mock<ILogger<CachedDataSource>> loggerMock, string expectedMessage, Times times)
+        {
+            loggerMock.Verify(
+                l => l.Log(
+                    LogLevel.Debug,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((object v, Type _) => v.ToString() == expectedMessage),
+                    It.IsAny<Exception?>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                times);
+        }
+
         #region GetDataBaseReference
 
         [Test]
@@ -50,7 +78,8 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
             mockFactory.Setup(mf => mf.GetAvailableDatabases()).Returns([dataBase]);
-            CachedDataSource dataBaseConnector = new(mockFactory.Object, new DatabaseCache(new Mock<IMemoryCache>().Object));
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource dataBaseConnector = new(mockFactory.Object, new DatabaseCache(new Mock<IMemoryCache>().Object), loggerMock.Object);
 
             // Act
             DataBaseRef? result = dataBaseConnector.GetDataBaseReference("PxApiUnitTestsDb");
@@ -69,7 +98,8 @@ namespace PxApi.UnitTests.Caching
             // Arrange
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(mf => mf.GetAvailableDatabases()).Returns([]);
-            CachedDataSource dataBaseConnector = new(mockFactory.Object, new DatabaseCache(new Mock<IMemoryCache>().Object));
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource dataBaseConnector = new(mockFactory.Object, new DatabaseCache(new Mock<IMemoryCache>().Object), loggerMock.Object);
 
             // Act
             DataBaseRef? result = dataBaseConnector.GetDataBaseReference("missingdatabase");
@@ -93,7 +123,8 @@ namespace PxApi.UnitTests.Caching
                 DataBaseRef.Create("db3")
             ];
             mockFactory.Setup(mf => mf.GetAvailableDatabases()).Returns(databases);
-            CachedDataSource dataBaseConnector = new(mockFactory.Object, new DatabaseCache(new Mock<IMemoryCache>().Object));
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource dataBaseConnector = new(mockFactory.Object, new DatabaseCache(new Mock<IMemoryCache>().Object), loggerMock.Object);
 
             // Act
             IReadOnlyCollection<DataBaseRef> result = dataBaseConnector.GetAllDataBaseReferences();
@@ -125,7 +156,8 @@ namespace PxApi.UnitTests.Caching
                     .Add("file1", BuildTestFileRef("file1", dataBase))
                     .Add("file2", BuildTestFileRef("file2", dataBase))));
             string[] expected = ["file1", "file2"];
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
 
             // Act
             ImmutableSortedDictionary<string, PxFileRef> result = await connector.GetFileListCachedAsync(dataBase);
@@ -138,6 +170,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result["file1"].Id, Is.EqualTo("file1"));
                 Assert.That(result["file2"].Id, Is.EqualTo("file2"));
             });
+            VerifyDebugLogged(loggerMock, "File list cache hit.", Times.Once());
         }
 
         [Test]
@@ -153,7 +186,8 @@ namespace PxApi.UnitTests.Caching
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             mockConnector.Setup(c => c.GetAllFilesAsync(CancellationToken.None)).ReturnsAsync(fileNames);
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
             string[] expected = ["file1", "file2"];
 
             // Act
@@ -166,6 +200,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result["file1"].Id, Is.EqualTo("file1"));
                 Assert.That(result["file2"].Id, Is.EqualTo("file2"));
             });
+            VerifyDebugLogged(loggerMock, "File list cache miss. Reading from database.", Times.Once());
         }
 
         #endregion
@@ -184,7 +219,8 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
             dbCache.SetFileList(dataBase, Task.FromResult(files));
             Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
 
             // Act
             PxFileRef? result = await connector.GetFileReferenceCachedAsync("file1", dataBase);
@@ -196,6 +232,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result?.Id, Is.EqualTo("file1"));
                 Assert.That(result?.DataBase.Id, Is.EqualTo("PxApiUnitTestsDb"));
             });
+            VerifyDebugLogged(loggerMock, "File list cache hit.", Times.Once());
         }
 
         [Test]
@@ -209,10 +246,12 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
             dbCache.SetFileList(dataBase, Task.FromResult(files));
             Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
 
             // Act & Assert
             Assert.That(await connector.GetFileReferenceCachedAsync("missingfile", dataBase), Is.Null);
+            VerifyDebugLogged(loggerMock, "File list cache hit.", Times.Once());
         }
 
         #endregion
@@ -234,7 +273,8 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnector> mockConnector = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             mockConnector.Setup(c => c.DataBase).Returns(dataBase);
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
 
             // Act
             IReadOnlyMatrixMetadata result = await connector.GetMetadataCachedAsync(fileRef);
@@ -245,6 +285,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Is.EqualTo(metadata));
             });
+            VerifyDebugLogged(loggerMock, "Metadata cache hit.", Times.Once());
         }
 
         [Test]
@@ -262,7 +303,8 @@ namespace PxApi.UnitTests.Caching
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
             string[] expectedLanguages = ["fi", "en"];
 
             // Act
@@ -283,6 +325,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result.Dimensions[1].Values[0].Code, Is.EqualTo("2024"));
                 Assert.That(result.Dimensions[1].Values[1].Code, Is.EqualTo("2025"));
             });
+            VerifyDebugLogged(loggerMock, "Metadata cache miss. Reading from database.", Times.Once());
         }
 
         #endregion
@@ -309,7 +352,8 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             Mock<IDataBaseConnector> mockConnector = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
 
             // Act
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
@@ -322,6 +366,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
             });
             mockConnector.Verify(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.Never);
+            VerifyDebugLogged(loggerMock, "Data cache exact hit.", Times.Once());
         }
 
         [Test]
@@ -351,7 +396,8 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             Mock<IDataBaseConnector> mockConnector = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
 
             // Act
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, subsetMap);
@@ -364,6 +410,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2)); // The value for 2025
             });
             mockConnector.Verify(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.Never);
+            VerifyDebugLogged(loggerMock, "Data cache superset hit.", Times.Once());
         }
 
         [Test]
@@ -382,13 +429,15 @@ namespace PxApi.UnitTests.Caching
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             mockConnector.Setup(c => c.ReadMetadataAsync(pxFile, CancellationToken.None)).ReturnsAsync(metadata);
             mockConnector.Setup(c => c.ReadDataAsync(pxFile, map, metadata, CancellationToken.None)).ReturnsAsync([new DoubleDataValue(2, DataValueType.Exists)]);
+            mockConnector.Setup(c => c.GetLastWriteTimeAsync(pxFile, CancellationToken.None)).ReturnsAsync(DateTime.UtcNow.AddMinutes(-5));
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
 
             // Act
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
-            
+
             // Assert
             Assert.Multiple(() =>
             {
@@ -396,6 +445,8 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
             });
+            VerifyDebugLogged(loggerMock, "Data cache miss. Reading from database.", Times.Once());
+            VerifyDebugLogged(loggerMock, "Metadata cache miss. Reading from database.", Times.Once());
         }
 
         #endregion
@@ -408,7 +459,7 @@ namespace PxApi.UnitTests.Caching
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
             Mock<IDataBaseConnectorFactory> mockFactory = new();
-            
+
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
             dbCache.SetFileList(dataBase, Task.FromResult(
@@ -419,7 +470,8 @@ namespace PxApi.UnitTests.Caching
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
             mockConnector.Setup(c => c.GetAllFilesAsync(CancellationToken.None)).ReturnsAsync([]);
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
 
             // Act
             await connector.ClearDatabaseCacheAsync(dataBase);
@@ -431,6 +483,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Is.False);
                 Assert.That(files, Is.Null);
             });
+            VerifyDebugLogged(loggerMock, "File list cache hit.", Times.Once());
         }
 
         #endregion
@@ -445,14 +498,15 @@ namespace PxApi.UnitTests.Caching
             PxFileRef file = BuildTestFileRef("testfile", dataBase);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
-            
+
             // Add last updated timestamp to cache
             Task<DateTime> lastUpdatedTask = Task.FromResult(DateTime.UtcNow);
             dbCache.SetLastUpdated(file, lastUpdatedTask);
-            
+
             Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
-            
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
+
             // Pre-assert: last updated is present
             bool hasLastUpdated = dbCache.TryGetLastUpdated(file, out Task<DateTime>? beforeLastUpdated);
             Assert.Multiple(() =>
@@ -481,15 +535,16 @@ namespace PxApi.UnitTests.Caching
             PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
-            
+
             // Add metadata to cache
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
             dbCache.SetMetadata(file, metaContainer);
-            
+
             Mock<IDataBaseConnectorFactory> mockFactory = new();
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
-            
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
+
             // Pre-assert: metadata is present
             bool hasMeta = dbCache.TryGetMetadata(file, out MetaCacheContainer? beforeMeta);
             Assert.Multiple(() =>
@@ -551,7 +606,8 @@ namespace PxApi.UnitTests.Caching
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
 
             // Act
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
@@ -566,6 +622,7 @@ namespace PxApi.UnitTests.Caching
 
             // Verify that GetLastWriteTimeAsync was never called since revalidation is disabled
             mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None), Times.Never);
+            VerifyDebugLogged(loggerMock, "Data cache exact hit.", Times.Once());
         }
 
         [Test]
@@ -606,7 +663,8 @@ namespace PxApi.UnitTests.Caching
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
 
             // Act
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
@@ -619,6 +677,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
             });
             mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None), Times.Never);
+            VerifyDebugLogged(loggerMock, "Data cache exact hit.", Times.Once());
         }
 
         [Test]
@@ -652,7 +711,8 @@ namespace PxApi.UnitTests.Caching
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
 
             // Act
             IReadOnlyMatrixMetadata result = await connector.GetMetadataCachedAsync(fileRef);
@@ -663,7 +723,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Is.EqualTo(metadata));
             });
-            mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None), Times.Never);
+            VerifyDebugLogged(loggerMock, "Metadata cache hit.", Times.Once());
         }
 
         [Test]
@@ -692,7 +752,8 @@ namespace PxApi.UnitTests.Caching
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
-            CachedDataSource connector = new(mockFactory.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, loggerMock.Object);
 
             // Act
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
@@ -707,6 +768,7 @@ namespace PxApi.UnitTests.Caching
 
             // Verify that GetLastWriteTimeAsync was called since revalidation is enabled
             mockConnector.Verify(c => c.GetLastWriteTimeAsync(pxFile, CancellationToken.None), Times.Once);
+            VerifyDebugLogged(loggerMock, "Data cache exact hit.", Times.Once());
         }
 
         #endregion
@@ -727,7 +789,8 @@ namespace PxApi.UnitTests.Caching
             connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_sv.txt", CancellationToken.None)).Returns(BuildStream("Finland"));
             connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_en.txt", CancellationToken.None)).Returns(BuildStream("Finland"));
             factoryMock.Setup(f => f.GetConnector(dbRef)).Returns(connectorMock.Object);
-            CachedDataSource dataSource = new(factoryMock.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource dataSource = new(factoryMock.Object, dbCache, loggerMock.Object);
 
             // Act
             MultilanguageString name = await dataSource.GetDatabaseNameAsync(dbRef, string.Empty);
@@ -752,7 +815,8 @@ namespace PxApi.UnitTests.Caching
             MultilanguageString expected = new(new Dictionary<string, string> { {"fi", "Suomi"} });
             dbCache.SetDatabaseName(dbRef, Task.FromResult(expected));
             Mock<IDataBaseConnectorFactory> factoryMock = new();
-            CachedDataSource dataSource = new(factoryMock.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource dataSource = new(factoryMock.Object, dbCache, loggerMock.Object);
 
             // Act
             MultilanguageString result = await dataSource.GetDatabaseNameAsync(dbRef, string.Empty);
@@ -779,7 +843,8 @@ namespace PxApi.UnitTests.Caching
             connectorMock.SetupGet(c => c.DataBase).Returns(dbRef);
             connectorMock.Setup(c => c.GetAllFilesAsync(CancellationToken.None)).ReturnsAsync([]); // For ClearDatabaseCacheAsync
             factoryMock.Setup(f => f.GetConnector(dbRef)).Returns(connectorMock.Object);
-            CachedDataSource dataSource = new(factoryMock.Object, dbCache);
+            Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
+            CachedDataSource dataSource = new(factoryMock.Object, dbCache, loggerMock.Object);
 
             // Pre-assert
             bool nameCached = dbCache.TryGetDatabaseName(dbRef, out Task<MultilanguageString>? beforeTask);
@@ -799,6 +864,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(nameStillCached, Is.False);
                 Assert.That(afterTask, Is.Null);
             });
+            VerifyDebugLogged(loggerMock, "File list cache miss. Reading from database.", Times.Once());
         }
 
         #endregion
@@ -944,7 +1010,7 @@ namespace PxApi.UnitTests.Caching
 
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
-                new DimensionMap("dim2", ["2025"]) 
+                new DimensionMap("dim2", ["2025"])
             ]);
             TaskCompletionSource<DoubleDataValue[]> dataTcs = new();
             dbCache.SetData(fileRef, map, dataTcs.Task);
@@ -986,7 +1052,7 @@ namespace PxApi.UnitTests.Caching
 
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
-                new DimensionMap("dim2", ["2025"]) 
+                new DimensionMap("dim2", ["2025"])
             ]);
             TaskCompletionSource<DoubleDataValue[]> dataTcs = new();
             dbCache.SetData(fileRef, map, dataTcs.Task);
@@ -1066,11 +1132,6 @@ namespace PxApi.UnitTests.Caching
         {
             MemoryStream ms = new(System.Text.Encoding.UTF8.GetBytes(content + "\n"));
             return Task.FromResult<Stream>(ms);
-        }
-
-        private class UnseekableMemoryStream(byte[] buffer) : MemoryStream(buffer)
-        {
-            public override bool CanSeek => false;
         }
     }
 }

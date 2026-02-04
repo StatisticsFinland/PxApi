@@ -22,10 +22,11 @@ namespace PxApi.DataSources
     [ExcludeFromCodeCoverage]
     public sealed class PxBlobDataBaseConnector(DataBaseRef dataBase, string containerName, IAzureClientFactory<BlobServiceClient> blobServiceClientFactory, ILogger<PxBlobDataBaseConnector> logger) : BlobDataBaseConnector(dataBase, containerName, blobServiceClientFactory)
     {
+        /// <inheritdoc/>
         protected override ILogger Logger => logger;
 
         /// <inheritdoc/>
-        public override async Task<string[]> GetAllFilesAsync(CancellationToken ct)
+        public override async Task<string[]> GetAllFilesAsync(CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -55,40 +56,8 @@ namespace PxApi.DataSources
             }
         }
 
-        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct)
-        {
-            using (Logger.BeginScope(
-                new Dictionary<string, object>
-                {
-                    [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.CONTROLLER] = nameof(PxBlobDataBaseConnector),
-                    [LoggerConsts.FUNCTION] = nameof(OpenPxFileStreamAsync),
-                    [LoggerConsts.PX_FILE] = file.Id,
-                    [LoggerConsts.CONTAINER_NAME] = ContainerName
-                }))
-            {
-                Logger.LogDebug("Reading PX file {FileId} from blob storage", file.Id);
-
-                if (file.DataBase.Id != DataBase.Id)
-                {
-                    Logger.LogWarning("The file does not belong to the database.");
-                    throw new InvalidOperationException("The file does not belong to the database.");
-                }
-
-                BlobContainerClient containerClient = GetContainerClient();
-                BlobClient blobClient = containerClient.GetBlobClient(file.FilePath);
-
-                if (!await blobClient.ExistsAsync())
-                {
-                    Logger.LogError("PX file {FileId} not found in blob storage", file.Id);
-                    throw new FileNotFoundException($"File {file.Id} not found in blob storage container.");
-                }
-                return await blobClient.OpenReadAsync();
-            }
-        }
-
         /// <inheritdoc/>
-        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct)
+        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -105,16 +74,15 @@ namespace PxApi.DataSources
                 BlobContainerClient containerClient = GetContainerClient();
                 BlobClient blobClient = containerClient.GetBlobClient(file.FilePath);
 
-                if (!await blobClient.ExistsAsync())
+                if (!await blobClient.ExistsAsync(ct))
                 {
                     Logger.LogError("PX file {FileId} not found in blob storage", file.Id);
                     throw new FileNotFoundException($"File {file.Id} not found in blob storage container.");
                 }
 
-                BlobProperties properties = await blobClient.GetPropertiesAsync();
+                BlobProperties properties = await blobClient.GetPropertiesAsync(cancellationToken: ct);
                 return properties.LastModified.DateTime;
             }
         }
-
     }
 }

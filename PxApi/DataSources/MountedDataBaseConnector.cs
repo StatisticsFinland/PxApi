@@ -11,10 +11,11 @@ namespace PxApi.DataSources
     [ExcludeFromCodeCoverage] // This class is not unit tested because it relies on file system access.
     public class MountedDataBaseConnector(DataBaseRef dataBase, string rootPath, ILogger<MountedDataBaseConnector> logger) : DataBaseConnector(dataBase)
     {
+        /// <inheritdoc/>
         protected override ILogger Logger => logger;
 
         /// <inheritdoc/>
-        public override Task<string[]> GetAllFilesAsync(CancellationToken ct)
+        public override Task<string[]> GetAllFilesAsync(CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -40,7 +41,7 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct)
+        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -95,7 +96,7 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct)
+        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -121,7 +122,7 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct)
+        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct = default)
         {
             using (Logger.BeginScope(new Dictionary<string, object>
             {

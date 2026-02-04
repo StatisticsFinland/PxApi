@@ -3,7 +3,30 @@ using Px.Utils.Models.Metadata.ExtensionMethods;
 
 namespace PxApi.Utilities
 {
-    public class BlobReadModeSelector
+    /// <summary>
+    /// Selects the most efficient read strategy for accessing an underlying multidimensional blob based on
+    /// the size of the blob and the shape/density of a requested sub-selection.
+    /// </summary>
+    /// <remarks>
+    /// The selector chooses between:
+    /// <list type="bullet">
+    /// <item>
+    /// <description><b>Streaming/sequential</b> reads (typically a single forward pass through the blob).</description>
+    /// </item>
+    /// <item>
+    /// <description><b>Windowed/random-access</b> reads (fetching only dense windows when the selection is compact).</description>
+    /// </item>
+    /// </list>
+    /// The decision is made by comparing:
+    /// <list type="bullet">
+    /// <item><description>Overall blob size.</description></item>
+    /// <item><description>Linearized span of the requested indices in the blob (row-major linearization).</description></item>
+    /// <item><description>Large gaps created by sparse index selection across dimensions.</description></item>
+    /// </list>
+    /// The implementation is intentionally heuristic and uses fixed thresholds tuned to avoid the overhead
+    /// of windowed reads when they are unlikely to pay off.
+    /// </remarks>
+    public static class BlobReadModeSelector
     {
         const long SmallTreshold = 2_000_000; // Indicates that windowed reading overhead is not worth it
         const long MaxWindowedReadSize = 10_000_000;
@@ -40,7 +63,6 @@ namespace PxApi.Utilities
         {
             startIndex = 0;
             long blobSize = blob.GetSize();
-            long readSize = read.GetSize();
 
             if (blobSize < SmallTreshold) return true; // Small blobs always stream
 
@@ -84,7 +106,7 @@ namespace PxApi.Utilities
         /// Iteration stops when the spread of selected indices within a dimension, scaled by rcsp[i],
         /// falls below <paramref name="minLen"/>, because deeper dimensions cannot produce qualifying gaps.
         /// </remarks>
-        public static long GetCombinedGaps(int[][] selectedIndices, int[] dimSizes, int[] rcsp, long minLen)
+        internal static long GetCombinedGaps(int[][] selectedIndices, int[] dimSizes, int[] rcsp, long minLen)
         {
             long[] gapsFromRepeatingBlocks = GetGapsBetweenRepeatingBlocks(selectedIndices, dimSizes, rcsp);
 

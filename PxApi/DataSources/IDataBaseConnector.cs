@@ -41,10 +41,10 @@ namespace PxApi.DataSources
         /// </summary>
         /// <param name="file">Reference to the Px file.</param>
         /// <param name="targetMap">Metadata structure of the data to read.</param>
-        /// <param name="fileMap">Complete metadata structure of the Px file.</param>
+        /// <param name="fileMeta">Complete metadata structure of the Px file.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <returns>Array of <see cref="DoubleDataValue"/> containing the data values.</returns>
-        public Task<DoubleDataValue[]> ReadDataAsync(PxFileRef file, IMatrixMap targetMap, IReadOnlyMatrixMetadata fileMap, CancellationToken ct = default);
+        public Task<DoubleDataValue[]> ReadDataAsync(PxFileRef file, IMatrixMap targetMap, IReadOnlyMatrixMetadata fileMeta, CancellationToken ct = default);
 
         /// <summary>
         /// Opens an auxiliary (non PX) file located in the database root or a sub directory.

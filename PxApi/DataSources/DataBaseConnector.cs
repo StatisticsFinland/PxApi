@@ -24,39 +24,48 @@ namespace PxApi.DataSources
         protected abstract ILogger Logger { get; }
 
         /// <inheritdoc/>
-        public abstract Task<string[]> GetAllFilesAsync(CancellationToken ct);
+        public abstract Task<string[]> GetAllFilesAsync(CancellationToken ct = default);
 
         /// <inheritdoc/>
-        public abstract Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct);
+        public abstract Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default);
 
         /// <inheritdoc/>
-        public abstract Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct);
+        public abstract Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct = default);
 
         /// <summary>
-        /// Opens a readable stream to the PX file. Implement in connectors that have stream access.
+        /// Opens a stream for the given PX file.
         /// </summary>
-        /// <param name="file">Reference to the PX file.</param>
-        /// <param name="ct">Cancellation token.</param>
-        /// <returns>Open readable stream.</returns>
-        protected virtual Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct)
-        {
-            throw new NotSupportedException("This connector does not support direct stream access to PX files.");
-        }
+        /// <param name="file">The PX file reference.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <returns>A stream for reading the PX file contents.</returns>
+        protected abstract Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct = default);
 
         /// <inheritdoc/>
-        public virtual async Task<IReadOnlyMatrixMetadata> ReadMetadataAsync(PxFileRef file, CancellationToken ct)
+        public virtual async Task<IReadOnlyMatrixMetadata> ReadMetadataAsync(PxFileRef file, CancellationToken ct = default)
         {
             PxFileMetadataReader metaReader = new();
-            using Stream stream = await OpenPxFileStreamAsync(file, ct);
-            Encoding encoding = await metaReader.GetEncodingAsync(stream, ct);
-            if (stream.CanSeek) stream.Seek(0, SeekOrigin.Begin);
-            IAsyncEnumerable<KeyValuePair<string, string>> entries = metaReader.ReadMetadataAsync(stream, encoding, cancellationToken: ct);
-            MatrixMetadataBuilder builder = new();
-            return await builder.BuildAsync(entries);
+            Encoding encoding;
+
+            using (Stream encodingStream = await OpenPxFileStreamAsync(file, ct))
+            {
+                encoding = await metaReader.GetEncodingAsync(encodingStream, ct);
+                if (encodingStream.CanSeek)
+                {
+                    encodingStream.Seek(0, SeekOrigin.Begin);
+                    IAsyncEnumerable<KeyValuePair<string, string>> entries = metaReader.ReadMetadataAsync(encodingStream, encoding, cancellationToken: ct);
+                    MatrixMetadataBuilder builder = new();
+                    return await builder.BuildAsync(entries);
+                }
+            }
+
+            using Stream metadataStream = await OpenPxFileStreamAsync(file, ct);
+            IAsyncEnumerable<KeyValuePair<string, string>> metadataEntries = metaReader.ReadMetadataAsync(metadataStream, encoding, cancellationToken: ct);
+            MatrixMetadataBuilder metadataBuilder = new();
+            return await metadataBuilder.BuildAsync(metadataEntries);
         }
 
         /// <inheritdoc/>
-        public virtual async Task<DoubleDataValue[]> ReadDataAsync(PxFileRef file, IMatrixMap targetMap, IReadOnlyMatrixMetadata fileMeta, CancellationToken ct)
+        public virtual async Task<DoubleDataValue[]> ReadDataAsync(PxFileRef file, IMatrixMap targetMap, IReadOnlyMatrixMetadata fileMeta, CancellationToken ct = default)
         {
             using Stream stream = await OpenPxFileStreamAsync(file, ct);
             using PxFileStreamDataReader dataReader = new(stream);
@@ -66,23 +75,41 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public virtual async Task<string> GetSingleRawMetadataValueAsync(string key, PxFileRef file, CancellationToken ct)
+        public virtual async Task<string> GetSingleRawMetadataValueAsync(string key, PxFileRef file, CancellationToken ct = default)
         {
-            using Stream fileStream = await OpenPxFileStreamAsync(file, ct);
             PxFileMetadataReader reader = new();
-            Encoding encoding = await reader.GetEncodingAsync(fileStream, ct);
+            Encoding encoding;
 
-            if (fileStream.CanSeek) fileStream.Seek(0, SeekOrigin.Begin);
-            else throw new InvalidOperationException("Not able to seek in the filestream");
+            using (Stream probeStream = await OpenPxFileStreamAsync(file, ct))
+            {
+                encoding = await reader.GetEncodingAsync(probeStream, ct);
 
-            IAsyncEnumerable<KeyValuePair<string, string>> metaEntries = reader.ReadMetadataAsync(fileStream, encoding, cancellationToken: ct);
-            await foreach (KeyValuePair<string, string> pair in metaEntries)
+                if (probeStream.CanSeek)
+                {
+                    probeStream.Seek(0, SeekOrigin.Begin);
+                    IAsyncEnumerable<KeyValuePair<string, string>> metaEntries = reader.ReadMetadataAsync(probeStream, encoding, cancellationToken: ct);
+                    await foreach (KeyValuePair<string, string> pair in metaEntries)
+                    {
+                        if (pair.Key == key)
+                        {
+                            return pair.Value;
+                        }
+                    }
+
+                    throw new InvalidOperationException($"Key '{key}' not found in metadata");
+                }
+            }
+
+            using Stream fileStream = await OpenPxFileStreamAsync(file, ct);
+            IAsyncEnumerable<KeyValuePair<string, string>> freshMetaEntries = reader.ReadMetadataAsync(fileStream, encoding, cancellationToken: ct);
+            await foreach (KeyValuePair<string, string> pair in freshMetaEntries)
             {
                 if (pair.Key == key)
                 {
                     return pair.Value;
                 }
             }
+
             throw new InvalidOperationException($"Key '{key}' not found in metadata");
         }
     }
