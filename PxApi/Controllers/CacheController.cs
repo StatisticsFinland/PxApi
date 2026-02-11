@@ -33,13 +33,15 @@ namespace PxApi.Controllers
         /// </summary>
         /// <param name="database">Name of the database with the table cache to clear</param>
         /// <param name="id">Id of the px file to be cleared</param>
+        /// <response code="200">Cache for the specified PX file was successfully cleared.</response>
+        /// <response code="404">If the database or PX file was not found.</response>
+        /// <response code="500">If an error occurs while clearing the cache.</response>
         [HttpDelete("{database}/{id}")]
         [OperationId("clearTableCache")]
         [Produces("application/json")]
-        [ProducesResponseType(typeof(object), 200)]
-        [ProducesResponseType(typeof(object), 401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(string), 500)]
         public async Task<ActionResult> ClearTableCacheAsync([FromRoute] string database, string id)
         {
             using (_logger.BeginScope(new Dictionary<string, string>
@@ -54,7 +56,7 @@ namespace PxApi.Controllers
                 if (dbRef == null)
                 {
                     _logger.LogWarning(DB_NOT_FOUND);
-                    return NotFound(new { message = DB_NOT_FOUND });
+                    return NotFound(DB_NOT_FOUND);
                 }
 
                 try
@@ -63,16 +65,16 @@ namespace PxApi.Controllers
                     if (!files.TryGetValue(id, out PxFileRef pxFileRef))
                     {
                         _logger.LogWarning("PX file not found in database");
-                        return NotFound(new { message = $"PX file not found in database" });
+                        return NotFound("PX file not found in database");
                     }
                     _cachedConnector.ClearTableCache(pxFileRef);
                     _logger.LogInformation("Cache for PX file cleared successfully");
-                    return Ok(new { message = $"Cache for PX file cleared successfully" });
+                    return Ok("Cache for PX file cleared successfully");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error clearing cache for PX file.");
-                    return StatusCode(500, new { message = $"Error clearing cache for PX file", error = ex.Message });
+                    _logger.LogError(ex, "Error clearing cache for PX file: {Message}", ex.Message);
+                    return StatusCode(500, "Error clearing cache for PX file");
                 }
             }
         }
@@ -83,16 +85,14 @@ namespace PxApi.Controllers
         /// <param name="database">Name of the database for which to clear all cache entries.</param>
         /// <returns>A message indicating the result of the operation.</returns>
         /// <response code="200">All cache entries were successfully cleared.</response>
-        /// <response code="401">If the API key authentication fails.</response>
         /// <response code="404">If the database was not found.</response>
         /// <response code="500">If an error occurs while clearing cache entries.</response>
         [HttpDelete("{database}")]
         [OperationId("clearDatabaseCache")]
         [Produces("application/json")]
-        [ProducesResponseType(typeof(object), 200)]
-        [ProducesResponseType(typeof(object), 401)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(string), 500)]
         public async Task<ActionResult> ClearAllCacheAsync([FromRoute] string database)
         {
             using (_logger.BeginScope(new Dictionary<string, object>
@@ -106,19 +106,19 @@ namespace PxApi.Controllers
                 if (dbRef == null)
                 {
                     _logger.LogWarning(DB_NOT_FOUND);
-                    return NotFound(new { message = DB_NOT_FOUND });
+                    return NotFound(DB_NOT_FOUND);
                 }
 
                 try
                 {
                     await _cachedConnector.ClearDatabaseCacheAsync(dbRef.Value);
                     _logger.LogInformation("All cache entries for database {DatabaseId} cleared successfully", dbRef.Value.Id);
-                    return Ok(new { message = $"All cache entries for database '{dbRef.Value.Id}' cleared successfully" });
+                    return Ok($"All cache entries for database '{dbRef.Value.Id}' cleared successfully");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error clearing all cache entries for database {DatabaseId}", dbRef.Value.Id);
-                    return StatusCode(500, new { message = $"Error clearing all cache entries for database '{dbRef.Value.Id}'", error = ex.Message });
+                    _logger.LogError(ex, "Error clearing all cache entries for database {DatabaseId}: {Message}", dbRef.Value.Id, ex.Message);
+                    return StatusCode(500, $"Error clearing all cache entries for database '{dbRef.Value.Id}'");
                 }
             }
         }

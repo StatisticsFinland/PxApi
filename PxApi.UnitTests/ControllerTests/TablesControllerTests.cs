@@ -228,7 +228,7 @@ namespace PxApi.UnitTests.ControllerTests
             ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
 
             // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
         }
 
         [Test]

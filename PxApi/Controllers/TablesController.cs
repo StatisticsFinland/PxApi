@@ -39,12 +39,14 @@ namespace PxApi.Controllers
         /// <response code="200">Returns the table listing.</response>
         /// <response code="400">Invalid query parameter was provided (page &lt; 1, pageSize outside 1-100 or unsupported language).</response>
         /// <response code="404">Database not found.</response>
+        /// <response code="500">Unexpected server error.</response>
         [HttpGet("{database}")]
         [OperationId("listTables")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(PagedTableList), 200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(string), 400)]
+        [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(string), 500)]
         public async Task<ActionResult<PagedTableList>> GetTablesAsync(
             [FromRoute] string database,
             [FromQuery] string? lang = null,
@@ -114,7 +116,7 @@ namespace PxApi.Controllers
             catch (DirectoryNotFoundException dnfe)
             {
                 logger.LogInformation(dnfe, "Failed to get tables for database.");
-                return NotFound();
+                return NotFound("Database not found.");
             }
         }
 
@@ -127,11 +129,13 @@ namespace PxApi.Controllers
         /// <response code="200">Resource exists.</response>
         /// <response code="400">Invalid paging parameters.</response>
         /// <response code="404">Database not found.</response>
+        /// <response code="500">Unexpected server error.</response>
         [HttpHead("{database}")]
         [OperationId("headTables")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
         public IActionResult HeadTablesAsync(string database, int page = 1, int pageSize = 50)
         {
             if (page < 1 || pageSize < 1 || pageSize > MAX_PAGE_SIZE) return BadRequest();
@@ -156,14 +160,19 @@ namespace PxApi.Controllers
         /// </summary>
         /// <param name="database">Unique identifier of the database.</param>
         /// <response code="200">Returns allowed methods in the Allow header.</response>
+        /// <response code="404">Database not found.</response>
+        /// <response code="500">Unexpected server error.</response>
         [HttpOptions("{database}")]
         [OperationId("optionsTables")]
+        [Produces("application/json")]
         [ProducesResponseType(200)]
+        [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(string), 500)]
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Needs to match route signature.")]
         public IActionResult OptionsTables(string database)
         {
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
-            if (dataBaseRef is null) return NotFound();
+            if (dataBaseRef is null) return NotFound("Database not found.");
 
             using (logger.BeginScope(new Dictionary<string, object>
                 {

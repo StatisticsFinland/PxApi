@@ -37,6 +37,30 @@ namespace PxApi.UnitTests.DocumentFilters
                             ["application/json"] = new OpenApiMediaType(),
                             ["text/csv"] = new OpenApiMediaType { Schema = new OpenApiSchema() }
                         }
+                    },
+                    ["400"] = new OpenApiResponse
+                    {
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType(),
+                            ["text/csv"] = new OpenApiMediaType()
+                        }
+                    },
+                    ["406"] = new OpenApiResponse
+                    {
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType(),
+                            ["text/csv"] = new OpenApiMediaType()
+                        }
+                    },
+                    ["500"] = new OpenApiResponse
+                    {
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType(),
+                            ["text/csv"] = new OpenApiMediaType()
+                        }
                     }
                 }
             };
@@ -92,6 +116,23 @@ namespace PxApi.UnitTests.DocumentFilters
 
             OpenApiMediaType csvMediaType = response200.Content["text/csv"];
             Assert.That(csvMediaType.Schema.Description, Does.Contain("CSV dataset"));
+
+            OpenApiResponse response400 = operation.Responses["400"];
+            Assert.Multiple(() =>
+            {
+                Assert.That(response400.Content.ContainsKey("text/csv"), Is.False);
+                Assert.That(response400.Content["application/json"], Is.Not.Null);
+            });
+
+            OpenApiResponse response406 = operation.Responses["406"];
+            Assert.That(response406.Content, Is.Empty);
+
+            OpenApiResponse response500 = operation.Responses["500"];
+            Assert.Multiple(() =>
+            {
+                Assert.That(response500.Content.ContainsKey("text/csv"), Is.False);
+                Assert.That(response500.Content["application/json"], Is.Not.Null);
+            });
         }
 
         [Test]

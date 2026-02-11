@@ -201,6 +201,9 @@ namespace PxApi
                 // Remove bodies from all HEAD responses
                 c.DocumentFilter<HeadResponsesNoBodyDocumentFilter>();
 
+                // Remove orphaned ProblemDetails schema from components
+                c.DocumentFilter<ProblemDetailsDocumentFilter>();
+
                 // Global 500 response description for all operations (added via operation filter style hook)
                 c.OperationFilter<UnhandledErrorResponseOperationFilter>();
 

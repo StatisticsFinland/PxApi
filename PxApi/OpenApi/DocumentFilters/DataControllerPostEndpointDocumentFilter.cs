@@ -24,6 +24,7 @@ namespace PxApi.OpenApi.DocumentFilters
                     AddResponseExamples(postOp);
                     RefineLanguageParameter(postOp);
                     AppendAcceptHeaderNote(postOp);
+                    CleanUpErrorResponses(postOp);
                 }
             }
 
@@ -93,6 +94,26 @@ namespace PxApi.OpenApi.DocumentFilters
         {
             operation.Description = (operation.Description ?? string.Empty) +
                 " Accept header options: application/json (JSON-stat), text/csv (CSV), */* treated as JSON-stat. Unsupported media types yield 406.";
+        }
+
+        /// <summary>
+        /// Removes the text/csv content type from error responses and clears content from the 406 response since it returns no body.
+        /// </summary>
+        private static void CleanUpErrorResponses(OpenApiOperation operation)
+        {
+            foreach (KeyValuePair<string, OpenApiResponse> response in operation.Responses)
+            {
+                if (response.Key == "200") continue;
+
+                if (response.Key == "406")
+                {
+                    response.Value.Content.Clear();
+                }
+                else
+                {
+                    response.Value.Content.Remove("text/csv");
+                }
+            }
         }
     }
 }
