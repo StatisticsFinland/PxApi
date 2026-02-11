@@ -219,7 +219,8 @@ namespace PxApi.Caching
             try
             {
                 using Stream groupingStream = await connector.TryReadAuxiliaryFileAsync(GROUPINGS_FILE, ct);
-                GroupingFileModel? groupingModel = await JsonSerializer.DeserializeAsync<GroupingFileModel>(groupingStream, cancellationToken: ct);
+                JsonSerializerOptions converterOptions = GlobalJsonConverterOptions.Default;
+                GroupingFileModel? groupingModel = await JsonSerializer.DeserializeAsync<GroupingFileModel>(groupingStream, converterOptions, ct);
                 string? fileDirName = Path.GetDirectoryName(pxFile.FilePath)?
                     .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)[^1];
                 if (groupingModel is null || fileDirName is null) return [];
