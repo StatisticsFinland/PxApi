@@ -11,6 +11,8 @@ namespace PxApi.DataSources
     [ExcludeFromCodeCoverage] // This class is not unit tested because it relies on file system access.
     public class MountedDataBaseConnector(DataBaseRef dataBase, string rootPath, ILogger<MountedDataBaseConnector> logger) : DataBaseConnector(dataBase)
     {
+        private readonly string _normalizedRootPath = NormalizeDirectoryPath(rootPath);
+
         /// <inheritdoc/>
         protected override ILogger Logger => logger;
 
@@ -26,8 +28,8 @@ namespace PxApi.DataSources
                 }))
             {
                 Logger.LogDebug("Listing all files");
-                string fullPath = Path.GetFullPath(Path.Combine(rootPath, DataBase.Id));
-                if (!fullPath.StartsWith(rootPath))
+                string fullPath = Path.GetFullPath(Path.Combine(_normalizedRootPath, DataBase.Id));
+                if (!IsWithinDirectory(fullPath, _normalizedRootPath))
                 {
                     Logger.LogWarning("Unauthorized access attempt: The database is not in the root path.");
                     throw new UnauthorizedAccessException("The database is not in the root path");
@@ -132,9 +134,9 @@ namespace PxApi.DataSources
                 [LoggerConsts.AUXILIARY_PATH] = relativePath
             }))
             {
-                string dbRoot = Path.Combine(rootPath, DataBase.Id);
+                string dbRoot = NormalizeDirectoryPath(Path.Combine(_normalizedRootPath, DataBase.Id));
                 string fullPath = Path.GetFullPath(Path.Combine(dbRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)));
-                if (!fullPath.StartsWith(dbRoot))
+                if (!IsWithinDirectory(fullPath, dbRoot))
                 {
                     Logger.LogWarning("Aux file path escaped database root");
                     throw new UnauthorizedAccessException("Auxiliary file path escaped database root.");
@@ -150,6 +152,29 @@ namespace PxApi.DataSources
                     return new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
                 }, ct);
             }
+        }
+
+        /// <summary>
+        /// Normalizes a directory path to its full form with a trailing directory separator.
+        /// </summary>
+        internal static string NormalizeDirectoryPath(string path)
+        {
+            string fullPath = Path.GetFullPath(path);
+            if (!fullPath.EndsWith(Path.DirectorySeparatorChar))
+            {
+                fullPath += Path.DirectorySeparatorChar;
+            }
+            return fullPath;
+        }
+
+        /// <summary>
+        /// Checks whether the given path is within the specified directory using ordinal-ignore-case comparison
+        /// to handle case-insensitive file systems.
+        /// </summary>
+        internal static bool IsWithinDirectory(string path, string normalizedDirectory)
+        {
+            string fullPath = Path.GetFullPath(path);
+            return fullPath.StartsWith(normalizedDirectory, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
