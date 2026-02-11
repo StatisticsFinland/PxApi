@@ -113,7 +113,8 @@ namespace PxApi.DataSources
                 IReadOnlyList<string> contentDimensionCodes = targetMap.DimensionMaps
                     .First(dimMap => dimMap.Code == contentDimension.Code).ValueCodes;
 
-                string timestamp = GetTimestamp(contentDimension.Values);
+                DateTime lastUpdated = contentDimension.Values.Map(value => value.LastUpdated).Max();
+                string timestamp = lastUpdated.ToString("yyyyMMddHHmm");
                 DoubleDataValue[] result = new DoubleDataValue[targetMap.GetSize()];
 
                 int maxDegreeOfParallelism = DefaultMaxDegreeOfParallelism;
@@ -135,7 +136,6 @@ namespace PxApi.DataSources
                                     [LoggerConsts.BLOB_NAME] = blobName
                                 }))
                             {
-                                DateTime lastUpdated = DateTime.Now;
                                 BlobContainerClient containerClient = GetContainerClient();
                                 BlobClient blob = containerClient.GetBlobClient(blobName);
                                 if (!await blob.ExistsAsync(ct))
