@@ -172,7 +172,7 @@ namespace PxApi.DataSources
                                             Position = HeaderLength + startIndex * reader.ByteCount
                                         }, cancellationToken: ct);
 
-                                        await reader.ReadFromStreamAsync(headerStream, readMap, blobMap, targetMap, result, startIndex, ct);
+                                        await reader.ReadFromStreamAsync(dataStream, readMap, blobMap, targetMap, result, startIndex, ct);
                                     }
                                     else
                                     {
