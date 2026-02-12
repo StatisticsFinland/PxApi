@@ -18,12 +18,11 @@ namespace PxApi.Utilities
                 return string.Empty;
             }
 
-            ReadOnlySpan<char> span = path.AsSpan();
-            Span<char> buffer = stackalloc char[span.Length];
+            char[] buffer = new char[path.Length];
             int writeIndex = 0;
             bool previousWasSlash = false;
 
-            foreach (char c in span)
+            foreach (char c in path)
             {
                 if (c is '/' or '\\')
                 {
@@ -40,9 +39,7 @@ namespace PxApi.Utilities
                 }
             }
 
-            ReadOnlySpan<char> result = buffer[..writeIndex];
-            result = result.Trim('/');
-            return result.ToString();
+            return new string(buffer, 0, writeIndex).Trim('/');
         }
 
         /// <summary>

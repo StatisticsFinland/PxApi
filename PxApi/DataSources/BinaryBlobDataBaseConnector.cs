@@ -228,25 +228,26 @@ namespace PxApi.DataSources
 
                 BlobContainerClient containerClient = GetContainerClient();
                 string prefix = BuildMetadataPrefix(file.DataBase.Id, file.Id);
-                IAsyncEnumerable<BlobItem> blobs = containerClient.GetBlobsAsync(prefix: prefix, cancellationToken: ct)
-                    .Where(blob => blob.Name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase));
+                List<BlobItem> blobs = await containerClient.GetBlobsAsync(prefix: prefix, cancellationToken: ct)
+                    .Where(blob => blob.Name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase))
+                    .ToListAsync(ct);
 
                 BlobItem? blobItem = null;
 
-                if (!await blobs.AnyAsync(ct))
+                if (blobs.Count == 0)
                 {
                     Logger.LogError("Meta file for id {FileId} not found in blob storage", file.Id);
                     throw new FileNotFoundException($"Meta file for id {file.Id} not found in blob storage container.");
                 }
-                else if (await blobs.CountAsync(ct) > 1)
+                else if (blobs.Count > 1)
                 {
                     Logger.LogWarning("Multiple meta files for id {FileId} found in blob storage", file.Id);
-                    blobItem = await blobs
-                        .OrderByDescending(blob => blob.Properties.LastModified)
-                        .FirstAsync(ct);
+                    blobItem = blobs
+                        .OrderByDescending(blob => blob.Name) // Assuming the name includes a timestamp
+                        .First();
                 }
 
-                blobItem ??= await blobs.FirstAsync(ct);
+                blobItem ??= blobs[0];
 
                 BlobClient blobClient = containerClient.GetBlobClient(blobItem.Name);
                 using Stream stream = await blobClient.OpenReadAsync(cancellationToken: ct);

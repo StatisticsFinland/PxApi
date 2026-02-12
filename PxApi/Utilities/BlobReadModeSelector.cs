@@ -75,7 +75,7 @@ namespace PxApi.Utilities
 
             long startLinearReadIndex = GetFirstLinearReadIndex(readIndices, rcsp);
             long readSpanLength = lastLinearReadIndex - startLinearReadIndex + 1;
-            if(readSpanLength < MaxWindowedReadSize) return false; // Samall span indicates dense read, do not stream
+            if(readSpanLength < MaxWindowedReadSize) return false; // Small span indicates dense read, do not stream
 
             long combinedGaps = GetCombinedGaps(readIndices, dimSizes, rcsp, ReadWindowGap); 
 
