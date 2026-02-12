@@ -1,13 +1,15 @@
-using NUnit.Framework;
 using Px.Utils.Models.Metadata;
 using PxApi.Utilities;
-using System.Collections.Generic;
 
 namespace PxApi.UnitTests.UtilitiesTests
 {
     [TestFixture]
     internal class BlobReadModeSelectorTests
     {
+        const long SmallThreshold = 2_000_000;
+        const long MaxWindowedReadSize = 10_000_000;
+        const long ReadWindowGap = 500_000;
+
         [Test]
         public void ReadStreamingWithSmallBlobReturnsTrueAndStartIndexZero()
         {
@@ -30,7 +32,8 @@ namespace PxApi.UnitTests.UtilitiesTests
             ]);
 
             // Act
-            bool streaming = BlobReadModeSelector.ReadStreaming(read, blob, out long startIndex);
+            bool streaming = BlobReadModeSelector.ReadStreaming(read, blob, out long startIndex,
+                SmallThreshold, MaxWindowedReadSize, ReadWindowGap);
 
             // Assert
             Assert.Multiple(() =>
@@ -63,7 +66,8 @@ namespace PxApi.UnitTests.UtilitiesTests
             ]);
 
             // Act
-            bool streaming = BlobReadModeSelector.ReadStreaming(read, blob, out long startIndex);
+            bool streaming = BlobReadModeSelector.ReadStreaming(read, blob, out long startIndex,
+                SmallThreshold, MaxWindowedReadSize, ReadWindowGap);
 
             // Assert
             Assert.Multiple(() =>
@@ -96,7 +100,8 @@ namespace PxApi.UnitTests.UtilitiesTests
             ]);
 
             // Act
-            bool streaming = BlobReadModeSelector.ReadStreaming(read, blob, out long startIndex);
+            bool streaming = BlobReadModeSelector.ReadStreaming(read, blob, out long startIndex,
+                SmallThreshold, MaxWindowedReadSize, ReadWindowGap);
 
             // Assert
             Assert.Multiple(() =>
@@ -133,7 +138,8 @@ namespace PxApi.UnitTests.UtilitiesTests
             long expectedStart = 9L * rcsp0;
 
             // Act
-            bool streaming = BlobReadModeSelector.ReadStreaming(read, blob, out long startIndex);
+            bool streaming = BlobReadModeSelector.ReadStreaming(read, blob, out long startIndex,
+                SmallThreshold, MaxWindowedReadSize, ReadWindowGap);
 
             // Assert
             Assert.Multiple(() =>
@@ -165,7 +171,8 @@ namespace PxApi.UnitTests.UtilitiesTests
             ]);
 
             // Act
-            bool streaming = BlobReadModeSelector.ReadStreaming(read, blob, out long startIndex);
+            bool streaming = BlobReadModeSelector.ReadStreaming(read, blob, out long startIndex,
+                SmallThreshold, MaxWindowedReadSize, ReadWindowGap);
 
             // Assert
             Assert.Multiple(() =>

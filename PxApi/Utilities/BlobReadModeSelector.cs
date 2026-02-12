@@ -1,5 +1,6 @@
 using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.ExtensionMethods;
+using PxApi.Configuration;
 
 namespace PxApi.Utilities
 {
@@ -23,18 +24,15 @@ namespace PxApi.Utilities
     /// <item><description>Linearized span of the requested indices in the blob (row-major linearization).</description></item>
     /// <item><description>Large gaps created by sparse index selection across dimensions.</description></item>
     /// </list>
-    /// The implementation is intentionally heuristic and uses fixed thresholds tuned to avoid the overhead
-    /// of windowed reads when they are unlikely to pay off.
+    /// The implementation is intentionally heuristic and uses thresholds configured via
+    /// <see cref="BlobReadModeConfig"/> to avoid the overhead of windowed reads when they are unlikely to pay off.
     /// </remarks>
     public static class BlobReadModeSelector
     {
-        const long SmallTreshold = 2_000_000; // Indicates that windowed reading overhead is not worth it
-        const long MaxWindowedReadSize = 10_000_000;
-        const long ReadWindowGap = 500_000;
-
         /// <summary>
         /// Determines whether the blob should be read using streaming (sequential) mode or
         /// windowed/random-access mode based on the blob size and the density of the requested sub-map.
+        /// Thresholds are read from <see cref="AppSettings.Active"/>.<see cref="AppSettings.BlobReadMode"/>.
         /// </summary>
         /// <param name="read">Index map describing the requested sub-selection within the blob.</param>
         /// <param name="blob">Index map describing the full underlying blob.</param>
@@ -47,41 +45,48 @@ namespace PxApi.Utilities
         /// <c>true</c> to use streaming; <c>false</c> to use windowed reading.
         /// </returns>
         /// <remarks>
-        /// Heuristics applied:
-        /// - Small blobs are always streamed: <c>blob.GetSize() &lt; SmallTreshold</c> (2,000,000).
-        /// - Small reads at the beginning are streamed if the last linear read index is below <c>SmallTreshold</c>.
-        /// - If the linear span covered by the read (<c>last - first + 1</c>) is below <c>MaxWindowedReadSize</c>
-        ///   (10,000,000), the read is considered dense and windowed reading is preferred (returns <c>false</c>).
-        /// - Large gaps (≥ <c>ReadWindowGap</c>, 500,000) within and around repeating blocks are subtracted from the
+        /// Heuristics applied (using configured thresholds from <see cref="BlobReadModeConfig"/>):
+        /// - Small blobs are always streamed: <c>blob.GetSize() &lt; SmallThreshold</c>.
+        /// - Small reads at the beginning are streamed if the last linear read index is below <c>SmallThreshold</c>.
+        /// - If the linear span covered by the read (<c>last - first + 1</c>) is below <c>MaxWindowedReadSize</c>,
+        ///   the read is considered dense and windowed reading is preferred (returns <c>false</c>).
+        /// - Large gaps (≥ <c>ReadWindowGap</c>) within and around repeating blocks are subtracted from the
         ///   span; if the effective dense length remains below <c>MaxWindowedReadSize</c>, windowed reading is preferred.
         /// - Otherwise, streaming is used and <paramref name="startIndex"/> is set to the first linear index of the
-        ///   read when it is beyond <c>SmallTreshold</c> to skip initial data.
+        ///   read when it is beyond <c>SmallThreshold</c> to skip initial data.
         /// Linearization of multidimensional indices uses reverse cumulative products of the dimension sizes
         /// (row-major order) to compute linear indices.
         /// </remarks>
         public static bool ReadStreaming(IMatrixMap read, IMatrixMap blob, out long startIndex)
         {
+            BlobReadModeConfig config = AppSettings.Active.BlobReadMode;
+            return ReadStreaming(read, blob, out startIndex, config.SmallThreshold, config.MaxWindowedReadSize, config.ReadWindowGap);
+        }
+
+        internal static bool ReadStreaming(IMatrixMap read, IMatrixMap blob, out long startIndex,
+            long smallThreshold, long maxWindowedReadSize, long readWindowGap)
+        {
             startIndex = 0;
             long blobSize = blob.GetSize();
 
-            if (blobSize < SmallTreshold) return true; // Small blobs always stream
+            if (blobSize < smallThreshold) return true; // Small blobs always stream
 
             int[][] readIndices = blob.GetIndicesOfSubmap(read);
             int[] dimSizes = [.. blob.DimensionMaps.Select(dm => dm.ValueCodes.Count)];
             long[] rcsp = ComputeReverseCumulativeProducts(dimSizes);
 
             long lastLinearReadIndex = GetLastLinearReadIndex(readIndices, rcsp);
-            if (lastLinearReadIndex < SmallTreshold) return true; // Small read at start always streams
+            if (lastLinearReadIndex < smallThreshold) return true; // Small read at start always streams
 
             long startLinearReadIndex = GetFirstLinearReadIndex(readIndices, rcsp);
             long readSpanLength = lastLinearReadIndex - startLinearReadIndex + 1;
-            if(readSpanLength < MaxWindowedReadSize) return false; // Small span indicates dense read, do not stream
+            if(readSpanLength < maxWindowedReadSize) return false; // Small span indicates dense read, do not stream
 
-            long combinedGaps = GetCombinedGaps(readIndices, dimSizes, rcsp, ReadWindowGap); 
+            long combinedGaps = GetCombinedGaps(readIndices, dimSizes, rcsp, readWindowGap); 
 
-            if(readSpanLength - combinedGaps < MaxWindowedReadSize) return false; // Dense read after removing large gaps, do not stream
+            if(readSpanLength - combinedGaps < maxWindowedReadSize) return false; // Dense read after removing large gaps, do not stream
 
-            if (startLinearReadIndex > SmallTreshold) startIndex = startLinearReadIndex;
+            if (startLinearReadIndex > smallThreshold) startIndex = startLinearReadIndex;
             return true; // Otherwise stream
         }
 

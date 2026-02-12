@@ -8,11 +8,12 @@ using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Metadata.Dimensions;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
+using PxApi.Configuration;
 using PxApi.Exceptions;
 using PxApi.Models;
 using PxApi.Utilities;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
-using PxApi.Configuration;
 
 namespace PxApi.DataSources
 {
@@ -27,6 +28,12 @@ namespace PxApi.DataSources
     /// <item><description>Reads binary data from <c>*.pxb</c> blobs under <c>bin/</c>, optionally using windowed reads for dense selections.</description></item>
     /// </list>
     /// Read strategy selection for binary data is delegated to <see cref="BlobReadModeSelector"/>.
+    /// <para>
+    /// All direct Azure Blob Storage SDK calls are routed through <c>internal virtual</c> methods
+    /// (<see cref="GetBlobItemsAsync"/>, <see cref="BlobExistsAsync"/>, <see cref="OpenBlobReadStreamAsync(string, CancellationToken)"/>,
+    /// <see cref="OpenBlobReadStreamAsync(string, long, CancellationToken)"/>, and <see cref="DownloadBlobRangeAsync"/>)
+    /// so that tests can subclass and override them without requiring real Azure infrastructure.
+    /// </para>
     /// </remarks>
     /// <param name="dataBase">The database reference used to construct blob paths and logging scope values.</param>
     /// <param name="containerName">The Azure blob storage container name hosting metadata and binary blobs.</param>
@@ -60,12 +67,11 @@ namespace PxApi.DataSources
                 Logger.LogDebug("Getting all meta files from blob storage container.");
                 List<string> fileNames = [];
 
-                BlobContainerClient containerClient = GetContainerClient();
-                AsyncPageable<BlobItem> blobs = containerClient.GetBlobsAsync(prefix: MetaPrefix, cancellationToken: ct);
+                IReadOnlyList<string> blobNames = await GetBlobItemsAsync(MetaPrefix, ct);
 
-                await foreach (BlobItem blob in blobs)
+                foreach (string blobName in blobNames)
                 {
-                    string? fileName = TryParseFileIdFromMetaBlobName(blob.Name);
+                    string? fileName = TryParseFileIdFromMetaBlobName(blobName);
                     if (fileName is not null)
                     {
                         fileNames.Add(fileName);
@@ -136,9 +142,7 @@ namespace PxApi.DataSources
                                     [LoggerConsts.BLOB_NAME] = blobName
                                 }))
                             {
-                                BlobContainerClient containerClient = GetContainerClient();
-                                BlobClient blob = containerClient.GetBlobClient(blobName);
-                                if (!await blob.ExistsAsync(ct))
+                                if (!await BlobExistsAsync(blobName, ct))
                                 {
                                     Logger.LogError("Data blob {BlobName} not found in blob storage.", blobName);
                                     throw new BinaryBlobSynchronizationException(file, lastUpdated);
@@ -151,8 +155,7 @@ namespace PxApi.DataSources
                                 async Task<Stream> readerFunc(long offset, long length, CancellationToken ct)
                                 {
                                     Interlocked.Increment(ref windowReaderCallsForDebug);
-                                    Response<BlobDownloadStreamingResult> result = await blob.DownloadStreamingAsync(new HttpRange(offset, length), null, false, ct);
-                                    return result.Value.Content;
+                                    return await DownloadBlobRangeAsync(blobName, offset, length, ct);
                                 }
 
                                 if (BlobReadModeSelector.ReadStreaming(readMap, blobMap, out long startIndex))
@@ -167,16 +170,13 @@ namespace PxApi.DataSources
                                         (uint HeaderLength, BinaryValueCodecType Codec) = ParsePxbHeader(headerBytes);
 
                                         BinaryDataReader reader = BinaryDataReader.Create(Codec, headerLengthBytes: HeaderLength);
-                                        using Stream dataStream = await blob.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false)
-                                        {
-                                            Position = HeaderLength + startIndex * reader.ByteCount
-                                        }, cancellationToken: ct);
+                                        using Stream dataStream = await OpenBlobReadStreamAsync(blobName, HeaderLength + startIndex * reader.ByteCount, ct);
 
                                         await reader.ReadFromStreamAsync(dataStream, readMap, blobMap, targetMap, result, startIndex, ct);
                                     }
                                     else
                                     {
-                                        using Stream blobStream = await blob.OpenReadAsync(cancellationToken: ct);
+                                        using Stream blobStream = await OpenBlobReadStreamAsync(blobName, ct);
                                         byte[] headerBytes = new byte[8];
                                         await blobStream.ReadExactlyAsync(headerBytes, ct);
                                         (uint _, BinaryValueCodecType Codec) = ParsePxbHeader(headerBytes); // We already read the header
@@ -226,31 +226,30 @@ namespace PxApi.DataSources
             {
                 Logger.LogDebug("Reading metadata for meta file {FileId} from blob storage", file.Id);
 
-                BlobContainerClient containerClient = GetContainerClient();
                 string prefix = BuildMetadataPrefix(file.DataBase.Id, file.Id);
-                List<BlobItem> blobs = await containerClient.GetBlobsAsync(prefix: prefix, cancellationToken: ct)
-                    .Where(blob => blob.Name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase))
-                    .ToListAsync(ct);
+                IReadOnlyList<string> blobNames = await GetBlobItemsAsync(prefix, ct);
+                List<string> metaBlobNames = blobNames
+                    .Where(name => name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
 
-                BlobItem? blobItem = null;
+                string? selectedBlobName = null;
 
-                if (blobs.Count == 0)
+                if (metaBlobNames.Count == 0)
                 {
                     Logger.LogError("Meta file for id {FileId} not found in blob storage", file.Id);
                     throw new FileNotFoundException($"Meta file for id {file.Id} not found in blob storage container.");
                 }
-                else if (blobs.Count > 1)
+                else if (metaBlobNames.Count > 1)
                 {
                     Logger.LogWarning("Multiple meta files for id {FileId} found in blob storage", file.Id);
-                    blobItem = blobs
-                        .OrderByDescending(blob => blob.Name) // Assuming the name includes a timestamp
+                    selectedBlobName = metaBlobNames
+                        .OrderByDescending(name => name) // Assuming the name includes a timestamp
                         .First();
                 }
 
-                blobItem ??= blobs[0];
+                selectedBlobName ??= metaBlobNames[0];
 
-                BlobClient blobClient = containerClient.GetBlobClient(blobItem.Name);
-                using Stream stream = await blobClient.OpenReadAsync(cancellationToken: ct);
+                using Stream stream = await OpenBlobReadStreamAsync(selectedBlobName, ct);
 
                 MatrixMetadata? metadata = await JsonSerializer.DeserializeAsync<MatrixMetadata>(stream, GlobalJsonConverterOptions.Default, ct);
                 if (metadata is null)
@@ -260,6 +259,87 @@ namespace PxApi.DataSources
                 }
                 return metadata;
             }
+        }
+
+        /// <summary>
+        /// Lists blob names under the given prefix in the configured container.
+        /// </summary>
+        /// <param name="prefix">The blob name prefix to filter by.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>A list of blob names matching the prefix.</returns>
+        [ExcludeFromCodeCoverage]
+        internal virtual async Task<IReadOnlyList<string>> GetBlobItemsAsync(string prefix, CancellationToken ct = default)
+        {
+            BlobContainerClient containerClient = GetContainerClient();
+            List<string> names = [];
+            await foreach (BlobItem blob in containerClient.GetBlobsAsync(prefix: prefix, cancellationToken: ct))
+            {
+                names.Add(blob.Name);
+            }
+            return names;
+        }
+
+        /// <summary>
+        /// Checks whether a blob with the specified name exists in the configured container.
+        /// </summary>
+        /// <param name="blobName">The full blob name to check.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns><c>true</c> if the blob exists; otherwise <c>false</c>.</returns>
+        [ExcludeFromCodeCoverage]
+        internal virtual async Task<bool> BlobExistsAsync(string blobName, CancellationToken ct = default)
+        {
+            BlobContainerClient containerClient = GetContainerClient();
+            BlobClient blob = containerClient.GetBlobClient(blobName);
+            return (await blob.ExistsAsync(ct)).Value;
+        }
+
+        /// <summary>
+        /// Opens a read-only stream for the specified blob from the beginning.
+        /// </summary>
+        /// <param name="blobName">The full blob name to read.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>A readable stream positioned at the start of the blob.</returns>
+        [ExcludeFromCodeCoverage]
+        internal virtual async Task<Stream> OpenBlobReadStreamAsync(string blobName, CancellationToken ct = default)
+        {
+            BlobContainerClient containerClient = GetContainerClient();
+            BlobClient blob = containerClient.GetBlobClient(blobName);
+            return await blob.OpenReadAsync(cancellationToken: ct);
+        }
+
+        /// <summary>
+        /// Opens a read-only stream for the specified blob starting at the given byte position.
+        /// </summary>
+        /// <param name="blobName">The full blob name to read.</param>
+        /// <param name="position">The byte offset at which to start reading.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>A readable stream positioned at <paramref name="position"/>.</returns>
+        [ExcludeFromCodeCoverage]
+        internal virtual async Task<Stream> OpenBlobReadStreamAsync(string blobName, long position, CancellationToken ct = default)
+        {
+            BlobContainerClient containerClient = GetContainerClient();
+            BlobClient blob = containerClient.GetBlobClient(blobName);
+            return await blob.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false)
+            {
+                Position = position
+            }, cancellationToken: ct);
+        }
+
+        /// <summary>
+        /// Downloads a specific byte range from a blob as a stream.
+        /// </summary>
+        /// <param name="blobName">The full blob name to read from.</param>
+        /// <param name="offset">The byte offset to start reading from.</param>
+        /// <param name="length">The number of bytes to read.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>A stream containing the requested byte range.</returns>
+        [ExcludeFromCodeCoverage]
+        internal virtual async Task<Stream> DownloadBlobRangeAsync(string blobName, long offset, long length, CancellationToken ct = default)
+        {
+            BlobContainerClient containerClient = GetContainerClient();
+            BlobClient blob = containerClient.GetBlobClient(blobName);
+            Response<BlobDownloadStreamingResult> result = await blob.DownloadStreamingAsync(new HttpRange(offset, length), null, false, ct);
+            return result.Value.Content;
         }
 
         internal static string? TryParseFileIdFromMetaBlobName(string blobName)
