@@ -68,7 +68,7 @@ namespace PxApi.Utilities
 
             int[][] readIndices = blob.GetIndicesOfSubmap(read);
             int[] dimSizes = [.. blob.DimensionMaps.Select(dm => dm.ValueCodes.Count)];
-            int[] rcsp = ComputeReverseCumulativeProducts(dimSizes);
+            long[] rcsp = ComputeReverseCumulativeProducts(dimSizes);
 
             long lastLinearReadIndex = GetLastLinearReadIndex(readIndices, rcsp);
             if (lastLinearReadIndex < SmallTreshold) return true; // Small read at start always streams
@@ -106,7 +106,7 @@ namespace PxApi.Utilities
         /// Iteration stops when the spread of selected indices within a dimension, scaled by rcsp[i],
         /// falls below <paramref name="minLen"/>, because deeper dimensions cannot produce qualifying gaps.
         /// </remarks>
-        internal static long GetCombinedGaps(int[][] selectedIndices, int[] dimSizes, int[] rcsp, long minLen)
+        internal static long GetCombinedGaps(int[][] selectedIndices, int[] dimSizes, long[] rcsp, long minLen)
         {
             long[] gapsFromRepeatingBlocks = GetGapsBetweenRepeatingBlocks(selectedIndices, dimSizes, rcsp);
 
@@ -122,13 +122,13 @@ namespace PxApi.Utilities
             long combinedGaps = 0;
             for (int i = 0; i < selectedIndices.Length; i++)
             {
-                if ((long)(selectedIndices[i][^1] - selectedIndices[i][0] + 1) * rcsp[i] < minLen) break; // No more relevant gaps possible
+                if ((selectedIndices[i][^1] - selectedIndices[i][0] + 1) * rcsp[i] < minLen) break; // No more relevant gaps possible
                 long repeat = moreSignificantRepeatFactors[i];
                 for (int j = 1; j < selectedIndices[i].Length; j++)
                 {
                     int stepBetween = selectedIndices[i][j] - selectedIndices[i][j - 1] - 1;
                     if (stepBetween <= 0) continue; // no gap when consecutive
-                    long gap = (long)stepBetween * rcsp[i];
+                    long gap = stepBetween * rcsp[i];
                     if (gap >= minLen)
                     {
                         combinedGaps += (gap + gapsFromRepeatingBlocks[i]) * repeat;
@@ -138,7 +138,19 @@ namespace PxApi.Utilities
             return combinedGaps;
         }
 
-        private static long GetLastLinearReadIndex(int[][] readIndices, int[] rcsp)
+        internal static long[] ComputeReverseCumulativeProducts(int[] sizes)
+        {
+            int dims = sizes.Length;
+            long[] rcsp = new long[dims];
+            rcsp[^1] = 1;
+            for (int i = dims - 2; i >= 0; i--)
+            {
+                rcsp[i] = rcsp[i + 1] * sizes[i + 1];
+            }
+            return rcsp;
+        }
+
+        private static long GetLastLinearReadIndex(int[][] readIndices, long[] rcsp)
         {
             int[] lastReadIndices = new int[readIndices.Length];
             for (int i = 0; i < lastReadIndices.Length; i++)
@@ -149,7 +161,7 @@ namespace PxApi.Utilities
             return GetNthIndex(lastReadIndices, rcsp);
         }
 
-        private static long GetFirstLinearReadIndex(int[][] readIndices, int[] rcsp)
+        private static long GetFirstLinearReadIndex(int[][] readIndices, long[] rcsp)
         {
             int[] firstReadIndices = new int[readIndices.Length];
             for (int i = 0; i < readIndices.Length; i++)
@@ -160,38 +172,26 @@ namespace PxApi.Utilities
             return GetNthIndex(firstReadIndices, rcsp);
         }
 
-        private static long[] GetGapsBetweenRepeatingBlocks(int[][] selectedIndices, int[] dimSizes, int[] rcsp)
+        private static long[] GetGapsBetweenRepeatingBlocks(int[][] selectedIndices, int[] dimSizes, long[] rcsp)
         {
             long[] repeatGaps = new long[selectedIndices.Length];
             long cumulativeSum = 0;
             for (int i = selectedIndices.Length - 1; i >= 0; i--)
             {
                 repeatGaps[i] = cumulativeSum;
-                long beforeFirst = (long)selectedIndices[i][0] * rcsp[i];
-                long afterLast = (long)(dimSizes[i] - 1 - selectedIndices[i][^1]) * rcsp[i];
+                long beforeFirst = selectedIndices[i][0] * rcsp[i];
+                long afterLast = (dimSizes[i] - 1 - selectedIndices[i][^1]) * rcsp[i];
                 cumulativeSum += beforeFirst + afterLast;
             }
             return repeatGaps;
         }
 
-        private static int[] ComputeReverseCumulativeProducts(int[] sizes)
-        {
-            int dims = sizes.Length;
-            int[] rcsp = new int[dims];
-            rcsp[^1] = 1;
-            for (int i = dims - 2; i >= 0; i--)
-            {
-                rcsp[i] = rcsp[i + 1] * sizes[i + 1];
-            }
-            return rcsp;
-        }
-
-        private static long GetNthIndex(int[] readIndices, int[] rcsp)
+        private static long GetNthIndex(int[] readIndices, long[] rcsp)
         {
             long n = 0;
             for (int i = 0; i < readIndices.Length; i++)
             {
-                n += (long)readIndices[i] * rcsp[i];
+                n += readIndices[i] * rcsp[i];
             }
             return n;
         }

@@ -307,6 +307,10 @@ namespace PxApi.Caching
             task.ContinueWith(
                 t =>
                 {
+                    // Observe the exception to prevent UnobservedTaskException
+                    // The exceptions should be handled by the initial caller of the task, but just to be safe.
+                    _ = t.Exception;
+
                     // Make sure we remove the right items, since this callback is task and not key based.
                     if (_cache.TryGetValue(cacheKey, out object? current) &&
                         ReferenceEquals(current, cacheItem))

@@ -182,7 +182,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         {
             int[][] selected = [[0, 5, 10]];
             int[] sizes = [20];
-            int[] rcsp = ComputeRcsp(sizes);
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             long minLen = 4; // include gaps with length >= 4
 
             // Two intra-dimension gaps with stepBetween 4 each: (5 - 0 - 1) = 4 and (10 - 5 - 1) = 4.
@@ -199,7 +199,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         {
             int[][] selected = [[0, 5, 10]];
             int[] sizes = [20];
-            int[] rcsp = ComputeRcsp(sizes);
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             long minLen = 6; // excludes gaps of length 4
 
             long result = BlobReadModeSelector.GetCombinedGaps(selected, sizes, rcsp, minLen);
@@ -211,7 +211,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         public void IncludesGapsFromLessSignificantDimensionsPerGap()
         {
             int[] sizes = [5, 10];
-            int[] rcsp = ComputeRcsp(sizes); // rcsp[0] = 10, rcsp[1] = 1
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             int[][] selected =
             [
                 [0, 2],  // gap at i=0: stepBetween = 2 - 0 - 1 = 1 -> 1 * 10 = 10
@@ -230,7 +230,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         public void EarlyTerminationSkipsDeeperDimensions()
         {
             int[] sizes = [100, 100, 100];
-            int[] rcsp = ComputeRcsp(sizes); // [10000, 100, 1]
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             int[][] selected =
             [
                 [5, 6], // spread at i=0: (6 - 5) * 10000 = 10000
@@ -250,7 +250,7 @@ namespace PxApi.UnitTests.UtilitiesTests
             // Choose indices so that stepBetween equals 10: b - a - 1 = 10 -> b - a = 11.
             int[][] selected = [[0, 11]];
             int[] sizes = [100];
-            int[] rcsp = ComputeRcsp(sizes); // rcsp[0] = 1
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             long minLen = 10; // gap equals threshold -> included
 
             long result = BlobReadModeSelector.GetCombinedGaps(selected, sizes, rcsp, minLen);
@@ -262,7 +262,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         public void ComplexScenarioCombinesGapsRepeatingBlocksAndRepeatFactors()
         {
             int[] sizes = [3, 1000, 5];
-            int[] rcsp = ComputeRcsp(sizes); // [5000, 5, 1]
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             int[][] selected =
             [
                 [0, 1, 2],      // i=0: continuous selections -> no intra-dimension gaps
@@ -287,7 +287,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         {
             // Mirrors ReadStreamingWithSparseSelectionAndLargeGapsReturnsFalse scenario
             int[] sizes = [10, 10, 1000, 200, 200];
-            int[] rcsp = ComputeRcsp(sizes); // [10*1000*200*200, 1000*200*200, 200*200, 200, 1]
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             int[][] selected =
             [
                 [0],
@@ -312,7 +312,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         public void MiddleDimensionGapsJustBelowThresholdReturnZero()
         {
             int[] sizes = [2, 2, 1000, 10, 10];
-            int[] rcsp = ComputeRcsp(sizes); // [200000, 100000, 100, 10, 1]
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             // dim2 stepBetween = 49 -> gap = 49 * 100 = 4900 < 5000 threshold
             int[][] selected =
             [
@@ -333,7 +333,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         public void MiddleDimensionGapsEqualThresholdAreIncluded()
         {
             int[] sizes = [2, 2, 1000, 10, 10];
-            int[] rcsp = ComputeRcsp(sizes); // [200000, 100000, 100, 10, 1]
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             // dim2 stepBetween = 50 - 0 - 1 = 49 -> 49*100=4900 (below)
             // Use 51 to make stepBetween=50 -> 50*100=5000 equals threshold
             int[][] selected =
@@ -355,7 +355,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         public void MiddleDimensionSteppedStartingAtOneStillProducesGaps()
         {
             int[] sizes = [2, 2, 1000, 200, 200];
-            int[] rcsp = ComputeRcsp(sizes); // rcsp[2] = 200*200 = 40000
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             // Start at 1 to catch off-by-one issues: indices 1,101 -> stepBetween = 101-1-1 = 99
             int[][] selected =
             [
@@ -376,7 +376,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         public void MiddleDimensionLargeGapsWithMoreSignificantSelectionsScaleResult()
         {
             int[] sizes = [3, 3, 1000, 100, 100];
-            int[] rcsp = ComputeRcsp(sizes); // rcsp[2] = 100*100 = 10000
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             // More significant dims have multiple selections -> repeat factor = 3*3 = 9 for i=2
             int[][] selected =
             [
@@ -403,7 +403,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         {
             // sizes: [2, 2, 1000, 10, 10] => rcsp: [200000, 100000, 100, 10, 1]
             int[] sizes = [2, 2, 1000, 10, 10];
-            int[] rcsp = ComputeRcsp(sizes);
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             int[][] selected =
             [
                 [0],
@@ -425,7 +425,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         {
             // sizes: [2, 2, 1000, 200, 200] => rcsp: [8000000, 4000000, 40000, 200, 1]
             int[] sizes = [2, 2, 1000, 200, 200];
-            int[] rcsp = ComputeRcsp(sizes);
+            long[] rcsp = BlobReadModeSelector.ComputeReverseCumulativeProducts(sizes);
             int[][] selected =
             [
                 [0],
@@ -463,18 +463,6 @@ namespace PxApi.UnitTests.UtilitiesTests
                 codes.Add($"{dimCode}-val{idx}");
             }
             return codes;
-        }
-
-        private static int[] ComputeRcsp(int[] sizes)
-        {
-            int dims = sizes.Length;
-            int[] rcsp = new int[dims];
-            rcsp[^1] = 1;
-            for (int i = dims - 2; i >= 0; i--)
-            {
-                rcsp[i] = rcsp[i + 1] * sizes[i + 1];
-            }
-            return rcsp;
         }
 
         private static int[] CreateConsecutiveIndices(int count)
