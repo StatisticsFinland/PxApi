@@ -42,11 +42,11 @@ namespace PxApi.UnitTests.DocumentFilters
             filter.Apply(document, context);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(document.Components.Schemas.ContainsKey("ProblemDetails"), Is.False);
                 Assert.That(document.Components.Schemas.ContainsKey("JsonStat2"), Is.True);
-            });
+            }
         }
 
         [Test]

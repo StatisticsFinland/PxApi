@@ -103,11 +103,11 @@ namespace PxApi.UnitTests.DataSources
             (uint HeaderLength, BinaryValueCodecType Codec) header = BinaryBlobDataBaseConnector.ParsePxbHeader(headerBytes);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(header.HeaderLength, Is.EqualTo(expectedHeaderLength));
                 Assert.That(header.Codec, Is.EqualTo(expectedCodec));
-            });
+            }
         }
 
         [Test]

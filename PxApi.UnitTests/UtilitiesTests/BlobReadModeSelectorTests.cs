@@ -36,11 +36,11 @@ namespace PxApi.UnitTests.UtilitiesTests
                 SmallThreshold, MaxWindowedReadSize, ReadWindowGap);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(streaming, Is.True);
-                Assert.That(startIndex, Is.EqualTo(0));
-            });
+                Assert.That(startIndex, Is.Zero);
+            }
         }
 
         [Test]
@@ -70,11 +70,11 @@ namespace PxApi.UnitTests.UtilitiesTests
                 SmallThreshold, MaxWindowedReadSize, ReadWindowGap);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(streaming, Is.True);
-                Assert.That(startIndex, Is.EqualTo(0));
-            });
+                Assert.That(startIndex, Is.Zero);
+            }
         }
 
         [Test]
@@ -104,11 +104,11 @@ namespace PxApi.UnitTests.UtilitiesTests
                 SmallThreshold, MaxWindowedReadSize, ReadWindowGap);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(streaming, Is.False);
-                Assert.That(startIndex, Is.EqualTo(0));
-            });
+                Assert.That(startIndex, Is.Zero);
+            }
         }
 
         [Test]
@@ -142,11 +142,11 @@ namespace PxApi.UnitTests.UtilitiesTests
                 SmallThreshold, MaxWindowedReadSize, ReadWindowGap);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(streaming, Is.True);
                 Assert.That(startIndex, Is.EqualTo(expectedStart));
-            });
+            }
         }
 
         [Test]
@@ -175,11 +175,11 @@ namespace PxApi.UnitTests.UtilitiesTests
                 SmallThreshold, MaxWindowedReadSize, ReadWindowGap);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(streaming, Is.False); // windowed preferred due to large gaps reducing dense span
-                Assert.That(startIndex, Is.EqualTo(0));
-            });
+                Assert.That(startIndex, Is.Zero);
+            }
         }
 
         // Grouped tests for GetCombinedGaps
@@ -211,7 +211,7 @@ namespace PxApi.UnitTests.UtilitiesTests
 
             long result = BlobReadModeSelector.GetCombinedGaps(selected, sizes, rcsp, minLen);
 
-            Assert.That(result, Is.EqualTo(0));
+            Assert.That(result, Is.Zero);
         }
 
         [Test]
@@ -248,7 +248,7 @@ namespace PxApi.UnitTests.UtilitiesTests
 
             long result = BlobReadModeSelector.GetCombinedGaps(selected, sizes, rcsp, minLen);
 
-            Assert.That(result, Is.EqualTo(0));
+            Assert.That(result, Is.Zero);
         }
 
         [Test]
@@ -333,7 +333,7 @@ namespace PxApi.UnitTests.UtilitiesTests
 
             long result = BlobReadModeSelector.GetCombinedGaps(selected, sizes, rcsp, minLen);
 
-            Assert.That(result, Is.EqualTo(0));
+            Assert.That(result, Is.Zero);
         }
 
         [Test]

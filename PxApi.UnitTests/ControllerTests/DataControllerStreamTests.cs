@@ -341,7 +341,6 @@ namespace PxApi.UnitTests.ControllerTests
             // Provide high-level API mocks
             _mockConnector.Setup(c => c.ReadMetadataAsync(_testTable, CancellationToken.None))
                 .Returns(async () => await MatrixMetadataUtils.GetMetadataFromFixture(PX_FILE_FIXTURE));
-            long offset = ComputeDataOffset();
             _mockConnector.Setup(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), CancellationToken.None))
                 .Returns((PxFileRef _, IMatrixMap targetMap, IReadOnlyMatrixMetadata meta, CancellationToken __) =>
                 {
@@ -383,7 +382,7 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = await _controller.GetDataAsync(database, table, filters);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.InstanceOf<OkObjectResult>());
                 OkObjectResult okResult = (OkObjectResult)result!;
@@ -408,7 +407,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "tiedot"));
                 Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "vuosineljannes"));
                 Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "alue"));
-            });
+            }
 
             _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
@@ -440,7 +439,7 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result2 = await _controller.GetDataAsync(database, table, filters);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result1, Is.InstanceOf<OkObjectResult>());
                 Assert.That(result2, Is.InstanceOf<OkObjectResult>());
@@ -472,7 +471,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(actualValues1, Is.EqualTo(expectedValues));
                 Assert.That(actualValues2, Is.EqualTo(expectedValues));
                 Assert.That(actualValues1, Is.EqualTo(actualValues2));
-            });
+            }
 
             // Should have read at least once, but cache reduces subsequent reads
             _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
@@ -517,7 +516,7 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult subsetResult = await _controller.GetDataAsync(database, table, subsetFilters);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(supersetResult, Is.InstanceOf<OkObjectResult>());
                 Assert.That(subsetResult, Is.InstanceOf<OkObjectResult>());
@@ -552,7 +551,7 @@ namespace PxApi.UnitTests.ControllerTests
                 // Compare actual subset data against expected array
                 double[] actualSubsetValues = [.. subsetDataResponse.Value.Select(d => d.UnsafeValue)];
                 Assert.That(actualSubsetValues, Is.EqualTo(expectedSubsetValues));
-            });
+            }
 
             _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
@@ -590,7 +589,7 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = await _controller.PostDataAsync(database, table, query);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.InstanceOf<OkObjectResult>());
                 OkObjectResult okResult = (OkObjectResult)result!;
@@ -612,7 +611,7 @@ namespace PxApi.UnitTests.ControllerTests
                 
                 // Verify Dimensions structure
                 Assert.That(dataResponse.Dimension, Has.Count.EqualTo(3));
-            });
+            }
 
             _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
@@ -650,7 +649,7 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = await _controller.GetDataAsync(database, table, filters, lang);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.InstanceOf<OkObjectResult>());
                 OkObjectResult okResult = (OkObjectResult)result!;
@@ -696,7 +695,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Dictionary<DataValueType, string>? translations = jsonStat.Extension["missingValueDescriptions"] as Dictionary<DataValueType, string>;
                 Assert.That(translations, Is.Not.Null);
                 Assert.That(translations![DataValueType.Missing], Is.EqualTo("Missing"));
-            });
+            }
 
             _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
@@ -738,7 +737,7 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result2 = await _controller.PostDataAsync(database, table, query, lang);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result1, Is.InstanceOf<OkObjectResult>());
                 Assert.That(result2, Is.InstanceOf<OkObjectResult>());
@@ -772,7 +771,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(actualValues1, Is.EqualTo(expectedValues));
                 Assert.That(actualValues2, Is.EqualTo(expectedValues));
                 Assert.That(actualValues1, Is.EqualTo(actualValues2));
-            });
+            }
         }
 
         [Test]

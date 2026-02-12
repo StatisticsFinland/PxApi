@@ -85,11 +85,11 @@ namespace PxApi.UnitTests.Caching
             DataBaseRef? result = dataBaseConnector.GetDataBaseReference("PxApiUnitTestsDb");
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result?.Id, Is.EqualTo(dataBase.Id));
-            });
+            }
         }
 
         [Test]
@@ -130,12 +130,12 @@ namespace PxApi.UnitTests.Caching
             IReadOnlyCollection<DataBaseRef> result = dataBaseConnector.GetAllDataBaseReferences();
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Has.Count.EqualTo(3));
                 Assert.That(result, Is.EquivalentTo(databases));
-            });
+            }
             mockFactory.Verify(mf => mf.GetAvailableDatabases(), Times.Once);
         }
 
@@ -163,13 +163,13 @@ namespace PxApi.UnitTests.Caching
             ImmutableSortedDictionary<string, PxFileRef> result = await connector.GetFileListCachedAsync(dataBase);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result.Keys, Is.EquivalentTo(expected));
                 Assert.That(result["file1"].Id, Is.EqualTo("file1"));
                 Assert.That(result["file2"].Id, Is.EqualTo("file2"));
-            });
+            }
             VerifyDebugLogged(loggerMock, "File list cache hit.", Times.Once());
         }
 
@@ -193,13 +193,13 @@ namespace PxApi.UnitTests.Caching
             // Act
             ImmutableSortedDictionary<string, PxFileRef> result = await connector.GetFileListCachedAsync(dataBase);
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result.Keys, Is.EquivalentTo(expected));
                 Assert.That(result["file1"].Id, Is.EqualTo("file1"));
                 Assert.That(result["file2"].Id, Is.EqualTo("file2"));
-            });
+            }
             VerifyDebugLogged(loggerMock, "File list cache miss. Reading from database.", Times.Once());
         }
 
@@ -226,12 +226,12 @@ namespace PxApi.UnitTests.Caching
             PxFileRef? result = await connector.GetFileReferenceCachedAsync("file1", dataBase);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result?.Id, Is.EqualTo("file1"));
                 Assert.That(result?.DataBase.Id, Is.EqualTo("PxApiUnitTestsDb"));
-            });
+            }
             VerifyDebugLogged(loggerMock, "File list cache hit.", Times.Once());
         }
 
@@ -280,11 +280,11 @@ namespace PxApi.UnitTests.Caching
             IReadOnlyMatrixMetadata result = await connector.GetMetadataCachedAsync(fileRef);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Is.EqualTo(metadata));
-            });
+            }
             VerifyDebugLogged(loggerMock, "Metadata cache hit.", Times.Once());
         }
 
@@ -311,7 +311,7 @@ namespace PxApi.UnitTests.Caching
             IReadOnlyMatrixMetadata result = await connector.GetMetadataCachedAsync(fileRef);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result.DefaultLanguage, Is.EqualTo("fi"));
@@ -324,7 +324,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result.Dimensions[1].Values, Has.Count.EqualTo(2));
                 Assert.That(result.Dimensions[1].Values[0].Code, Is.EqualTo("2024"));
                 Assert.That(result.Dimensions[1].Values[1].Code, Is.EqualTo("2025"));
-            });
+            }
             VerifyDebugLogged(loggerMock, "Metadata cache miss. Reading from database.", Times.Once());
         }
 
@@ -359,12 +359,12 @@ namespace PxApi.UnitTests.Caching
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
-            });
+            }
             mockConnector.Verify(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.Never);
             VerifyDebugLogged(loggerMock, "Data cache exact hit.", Times.Once());
         }
@@ -403,12 +403,12 @@ namespace PxApi.UnitTests.Caching
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, subsetMap);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2)); // The value for 2025
-            });
+            }
             mockConnector.Verify(c => c.ReadDataAsync(It.IsAny<PxFileRef>(), It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.Never);
             VerifyDebugLogged(loggerMock, "Data cache superset hit.", Times.Once());
         }
@@ -439,12 +439,12 @@ namespace PxApi.UnitTests.Caching
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
-            });
+            }
             VerifyDebugLogged(loggerMock, "Data cache miss. Reading from database.", Times.Once());
             VerifyDebugLogged(loggerMock, "Metadata cache miss. Reading from database.", Times.Once());
         }
@@ -478,11 +478,11 @@ namespace PxApi.UnitTests.Caching
             bool result = dbCache.TryGetFileList(dataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? files);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(files, Is.Null);
-            });
+            }
             VerifyDebugLogged(loggerMock, "File list cache hit.", Times.Once());
         }
 
@@ -509,22 +509,22 @@ namespace PxApi.UnitTests.Caching
 
             // Pre-assert: last updated is present
             bool hasLastUpdated = dbCache.TryGetLastUpdated(file, out Task<DateTime>? beforeLastUpdated);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(hasLastUpdated, Is.True);
                 Assert.That(beforeLastUpdated, Is.Not.Null);
-            });
+            }
 
             // Act
             connector.ClearTableCache(file);
 
             // Assert: last updated is removed
             bool afterHasLastUpdated = dbCache.TryGetLastUpdated(file, out Task<DateTime>? afterLastUpdated);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(afterHasLastUpdated, Is.False);
                 Assert.That(afterLastUpdated, Is.Null);
-            });
+            }
         }
 
         [Test]
@@ -547,22 +547,22 @@ namespace PxApi.UnitTests.Caching
 
             // Pre-assert: metadata is present
             bool hasMeta = dbCache.TryGetMetadata(file, out MetaCacheContainer? beforeMeta);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(hasMeta, Is.True);
                 Assert.That(beforeMeta, Is.SameAs(metaContainer));
-            });
+            }
 
             // Act
             connector.ClearTableCache(file);
 
             // Assert: metadata is removed
             bool afterHasMeta = dbCache.TryGetMetadata(file, out MetaCacheContainer? afterMeta);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(afterHasMeta, Is.False);
                 Assert.That(afterMeta, Is.Null);
-            });
+            }
         }
 
         #endregion
@@ -613,12 +613,12 @@ namespace PxApi.UnitTests.Caching
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
-            });
+            }
 
             // Verify that GetLastWriteTimeAsync was never called since revalidation is disabled
             mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None), Times.Never);
@@ -670,12 +670,12 @@ namespace PxApi.UnitTests.Caching
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
-            });
+            }
             mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None), Times.Never);
             VerifyDebugLogged(loggerMock, "Data cache exact hit.", Times.Once());
         }
@@ -718,11 +718,11 @@ namespace PxApi.UnitTests.Caching
             IReadOnlyMatrixMetadata result = await connector.GetMetadataCachedAsync(fileRef);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Is.EqualTo(metadata));
-            });
+            }
             VerifyDebugLogged(loggerMock, "Metadata cache hit.", Times.Once());
         }
 
@@ -759,12 +759,12 @@ namespace PxApi.UnitTests.Caching
             DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
-            });
+            }
 
             // Verify that GetLastWriteTimeAsync was called since revalidation is enabled
             mockConnector.Verify(c => c.GetLastWriteTimeAsync(pxFile, CancellationToken.None), Times.Once);
@@ -797,11 +797,11 @@ namespace PxApi.UnitTests.Caching
             MultilanguageString cachedName = await dataSource.GetDatabaseNameAsync(dbRef, string.Empty);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(name, Is.Not.Null);
                 Assert.That(cachedName, Is.SameAs(name));
-            });
+            }
             connectorMock.Verify(c => c.TryReadAuxiliaryFileAsync(It.IsAny<string>(), CancellationToken.None), Times.Exactly(3));
         }
 
@@ -822,11 +822,11 @@ namespace PxApi.UnitTests.Caching
             MultilanguageString result = await dataSource.GetDatabaseNameAsync(dbRef, string.Empty);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Is.EqualTo(expected));
-            });
+            }
         }
 
         [Test]
@@ -848,22 +848,22 @@ namespace PxApi.UnitTests.Caching
 
             // Pre-assert
             bool nameCached = dbCache.TryGetDatabaseName(dbRef, out Task<MultilanguageString>? beforeTask);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(nameCached, Is.True);
                 Assert.That(beforeTask, Is.Not.Null);
-            });
+            }
 
             // Act
             await dataSource.ClearDatabaseCacheAsync(dbRef);
             bool nameStillCached = dbCache.TryGetDatabaseName(dbRef, out Task<MultilanguageString>? afterTask);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(nameStillCached, Is.False);
                 Assert.That(afterTask, Is.Null);
-            });
+            }
             VerifyDebugLogged(loggerMock, "File list cache miss. Reading from database.", Times.Once());
         }
 
@@ -883,22 +883,22 @@ namespace PxApi.UnitTests.Caching
 
             // Pre-assert: present in cache
             bool before = dbCache.TryGetFileList(dbRef, out Task<ImmutableSortedDictionary<string, PxFileRef>>? beforeTask);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(before, Is.True, "File list should be present in cache before faulting the task.");
                 Assert.That(beforeTask, Is.Not.Null, "File list task should not be null before faulting the task.");
-            });
+            }
 
             // Act: fault the task
             tcs.SetException(new InvalidOperationException("failure"));
 
             // Assert: evicted
             bool after = dbCache.TryGetFileList(dbRef, out Task<ImmutableSortedDictionary<string, PxFileRef>>? afterTask);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(after, Is.False, "File list should be evicted from cache after faulting the task.");
                 Assert.That(afterTask, Is.Null, "File list task should be null after faulting the task.");
-            });
+            }
         }
 
         [Test]
@@ -913,22 +913,22 @@ namespace PxApi.UnitTests.Caching
 
             // Pre-assert: present in cache
             bool before = dbCache.TryGetDatabaseName(dbRef, out Task<MultilanguageString>? beforeTask);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(before, Is.True, "Database name should be present in cache before canceling the task.");
                 Assert.That(beforeTask, Is.Not.Null, "Database name task should not be null before canceling the task.");
-            });
+            }
 
             // Act: cancel the task
             tcs.SetCanceled();
 
             // Assert: evicted
             bool after = dbCache.TryGetDatabaseName(dbRef, out Task<MultilanguageString>? afterTask);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(after, Is.False, "Database name should be evicted from cache after canceling the task.");
                 Assert.That(afterTask, Is.Null, "Database name task should be null after canceling the task.");
-            });
+            }
         }
 
         [Test]
@@ -945,22 +945,22 @@ namespace PxApi.UnitTests.Caching
 
             // Pre-assert: present in cache
             bool before = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? beforeMeta);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(before, Is.True, "Metadata should be present in cache before faulting the task.");
                 Assert.That(beforeMeta, Is.Not.Null, "Metadata container should not be null before faulting the task.");
-            });
+            }
 
             // Act: fault metadata task
             metaTcs.SetException(new InvalidOperationException("meta failure"));
 
             // Assert: evicted
             bool after = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? afterMeta);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(after, Is.False, "Metadata should be evicted from cache after faulting the task.");
                 Assert.That(afterMeta, Is.Null, "Metadata container should be null after faulting the task.");
-            });
+            }
         }
 
         [Test]
@@ -977,22 +977,22 @@ namespace PxApi.UnitTests.Caching
 
             // Pre-assert: present in cache
             bool before = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? beforeMeta);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(before, Is.True);
                 Assert.That(beforeMeta, Is.Not.Null);
-            });
+            }
 
             // Act: cancel metadata task
             metaTcs.SetCanceled();
 
             // Assert: evicted
             bool after = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? afterMeta);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(after, Is.False);
                 Assert.That(afterMeta, Is.Null);
-            });
+            }
         }
 
         [Test]
@@ -1017,24 +1017,24 @@ namespace PxApi.UnitTests.Caching
 
             // Pre-assert: present in cache
             bool before = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? beforeTask, out DateTime? beforeCached);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(before, Is.True);
                 Assert.That(beforeTask, Is.Not.Null);
                 Assert.That(beforeCached, Is.Not.Null);
-            });
+            }
 
             // Act: fault data task
             dataTcs.SetException(new InvalidOperationException("data failure"));
 
             // Assert: evicted
             bool after = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? afterTask, out DateTime? afterCached);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(after, Is.False);
                 Assert.That(afterTask, Is.Null);
                 Assert.That(afterCached, Is.Null);
-            });
+            }
         }
 
         [Test]
@@ -1059,24 +1059,24 @@ namespace PxApi.UnitTests.Caching
 
             // Pre-assert: present in cache
             bool before = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? beforeTask, out DateTime? beforeCached);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(before, Is.True);
                 Assert.That(beforeTask, Is.Not.Null);
                 Assert.That(beforeCached, Is.Not.Null);
-            });
+            }
 
             // Act: cancel data task
             dataTcs.SetCanceled();
 
             // Assert: evicted
             bool after = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? afterTask, out DateTime? afterCached);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(after, Is.False);
                 Assert.That(afterTask, Is.Null);
                 Assert.That(afterCached, Is.Null);
-            });
+            }
         }
 
         [Test]
@@ -1095,11 +1095,11 @@ namespace PxApi.UnitTests.Caching
 
             // Ensure first is set
             bool firstPresent = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? first);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(firstPresent, Is.True);
                 Assert.That(first, Is.SameAs(container1));
-            });
+            }
 
             // Second metadata task (successful) set before first faults
             IReadOnlyMatrixMetadata metadata2 = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
@@ -1108,22 +1108,22 @@ namespace PxApi.UnitTests.Caching
 
             // Verify second replaced first
             bool secondPresent = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? current);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(secondPresent, Is.True);
                 Assert.That(current, Is.SameAs(container2));
-            });
+            }
 
             // Act: fault the first task; eviction continuation must not remove the newer entry
             metaTcs1.SetException(new InvalidOperationException("meta failure"));
 
             // Assert: still the newer entry present
             bool afterPresent = dbCache.TryGetMetadata(fileRef, out MetaCacheContainer? afterMeta);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(afterPresent, Is.True, "Newer metadata should remain in cache after previous task faults.");
                 Assert.That(afterMeta, Is.SameAs(container2), "Newer metadata container should not be evicted by previous task's continuation.");
-            });
+            }
         }
 
         #endregion
