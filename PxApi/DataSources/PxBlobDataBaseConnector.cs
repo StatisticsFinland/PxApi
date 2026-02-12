@@ -72,7 +72,8 @@ namespace PxApi.DataSources
                 Logger.LogDebug("Getting last write time for PX file {FileId} from blob storage", file.Id);
 
                 BlobContainerClient containerClient = GetContainerClient();
-                BlobClient blobClient = containerClient.GetBlobClient(file.FilePath);
+                string normalizedPath = BlobPathHelper.NormalizeBlobPath(file.FilePath);
+                BlobClient blobClient = containerClient.GetBlobClient(normalizedPath);
 
                 if (!await blobClient.ExistsAsync(ct))
                 {

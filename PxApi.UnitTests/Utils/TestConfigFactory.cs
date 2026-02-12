@@ -37,7 +37,7 @@ namespace PxApi.UnitTests.Utils
         /// <summary>
         /// Creates configuration entries for a mounted database.
         /// </summary>
-        public static Dictionary<string, string?> MountedDb(int index, string id, string? rootPath = "D:/UD/saarimaa/DataBases")
+        public static Dictionary<string, string?> MountedDb(int index, string id, string? rootPath = "C:/test/path/databases")
         {
             Dictionary<string, string?> config = CommonDatabaseCacheConfig(index, id, "Mounted");
             if (rootPath is not null)

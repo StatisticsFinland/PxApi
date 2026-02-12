@@ -47,7 +47,7 @@ namespace PxApi.DataSources
             }))
             {
                 BlobContainerClient containerClient = GetContainerClient();
-                string blobName = Path.Combine(PxBlobPrefix, relativePath);
+                string blobName = BlobPathHelper.CombineBlobPath(PxBlobPrefix, relativePath);
                 BlobClient blob = containerClient.GetBlobClient(blobName);
                 if (!await blob.ExistsAsync(ct))
                 {
@@ -86,12 +86,13 @@ namespace PxApi.DataSources
                 }
 
                 BlobContainerClient containerClient = GetContainerClient();
-                BlobClient blobClient = containerClient.GetBlobClient(file.FilePath);
+                string normalizedPath = BlobPathHelper.NormalizeBlobPath(file.FilePath);
+                BlobClient blobClient = containerClient.GetBlobClient(normalizedPath);
 
                 if (!await blobClient.ExistsAsync(ct))
                 {
-                    Logger.LogError("PX file {FileId} not found in blob storage path {Path}", file.Id, file.FilePath);
-                    throw new FileNotFoundException($"File {file.Id} not found in blob storage path {file.FilePath}.");
+                    Logger.LogError("PX file {FileId} not found in blob storage path {Path}", file.Id, normalizedPath);
+                    throw new FileNotFoundException($"File {file.Id} not found in blob storage path {normalizedPath}.");
                 }
                 return await blobClient.OpenReadAsync(cancellationToken: ct);
             }
