@@ -1,5 +1,6 @@
 using PxApi.Configuration;
 using PxApi.DataSources;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PxApi.Utilities
 {
@@ -14,6 +15,7 @@ namespace PxApi.Utilities
         /// <param name="app">The web application containing the service provider.</param>
         /// <returns>A task representing the asynchronous validation operation.</returns>
         /// <exception cref="InvalidOperationException">Thrown if any database connection fails.</exception>
+        [ExcludeFromCodeCoverage]
         public static async Task ValidateDatabaseConnectionsAsync(this WebApplication app)
         {
             ILogger<object> logger = app.Services.GetRequiredService<ILogger<object>>();
