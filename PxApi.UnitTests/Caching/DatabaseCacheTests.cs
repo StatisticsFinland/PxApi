@@ -63,11 +63,11 @@ namespace PxApi.UnitTests.Caching
             bool result = dbCache.TryGetFileList(database, out Task<ImmutableSortedDictionary<string, PxFileRef>>? actualFiles);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.True);
                 Assert.That(actualFiles, Is.SameAs(expectedFiles));
-            });
+            }
         }
 
         [Test]
@@ -82,11 +82,11 @@ namespace PxApi.UnitTests.Caching
             bool result = dbCache.TryGetFileList(database, out Task<ImmutableSortedDictionary<string, PxFileRef>>? actualFiles);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(actualFiles, Is.Null);
-            });
+            }
         }
 
         #endregion
@@ -111,14 +111,14 @@ namespace PxApi.UnitTests.Caching
             dbCache.SetFileList(database, files);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(memoryCache.TryGetValue(
                     HashCode.Combine(fileListSeed, database),
                     out Task<ImmutableSortedDictionary<string, PxFileRef>>? cachedFiles),
                     Is.True);
                 Assert.That(cachedFiles, Is.SameAs(files));
-            });
+            }
         }
 
         #endregion
@@ -140,11 +140,11 @@ namespace PxApi.UnitTests.Caching
             bool result = dbCache.TryGetLastUpdated(_file1, out Task<DateTime>? actualLastUpdated);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.True);
                 Assert.That(actualLastUpdated, Is.SameAs(expectedLastUpdated));
-            });
+            }
         }
 
         [Test]
@@ -158,11 +158,11 @@ namespace PxApi.UnitTests.Caching
             bool result = dbCache.TryGetLastUpdated(_file1, out Task<DateTime>? actualLastUpdated);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(actualLastUpdated, Is.Null);
-            });
+            }
         }
 
         #endregion
@@ -183,11 +183,11 @@ namespace PxApi.UnitTests.Caching
             dbCache.SetLastUpdated(_file1, lastUpdated);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, _file1), out Task<DateTime>? cachedLastUpdated), Is.True);
                 Assert.That(cachedLastUpdated, Is.SameAs(lastUpdated));
-            });
+            }
         }
 
         #endregion
@@ -212,11 +212,11 @@ namespace PxApi.UnitTests.Caching
             bool result = dbCache.TryGetMetadata(_file1, out MetaCacheContainer? actualMetaContainer);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.True);
                 Assert.That(actualMetaContainer, Is.SameAs(expectedMetaContainer));
-            });
+            }
         }
 
         [Test]
@@ -230,11 +230,11 @@ namespace PxApi.UnitTests.Caching
             bool result = dbCache.TryGetMetadata(_file1, out MetaCacheContainer? actualMetaContainer);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(actualMetaContainer, Is.Null);
-            });
+            }
         }
 
         #endregion
@@ -257,11 +257,11 @@ namespace PxApi.UnitTests.Caching
             dbCache.SetMetadata(_file1, metaContainer);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(cache.TryGetValue(cacheKey, out MetaCacheContainer? cachedMetaContainer), Is.True);
                 Assert.That(cachedMetaContainer, Is.SameAs(metaContainer));
-            });
+            }
         }
 
         #endregion
@@ -297,12 +297,12 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
 
             // Act & Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {  
                 Assert.That(memoryCache.Keys.Count, Is.EqualTo(0));
                 Assert.That(dbCache.TryGetMetadata(_file1, out _), Is.False);
                 Assert.DoesNotThrow(() => dbCache.TryRemoveMeta(_file1));
-            });
+            }
         }
 
         #endregion
@@ -332,12 +332,12 @@ namespace PxApi.UnitTests.Caching
             bool result = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.True);
                 Assert.That(actualData, Is.SameAs(expectedDataTask));
                 Assert.That(actualCached, Is.Not.Null);
-            });
+            }
         }
 
         [Test]
@@ -356,12 +356,12 @@ namespace PxApi.UnitTests.Caching
             bool result = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(actualData, Is.Null);
                 Assert.That(actualCached, Is.Null);
-            });
+            }
         }
 
         #endregion
@@ -385,13 +385,13 @@ namespace PxApi.UnitTests.Caching
                 out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(actualSupersetMap, Is.Null);
                 Assert.That(actualData, Is.Null);
                 Assert.That(actualCached, Is.Null);
-            });
+            }
         }
 
         [Test]
@@ -416,13 +416,13 @@ namespace PxApi.UnitTests.Caching
                 out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(actualSupersetMap, Is.Null);
                 Assert.That(actualData, Is.Null);
                 Assert.That(actualCached, Is.Null);
-            });
+            }
         }
 
         [Test]
@@ -457,13 +457,13 @@ namespace PxApi.UnitTests.Caching
                 out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(actualSupersetMap, Is.Null);
                 Assert.That(actualData, Is.Null);
                 Assert.That(actualCached, Is.Null);
-            });
+            }
         }
 
         [Test]
@@ -504,13 +504,13 @@ namespace PxApi.UnitTests.Caching
                 out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.True);
                 Assert.That(actualSupersetMap, Is.SameAs(superMap));
                 Assert.That(actualData, Is.SameAs(expectedDataTask));
                 Assert.That(actualCached, Is.Not.Null);
-            });
+            }
         }
 
         #endregion
@@ -558,13 +558,13 @@ namespace PxApi.UnitTests.Caching
             dbCache.SetData(_file1, map, dataTask);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(metaContainer.GetRelatedMaps(), Has.Count.EqualTo(1));
                 Assert.That(metaContainer.GetRelatedMaps()[0], Is.SameAs(map));
                 Assert.That(memoryCache.TryGetValue(mapCode, out DataCacheContainer<DoubleDataValue>? cachedContainer), Is.True);
                 Assert.That(cachedContainer!.Data, Is.SameAs(dataTask));
-            });
+            }
         }
 
         [Test]
@@ -610,14 +610,14 @@ namespace PxApi.UnitTests.Caching
             dbCache.SetData(_file1, map, dataTask);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 // The submap should have been removed from the cache
                 Assert.That(memoryCache.TryGetValue(subMapKey, out _), Is.False);
                 // The new map should be present
                 Assert.That(memoryCache.TryGetValue(mapKey, out DataCacheContainer<DoubleDataValue>? cachedContainer), Is.True);
                 Assert.That(cachedContainer!.Data, Is.SameAs(dataTask));
-            });
+            }
         }
 
         #endregion
@@ -696,11 +696,11 @@ namespace PxApi.UnitTests.Caching
 
             // Verify groupings are cached
             bool hasGroupingsBefore = dbCache.TryGetGroupings(_file1, out Task<IReadOnlyList<TableGroup>>? cachedGroupingsBefore);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(hasGroupingsBefore, Is.True);
                 Assert.That(cachedGroupingsBefore, Is.SameAs(groupingsTask));
-            });
+            }
 
             // Act
             dbCache.SetMetadata(_file1, metaContainer);
@@ -713,11 +713,11 @@ namespace PxApi.UnitTests.Caching
 
             // Assert - Groupings should be removed from cache
             bool hasGroupingsAfter = dbCache.TryGetGroupings(_file1, out Task<IReadOnlyList<TableGroup>>? cachedGroupingsAfter);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(hasGroupingsAfter, Is.False);
                 Assert.That(cachedGroupingsAfter, Is.Null);
-            });
+            }
         }
 
         #endregion
@@ -745,11 +745,11 @@ namespace PxApi.UnitTests.Caching
             bool result = dbCache.TryGetDatabaseName(database, out Task<MultilanguageString>? actualTask);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.True);
                 Assert.That(actualTask, Is.SameAs(nameTask));
-            });
+            }
         }
 
         [Test]
@@ -764,11 +764,11 @@ namespace PxApi.UnitTests.Caching
             bool result = dbCache.TryGetDatabaseName(database, out Task<MultilanguageString>? actualTask);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(actualTask, Is.Null);
-            });
+            }
         }
 
         #endregion
@@ -796,11 +796,11 @@ namespace PxApi.UnitTests.Caching
             dbCache.SetDatabaseName(database, nameTask);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(memoryCache.TryGetValue(key, out Task<MultilanguageString>? cachedTask), Is.True);
                 Assert.That(cachedTask, Is.SameAs(nameTask));
-            });
+            }
         }
 
         #endregion

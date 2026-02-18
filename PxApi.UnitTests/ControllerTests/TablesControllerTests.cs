@@ -7,7 +7,6 @@ using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
 using PxApi.Caching;
 using PxApi.Controllers;
-using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Services;
 using PxApi.UnitTests.ModelBuilderTests;
@@ -62,7 +61,7 @@ namespace PxApi.UnitTests.ControllerTests
             int pageSize = 50;
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(db.Id)).Returns(db);
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary<string, PxFileRef>.Empty;
-            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ReturnsAsync(tableList);
 
             // Act
             ActionResult<PagedTableList> result = await _controller.GetTablesAsync(db.Id, lang, page, pageSize);
@@ -125,9 +124,9 @@ namespace PxApi.UnitTests.ControllerTests
             MatrixMetadata meta2 = TestMockMetaBuilder.GetMockMetadata();
 
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(db.Id)).Returns(db);
-            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file1)).ReturnsAsync(meta1);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file2)).ReturnsAsync(meta2);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ReturnsAsync(tableList);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file1, CancellationToken.None)).ReturnsAsync(meta1);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file2, CancellationToken.None)).ReturnsAsync(meta2);
 
             // Act
             ActionResult<PagedTableList> result = await _controller.GetTablesAsync(db.Id, lang, page, pageSize);
@@ -180,7 +179,7 @@ namespace PxApi.UnitTests.ControllerTests
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary<string, PxFileRef>.Empty;
             
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
-            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ReturnsAsync(tableList);
 
             // Act
             ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
@@ -223,13 +222,13 @@ namespace PxApi.UnitTests.ControllerTests
             int pageSize = 50;
             
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
-            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ThrowsAsync(new DirectoryNotFoundException("Directory not found"));
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ThrowsAsync(new DirectoryNotFoundException("Directory not found"));
 
             // Act
             ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
 
             // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+            Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
         }
 
         [Test]
@@ -256,11 +255,11 @@ namespace PxApi.UnitTests.ControllerTests
                 files.ToDictionary(f => f.Id));
             
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
-            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ReturnsAsync(tableList);
             
             foreach (PxFileRef file in files)
             {
-                _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(TestMockMetaBuilder.GetMockMetadata());
+                _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(TestMockMetaBuilder.GetMockMetadata());
             }
 
             int tableIndex = 0;
@@ -293,49 +292,6 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetTablesAsync_BuildingMetadataIsNotPossible_ReturnsTableObjectWithErrorState_ReadIdFromTable()
-        {
-            // Arrange
-            string dbId = "exampledb";
-            DataBaseRef db = DataBaseRef.Create(dbId);
-            string lang = "en";
-            int page = 1;
-            int pageSize = 50;
-            
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "table1.px"), db);
-            ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
-                new Dictionary<string, PxFileRef> { { file.Id, file } });
-
-            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
-            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ThrowsAsync(new Exception("Metaobject build error!"));
-            _cachedDbConnector.Setup(ds => ds.GetSingleStringValueAsync(PxFileConstants.TABLEID, file)).ReturnsAsync("\"table-tableid\"");
-
-            // Act
-            ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
-            OkObjectResult? objectResult = result.Result as OkObjectResult;
-            Assert.That(objectResult, Is.Not.Null);
-            Assert.Multiple(() =>
-            {
-                Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
-                if (objectResult.Value is not PagedTableList pageTableList)
-                {
-                    Assert.Fail("PagedTableList is null");
-                }
-                else
-                {
-                    Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
-                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
-                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1"));
-                    Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
-                }
-            });
-        }
-
-        [Test]
         public async Task GetTablesAsync_BuildingMetadataIsNotPossible_TableNotReadable_ReturnsTableObjectWithErrorState_TableIdIsName()
         {
             // Arrange
@@ -350,9 +306,8 @@ namespace PxApi.UnitTests.ControllerTests
                 new Dictionary<string, PxFileRef> { { file.Id, file } });
 
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
-            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ThrowsAsync(new Exception("Metaobject build error!"));
-            _cachedDbConnector.Setup(ds => ds.GetSingleStringValueAsync(PxFileConstants.TABLEID, file)).ThrowsAsync(new Exception("Table not readable!"));
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ReturnsAsync(tableList);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file, CancellationToken.None)).ThrowsAsync(new Exception("Metaobject build error!"));
 
             // Act
             ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);
@@ -410,8 +365,8 @@ namespace PxApi.UnitTests.ControllerTests
             );
 
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
-            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db)).ReturnsAsync(tableList);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(metadataWithoutContentDim);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ReturnsAsync(tableList);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(metadataWithoutContentDim);
 
             // Act
             ActionResult<PagedTableList> result = await _controller.GetTablesAsync(dbId, lang, page, pageSize);

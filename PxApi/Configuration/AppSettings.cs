@@ -49,6 +49,12 @@ namespace PxApi.Configuration
         public LocalizationConfig Localization { get; }
 
         /// <summary>
+        /// Optional configuration for blob read mode selection thresholds.
+        /// Default values are used when the configuration section is not present.
+        /// </summary>
+        public BlobReadModeConfig BlobReadMode { get; }
+
+        /// <summary>
         /// Application Insights configuration for telemetry and logging.
         /// </summary>
         public ApplicationInsightsConfig ApplicationInsights { get; }
@@ -98,6 +104,7 @@ namespace PxApi.Configuration
             OpenApi = new OpenApiConfig(configuration.GetSection(nameof(OpenApi)));
             Localization = new LocalizationConfig(configuration.GetSection(nameof(Localization)));
             ApplicationInsights = new ApplicationInsightsConfig(configuration.GetSection(nameof(ApplicationInsights)));
+            BlobReadMode = new BlobReadModeConfig(configuration.GetSection(nameof(BlobReadMode)));
         }
 
         /// <summary>

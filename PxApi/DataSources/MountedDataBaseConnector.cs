@@ -9,15 +9,17 @@ namespace PxApi.DataSources
     /// Data source for using database on the local file system.
     /// </summary>
     [ExcludeFromCodeCoverage] // This class is not unit tested because it relies on file system access.
-    public class MountedDataBaseConnector(DataBaseRef dataBase, string rootPath, ILogger<MountedDataBaseConnector> logger) : IDataBaseConnector
+    public class MountedDataBaseConnector(DataBaseRef dataBase, string rootPath, ILogger<MountedDataBaseConnector> logger) : DataBaseConnector(dataBase)
     {
-        /// <inheritdoc/>
-        public DataBaseRef DataBase { get; } = dataBase;
+        private readonly string _normalizedRootPath = NormalizeDirectoryPath(rootPath);
 
         /// <inheritdoc/>
-        public Task<string[]> GetAllFilesAsync()
+        protected override ILogger Logger => logger;
+
+        /// <inheritdoc/>
+        public override Task<string[]> GetAllFilesAsync(CancellationToken ct = default)
         {
-            using (logger.BeginScope(
+            using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
@@ -25,76 +27,80 @@ namespace PxApi.DataSources
                     [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync)
                 }))
             {
-                logger.LogDebug("Listing all files");
-                string fullPath = Path.GetFullPath(Path.Combine(rootPath, DataBase.Id));
-                if (!fullPath.StartsWith(rootPath))
+                Logger.LogDebug("Listing all files");
+                string fullPath = Path.GetFullPath(Path.Combine(_normalizedRootPath, DataBase.Id));
+                if (!IsWithinDirectory(fullPath, _normalizedRootPath))
                 {
-                    logger.LogWarning("Unauthorized access attempt: The database is not in the root path.");
+                    Logger.LogWarning("Unauthorized access attempt: The database is not in the root path.");
                     throw new UnauthorizedAccessException("The database is not in the root path");
                 }
 
                 return Task.Run(() => Directory.GetFiles(
                     fullPath,
                     $"*{PxFileConstants.FILE_ENDING}",
-                    SearchOption.AllDirectories));
+                    SearchOption.AllDirectories), ct);
             }
         }
 
         /// <inheritdoc/>
-        public async Task<Stream> ReadPxFileAsync(PxFileRef file)
+        protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct = default)
         {
-            using (logger.BeginScope(
+            using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
                     [LoggerConsts.CONTROLLER] = nameof(MountedDataBaseConnector),
-                    [LoggerConsts.FUNCTION] = nameof(ReadPxFileAsync),
+                    [LoggerConsts.FUNCTION] = nameof(OpenPxFileStreamAsync),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
-                logger.LogDebug("Opening file stream");
+                Logger.LogDebug("Opening file stream");
                 if(file.DataBase.Id != DataBase.Id)
                 {
-                    logger.LogWarning("The file does not belong to the database.");
+                    Logger.LogWarning("The file does not belong to the database.");
                     throw new InvalidOperationException("The file does not belong to the database.");
                 }
 
                 // Use the FilePath property if it exists and points to a valid file
                 if (!string.IsNullOrEmpty(file.FilePath) && File.Exists(file.FilePath))
                 {
-                    return await Task.FromResult<Stream>(File.OpenRead(file.FilePath));
+                    return await Task.Run(() => File.OpenRead(file.FilePath), ct);
                 }
 
                 // Fall back to constructing the path from components
                 string path = Path.Combine(rootPath, file.DataBase.Id, file.Id);
                 
-                // If the file doesn't exist with just the ID (which is now potentially different from the filename),
-                // try to find it by searching for the ID with the file extension
-                if (!File.Exists(path))
+                return await Task.Run(() =>
                 {
-                    string searchPath = Path.Combine(rootPath, file.DataBase.Id);
-                    if (Directory.Exists(searchPath))
+                    // If the file doesn't exist with just the ID (which is now potentially different from the filename),
+                    // try to find it by searching for the ID with the file extension
+                    if (!File.Exists(path))
                     {
-                        string[] matchingFiles = Directory.GetFiles(
-                            searchPath, 
-                            $"*{file.Id}*{PxFileConstants.FILE_ENDING}", 
-                            SearchOption.AllDirectories);
-                        
-                        if (matchingFiles.Length > 0)
+                        string searchPath = Path.Combine(rootPath, file.DataBase.Id);
+                        if (Directory.Exists(searchPath))
                         {
-                            path = matchingFiles[0];
+                            string[] matchingFiles = Directory.GetFiles(
+                                searchPath,
+                                $"*{file.Id}*{PxFileConstants.FILE_ENDING}",
+                                SearchOption.AllDirectories);
+
+                            if (matchingFiles.Length > 0)
+                            {
+                                path = matchingFiles[0];
+                            }
                         }
                     }
-                }
-                
-                return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+                    return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+                }, ct);
             }
         }
 
         /// <inheritdoc/>
-        public async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file)
+        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default)
         {
-            using (logger.BeginScope(
+            using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
@@ -103,24 +109,24 @@ namespace PxApi.DataSources
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
-                logger.LogDebug("Getting last write time");
+                Logger.LogDebug("Getting last write time");
                 
                 // Use the FilePath property if it exists and points to a valid file
                 if (!string.IsNullOrEmpty(file.FilePath) && File.Exists(file.FilePath))
                 {
-                    return await Task.Run(() => File.GetLastWriteTimeUtc(file.FilePath));
+                    return await Task.Run(() => File.GetLastWriteTimeUtc(file.FilePath), ct);
                 }
                 
                 // Fall back to constructing the path from components
                 string path = Path.Combine(rootPath, file.DataBase.Id, file.Id);
-                return await Task.Run(() => File.GetLastWriteTimeUtc(path));
+                return await Task.Run(() => File.GetLastWriteTimeUtc(path), ct);
             }
         }
 
         /// <inheritdoc/>
-        public Task<Stream> TryReadAuxiliaryFileAsync(string relativePath)
+        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct = default)
         {
-            using (logger.BeginScope(new Dictionary<string, object>
+            using (Logger.BeginScope(new Dictionary<string, object>
             {
                 [LoggerConsts.DB_ID] = DataBase.Id,
                 [LoggerConsts.CONTROLLER] = nameof(MountedDataBaseConnector),
@@ -128,21 +134,47 @@ namespace PxApi.DataSources
                 [LoggerConsts.AUXILIARY_PATH] = relativePath
             }))
             {
-                string dbRoot = Path.Combine(rootPath, DataBase.Id);
+                string dbRoot = NormalizeDirectoryPath(Path.Combine(_normalizedRootPath, DataBase.Id));
                 string fullPath = Path.GetFullPath(Path.Combine(dbRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)));
-                if (!fullPath.StartsWith(dbRoot))
+                if (!IsWithinDirectory(fullPath, dbRoot))
                 {
-                    logger.LogWarning("Aux file path escaped database root");
+                    Logger.LogWarning("Aux file path escaped database root");
                     throw new UnauthorizedAccessException("Auxiliary file path escaped database root.");
                 }
-                if (!File.Exists(fullPath))
+
+                return await Task.Run(() =>
                 {
-                    logger.LogWarning("Aux file {AuxFile} not found", fullPath);
-                    throw new FileNotFoundException("Auxiliary file not found", fullPath);
-                }
-                Stream s = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                return Task.FromResult(s);
+                    if (!File.Exists(fullPath))
+                    {
+                        Logger.LogWarning("Aux file {AuxFile} not found", fullPath);
+                        throw new FileNotFoundException("Auxiliary file not found", fullPath);
+                    }
+                    return new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                }, ct);
             }
+        }
+
+        /// <summary>
+        /// Normalizes a directory path to its full form with a trailing directory separator.
+        /// </summary>
+        internal static string NormalizeDirectoryPath(string path)
+        {
+            string fullPath = Path.GetFullPath(path);
+            if (!fullPath.EndsWith(Path.DirectorySeparatorChar))
+            {
+                fullPath += Path.DirectorySeparatorChar;
+            }
+            return fullPath;
+        }
+
+        /// <summary>
+        /// Checks whether the given path is within the specified directory using ordinal-ignore-case comparison
+        /// to handle case-insensitive file systems.
+        /// </summary>
+        internal static bool IsWithinDirectory(string path, string normalizedDirectory)
+        {
+            string fullPath = Path.GetFullPath(path);
+            return fullPath.StartsWith(normalizedDirectory, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

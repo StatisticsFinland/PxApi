@@ -23,8 +23,9 @@ namespace PxApi.OpenApi.DocumentFilters
                     AddFiltersParameterDescription(getOp);
                     AddFiltersParameterExamples(getOp);
                     AddResponseExamples(getOp);
-                    AppendAcceptHeaderNote(getOp);
+                    DocumentFilterUtilities.AppendAcceptHeaderNote(getOp);
                     ImproveLanguageParameter(getOp);
+                    DocumentFilterUtilities.CleanUpErrorResponses(getOp);
                 }
             }
         }
@@ -78,12 +79,6 @@ namespace PxApi.OpenApi.DocumentFilters
             {
                 filtersParam.Examples.Add(example.Key, example.Value);
             }
-        }
-
-        private static void AppendAcceptHeaderNote(OpenApiOperation operation)
-        {
-            operation.Description = (operation.Description ?? string.Empty) +
-                " Accept header options: application/json (JSON-stat), text/csv (CSV), */* treated as JSON-stat. Unsupported media types yield 406.";
         }
 
         private static void ImproveLanguageParameter(OpenApiOperation operation)

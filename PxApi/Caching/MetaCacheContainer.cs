@@ -1,4 +1,4 @@
-﻿using Px.Utils.Models.Metadata;
+using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using System.Diagnostics.CodeAnalysis;
 
@@ -15,33 +15,8 @@ namespace PxApi.Caching
         /// </summary>
         public Task<IReadOnlyMatrixMetadata> Metadata { get; private init; } = meta;
 
-        /// <summary>
-        /// Gets or sets the offset of the data section within the related file.
-        /// </summary>
-        /// <remarks>
-        /// Once set to non-null value this property can not be changed again. Trying to do so will cause an exception.
-        /// </remarks>
-        public long? DataSectionOffset { 
-            get => _dataSectionOffset; 
-            set
-            {
-                if(_dataSectionOffset is null)
-                {
-                    _dataSectionOffset = value;
-                }
-                else if (_dataSectionOffset != value)
-                {
-                    // Reasoning: If the offset would change from a numeric value to an other,
-                    // it would mean that the table has been updated and this meta entry is no longer valid.
-                    // Therefor trying to change this value if already set is always an indicator of an error.
-                    throw new InvalidOperationException("Invalid mutation attempt of a metadata cache entry detected.");
-                }
-            }
-        }
-
         private readonly Lock _listAccessLock = new();
         private readonly List<IMatrixMap> _relatedCachedData = [];
-        private long? _dataSectionOffset = null;
 
         /// <summary>
         /// Checks if the collection of related maps contains a map identical to the provided map.

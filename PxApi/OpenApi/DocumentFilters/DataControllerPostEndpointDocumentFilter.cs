@@ -23,7 +23,8 @@ namespace PxApi.OpenApi.DocumentFilters
                     AddComprehensiveRequestBodyExamples(postOp);
                     AddResponseExamples(postOp);
                     RefineLanguageParameter(postOp);
-                    AppendAcceptHeaderNote(postOp);
+                    DocumentFilterUtilities.AppendAcceptHeaderNote(postOp);
+                    DocumentFilterUtilities.CleanUpErrorResponses(postOp);
                 }
             }
 
@@ -87,12 +88,6 @@ namespace PxApi.OpenApi.DocumentFilters
             {
                 langParam.Description = "Optional language code (ISO639-1). Defaults to table's default language. Must be one of the table's AvailableLanguages.";
             }
-        }
-
-        private static void AppendAcceptHeaderNote(OpenApiOperation operation)
-        {
-            operation.Description = (operation.Description ?? string.Empty) +
-                " Accept header options: application/json (JSON-stat), text/csv (CSV), */* treated as JSON-stat. Unsupported media types yield 406.";
         }
     }
 }

@@ -1,19 +1,18 @@
+using Px.Utils.Language;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Metadata;
 using Px.Utils.PxFile.Data;
-using Px.Utils.PxFile.Metadata;
+using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Models;
 using System.Collections.Immutable;
-using System.Text;
-using Px.Utils.Language;
 using System.Text.Json;
-using PxApi.Configuration;
+using System.Text;
 
 namespace PxApi.Caching
 {
     /// <inheritdoc/>
-    public class CachedDataSource(IDataBaseConnectorFactory dbConnectorFactory, DatabaseCache cache) : ICachedDataSource
+    public class CachedDataSource(IDataBaseConnectorFactory dbConnectorFactory, DatabaseCache cache, ILogger<CachedDataSource> logger) : ICachedDataSource
     {
         private const string GROUPINGS_FILE = "groupings.json"; // Root level file listing groupings meta
         private const string GROUP_ALIAS_PREFIX = "Alias_"; // Files like Alias_fi.txt inside group folder
@@ -24,7 +23,7 @@ namespace PxApi.Caching
                 db => db.CacheConfig
             );
 
-        private sealed record GroupingFileModel(string code, Dictionary<string, string> name);
+        private sealed record GroupingFileModel(string Code, Dictionary<string, string> Name);
 
         /// <inheritdoc/>
         public DataBaseRef? GetDataBaseReference(string dbId)
@@ -44,60 +43,65 @@ namespace PxApi.Caching
         }
 
         /// <inheritdoc/>
-        public async Task<ImmutableSortedDictionary<string, PxFileRef>> GetFileListCachedAsync(DataBaseRef dataBase)
+        public async Task<ImmutableSortedDictionary<string, PxFileRef>> GetFileListCachedAsync(DataBaseRef dataBase, CancellationToken ct = default)
         {
             if (cache.TryGetFileList(dataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? files))
             {
+                logger.LogDebug("File list cache hit.");
                 return await files!;
             }
 
+            logger.LogDebug("File list cache miss. Reading from database.");
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(dataBase);
-            Task<ImmutableSortedDictionary<string, PxFileRef>> fileListTask = dbConnector.GetAllFilesAsync().ContinueWith(t =>
-            {
-                Dictionary<string, PxFileRef> fileDict = [];
-                foreach (string file in t.Result)
+            Task<ImmutableSortedDictionary<string, PxFileRef>> fileListTask = dbConnector.GetAllFilesAsync(ct)
+                .ContinueWith(t =>
                 {
-                    PxFileRef fileRef = PxFileRef.CreateFromPath(file, dbConnector.DataBase);
-                    fileDict.TryAdd(fileRef.Id, fileRef);
-                }
-                return fileDict.ToImmutableSortedDictionary();
-            });
+                    Dictionary<string, PxFileRef> fileDict = [];
+                    foreach (string file in t.Result)
+                    {
+                        PxFileRef fileRef = PxFileRef.CreateFromPath(file, dbConnector.DataBase);
+                        fileDict.TryAdd(fileRef.Id, fileRef);
+                    }
+                    return fileDict.ToImmutableSortedDictionary();
+                });
 
             cache.SetFileList(dataBase, fileListTask);
             return await fileListTask;
         }
 
         /// <inheritdoc/>
-        public async Task<PxFileRef?> GetFileReferenceCachedAsync(string fileId, DataBaseRef db)
+        public async Task<PxFileRef?> GetFileReferenceCachedAsync(string fileId, DataBaseRef db, CancellationToken ct = default)
         {
-            ImmutableSortedDictionary<string, PxFileRef> files = await GetFileListCachedAsync(db);
+            ImmutableSortedDictionary<string, PxFileRef> files = await GetFileListCachedAsync(db, ct);
             if (files.TryGetValue(fileId, out PxFileRef file)) return file;
             return null;
         }
 
         /// <inheritdoc/>
-        public async Task<IReadOnlyMatrixMetadata> GetMetadataCachedAsync(PxFileRef pxFile)
+        public async Task<IReadOnlyMatrixMetadata> GetMetadataCachedAsync(PxFileRef pxFile, CancellationToken ct = default)
         {
-            MetaCacheContainer container = await GetMetaContainer(pxFile);
+            MetaCacheContainer container = await GetMetaContainer(pxFile, ct);
             return await container.Metadata;
         }
 
         /// <inheritdoc/>
-        public async Task<IReadOnlyList<TableGroup>> GetGroupingsCachedAsync(PxFileRef pxFile)
+        public async Task<IReadOnlyList<TableGroup>> GetGroupingsCachedAsync(PxFileRef pxFile, CancellationToken ct = default)
         {
             if (cache.TryGetGroupings(pxFile, out Task<IReadOnlyList<TableGroup>>? cachedTask))
             {
+                logger.LogDebug("Groupings cache hit.");
                 return await cachedTask!;
             }
 
+            logger.LogDebug("Groupings cache miss. Reading from database.");
             IDataBaseConnector connector = dbConnectorFactory.GetConnector(pxFile.DataBase);
-            Task<IReadOnlyList<TableGroup>> buildTask = BuildGroupingsAsync(pxFile, connector);
+            Task<IReadOnlyList<TableGroup>> buildTask = BuildGroupingsAsync(pxFile, connector, ct);
             cache.SetGroupings(pxFile, buildTask);
             return await buildTask;
         }
 
         /// <inheritdoc/>
-        public async Task<MultilanguageString> GetDatabaseNameAsync(DataBaseRef dataBase, string folderRelativePath)
+        public async Task<MultilanguageString> GetDatabaseNameAsync(DataBaseRef dataBase, string folderRelativePath, CancellationToken ct = default)
         {
             if (cache.TryGetDatabaseName(dataBase, out Task<MultilanguageString>? cachedName))
             {
@@ -105,41 +109,28 @@ namespace PxApi.Caching
             }
 
             IDataBaseConnector connector = dbConnectorFactory.GetConnector(dataBase);
-            Task<MultilanguageString> buildTask = ReadAliasNameAsync(folderRelativePath, connector);
+            Task<MultilanguageString> buildTask = ReadAliasNameAsync(folderRelativePath, connector, ct);
             cache.SetDatabaseName(dataBase, buildTask);
             return await buildTask;
         }
 
         /// <inheritdoc/>
-        public async Task<string> GetSingleStringValueAsync(string key, PxFileRef file)
-        {
-            IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(file.DataBase);
-            using Stream fileStream = await dbConnector.ReadPxFileAsync(file);
-            PxFileMetadataReader reader = new();
-            Encoding encoding = await reader.GetEncodingAsync(fileStream);
-
-            if (fileStream.CanSeek) fileStream.Seek(0, SeekOrigin.Begin);
-            else throw new InvalidOperationException("Not able to seek in the filestream");
-
-            IAsyncEnumerable<KeyValuePair<string, string>> metaEntries = reader.ReadMetadataAsync(fileStream, encoding);
-            return (await metaEntries.FirstAsync(pair => pair.Key == key)).Value;
-        }
-
-        /// <inheritdoc/>
-        public async Task<DoubleDataValue[]> GetDataCachedAsync(PxFileRef pxFile, IMatrixMap map)
+        public async Task<DoubleDataValue[]> GetDataCachedAsync(PxFileRef pxFile, IMatrixMap map, CancellationToken ct = default)
         {
             if (cache.TryGetData(map, out Task<DoubleDataValue[]>? data, out DateTime? cached))
             {
-                if (await CheckCacheValidity(pxFile, cached!.Value))
+                if (await CheckCacheValidity(pxFile, cached!.Value, ct))
                 {
+                    logger.LogDebug("Data cache exact hit.");
                     return await data!;
                 }
                 cache.TryRemoveMeta(pxFile);
             }
             else if (cache.TryGetDataSuperset(pxFile, map, out IMatrixMap? superMap, out Task<DoubleDataValue[]>? superData, out cached))
             {
-                if (await CheckCacheValidity(pxFile, cached!.Value))
+                if (await CheckCacheValidity(pxFile, cached!.Value, ct))
                 {
+                    logger.LogDebug("Data cache superset hit.");
                     DataIndexer indexer = new(superMap!, map);
                     DoubleDataValue[] result = new DoubleDataValue[indexer.DataLength];
                     DoubleDataValue[] superDataArray = await superData!;
@@ -151,12 +142,10 @@ namespace PxApi.Caching
                 cache.TryRemoveMeta(pxFile);
             }
 
+            logger.LogDebug("Data cache miss. Reading from database.");
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
-            MetaCacheContainer metaContainer = await GetMetaContainer(pxFile);
-            PxFileReader reader = new(dbConnector);
-            metaContainer.DataSectionOffset ??= await reader.GetDataSectionOffsetAsync(pxFile);
-
-            Task<DoubleDataValue[]> dataTask = reader.ReadDataAsync(pxFile, metaContainer.DataSectionOffset.Value, map, await metaContainer.Metadata);
+            MetaCacheContainer metaContainer = await GetMetaContainer(pxFile, ct);
+            Task<DoubleDataValue[]> dataTask = dbConnector.ReadDataAsync(pxFile, map, await metaContainer.Metadata, ct);
             cache.SetData(pxFile, new MatrixMap([.. map.DimensionMaps]), dataTask);
             return await dataTask;
         }
@@ -192,26 +181,27 @@ namespace PxApi.Caching
             cache.ClearLastUpdatedCache(file);
         }
 
-        private async Task<MetaCacheContainer> GetMetaContainer(PxFileRef pxFile)
+        private async Task<MetaCacheContainer> GetMetaContainer(PxFileRef pxFile, CancellationToken ct = default)
         {
             if (cache.TryGetMetadata(pxFile, out MetaCacheContainer? metaContainer) &&
-                await CheckCacheValidity(pxFile, metaContainer!.CachedUtc))
+                await CheckCacheValidity(pxFile, metaContainer!.CachedUtc, ct))
             {
+                logger.LogDebug("Metadata cache hit.");
                 return metaContainer!;
             }
 
+            logger.LogDebug("Metadata cache miss. Reading from database.");
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
-            PxFileReader reader = new(dbConnector);
-            Task<IReadOnlyMatrixMetadata> meta = reader.ReadMetadataAsync(pxFile);
+            Task<IReadOnlyMatrixMetadata> meta = dbConnector.ReadMetadataAsync(pxFile, ct);
             metaContainer = new MetaCacheContainer(meta);
             cache.SetMetadata(pxFile, metaContainer);
             return metaContainer;
         }
 
-        private async Task<bool> CheckCacheValidity(PxFileRef file, DateTime cachedUtc)
+        private async Task<bool> CheckCacheValidity(PxFileRef file, DateTime cachedUtc, CancellationToken ct = default)
         {
             int? revalidationInterval = cacheConfigs[file.DataBase.Id].RevalidationIntervalMs;
-            if (revalidationInterval is null || revalidationInterval ==0) return true;
+            if (revalidationInterval is null || revalidationInterval == 0) return true;
 
             if (cache.TryGetLastUpdated(file, out Task<DateTime>? cachedTask))
             {
@@ -219,30 +209,31 @@ namespace PxApi.Caching
             }
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(file.DataBase);
-            Task<DateTime> lastModified = dbConnector.GetLastWriteTimeAsync(file);
+            Task<DateTime> lastModified = dbConnector.GetLastWriteTimeAsync(file, ct);
             cache.SetLastUpdated(file, lastModified);
             return cachedUtc > await lastModified;
         }
 
-        private static async Task<IReadOnlyList<TableGroup>> BuildGroupingsAsync(PxFileRef pxFile, IDataBaseConnector connector)
+        private static async Task<IReadOnlyList<TableGroup>> BuildGroupingsAsync(PxFileRef pxFile, IDataBaseConnector connector, CancellationToken ct = default)
         {
             try
             {
-                using Stream groupingStream = await connector.TryReadAuxiliaryFileAsync(GROUPINGS_FILE);
-                GroupingFileModel? groupingModel = await JsonSerializer.DeserializeAsync<GroupingFileModel>(groupingStream);
+                using Stream groupingStream = await connector.TryReadAuxiliaryFileAsync(GROUPINGS_FILE, ct);
+                JsonSerializerOptions converterOptions = GlobalJsonConverterOptions.Default;
+                GroupingFileModel? groupingModel = await JsonSerializer.DeserializeAsync<GroupingFileModel>(groupingStream, converterOptions, ct);
                 string? fileDirName = Path.GetDirectoryName(pxFile.FilePath)?
                     .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)[^1];
                 if (groupingModel is null || fileDirName is null) return [];
 
                 // Reuse alias reading logic
-                MultilanguageString groupNameAliases = await ReadAliasNameAsync(fileDirName,connector);
+                MultilanguageString groupNameAliases = await ReadAliasNameAsync(fileDirName, connector, ct);
 
-                MultilanguageString groupingName = new(groupingModel.name);
+                MultilanguageString groupingName = new(groupingModel.Name);
                 TableGroup group = new()
                 {
                     Code = fileDirName,
                     Name = groupNameAliases,
-                    GroupingCode = groupingModel.code,
+                    GroupingCode = groupingModel.Code,
                     GroupingName = groupingName,
                     Links = []
                 };
@@ -257,15 +248,15 @@ namespace PxApi.Caching
         }
 
         // Reads alias files (Alias_{lang}.txt) from a folder and builds a MultilanguageString from the first line of each file.
-        private static async Task<MultilanguageString> ReadAliasNameAsync(string folderRelativePath, IDataBaseConnector connector)
+        private static async Task<MultilanguageString> ReadAliasNameAsync(string folderRelativePath, IDataBaseConnector connector, CancellationToken ct = default)
         {
             Dictionary<string, string> translations = new(StringComparer.OrdinalIgnoreCase);
             foreach (string lang in new string[] { "fi", "sv", "en" })
             {
                 string aliasFilePath = Path.Combine(folderRelativePath, GROUP_ALIAS_PREFIX + lang + GROUP_ALIAS_SUFFIX);
-                using Stream aliasStream = await connector.TryReadAuxiliaryFileAsync(aliasFilePath);
+                using Stream aliasStream = await connector.TryReadAuxiliaryFileAsync(aliasFilePath, ct);
                 using StreamReader sr = new(aliasStream, Encoding.UTF8, true);
-                string? alias = await sr.ReadLineAsync();
+                string? alias = await sr.ReadLineAsync(ct);
                 if (!string.IsNullOrWhiteSpace(alias))
                 {
                     translations[lang] = alias.Trim();

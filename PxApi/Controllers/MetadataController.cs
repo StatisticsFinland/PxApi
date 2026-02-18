@@ -34,9 +34,9 @@ namespace PxApi.Controllers
         [OperationId("getTableMeta")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(JsonStat2), 200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
+        [ProducesResponseType(typeof(string), 400)]
+        [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(string), 500)]
         public async Task<ActionResult<JsonStat2>> GetTableMetadataById(
             [FromRoute] string database,
             [FromRoute] string table,
@@ -91,11 +91,13 @@ namespace PxApi.Controllers
         /// <response code="200">Resource exists.</response>
         /// <response code="400">Requested language not available.</response>
         /// <response code="404">Database or table not found.</response>
+        /// <response code="500">Unexpected server error.</response>
         [HttpHead("{database}/{table}")]
         [OperationId("headTableMeta")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
         public async Task<IActionResult> HeadMetadataAsync(string database, string table, string? lang = null)
         {
             DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
@@ -115,9 +117,11 @@ namespace PxApi.Controllers
         /// <param name="database">Identifier of the database containing the table.</param>
         /// <param name="table">Identifier of the table.</param>
         /// <response code="200">Returns allowed methods in the Allow header.</response>
+        /// <response code="500">Unexpected server error.</response>
         [HttpOptions("{database}/{table}")]
         [OperationId("optionsTableMeta")]
         [ProducesResponseType(200)]
+        [ProducesResponseType(500)]
         public IActionResult OptionsMetadata(string database, string table)
         {
             Response.Headers.Allow = "GET,HEAD,OPTIONS";
