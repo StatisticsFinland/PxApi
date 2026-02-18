@@ -23,9 +23,9 @@ namespace PxApi.OpenApi.DocumentFilters
                     AddFiltersParameterDescription(getOp);
                     AddFiltersParameterExamples(getOp);
                     AddResponseExamples(getOp);
-                    AppendAcceptHeaderNote(getOp);
+                    DocumentFilterUtilities.AppendAcceptHeaderNote(getOp);
                     ImproveLanguageParameter(getOp);
-                    CleanUpErrorResponses(getOp);
+                    DocumentFilterUtilities.CleanUpErrorResponses(getOp);
                 }
             }
         }
@@ -81,38 +81,12 @@ namespace PxApi.OpenApi.DocumentFilters
             }
         }
 
-        private static void AppendAcceptHeaderNote(OpenApiOperation operation)
-        {
-            operation.Description = (operation.Description ?? string.Empty) +
-                " Accept header options: application/json (JSON-stat), text/csv (CSV), */* treated as JSON-stat. Unsupported media types yield 406.";
-        }
-
         private static void ImproveLanguageParameter(OpenApiOperation operation)
         {
             OpenApiParameter? langParam = operation.Parameters?.FirstOrDefault(p => p.Name == "lang");
             if (langParam != null)
             {
                 langParam.Description = "Optional language code (ISO 639-1). Defaults to table's default language. Must be one of the table's AvailableLanguages.";
-            }
-        }
-
-        /// <summary>
-        /// Removes the text/csv content type from error responses and clears content from the 406 response since it returns no body.
-        /// </summary>
-        private static void CleanUpErrorResponses(OpenApiOperation operation)
-        {
-            foreach (KeyValuePair<string, OpenApiResponse> response in operation.Responses)
-            {
-                if (response.Key == "200") continue;
-
-                if (response.Key == "406")
-                {
-                    response.Value.Content.Clear();
-                }
-                else
-                {
-                    response.Value.Content.Remove("text/csv");
-                }
             }
         }
     }
