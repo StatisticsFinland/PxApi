@@ -7,6 +7,8 @@ namespace PxApi.UnitTests.ConfigurationTests
     [TestFixture]
     public class ApplicationInsightsConfigTests
     {
+        private const string EnvVarName = "TEST_APPLICATIONINSIGHTS_CONNECTION_STRING";
+
         [Test]
         public void Constructor_WhenNoConfigurationProvided_ShouldBeDisabledWithDefaults()
         {
@@ -18,16 +20,16 @@ namespace PxApi.UnitTests.ConfigurationTests
             IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
             // Act
-            ApplicationInsightsConfig config = new(section);
+            ApplicationInsightsConfig config = new(section, EnvVarName);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.IsEnabled, Is.False);
                 Assert.That(config.ConnectionString, Is.Null);
                 Assert.That(config.MinimumLevel, Is.EqualTo(LogLevel.Information));
                 Assert.That(config.EnableAdaptiveSampling, Is.False);
-            });
+            }
         }
 
         [Test]
@@ -44,26 +46,25 @@ namespace PxApi.UnitTests.ConfigurationTests
             IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
             // Act
-            ApplicationInsightsConfig config = new(section);
+            ApplicationInsightsConfig config = new(section, EnvVarName);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.IsEnabled, Is.True);
                 Assert.That(config.ConnectionString, Is.EqualTo("InstrumentationKey=test-key;IngestionEndpoint=https://test.com"));
                 Assert.That(config.MinimumLevel, Is.EqualTo(LogLevel.Information));
                 Assert.That(config.EnableAdaptiveSampling, Is.False);
-            });
+            }
         }
 
         [Test]
         public void Constructor_WhenEnvironmentVariableSet_ShouldUseEnvironmentVariable()
         {
             // Arrange
-            const string envVarName = "APPLICATIONINSIGHTS_CONNECTION_STRING";
             const string envConnectionString = "InstrumentationKey=env-key;IngestionEndpoint=https://test.com/env";
 
-            Environment.SetEnvironmentVariable(envVarName, envConnectionString);
+            Environment.SetEnvironmentVariable(EnvVarName, envConnectionString);
 
             try
             {
@@ -77,18 +78,18 @@ namespace PxApi.UnitTests.ConfigurationTests
                 IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
                 // Act
-                ApplicationInsightsConfig config = new(section);
+                ApplicationInsightsConfig config = new(section, EnvVarName);
 
                 // Assert - Environment variable should take priority
-                Assert.Multiple(() =>
+                using (Assert.EnterMultipleScope())
                 {
                     Assert.That(config.IsEnabled, Is.True);
                     Assert.That(config.ConnectionString, Is.EqualTo(envConnectionString));
-                });
+                }
             }
             finally
             {
-                Environment.SetEnvironmentVariable(envVarName, null);
+                Environment.SetEnvironmentVariable(EnvVarName, null);
             }
         }
 
@@ -96,10 +97,9 @@ namespace PxApi.UnitTests.ConfigurationTests
         public void Constructor_WhenOnlyEnvironmentVariableSet_ShouldUseEnvironmentVariable()
         {
             // Arrange
-            const string envVarName = "APPLICATIONINSIGHTS_CONNECTION_STRING";
             const string envConnectionString = "InstrumentationKey=env-only-key;IngestionEndpoint=https://env-only.com";
 
-            Environment.SetEnvironmentVariable(envVarName, envConnectionString);
+            Environment.SetEnvironmentVariable(EnvVarName, envConnectionString);
 
             try
             {
@@ -110,18 +110,18 @@ namespace PxApi.UnitTests.ConfigurationTests
                 IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
                 // Act
-                ApplicationInsightsConfig config = new(section);
+                ApplicationInsightsConfig config = new(section, EnvVarName);
 
                 // Assert
-                Assert.Multiple(() =>
+                using (Assert.EnterMultipleScope())
                 {
                     Assert.That(config.IsEnabled, Is.True);
                     Assert.That(config.ConnectionString, Is.EqualTo(envConnectionString));
-                });
+                }
             }
             finally
             {
-                Environment.SetEnvironmentVariable(envVarName, null);
+                Environment.SetEnvironmentVariable(EnvVarName, null);
             }
         }
 
@@ -139,14 +139,14 @@ namespace PxApi.UnitTests.ConfigurationTests
             IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
             // Act
-            ApplicationInsightsConfig config = new(section);
+            ApplicationInsightsConfig config = new(section, EnvVarName);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.IsEnabled, Is.False);
                 Assert.That(config.ConnectionString, Is.EqualTo(""));
-            });
+            }
         }
 
         [Test]
@@ -164,7 +164,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
             // Act
-            ApplicationInsightsConfig config = new(section);
+            ApplicationInsightsConfig config = new(section, EnvVarName);
 
             // Assert
             Assert.That(config.MinimumLevel, Is.EqualTo(LogLevel.Debug));
@@ -185,7 +185,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
             // Act
-            ApplicationInsightsConfig config = new(section);
+            ApplicationInsightsConfig config = new(section, EnvVarName);
 
             // Assert
             Assert.That(config.MinimumLevel, Is.EqualTo(LogLevel.Information));
@@ -206,7 +206,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
             // Act
-            ApplicationInsightsConfig config = new(section);
+            ApplicationInsightsConfig config = new(section, EnvVarName);
 
             // Assert
             Assert.That(config.EnableAdaptiveSampling, Is.True);
@@ -228,16 +228,16 @@ namespace PxApi.UnitTests.ConfigurationTests
             IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
             // Act
-            ApplicationInsightsConfig config = new(section);
+            ApplicationInsightsConfig config = new(section, EnvVarName);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.IsEnabled, Is.True);
                 Assert.That(config.ConnectionString, Is.EqualTo("InstrumentationKey=full-test-key"));
                 Assert.That(config.MinimumLevel, Is.EqualTo(LogLevel.Warning));
                 Assert.That(config.EnableAdaptiveSampling, Is.True);
-            });
+            }
         }
 
         [TestCase("Debug", LogLevel.Debug)]
@@ -261,7 +261,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
             // Act
-            ApplicationInsightsConfig config = new(section);
+            ApplicationInsightsConfig config = new(section, EnvVarName);
 
             // Assert
             Assert.That(config.MinimumLevel, Is.EqualTo(expectedLevel));
