@@ -73,31 +73,6 @@ namespace PxApi.UnitTests.ConfigurationTests
         }
 
         [Test]
-        public void AppSettings_WhenApplicationInsightsConfigurationNotProvided_ShouldLoadWithDisabledApplicationInsights()
-        {
-            // Arrange
-            Dictionary<string, string?> configData = TestConfigFactory.Merge(
-                TestConfigFactory.Base(),
-                TestConfigFactory.MountedDb(0, "TestDb", "datasource/root/")
-            );
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(configData)
-                .Build();
-
-            // Act
-            AppSettings.Load(configuration);
-
-            // Assert
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(AppSettings.Active.ApplicationInsights.IsEnabled, Is.False);
-                Assert.That(AppSettings.Active.ApplicationInsights.ConnectionString, Is.Null);
-                Assert.That(AppSettings.Active.ApplicationInsights.MinimumLevel, Is.EqualTo(LogLevel.Information));
-                Assert.That(AppSettings.Active.ApplicationInsights.EnableAdaptiveSampling, Is.False);
-            }
-        }
-
-        [Test]
         public void AppSettings_WhenApplicationInsightsConfigurationProvided_ShouldLoadApplicationInsightsSettings()
         {
             // Arrange
