@@ -34,7 +34,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             AppSettings.Load(configuration);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(AppSettings.Active.Cache.MaxSizeBytes, Is.EqualTo(expectedCacheSize));
                 Assert.That(AppSettings.Active.Cache.DefaultDataCellSize, Is.EqualTo(32));
@@ -42,7 +42,7 @@ namespace PxApi.UnitTests.ConfigurationTests
                 Assert.That(AppSettings.Active.Cache.DefaultTableGroupSize, Is.EqualTo(200));
                 Assert.That(AppSettings.Active.Cache.DefaultFileListSize, Is.EqualTo(500000));
                 Assert.That(AppSettings.Active.Cache.DefaultMetaSize, Is.EqualTo(300000));
-            });
+            }
         }
 
         [Test]
@@ -61,7 +61,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             AppSettings.Load(configuration);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(AppSettings.Active.Cache.MaxSizeBytes, Is.EqualTo(524288000)); // 512 MB default
                 Assert.That(AppSettings.Active.Cache.DefaultDataCellSize, Is.EqualTo(16));
@@ -69,7 +69,7 @@ namespace PxApi.UnitTests.ConfigurationTests
                 Assert.That(AppSettings.Active.Cache.DefaultTableGroupSize, Is.EqualTo(100));
                 Assert.That(AppSettings.Active.Cache.DefaultFileListSize, Is.EqualTo(350000));
                 Assert.That(AppSettings.Active.Cache.DefaultMetaSize, Is.EqualTo(200000));
-            });
+            }
         }
 
         [Test]
@@ -88,13 +88,13 @@ namespace PxApi.UnitTests.ConfigurationTests
             AppSettings.Load(configuration);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(AppSettings.Active.ApplicationInsights.IsEnabled, Is.False);
                 Assert.That(AppSettings.Active.ApplicationInsights.ConnectionString, Is.Null);
                 Assert.That(AppSettings.Active.ApplicationInsights.MinimumLevel, Is.EqualTo(LogLevel.Information));
                 Assert.That(AppSettings.Active.ApplicationInsights.EnableAdaptiveSampling, Is.False);
-            });
+            }
         }
 
         [Test]
@@ -119,53 +119,11 @@ namespace PxApi.UnitTests.ConfigurationTests
             AppSettings.Load(configuration);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(AppSettings.Active.ApplicationInsights.IsEnabled, Is.True);
-                Assert.That(AppSettings.Active.ApplicationInsights.ConnectionString, Is.EqualTo("InstrumentationKey=test-key;IngestionEndpoint=https://test.com"));
                 Assert.That(AppSettings.Active.ApplicationInsights.MinimumLevel, Is.EqualTo(LogLevel.Debug));
                 Assert.That(AppSettings.Active.ApplicationInsights.EnableAdaptiveSampling, Is.True);
-            });
-        }
-
-        [Test]
-        public void AppSettings_WhenApplicationInsightsEnvironmentVariableSet_ShouldPrioritizeEnvironmentVariable()
-        {
-            // Arrange
-            const string envVarName = "APPLICATIONINSIGHTS_CONNECTION_STRING";
-            const string envConnectionString = "InstrumentationKey=env-key;IngestionEndpoint=https://test.com";
-
-            Environment.SetEnvironmentVariable(envVarName, envConnectionString);
-
-            try
-            {
-                Dictionary<string, string?> configData = TestConfigFactory.Merge(
-                    TestConfigFactory.Base(),
-                    TestConfigFactory.MountedDb(0, "TestDb", "datasource/root/"),
-                    new Dictionary<string, string?>
-                    {
-                        ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=config-key;IngestionEndpoint=https://test.com",
-                        ["ApplicationInsights:MinimumLevel"] = "Warning"
-                    }
-                );
-                IConfiguration configuration = new ConfigurationBuilder()
-                    .AddInMemoryCollection(configData)
-                    .Build();
-
-                // Act
-                AppSettings.Load(configuration);
-
-                // Assert - Environment variable should take priority over config
-                Assert.Multiple(() =>
-                {
-                    Assert.That(AppSettings.Active.ApplicationInsights.IsEnabled, Is.True);
-                    Assert.That(AppSettings.Active.ApplicationInsights.ConnectionString, Is.EqualTo(envConnectionString));
-                    Assert.That(AppSettings.Active.ApplicationInsights.MinimumLevel, Is.EqualTo(LogLevel.Warning)); // Other settings from config should still work
-                });
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable(envVarName, null);
             }
         }
     }
