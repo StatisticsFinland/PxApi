@@ -80,7 +80,7 @@ namespace PxApi.UnitTests.ConfigurationTests
                 TestConfigFactory.MountedDb(0, "TestDb", "datasource/root/"),
                 new Dictionary<string, string?>
                 {
-                    ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=test-key;IngestionEndpoint=https://test.com"
+                    ["ApplicationInsights:TestConnectionString"] = "InstrumentationKey=test-key;IngestionEndpoint=https://test.com"
                 }
             );
             IConfiguration configuration = new ConfigurationBuilder()
@@ -88,7 +88,7 @@ namespace PxApi.UnitTests.ConfigurationTests
                 .Build();
 
             // Act
-            AppSettings.Load(configuration);
+            AppSettings.Load(configuration, configKeyName: "TestConnectionString");
 
             // Assert
             using (Assert.EnterMultipleScope())

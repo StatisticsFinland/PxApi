@@ -81,8 +81,9 @@ namespace PxApi.Configuration
         /// Private constructor that initializes the AppSettings from the provided configuration.
         /// </summary>
         /// <param name="configuration">The configuration to read settings from.</param>
+        /// <param name="configKeyName">Configuration key name for the Application Insights connection string (default: "ConnectionString").</param>
         /// <exception cref="InvalidOperationException">Thrown if required configuration values are missing.</exception>
-        private AppSettings(IConfiguration configuration)
+        private AppSettings(IConfiguration configuration, string configKeyName = "ConnectionString")
         {
             string rootUrlString = configuration.GetValue<string>(nameof(RootUrl)) 
                 ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(RootUrl)}");
@@ -103,7 +104,7 @@ namespace PxApi.Configuration
             Cache = new MemoryCacheConfig(configuration.GetSection(nameof(Cache)));
             OpenApi = new OpenApiConfig(configuration.GetSection(nameof(OpenApi)));
             Localization = new LocalizationConfig(configuration.GetSection(nameof(Localization)));
-            ApplicationInsights = new ApplicationInsightsConfig(configuration.GetSection(nameof(ApplicationInsights)));
+            ApplicationInsights = new ApplicationInsightsConfig(configuration.GetSection(nameof(ApplicationInsights)), configKeyName: configKeyName);
             BlobReadMode = new BlobReadModeConfig(configuration.GetSection(nameof(BlobReadMode)));
         }
 
@@ -112,9 +113,10 @@ namespace PxApi.Configuration
         /// The loaded settings can be accessed through the <see cref="Active"/> property.
         /// </summary>
         /// <param name="configuration">The configuration to load settings from.</param>
-        public static void Load(IConfiguration configuration)
+        /// <param name="configKeyName">Configuration key name for the Application Insights connection string (default: "ConnectionString").</param>
+        public static void Load(IConfiguration configuration, string configKeyName = "ConnectionString")
         {
-            _active = new AppSettings(configuration);
+            _active = new AppSettings(configuration, configKeyName);
         }
     }
 }
