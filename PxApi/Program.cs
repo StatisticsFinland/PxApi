@@ -1,6 +1,4 @@
-using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging.ApplicationInsights;
 using Microsoft.FeatureManagement;
 using Microsoft.OpenApi.Models;
 using NLog;
@@ -48,6 +46,26 @@ namespace PxApi
                 logger.Debug("Main called and logger initialized. Environment={Environment} AuditEnabled={AuditEnabled}",
                     builder.Environment.EnvironmentName,
                     builder.Configuration.GetValue<bool>("LogOptions:AuditLog:Enabled"));
+
+                // Configure Application Insights if connection string is available
+                ApplicationInsightsConfig aiConfig = AppSettings.Active.ApplicationInsights;
+                if (aiConfig.IsEnabled)
+                {
+                    // Add Application Insights telemetry
+                    builder.Services.AddApplicationInsightsTelemetry();
+
+                    // Remove the default Application Insights logger filter rule to allow
+                    // the log level to be controlled via the Logging:ApplicationInsights:LogLevel configuration section
+                    builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
+                    {
+                        LoggerFilterRule? defaultRule = options.Rules.FirstOrDefault(rule => rule.ProviderName
+                            == nameof(Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider));
+                        if (defaultRule is not null)
+                        {
+                            options.Rules.Remove(defaultRule);
+                        }
+                    });
+                }
 
                 // Add services to the container.
                 AddServices(builder.Services);
@@ -97,23 +115,6 @@ namespace PxApi
         {
             // Add feature management first and API explorer conventions to control Swagger visibility
             serviceCollection.AddFeatureManagement();
-
-            // Configure Application Insights if connection string is available
-            ApplicationInsightsConfig aiConfig = AppSettings.Active.ApplicationInsights;
-            if (aiConfig.IsEnabled)
-            {
-                ApplicationInsightsServiceOptions aiOptions = new()
-                {
-                    ConnectionString = aiConfig.ConnectionString,
-                    EnableAdaptiveSampling = aiConfig.EnableAdaptiveSampling
-                };
-                serviceCollection.AddApplicationInsightsTelemetry(aiOptions);
-
-                serviceCollection.Configure<LoggerFilterOptions>(options =>
-                {
-                    options.AddFilter<ApplicationInsightsLoggerProvider>("", aiConfig.MinimumLevel);
-                });
-            }
 
             serviceCollection.AddControllers(options =>
             {

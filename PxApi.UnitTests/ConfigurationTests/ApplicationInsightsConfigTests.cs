@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using PxApi.Configuration;
 
 namespace PxApi.UnitTests.ConfigurationTests
@@ -27,8 +26,6 @@ namespace PxApi.UnitTests.ConfigurationTests
             {
                 Assert.That(config.IsEnabled, Is.False);
                 Assert.That(config.ConnectionString, Is.Null);
-                Assert.That(config.MinimumLevel, Is.EqualTo(LogLevel.Information));
-                Assert.That(config.EnableAdaptiveSampling, Is.False);
             }
         }
 
@@ -53,8 +50,6 @@ namespace PxApi.UnitTests.ConfigurationTests
             {
                 Assert.That(config.IsEnabled, Is.True);
                 Assert.That(config.ConnectionString, Is.EqualTo("InstrumentationKey=test-key;IngestionEndpoint=https://test.com"));
-                Assert.That(config.MinimumLevel, Is.EqualTo(LogLevel.Information));
-                Assert.That(config.EnableAdaptiveSampling, Is.False);
             }
         }
 
@@ -147,124 +142,6 @@ namespace PxApi.UnitTests.ConfigurationTests
                 Assert.That(config.IsEnabled, Is.False);
                 Assert.That(config.ConnectionString, Is.EqualTo(""));
             }
-        }
-
-        [Test]
-        public void Constructor_WhenMinimumLevelSet_ShouldUseConfiguredLevel()
-        {
-            // Arrange
-            Dictionary<string, string?> configData = new()
-            {
-                ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=test-key",
-                ["ApplicationInsights:MinimumLevel"] = "Debug"
-            };
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(configData)
-                .Build();
-            IConfigurationSection section = configuration.GetSection("ApplicationInsights");
-
-            // Act
-            ApplicationInsightsConfig config = new(section, EnvVarName);
-
-            // Assert
-            Assert.That(config.MinimumLevel, Is.EqualTo(LogLevel.Debug));
-        }
-
-        [Test]
-        public void Constructor_WhenInvalidMinimumLevel_ShouldUseDefaultInformation()
-        {
-            // Arrange
-            Dictionary<string, string?> configData = new()
-            {
-                ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=test-key",
-                ["ApplicationInsights:MinimumLevel"] = "InvalidLevel"
-            };
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(configData)
-                .Build();
-            IConfigurationSection section = configuration.GetSection("ApplicationInsights");
-
-            // Act
-            ApplicationInsightsConfig config = new(section, EnvVarName);
-
-            // Assert
-            Assert.That(config.MinimumLevel, Is.EqualTo(LogLevel.Information));
-        }
-
-        [Test]
-        public void Constructor_WhenAdaptiveSamplingEnabled_ShouldUseConfiguredValue()
-        {
-            // Arrange
-            Dictionary<string, string?> configData = new()
-            {
-                ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=test-key",
-                ["ApplicationInsights:EnableAdaptiveSampling"] = "true"
-            };
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(configData)
-                .Build();
-            IConfigurationSection section = configuration.GetSection("ApplicationInsights");
-
-            // Act
-            ApplicationInsightsConfig config = new(section, EnvVarName);
-
-            // Assert
-            Assert.That(config.EnableAdaptiveSampling, Is.True);
-        }
-
-        [Test]
-        public void Constructor_WhenAllSettingsProvided_ShouldUseAllConfiguredValues()
-        {
-            // Arrange
-            Dictionary<string, string?> configData = new()
-            {
-                ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=full-test-key",
-                ["ApplicationInsights:MinimumLevel"] = "Warning",
-                ["ApplicationInsights:EnableAdaptiveSampling"] = "true"
-            };
-            IConfiguration configuration = new ConfigurationBuilder()
-                 .AddInMemoryCollection(configData)
-                 .Build();
-            IConfigurationSection section = configuration.GetSection("ApplicationInsights");
-
-            // Act
-            ApplicationInsightsConfig config = new(section, EnvVarName);
-
-            // Assert
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(config.IsEnabled, Is.True);
-                Assert.That(config.ConnectionString, Is.EqualTo("InstrumentationKey=full-test-key"));
-                Assert.That(config.MinimumLevel, Is.EqualTo(LogLevel.Warning));
-                Assert.That(config.EnableAdaptiveSampling, Is.True);
-            }
-        }
-
-        [TestCase("Debug", LogLevel.Debug)]
-        [TestCase("Information", LogLevel.Information)]
-        [TestCase("Warning", LogLevel.Warning)]
-        [TestCase("Error", LogLevel.Error)]
-        [TestCase("Critical", LogLevel.Critical)]
-        [TestCase("debug", LogLevel.Debug)] // Case insensitive
-        [TestCase("INFORMATION", LogLevel.Information)] // Case insensitive
-        public void Constructor_WhenValidMinimumLevelProvided_ShouldParseCorrectly(string levelString, LogLevel expectedLevel)
-        {
-            // Arrange
-            Dictionary<string, string?> configData = new()
-            {
-                ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=test-key",
-                ["ApplicationInsights:MinimumLevel"] = levelString
-            };
-            IConfiguration configuration = new ConfigurationBuilder()
-                 .AddInMemoryCollection(configData)
-                 .Build();
-            IConfigurationSection section = configuration.GetSection("ApplicationInsights");
-
-            // Act
-            ApplicationInsightsConfig config = new(section, EnvVarName);
-
-            // Assert
-            Assert.That(config.MinimumLevel, Is.EqualTo(expectedLevel));
         }
     }
 }

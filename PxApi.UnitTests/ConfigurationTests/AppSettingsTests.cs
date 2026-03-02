@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using PxApi.Configuration;
 using PxApi.UnitTests.Utils;
 
@@ -81,9 +80,7 @@ namespace PxApi.UnitTests.ConfigurationTests
                 TestConfigFactory.MountedDb(0, "TestDb", "datasource/root/"),
                 new Dictionary<string, string?>
                 {
-                    ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=test-key;IngestionEndpoint=https://test.com",
-                    ["ApplicationInsights:MinimumLevel"] = "Debug",
-                    ["ApplicationInsights:EnableAdaptiveSampling"] = "true"
+                    ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=test-key;IngestionEndpoint=https://test.com"
                 }
             );
             IConfiguration configuration = new ConfigurationBuilder()
@@ -97,8 +94,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(AppSettings.Active.ApplicationInsights.IsEnabled, Is.True);
-                Assert.That(AppSettings.Active.ApplicationInsights.MinimumLevel, Is.EqualTo(LogLevel.Debug));
-                Assert.That(AppSettings.Active.ApplicationInsights.EnableAdaptiveSampling, Is.True);
+                Assert.That(AppSettings.Active.ApplicationInsights.ConnectionString, Is.EqualTo("InstrumentationKey=test-key;IngestionEndpoint=https://test.com"));
             }
         }
     }
