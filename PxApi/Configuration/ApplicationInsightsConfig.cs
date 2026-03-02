@@ -17,7 +17,7 @@ namespace PxApi.Configuration
         /// Initializes ApplicationInsights configuration from the provided configuration section.
         /// </summary>
         /// <param name="configurationSection">Configuration section containing ApplicationInsights settings.</param>
-        /// <param name="envVarName">Variable name where the connection string can be overridden (default: "APPLICATIONINSIGHTS_CONNECTION_STRING").</param>
+        /// <param name="envVarName">Optional environment variable key for the connection string, default is "APPLICATIONINSIGHTS_CONNECTION_STRING".</param>
         public ApplicationInsightsConfig(IConfigurationSection configurationSection, string envVarName = "APPLICATIONINSIGHTS_CONNECTION_STRING")
         {
             ConnectionString = Environment.GetEnvironmentVariable(envVarName)
