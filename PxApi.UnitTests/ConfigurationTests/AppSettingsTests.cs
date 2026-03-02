@@ -70,32 +70,5 @@ namespace PxApi.UnitTests.ConfigurationTests
                 Assert.That(AppSettings.Active.Cache.DefaultMetaSize, Is.EqualTo(200000));
             }
         }
-
-        [Test]
-        public void AppSettings_WhenApplicationInsightsConfigurationProvided_ShouldLoadApplicationInsightsSettings()
-        {
-            // Arrange
-            Dictionary<string, string?> configData = TestConfigFactory.Merge(
-                TestConfigFactory.Base(),
-                TestConfigFactory.MountedDb(0, "TestDb", "datasource/root/"),
-                new Dictionary<string, string?>
-                {
-                    ["ApplicationInsights:TestConnectionString"] = "InstrumentationKey=test-key;IngestionEndpoint=https://test.com"
-                }
-            );
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(configData)
-                .Build();
-
-            // Act
-            AppSettings.Load(configuration, configKeyName: "TestConnectionString");
-
-            // Assert
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(AppSettings.Active.ApplicationInsights.IsEnabled, Is.True);
-                Assert.That(AppSettings.Active.ApplicationInsights.ConnectionString, Is.EqualTo("InstrumentationKey=test-key;IngestionEndpoint=https://test.com"));
-            }
-        }
     }
 }

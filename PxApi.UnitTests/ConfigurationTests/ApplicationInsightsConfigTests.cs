@@ -7,7 +7,6 @@ namespace PxApi.UnitTests.ConfigurationTests
     public class ApplicationInsightsConfigTests
     {
         private const string EnvVarName = "TEST_APPLICATIONINSIGHTS_CONNECTION_STRING";
-        private const string ConfigKeyName = "TestConnectionString";
 
         [Test]
         public void Constructor_WhenNoConfigurationProvided_ShouldBeDisabledWithDefaults()
@@ -20,7 +19,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
             // Act
-            ApplicationInsightsConfig config = new(section, EnvVarName, ConfigKeyName);
+            ApplicationInsightsConfig config = new(section, EnvVarName);
 
             // Assert
             using (Assert.EnterMultipleScope())
@@ -36,7 +35,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["ApplicationInsights:TestConnectionString"] = "InstrumentationKey=test-key;IngestionEndpoint=https://test.com"
+                ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=test-key;IngestionEndpoint=https://test.com"
             };
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(configData)
@@ -44,7 +43,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
             // Act
-            ApplicationInsightsConfig config = new(section, EnvVarName, ConfigKeyName);
+            ApplicationInsightsConfig config = new(section, EnvVarName);
 
             // Assert
             using (Assert.EnterMultipleScope())
@@ -66,7 +65,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             {
                 Dictionary<string, string?> configData = new()
                 {
-                    ["ApplicationInsights:TestConnectionString"] = "InstrumentationKey=config-key;IngestionEndpoint=https://test.com/config"
+                    ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=config-key;IngestionEndpoint=https://test.com/config"
                 };
                 IConfiguration configuration = new ConfigurationBuilder()
                     .AddInMemoryCollection(configData)
@@ -74,7 +73,7 @@ namespace PxApi.UnitTests.ConfigurationTests
                 IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
                 // Act
-                ApplicationInsightsConfig config = new(section, EnvVarName, ConfigKeyName);
+                ApplicationInsightsConfig config = new(section, EnvVarName);
 
                 // Assert - Environment variable should take priority
                 using (Assert.EnterMultipleScope())
@@ -106,7 +105,7 @@ namespace PxApi.UnitTests.ConfigurationTests
                 IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
                 // Act
-                ApplicationInsightsConfig config = new(section, EnvVarName, ConfigKeyName);
+                ApplicationInsightsConfig config = new(section, EnvVarName);
 
                 // Assert
                 using (Assert.EnterMultipleScope())
@@ -127,7 +126,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             // Arrange
             Dictionary<string, string?> configData = new()
             {
-                ["ApplicationInsights:TestConnectionString"] = ""
+                ["ApplicationInsights:ConnectionString"] = ""
             };
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(configData)
@@ -135,7 +134,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             IConfigurationSection section = configuration.GetSection("ApplicationInsights");
 
             // Act
-            ApplicationInsightsConfig config = new(section, EnvVarName, ConfigKeyName);
+            ApplicationInsightsConfig config = new(section, EnvVarName);
 
             // Assert
             using (Assert.EnterMultipleScope())
