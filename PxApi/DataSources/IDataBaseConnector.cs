@@ -15,10 +15,10 @@ namespace PxApi.DataSources
         public DataBaseRef DataBase { get; }
 
         /// <summary>
-        /// Get paths of all Px files in the database.
+        /// Get references to all Px files available in the database.
         /// </summary>
         /// <returns>Task that resolves to an array of file paths.</returns>
-        public Task<string[]> GetAllFilesAsync(CancellationToken ct = default);
+        public Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default);
 
         /// <summary>
         /// Gets the last write time of a Px file.
@@ -51,11 +51,12 @@ namespace PxApi.DataSources
         /// Used for reading grouping metadata (e.g. groupings.json and Alias_{lang}.txt files).
         /// Throws <see cref="FileNotFoundException"/> if the file does not exist and <see cref="UnauthorizedAccessException"/> if the resolved path escapes the database root.
         /// </summary>
-        /// <param name="relativePath">Path relative to the database root. Uses '/' as separator.</param>
+        /// <param name="fileName">The name of the auxiliary file to read.</param>
+        /// <param name="hierarchy">Optional array of folder names representing the hierarchy under which the file is located, relative to the database root. Can be null or empty if the file is located directly under the database root.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <returns>A task resolving to an open readable <see cref="Stream"/>. Never null.</returns>
         /// <exception cref="FileNotFoundException">If the file does not exist.</exception>
         /// <exception cref="UnauthorizedAccessException">If the path resolves outside the database root.</exception>
-        public Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct = default);
+        public Task<Stream> TryReadAuxiliaryFileAsync(string fileName, string[]? hierarchy, CancellationToken ct = default);
     }
 }

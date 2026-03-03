@@ -24,13 +24,13 @@ namespace PxApi.DataSources
         protected abstract ILogger Logger { get; }
 
         /// <inheritdoc/>
-        public abstract Task<string[]> GetAllFilesAsync(CancellationToken ct = default);
+        public abstract Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default);
 
         /// <inheritdoc/>
         public abstract Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default);
 
         /// <inheritdoc/>
-        public abstract Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct = default);
+        public abstract Task<Stream> TryReadAuxiliaryFileAsync(string fileName, string[]? hierarchy, CancellationToken ct = default);
 
         /// <summary>
         /// Opens a stream for the given PX file.

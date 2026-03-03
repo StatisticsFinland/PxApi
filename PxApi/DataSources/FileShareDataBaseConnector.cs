@@ -26,7 +26,7 @@ namespace PxApi.DataSources
         protected override ILogger Logger => logger;
 
         /// <inheritdoc/>
-        public override async Task<string[]> GetAllFilesAsync(CancellationToken ct = default)
+        public override async Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -36,14 +36,14 @@ namespace PxApi.DataSources
                 }))
             {
                 Logger.LogDebug("Getting all files from file share {ShareName}", shareName);
-                List<string> fileNames = [];
+                List<PxFileRef> files = [];
 
-                ShareDirectoryClient rootDirectory = CreateShareClient().GetRootDirectoryClient();
+                ShareDirectoryClient dbDirectory = GetDatabaseDirectoryClient();
 
-                await ListAllFilesRecursivelyAsync(rootDirectory, string.Empty, fileNames, ct);
+                await ListAllFilesRecursivelyAsync(dbDirectory, [], files, dataBase, ct);
 
-                Logger.LogDebug("Found {Count} PX files in file share {ShareName}", fileNames.Count, shareName);
-                return [.. fileNames];
+                Logger.LogDebug("Found {Count} PX files in file share {ShareName}", files.Count, shareName);
+                return [.. files];
             }
         }
 
@@ -65,9 +65,9 @@ namespace PxApi.DataSources
                 }
 
                 Logger.LogDebug("Reading PX file {FileId} from file share", file.Id);
-                ShareDirectoryClient directoryClient = CreateShareClient().GetRootDirectoryClient();
-                ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id, ct);
-                if (fileClient == null || !await fileClient.ExistsAsync(ct))
+                ShareFileClient fileClient = GetFileClient(file.Id + PxFileConstants.FILE_ENDING, file.GetHierarchyLevels());
+
+                if (!await fileClient.ExistsAsync(ct))
                 {
                     Logger.LogError("PX file {FileId} not found in file share", file.Id);
                     throw new FileNotFoundException($"File {file.Id} not found in file share {shareName}");
@@ -89,9 +89,9 @@ namespace PxApi.DataSources
             {
                 Logger.LogDebug("Getting last write time for PX file {FileId} from file share", file.Id);
 
-                ShareDirectoryClient directoryClient = CreateShareClient().GetRootDirectoryClient();
-                ShareFileClient? fileClient = await FindPxFileAsync(directoryClient, file.Id, ct);
-                if (fileClient == null || !await fileClient.ExistsAsync(ct))
+                ShareFileClient fileClient = GetFileClient(file.Id + PxFileConstants.FILE_ENDING, file.GetHierarchyLevels());
+
+                if (!await fileClient.ExistsAsync(ct))
                 {
                     Logger.LogError("PX file {FileId} not found in file share", file.Id);
                     throw new FileNotFoundException($"File {file.Id} not found in file share {shareName}");
@@ -103,81 +103,77 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct = default)
+        public override async Task<Stream> TryReadAuxiliaryFileAsync(string fileName, string[]? hierarchy, CancellationToken ct = default)
         {
             using (Logger.BeginScope(new Dictionary<string, object>
             {
                 [LoggerConsts.DB_ID] = DataBase.Id,
                 [LoggerConsts.FUNCTION] = nameof(TryReadAuxiliaryFileAsync),
-                [LoggerConsts.AUXILIARY_PATH] = relativePath
+                [LoggerConsts.AUXILIARY_PATH] = fileName
             }))
             {
-                string normalized = relativePath.Replace('\\', '/');
-                ShareDirectoryClient root = CreateShareClient().GetRootDirectoryClient();
-                if (string.IsNullOrEmpty(normalized))
-                {
-                    Logger.LogWarning("Auxiliary path empty");
-                    throw new FileNotFoundException("Auxiliary path empty", normalized);
-                }
-                string[] parts = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
-                ShareDirectoryClient currentDir = root;
-                for (int i = 0; i < parts.Length - 1; i++)
-                {
-                    currentDir = currentDir.GetSubdirectoryClient(parts[i]);
-                }
-                ShareFileClient fileClient = currentDir.GetFileClient(parts[^1]);
+                ShareFileClient fileClient = GetFileClient(fileName, hierarchy);
+
                 if (!await fileClient.ExistsAsync(ct))
                 {
-                    Logger.LogWarning("Aux file {AuxFile} not found", normalized);
-                    throw new FileNotFoundException("Auxiliary file not found", normalized);
+                    Logger.LogWarning("Aux file {AuxFile} not found", fileName);
+                    throw new FileNotFoundException("Auxiliary file not found", fileName);
                 }
 
                 return await fileClient.OpenReadAsync(cancellationToken: ct);
             }
         }
 
-        private static async Task<ShareFileClient?> FindPxFileAsync(ShareDirectoryClient directory, string fileId, CancellationToken ct = default)
+        /// <summary>
+        /// Gets a <see cref="ShareFileClient"/> for the specified file, navigating through the database directory and optional hierarchy directories.
+        /// </summary>
+        /// <param name="fileName">The name of the file.</param>
+        /// <param name="hierarchy">Optional array of directory names leading to the file, relative to the database directory.</param>
+        /// <returns>A <see cref="ShareFileClient"/> for the specified file.</returns>
+        private ShareFileClient GetFileClient(string fileName, string[]? hierarchy)
         {
-            await foreach (ShareFileItem item in directory.GetFilesAndDirectoriesAsync(cancellationToken: ct))
+            ShareDirectoryClient directoryClient = GetDatabaseDirectoryClient();
+
+            if (hierarchy is not null)
             {
-                ct.ThrowIfCancellationRequested();
-                if (item.IsDirectory)
+                foreach (string folder in hierarchy)
                 {
-                    ShareDirectoryClient subDir = directory.GetSubdirectoryClient(item.Name);
-                    ShareFileClient? found = await FindPxFileAsync(subDir, fileId, ct);
-                    if (found != null)
-                    {
-                        return found;
-                    }
-                }
-                else if (item.Name.Equals(fileId + PxFileConstants.FILE_ENDING, StringComparison.OrdinalIgnoreCase))
-                {
-                    return directory.GetFileClient(item.Name);
+                    directoryClient = directoryClient.GetSubdirectoryClient(folder);
                 }
             }
-            return null;
+
+            return directoryClient.GetFileClient(fileName);
         }
 
-        private static async Task ListAllFilesRecursivelyAsync(ShareDirectoryClient directory, string path, List<string> fileNames, CancellationToken ct)
+        private static async Task ListAllFilesRecursivelyAsync(ShareDirectoryClient directory, string[] currentHierarchy, List<PxFileRef> files, DataBaseRef dataBase, CancellationToken ct)
         {
-            // List all files in current directory
             await foreach (ShareFileItem item in directory.GetFilesAndDirectoriesAsync(cancellationToken: ct))
             {
                 if (item.IsDirectory)
                 {
-                    // Recursively traverse subdirectories
-                    string subDirPath = string.IsNullOrEmpty(path) ? item.Name : $"{path}/{item.Name}";
+                    string[] subHierarchy = [.. currentHierarchy, item.Name];
                     ShareDirectoryClient subDir = directory.GetSubdirectoryClient(item.Name);
-                    await ListAllFilesRecursivelyAsync(subDir, subDirPath, fileNames, ct);
+                    await ListAllFilesRecursivelyAsync(subDir, subHierarchy, files, dataBase, ct);
                 }
                 else
                 {
                     if (item.Name.EndsWith(PxFileConstants.FILE_ENDING, StringComparison.OrdinalIgnoreCase))
                     {
-                        fileNames.Add(item.Name);
+                        string tableId = Path.GetFileNameWithoutExtension(item.Name);
+                        string[]? hierarchy = currentHierarchy.Length > 0 ? currentHierarchy : null;
+                        files.Add(PxFileRef.ValidateAndCreate(tableId, dataBase, hierarchy));
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets a <see cref="ShareDirectoryClient"/> for the database directory within the file share.
+        /// </summary>
+        /// <returns>A <see cref="ShareDirectoryClient"/> pointing to the database directory.</returns>
+        private ShareDirectoryClient GetDatabaseDirectoryClient()
+        {
+            return CreateShareClient().GetRootDirectoryClient().GetSubdirectoryClient(DataBase.Id);
         }
 
         private ShareClient CreateShareClient()
