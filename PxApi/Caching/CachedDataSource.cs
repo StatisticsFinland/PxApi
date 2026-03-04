@@ -108,7 +108,7 @@ namespace PxApi.Caching
             }
 
             IDataBaseConnector connector = dbConnectorFactory.GetConnector(dataBase);
-            Task<MultilanguageString> buildTask = ReadAliasNameAsync(, connector, ct);
+            Task<MultilanguageString> buildTask = ReadAliasNameAsync([], connector, ct);
             cache.SetDatabaseName(dataBase, buildTask);
             return await buildTask;
         }

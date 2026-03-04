@@ -14,17 +14,17 @@ namespace PxApi.UnitTests.Caching
     [TestFixture]
     internal class PxFileReaderTests
     {
-        private static readonly PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "test.px"), DataBaseRef.Create("testDatabase"));
+        private static readonly PxFileRef fileRef = PxFileRef.ValidateAndCreate("tabledId", DataBaseRef.Create("testDatabase"), ["statisticalProgram"]);
 
-        private sealed class TestStreamConnector(DataBaseRef db, string content, string filePath) : DataBaseConnector(db)
+        private sealed class TestStreamConnector(DataBaseRef db, string content) : DataBaseConnector(db)
         {
             protected override ILogger Logger { get; } = new Mock<ILogger>().Object;
 
-            public override Task<string[]> GetAllFilesAsync(CancellationToken ct) => Task.FromResult<string[]>([filePath]);
+            public override Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct) => Task.FromResult<PxFileRef[]>([fileRef]);
 
             public override Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct) => Task.FromResult(DateTime.UtcNow);
 
-            public override Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct) => throw new FileNotFoundException();
+            public override Task<Stream> TryReadAuxiliaryFileAsync(string fileName, string[]? hierarchy, CancellationToken ct = default) => throw new FileNotFoundException();
 
             protected override Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct)
             {
@@ -37,7 +37,7 @@ namespace PxApi.UnitTests.Caching
         public async Task ReadMetadata_WhenCalledWithValidFile_ReturnsMetadata()
         {
             // Arrange
-            TestStreamConnector connector = new(fileRef.DataBase, PxFixtures.MinimalPx.MINIMAL_UTF8_N, fileRef.FilePath);
+            TestStreamConnector connector = new(fileRef.DataBase, PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             string[] expectedLanguages = ["fi", "en"];
 
             // Act
@@ -62,7 +62,7 @@ namespace PxApi.UnitTests.Caching
         public async Task ReadDataAsync_WhenCalledWithValidFile_ReturnsData()
         {
             // Arrange
-            TestStreamConnector connector = new(fileRef.DataBase, PxFixtures.MinimalPx.MINIMAL_UTF8_N, fileRef.FilePath);
+            TestStreamConnector connector = new(fileRef.DataBase, PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             MatrixMap targetMap = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])

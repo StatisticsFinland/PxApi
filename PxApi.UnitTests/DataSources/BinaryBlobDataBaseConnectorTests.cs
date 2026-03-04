@@ -46,66 +46,6 @@ namespace PxApi.UnitTests.DataSources
             TestConfigFactory.BuildAndLoad(configData);
         }
 
-        #region GetAllFilesAsync
-
-        [Test]
-        public async Task GetAllFilesAsync_WhenMetaBlobsExist_ReturnsFileIds()
-        {
-            // Arrange
-            List<string> blobs =
-            [
-                "meta/testdb/table1_202501010000.meta.json",
-                "meta/testdb/table2_202501010000.meta.json"
-            ];
-            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, blobs);
-
-            // Act
-            string[] files = await connector.GetAllFilesAsync();
-
-            // Assert
-            Assert.That(files, Has.Length.EqualTo(2));
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(files[0], Is.EqualTo("testdb/table1"));
-                Assert.That(files[1], Is.EqualTo("testdb/table2"));
-            }
-        }
-
-        [Test]
-        public async Task GetAllFilesAsync_WhenNoMetaBlobs_ReturnsEmptyArray()
-        {
-            // Arrange
-            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
-
-            // Act
-            string[] files = await connector.GetAllFilesAsync();
-
-            // Assert
-            Assert.That(files, Is.Empty);
-        }
-
-        [Test]
-        public async Task GetAllFilesAsync_WhenBlobsHaveWrongSuffix_AreIgnored()
-        {
-            // Arrange
-            List<string> blobs =
-            [
-                "meta/testdb/table1_202501010000.meta.json",
-                "meta/testdb/table2_202501010000.json",
-                "meta/testdb/table3.txt"
-            ];
-            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, blobs);
-
-            // Act
-            string[] files = await connector.GetAllFilesAsync();
-
-            // Assert
-            Assert.That(files, Has.Length.EqualTo(1));
-            Assert.That(files[0], Is.EqualTo("testdb/table1"));
-        }
-
-        #endregion
-
         #region ReadMetadataAsync
 
         [Test]
@@ -119,7 +59,7 @@ namespace PxApi.UnitTests.DataSources
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, [blobName]);
             connector.AddBlobContent(blobName, metaBytes);
 
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             // Act
             IReadOnlyMatrixMetadata result = await connector.ReadMetadataAsync(fileRef);
@@ -146,7 +86,7 @@ namespace PxApi.UnitTests.DataSources
             connector.AddBlobContent(olderBlob, metaBytes);
             connector.AddBlobContent(newerBlob, metaBytes);
 
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             // Act
             IReadOnlyMatrixMetadata result = await connector.ReadMetadataAsync(fileRef);
@@ -164,7 +104,7 @@ namespace PxApi.UnitTests.DataSources
         {
             // Arrange
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             // Act & Assert
             Assert.ThrowsAsync<FileNotFoundException>(async () => await connector.ReadMetadataAsync(fileRef));
@@ -185,7 +125,7 @@ namespace PxApi.UnitTests.DataSources
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, [blobName]);
             connector.AddBlobContent(blobName, metaBytes);
 
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             // Act
             DateTime result = await connector.GetLastWriteTimeAsync(fileRef);
@@ -209,7 +149,7 @@ namespace PxApi.UnitTests.DataSources
             MatrixMap targetMap = new([.. metadata.Dimensions.Select(d => new DimensionMap(d.Code, [.. d.Values.Select(v => v.Code)]))]);
 
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             // Act & Assert
             Assert.ThrowsAsync<BinaryBlobSynchronizationException>(async () =>
@@ -228,7 +168,7 @@ namespace PxApi.UnitTests.DataSources
             MatrixMap targetMap = new([.. metadata.Dimensions.Select(d => new DimensionMap(d.Code, [.. d.Values.Select(v => v.Code)]))]);
 
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             IMatrixMap collapsedMap = metadata.CollapseDimension(contentDim.Code, contentDim.Values[0].Code);
             int collapsedSize = (int)collapsedMap.GetSize();
@@ -263,7 +203,7 @@ namespace PxApi.UnitTests.DataSources
                 new DimensionMap(d.Code, [.. d.Values.Select(v => v.Code)]))]);
 
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             double[] blob0Values = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0];
             double[] blob1Values = [110.0, 120.0, 130.0, 140.0, 150.0, 160.0, 170.0, 180.0];
@@ -311,7 +251,7 @@ namespace PxApi.UnitTests.DataSources
             ]);
 
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             // Collapsed blob: time(2) × dim0(2) × dim1(2) = 8
             double[] blobValues = [100.0, 200.0, 300.0, 400.0, 500.0, 600.0, 700.0, 800.0];
@@ -349,7 +289,7 @@ namespace PxApi.UnitTests.DataSources
             ]);
 
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             // Full blob: time(2) × dim0(2) × dim1(2) = 8 values in row-major order:
             // [t0d0v0, t0d0v1, t0d1v0, t0d1v1, t1d0v0, t1d0v1, t1d1v0, t1d1v1]
@@ -384,7 +324,7 @@ namespace PxApi.UnitTests.DataSources
                 new DimensionMap(d.Code, [.. d.Values.Select(v => v.Code)]))]);
 
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             double[] cv0Values = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
             double[] cv1Values = [11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0];
@@ -422,7 +362,7 @@ namespace PxApi.UnitTests.DataSources
                 new DimensionMap(d.Code, [.. d.Values.Select(v => v.Code)]))]);
 
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             IMatrixMap collapsedMap = metadata.CollapseDimension(contentDim.Code, contentDim.Values[0].Code);
             int collapsedSize = (int)collapsedMap.GetSize();
@@ -456,7 +396,7 @@ namespace PxApi.UnitTests.DataSources
             ]);
 
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             IMatrixMap collapsedMap = metadata.CollapseDimension(contentDim.Code, contentDim.Values[0].Code);
             int collapsedSize = (int)collapsedMap.GetSize();
@@ -505,7 +445,7 @@ namespace PxApi.UnitTests.DataSources
             ]);
 
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             IMatrixMap collapsedBlobMap = metadata.CollapseDimension(contentDim.Code, contentDim.Values[0].Code);
             int fullBlobSize = (int)collapsedBlobMap.GetSize();
@@ -563,7 +503,7 @@ namespace PxApi.UnitTests.DataSources
             ]);
 
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
-            PxFileRef fileRef = PxFileRef.CreateFromPath("table1.px", _dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             IMatrixMap collapsedBlobMap = metadata.CollapseDimension(contentDim.Code, contentDim.Values[0].Code);
             int fullBlobSize = (int)collapsedBlobMap.GetSize();
@@ -689,9 +629,7 @@ namespace PxApi.UnitTests.DataSources
 
             internal override Task<IReadOnlyList<string>> GetBlobItemsAsync(string prefix, CancellationToken ct = default)
             {
-                IReadOnlyList<string> result = _blobNames
-                    .Where(n => n.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
+                IReadOnlyList<string> result = [.. _blobNames.Where(n => n.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))];
                 return Task.FromResult(result);
             }
 

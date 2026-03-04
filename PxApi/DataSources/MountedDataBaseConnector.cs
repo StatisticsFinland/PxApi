@@ -50,8 +50,7 @@ namespace PxApi.DataSources
 
                     if (directoryPath is not null)
                     {
-                        // TODO: Might need tinkering based on actual testing
-                        string relativePath = Path.GetRelativePath(_normalizedRootPath, directoryPath);
+                        string relativePath = Path.GetRelativePath(fullPath, directoryPath);
                         if (relativePath != ".")
                         {
                             hierarchy = relativePath.Split(Path.DirectorySeparatorChar);
@@ -117,7 +116,6 @@ namespace PxApi.DataSources
                 [LoggerConsts.AUXILIARY_PATH] = fileName
             }))
             {
-                // TODO: Tinker here to fix things
                 string dbRoot = NormalizeDirectoryPath(Path.Combine(_normalizedRootPath, DataBase.Id));
                 string[] pathSegments = hierarchy is not null
                     ? [dbRoot, .. hierarchy, fileName]

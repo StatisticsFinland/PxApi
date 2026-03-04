@@ -73,7 +73,7 @@ namespace PxApi.UnitTests.ControllerTests
         private void SetupMockDataSourceForValidRequest(string database, string table)
         {
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             DoubleDataValue[] mockData = [
                 new DoubleDataValue(1.0, DataValueType.Exists),
@@ -422,7 +422,7 @@ namespace PxApi.UnitTests.ControllerTests
             string errorMessage = "Invalid argument";
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
@@ -469,7 +469,7 @@ namespace PxApi.UnitTests.ControllerTests
             string errorMessage = "Invalid argument";
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
@@ -493,7 +493,7 @@ namespace PxApi.UnitTests.ControllerTests
             string[] filters = ["dim0-code:code=dim0-value1-code"];
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             BinaryBlobSynchronizationException exception = new(pxFileRef, DateTime.UtcNow);
 
@@ -528,7 +528,7 @@ namespace PxApi.UnitTests.ControllerTests
             Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             BinaryBlobSynchronizationException exception = new(pxFileRef, DateTime.UtcNow);
 

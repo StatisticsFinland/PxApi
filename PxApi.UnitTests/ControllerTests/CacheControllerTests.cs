@@ -37,7 +37,7 @@ namespace PxApi.UnitTests.ControllerTests
             const string database = "testdb";
             const string id = "table1";
             DataBaseRef dbRef = DataBaseRef.Create(database);
-            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("c:", "foo", id), dbRef);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate(id, dbRef, ["statisticalProgram"]);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dbRef);
             _cachedDbConnector.Setup(x => x.GetFileListCachedAsync(dbRef, CancellationToken.None))
                 .ReturnsAsync(ImmutableSortedDictionary<string, PxFileRef>.Empty.Add(id, fileRef));

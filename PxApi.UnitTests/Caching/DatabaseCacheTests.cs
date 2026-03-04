@@ -23,8 +23,8 @@ namespace PxApi.UnitTests.Caching
         private const string META_SEED_VARNAME = "META_SEED";
         private const string DATABASE_NAME_SEED_VARNAME = "DATABASE_NAME_SEED";
 
-        private readonly PxFileRef _file1 = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), DataBaseRef.Create("PxApiUnitTestsDb"));
-        private readonly PxFileRef _file2 = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file2.px"), DataBaseRef.Create("PxApiUnitTestsDb"));
+        private readonly PxFileRef _file1 = PxFileRef.ValidateAndCreate("file1", DataBaseRef.Create("PxApiUnitTestsDb"), ["statisticalProgram"]);
+        private readonly PxFileRef _file2 = PxFileRef.ValidateAndCreate("file2", DataBaseRef.Create("PxApiUnitTestsDb"), ["statisticalProgram"]);
 
         [SetUp]
         public void SetUp()

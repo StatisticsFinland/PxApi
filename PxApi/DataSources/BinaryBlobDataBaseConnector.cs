@@ -201,9 +201,7 @@ namespace PxApi.DataSources
 
                 string prefix = BuildMetadataPrefix(file.DataBase.Id, file.Id);
                 IReadOnlyList<string> blobNames = await GetBlobItemsAsync(prefix, ct);
-                List<string> metaBlobNames = blobNames
-                    .Where(name => name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
+                List<string> metaBlobNames = [.. blobNames.Where(name => name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase))];
 
                 string? selectedBlobName = null;
 
@@ -313,23 +311,6 @@ namespace PxApi.DataSources
             BlobClient blob = containerClient.GetBlobClient(blobName);
             Response<BlobDownloadStreamingResult> result = await blob.DownloadStreamingAsync(new HttpRange(offset, length), null, false, ct);
             return result.Value.Content;
-        }
-
-        internal static string? TryParseFileIdFromMetaBlobName(string blobName)
-        {
-            if (!blobName.StartsWith(MetaPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
-
-            if (!blobName.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
-
-            string withoutPrefixAndSuffix = blobName[(MetaPrefix.Length + 1)..^MetaFileSuffix.Length];
-            string candidate = withoutPrefixAndSuffix.Split('_')[0];
-            return string.IsNullOrWhiteSpace(candidate) ? null : candidate;
         }
 
         internal static string BuildMetadataPrefix(string dbId, string fileId)

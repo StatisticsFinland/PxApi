@@ -86,8 +86,8 @@ namespace PxApi.DataSources
         /// <summary>
         /// Attempts to read an auxiliary file from blob storage.
         /// </summary>
-        /// <param name="fileName"></param>
-        /// <param name="hierarchy"></param>
+        /// <param name="fileName">The name of the auxiliary file.</param>
+        /// <param name="hierarchy">Optional hierarchy under the database root where the file is located.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <returns>An open, readable stream for the requested auxiliary file.</returns>
         /// <exception cref="FileNotFoundException">Thrown when the auxiliary file does not exist in the configured container.</exception>
@@ -102,7 +102,13 @@ namespace PxApi.DataSources
             }))
             {
                 BlobContainerClient containerClient = GetContainerClient();
-                string blobName = hierarchy != null ? string.Join('/', hierarchy) + "/" + fileName : fileName;
+                List<string> pathSegments = [PxBlobPrefix, DataBase.Id];
+                if (hierarchy is { Length: > 0 })
+                {
+                    pathSegments.AddRange(hierarchy);
+                }
+                pathSegments.Add(fileName);
+                string blobName = string.Join('/', pathSegments);
                 BlobClient blob = containerClient.GetBlobClient(blobName);
                 if (!await blob.ExistsAsync(ct))
                 {
@@ -180,7 +186,7 @@ namespace PxApi.DataSources
             List<string> completePath = [root, db.Id];
             if (hierarchy != null && hierarchy.Length > 0) completePath.AddRange(hierarchy);
             completePath.Add(fileName);
-            return string.Join('/', completePath);
+            return string.Join('/', completePath) + PxFileConstants.FILE_ENDING;
         }
     }
 }

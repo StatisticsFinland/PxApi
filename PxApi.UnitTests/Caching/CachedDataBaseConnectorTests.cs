@@ -39,7 +39,7 @@ namespace PxApi.UnitTests.Caching
 
         private static PxFileRef BuildTestFileRef(string name, DataBaseRef dbRef)
         {
-            return PxFileRef.CreateFromPath(Path.Combine("C:", "DbRoot", "folder", $"{name}.px"), dbRef);
+            return PxFileRef.ValidateAndCreate(name, dbRef, ["statisticalProgram"]);
         }
 
         private static Mock<ILogger<CachedDataSource>> CreateLoggerMock()
@@ -178,7 +178,10 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            string[] fileNames = ["file1.px", "file2.px"];
+            PxFileRef[] fileNames = [
+                PxFileRef.ValidateAndCreate("file1", dataBase, ["statisticalProgram"]),
+                PxFileRef.ValidateAndCreate("file2", dataBase, ["statisticalProgram"])
+            ];
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             Mock<IDataBaseConnector> mockConnector = new();
             MemoryCache memoryCache = new(new MemoryCacheOptions());
@@ -212,7 +215,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("file1", dataBase, ["statisticalProgram"]);
             ImmutableSortedDictionary<string, PxFileRef> files = ImmutableSortedDictionary<string, PxFileRef>.Empty
                 .Add("file1", fileRef);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
@@ -241,7 +244,7 @@ namespace PxApi.UnitTests.Caching
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
             ImmutableSortedDictionary<string, PxFileRef> files = ImmutableSortedDictionary<string, PxFileRef>.Empty
-                .Add("file1", PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase));
+                .Add("file1", PxFileRef.ValidateAndCreate("file1", dataBase, ["statisticalProgram"]));
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
             dbCache.SetFileList(dataBase, Task.FromResult(files));
@@ -263,7 +266,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("file1", dataBase, ["statisticalProgram"]);
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
@@ -293,7 +296,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("file1", dataBase, ["statisticalProgram"]);
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.Setup(c => c.DataBase).Returns(dataBase);
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
@@ -337,7 +340,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
+            PxFileRef pxFile = PxFileRef.ValidateAndCreate("testfile", dataBase, ["statisticalProgram"]);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -374,7 +377,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
+            PxFileRef pxFile = PxFileRef.ValidateAndCreate("testfile", dataBase, ["statisticalProgram"]);
             MatrixMap subsetMap = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -418,7 +421,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
+            PxFileRef pxFile = PxFileRef.ValidateAndCreate("testfile", dataBase, ["statisticalProgram"]);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -464,8 +467,8 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
             dbCache.SetFileList(dataBase, Task.FromResult(
                 ImmutableSortedDictionary<string, PxFileRef>.Empty
-                    .Add("file1", PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase))
-                    .Add("file2", PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file2.px"), dataBase))));
+                    .Add("file1", PxFileRef.ValidateAndCreate("file1", dataBase, ["statisticalProgram"]))
+                    .Add("file2", PxFileRef.ValidateAndCreate("file2", dataBase, ["statisticalProgram"]))));
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
             mockConnector.Setup(c => c.GetAllFilesAsync(CancellationToken.None)).ReturnsAsync([]);
@@ -532,7 +535,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
+            PxFileRef file = PxFileRef.ValidateAndCreate("testfile", dataBase, ["statisticalProgram"]);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
 
@@ -585,7 +588,7 @@ namespace PxApi.UnitTests.Caching
             TestConfigFactory.BuildAndLoad(configData);
 
             DataBaseRef dataBase = DataBaseRef.Create("NoRevalidationDb");
-            PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
+            PxFileRef pxFile = PxFileRef.ValidateAndCreate("testfile", dataBase, ["statisticalProgram"]);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -642,7 +645,7 @@ namespace PxApi.UnitTests.Caching
             TestConfigFactory.BuildAndLoad(configData);
 
             DataBaseRef dataBase = DataBaseRef.Create("ZeroRevalidationDb");
-            PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
+            PxFileRef pxFile = PxFileRef.ValidateAndCreate("testfile", dataBase, ["statisticalProgram"]);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -696,7 +699,7 @@ namespace PxApi.UnitTests.Caching
             TestConfigFactory.BuildAndLoad(configData);
 
             DataBaseRef dataBase = DataBaseRef.Create("NoRevalidationMetaDb");
-            PxFileRef fileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "file1.px"), dataBase);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("file1", dataBase, ["statisticalProgram"]);
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
@@ -731,7 +734,7 @@ namespace PxApi.UnitTests.Caching
         {
             // Arrange - Use existing setup which includes RevalidationIntervalMs
             DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb"); // This has RevalidationIntervalMs = 500
-            PxFileRef pxFile = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testfile.px"), dataBase);
+            PxFileRef pxFile = PxFileRef.ValidateAndCreate("testfile", dataBase, ["statisticalProgram"]);
             MatrixMap map = new([
                 new DimensionMap("dim1", ["value1"]),
                 new DimensionMap("dim2", ["2025"])
@@ -784,10 +787,11 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
             Mock<IDataBaseConnectorFactory> factoryMock = new();
             Mock<IDataBaseConnector> connectorMock = new();
+            string[] databaseHierarchy = [];
             connectorMock.SetupGet(c => c.DataBase).Returns(dbRef);
-            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_fi.txt", CancellationToken.None)).Returns(BuildStream("Suomi"));
-            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_sv.txt", CancellationToken.None)).Returns(BuildStream("Finland"));
-            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_en.txt", CancellationToken.None)).Returns(BuildStream("Finland"));
+            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_fi.txt", databaseHierarchy, CancellationToken.None)).Returns(BuildStream("Suomi"));
+            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_sv.txt", databaseHierarchy, CancellationToken.None)).Returns(BuildStream("Finland"));
+            connectorMock.Setup(c => c.TryReadAuxiliaryFileAsync("Alias_en.txt", databaseHierarchy, CancellationToken.None)).Returns(BuildStream("Finland"));
             factoryMock.Setup(f => f.GetConnector(dbRef)).Returns(connectorMock.Object);
             Mock<ILogger<CachedDataSource>> loggerMock = CreateLoggerMock();
             CachedDataSource dataSource = new(factoryMock.Object, dbCache, loggerMock.Object);
@@ -802,7 +806,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(name, Is.Not.Null);
                 Assert.That(cachedName, Is.SameAs(name));
             }
-            connectorMock.Verify(c => c.TryReadAuxiliaryFileAsync(It.IsAny<string>(), CancellationToken.None), Times.Exactly(3));
+            connectorMock.Verify(c => c.TryReadAuxiliaryFileAsync(It.IsAny<string>(), It.IsAny<string[]?>(), CancellationToken.None), Times.Exactly(3));
         }
 
         [Test]

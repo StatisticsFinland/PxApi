@@ -7,58 +7,6 @@ namespace PxApi.UnitTests.DataSources
     internal class BinaryBlobDataBaseConnector_InternalHelpersTests
     {
         [Test]
-        public void TryParseFileIdFromMetaBlobName_WhenValidMetaBlobNameWithTimestamp_ReturnsFileIdWithoutTimestamp()
-        {
-            // Arrange
-            string blobName = "meta/db1/table_202501010000.meta.json";
-
-            // Act
-            string? fileId = BinaryBlobDataBaseConnector.TryParseFileIdFromMetaBlobName(blobName);
-
-            // Assert
-            Assert.That(fileId, Is.EqualTo("db1/table"));
-        }
-
-        [Test]
-        public void TryParseFileIdFromMetaBlobName_WhenValidMetaBlobNameWithoutTimestamp_ReturnsFileId()
-        {
-            // Arrange
-            string blobName = "meta/db1/table.meta.json";
-
-            // Act
-            string? fileId = BinaryBlobDataBaseConnector.TryParseFileIdFromMetaBlobName(blobName);
-
-            // Assert
-            Assert.That(fileId, Is.EqualTo("db1/table"));
-        }
-
-        [Test]
-        public void TryParseFileIdFromMetaBlobName_WhenMissingPrefix_ReturnsNull()
-        {
-            // Arrange
-            string blobName = "db1/table_202501010000.meta.json";
-
-            // Act
-            string? fileId = BinaryBlobDataBaseConnector.TryParseFileIdFromMetaBlobName(blobName);
-
-            // Assert
-            Assert.That(fileId, Is.Null);
-        }
-
-        [Test]
-        public void TryParseFileIdFromMetaBlobName_WhenMissingSuffix_ReturnsNull()
-        {
-            // Arrange
-            string blobName = "meta/db1/table_202501010000.json";
-
-            // Act
-            string? fileId = BinaryBlobDataBaseConnector.TryParseFileIdFromMetaBlobName(blobName);
-
-            // Assert
-            Assert.That(fileId, Is.Null);
-        }
-
-        [Test]
         public void BuildMetadataPrefix_ReturnsExpectedFormat()
         {
             // Arrange

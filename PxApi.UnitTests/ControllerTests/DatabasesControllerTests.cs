@@ -223,8 +223,8 @@ namespace PxApi.UnitTests.ControllerTests
             _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef1, string.Empty, CancellationToken.None)).ReturnsAsync(nameMulti1);
             _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef2, string.Empty, CancellationToken.None)).ReturnsAsync(nameMulti2);
 
-            PxFileRef px1a = PxFileRef.CreateFromPath(Path.Combine("c:", "test", "t1a.px"), dbRef1);
-            PxFileRef px1b = PxFileRef.CreateFromPath(Path.Combine("c:", "test", "t1b.px"), dbRef1);
+            PxFileRef px1a = PxFileRef.ValidateAndCreate("t1a", dbRef1, ["statisticalProgram"]);
+            PxFileRef px1b = PxFileRef.ValidateAndCreate("t1b", dbRef1, ["statisticalProgram"]);
             ImmutableSortedDictionary<string, PxFileRef> filesDb1 = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxFileRef>
             {
                 { px1a.Id, px1a },
@@ -232,7 +232,7 @@ namespace PxApi.UnitTests.ControllerTests
             });
             _mockCachedDataSource.Setup(x => x.GetFileListCachedAsync(dbRef1, CancellationToken.None)).ReturnsAsync(filesDb1);
 
-            PxFileRef px2a = PxFileRef.CreateFromPath(Path.Combine("c:", "test", "t2a.px"), dbRef2);
+            PxFileRef px2a = PxFileRef.ValidateAndCreate("t2a", dbRef2, ["statisticalProgram"]);
             ImmutableSortedDictionary<string, PxFileRef> filesDb2 = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxFileRef>
             {
                 { px2a.Id, px2a }
