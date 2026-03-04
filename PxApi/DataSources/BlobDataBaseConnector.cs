@@ -49,7 +49,7 @@ namespace PxApi.DataSources
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.CONTROLLER] = nameof(PxBlobDataBaseConnector),
+                    [LoggerConsts.CONTROLLER] = nameof(BlobDataBaseConnector),
                     [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync),
                     [LoggerConsts.CONTAINER_NAME] = ContainerName
                 }))
@@ -59,7 +59,7 @@ namespace PxApi.DataSources
                 string blobPrefix = $"{PxBlobPrefix}/{DataBase.Id}/";
 
                 BlobContainerClient containerClient = GetContainerClient();
-                AsyncPageable<BlobItem> blobs = containerClient.GetBlobsAsync(cancellationToken: ct);
+                AsyncPageable<BlobItem> blobs = containerClient.GetBlobsAsync(prefix: blobPrefix, cancellationToken: ct);
 
                 await foreach (BlobItem blob in blobs)
                 {
@@ -182,8 +182,8 @@ namespace PxApi.DataSources
         /// Constructs the full blob name for a file based on its name and optional hierarchy.
         /// </summary>
         /// <param name="fileName">The name of the file.</param>
-        /// <param name="db"></param>
-        /// <param name="root"></param>
+        /// <param name="db"><see cref="DataBaseRef"/> reference to the database.</param>
+        /// <param name="root">The root path or prefix for the blob.</param>
         /// <param name="hierarchy">Optional hierarchy of folders leading to the file.</param>
         /// <returns>The full blob name.</returns>
         protected static string GetBlobName(string fileName, DataBaseRef db, string root, string[]? hierarchy)

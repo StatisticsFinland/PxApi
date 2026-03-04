@@ -17,7 +17,7 @@ namespace PxApi.DataSources
         /// <summary>
         /// Get references to all Px files available in the database.
         /// </summary>
-        /// <returns>Task that resolves to an array of file paths.</returns>
+        /// <returns>Task that resolves to an array of <see cref="PxFileRef"/> references.</returns>
         public Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default);
 
         /// <summary>

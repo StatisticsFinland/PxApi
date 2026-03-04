@@ -30,7 +30,7 @@ namespace PxApi.Models
         }
 
         /// <summary>
-        /// Creates a new instance of <see cref="PxFileRef"/> with the specified file path, using database configuration to parse the ID.
+        /// Creates a new instance of <see cref="PxFileRef"/> with the specified Id, database reference and optional hierarchy.
         /// </summary>
         /// <param name="tableId">The unique identifier for the Px file. Must not be null, whitespace, or exceed 50 characters, and may only contain letters, digits, '_' or '-'.</param>
         /// <param name="database"><see cref="DataBaseRef"/> reference to the database that the Px file belongs to.</param>
@@ -46,7 +46,7 @@ namespace PxApi.Models
 
             if (hierarchy is not null && hierarchy.Length > 100)
             {
-                throw new ArgumentException("PxFile hierarchy length cannot exceed 100 characters.");
+                throw new ArgumentException("PxFile hierarchy length cannot exceed 100 segments.");
             }
 
             if (!tableId.All(s => char.IsLetterOrDigit(s) || _allowedIdChars.Contains(s)))
@@ -54,9 +54,9 @@ namespace PxApi.Models
                 throw new ArgumentException("PxFile id must contain only letters, digits, '_' or '-'.");
             }
 
-            if(hierarchy is not null && !hierarchy.All(s => s.All(c => char.IsLetterOrDigit(c) || _allowedIdChars.Contains(c))))
+            if(hierarchy is not null && !hierarchy.All(s => !string.IsNullOrEmpty(s) && s.All(c => char.IsLetterOrDigit(c) || _allowedIdChars.Contains(c))))
             {
-                throw new ArgumentException("PxFile hierarchy must contain only letters, digits, '_', '-' or directory separator characters.");
+                throw new ArgumentException("PxFile hierarchy levels must contain only letters, digits, '_', '-'.");
             }
 
             return new PxFileRef(tableId, database, hierarchy is null ? null : string.Join('/', hierarchy));

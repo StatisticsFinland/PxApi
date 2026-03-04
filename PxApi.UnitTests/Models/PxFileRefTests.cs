@@ -16,11 +16,11 @@ namespace PxApi.UnitTests.Models
         {
             DataBaseRef db = DataBaseRef.Create(dbId);
             PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(id, db, ["statisticalProgram"]);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(id));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
-            });
+            }
         }
 
         [Test]
@@ -47,11 +47,11 @@ namespace PxApi.UnitTests.Models
             PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(tableId, db, ["statisticalProgram"]);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(tableId));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
-            });
+            }
         }
 
         [Test]
@@ -65,11 +65,11 @@ namespace PxApi.UnitTests.Models
             PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(tableId, db, ["statisticalProgram"]);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(tableId));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
-            });
+            }
         }
 
         [Test]
@@ -83,11 +83,11 @@ namespace PxApi.UnitTests.Models
             PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(tableId, db, ["statisticalProgram"]);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(tableId));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
-            });
+            }
         }
 
         [Test]
@@ -107,6 +107,29 @@ namespace PxApi.UnitTests.Models
             // Arrange
             DataBaseRef db = DataBaseRef.Create("database");
             string[] hierarchy = ["level1", "invalid#level"];
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => PxFileRef.ValidateAndCreate("file1", db, hierarchy));
+        }
+
+        [Test]
+        public void Create_WithNullHierarchyLevels_ThrowsArgumentException()
+        {
+            // Arrange
+            DataBaseRef db = DataBaseRef.Create("database");
+            string[] hierarchy = ["level1", null!, "level3"];
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => PxFileRef.ValidateAndCreate("file1", db, hierarchy));
+        }
+
+        [Test]
+        public void Create_WithEmptyHierarchyLevels_ThrowsArgumentException()
+        {
+
+            // Arrange
+            DataBaseRef db = DataBaseRef.Create("database");
+            string[] hierarchy = ["level1", "", "level3"];
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() => PxFileRef.ValidateAndCreate("file1", db, hierarchy));
