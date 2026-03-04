@@ -90,6 +90,61 @@ namespace PxApi.UnitTests.Models
             });
         }
 
+        [Test]
+        public void Create_WithTooLongHierarchy_ThrowsArgumentException()
+        {
+            // Arrange
+            DataBaseRef db = DataBaseRef.Create("database");
+            string[] hierarchy = [.. Enumerable.Repeat("level", 101)];
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => PxFileRef.ValidateAndCreate("file1", db, hierarchy));
+        }
+
+        [Test]
+        public void Create_WithInvalidHierarchyCharacters_ThrowsArgumentException()
+        {
+            // Arrange
+            DataBaseRef db = DataBaseRef.Create("database");
+            string[] hierarchy = ["level1", "invalid#level"];
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => PxFileRef.ValidateAndCreate("file1", db, hierarchy));
+        }
+
+        [Test]
+        public void GetHierarchyLevels_WhenHierarchyIsNull_ReturnsNull()
+        {
+            // Arrange
+            DataBaseRef db = DataBaseRef.Create("database");
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate("file1", db, null);
+
+            // Act
+            string[]? levels = pxFileRef.GetHierarchyLevels();
+
+            // Assert
+            Assert.That(levels, Is.Null);
+        }
+
+        [Test]
+        public void GetHierarchyLevels_WhenHierarchyExists_ReturnsSplitLevels()
+        {
+            // Arrange
+            DataBaseRef db = DataBaseRef.Create("database");
+            string[] hierarchy = ["level1", "level2"];
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate("file1", db, hierarchy);
+
+            // Act
+            string[]? levels = pxFileRef.GetHierarchyLevels();
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(levels, Is.Not.Null);
+                Assert.That(levels, Is.EqualTo(hierarchy));
+            }
+        }
+
         #endregion
 
         #region GetHashCode

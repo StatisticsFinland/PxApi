@@ -46,6 +46,19 @@ namespace PxApi.UnitTests.DataSources
             TestConfigFactory.BuildAndLoad(configData);
         }
 
+        [Test]
+        public void UseShortFormNames_ReturnsTrue()
+        {
+            // Arrange
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
+
+            // Act
+            bool useShortFormNames = connector.UseShortFormNamesValue;
+
+            // Assert
+            Assert.That(useShortFormNames, Is.True);
+        }
+
         #region ReadMetadataAsync
 
         [Test]
@@ -108,6 +121,22 @@ namespace PxApi.UnitTests.DataSources
 
             // Act & Assert
             Assert.ThrowsAsync<FileNotFoundException>(async () => await connector.ReadMetadataAsync(fileRef));
+        }
+
+        [Test]
+        public void ReadMetadataAsync_WhenMetadataIsNull_ThrowsInvalidDataException()
+        {
+            // Arrange
+            const string blobName = "meta/testdb/table1_202501010000.meta.json";
+            byte[] metaBytes = [];
+
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, [blobName]);
+            connector.AddBlobContent(blobName, metaBytes);
+
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
+
+            // Act & Assert
+            Assert.ThrowsAsync<InvalidDataException>(async () => await connector.ReadMetadataAsync(fileRef));
         }
 
         #endregion
@@ -465,6 +494,7 @@ namespace PxApi.UnitTests.DataSources
                 Assert.That(result[0].UnsafeValue, Is.EqualTo((double)(sliceSize + 1)));
                 Assert.That(result[1].UnsafeValue, Is.EqualTo((double)(sliceSize + 2)));
                 Assert.That(result[^1].UnsafeValue, Is.EqualTo((double)(sliceSize + 4 * 25 + 5)));
+                Assert.That(connector.LastDownloadedBlobOffset, Is.GreaterThan(0));
             }
         }
 
@@ -611,6 +641,9 @@ namespace PxApi.UnitTests.DataSources
             private readonly List<string> _blobNames;
 
             internal string? LastOpenedBlobName { get; private set; }
+            internal long? LastOpenedBlobPosition { get; private set; }
+            internal long? LastDownloadedBlobOffset { get; private set; }
+            internal bool UseShortFormNamesValue => UseShortFormNames;
 
             internal TestableBinaryBlobConnector(DataBaseRef db, ILogger<BinaryBlobDataBaseConnector> logger, List<string> blobNames)
                 : base(db, "test-container", null!, logger)
@@ -641,12 +674,14 @@ namespace PxApi.UnitTests.DataSources
             internal override Task<Stream> OpenBlobReadStreamAsync(string blobName, CancellationToken ct = default)
             {
                 LastOpenedBlobName = blobName;
+                LastOpenedBlobPosition = 0;
                 return Task.FromResult<Stream>(new MemoryStream(_blobContents[blobName]));
             }
 
             internal override Task<Stream> OpenBlobReadStreamAsync(string blobName, long position, CancellationToken ct = default)
             {
                 LastOpenedBlobName = blobName;
+                LastOpenedBlobPosition = position;
                 MemoryStream ms = new(_blobContents[blobName])
                 {
                     Position = position
@@ -656,6 +691,7 @@ namespace PxApi.UnitTests.DataSources
 
             internal override Task<Stream> DownloadBlobRangeAsync(string blobName, long offset, long length, CancellationToken ct = default)
             {
+                LastDownloadedBlobOffset = offset;
                 byte[] slice = _blobContents[blobName].AsSpan((int)offset, (int)length).ToArray();
                 return Task.FromResult<Stream>(new MemoryStream(slice));
             }

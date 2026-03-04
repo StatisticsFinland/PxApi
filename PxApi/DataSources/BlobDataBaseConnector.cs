@@ -2,6 +2,7 @@ using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Azure;
+using System.Diagnostics.CodeAnalysis;
 using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
@@ -41,6 +42,7 @@ namespace PxApi.DataSources
         protected abstract bool UseShortFormNames { get; }
 
         /// <inheritdoc/>
+        [ExcludeFromCodeCoverage]
         public override async Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default)
         {
             using (Logger.BeginScope(
@@ -91,6 +93,7 @@ namespace PxApi.DataSources
         /// <param name="ct">Cancellation token.</param>
         /// <returns>An open, readable stream for the requested auxiliary file.</returns>
         /// <exception cref="FileNotFoundException">Thrown when the auxiliary file does not exist in the configured container.</exception>
+        [ExcludeFromCodeCoverage]
         public override async Task<Stream> TryReadAuxiliaryFileAsync(string fileName, string[]? hierarchy, CancellationToken ct = default)
         {
             using (Logger.BeginScope(new Dictionary<string, object>
@@ -127,6 +130,7 @@ namespace PxApi.DataSources
         /// <returns>An open, readable stream positioned at the beginning of the PX file content.</returns>
         /// <exception cref="InvalidOperationException">Thrown when <paramref name="file"/> does not belong to this connector's database.</exception>
         /// <exception cref="FileNotFoundException">Thrown when the referenced blob does not exist in the configured container.</exception>
+        [ExcludeFromCodeCoverage]
         protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct = default)
         {
             using (Logger.BeginScope(
@@ -167,6 +171,7 @@ namespace PxApi.DataSources
         /// allowing multiple different storage accounts/endpoints to be configured via dependency injection.
         /// </remarks>
         /// <returns>A container client for <see cref="ContainerName"/>.</returns>
+        [ExcludeFromCodeCoverage]
         protected BlobContainerClient GetContainerClient()
         {
             BlobServiceClient serviceClient = blobServiceClientFactory.CreateClient(DataBase.Id);

@@ -1,5 +1,7 @@
 using Px.Utils.BinaryData.ValueConverters;
+using Px.Utils.Models.Metadata.Dimensions;
 using PxApi.DataSources;
+using PxApi.UnitTests.ModelBuilderTests;
 
 namespace PxApi.UnitTests.DataSources
 {
@@ -70,6 +72,21 @@ namespace PxApi.UnitTests.DataSources
 
             // Assert
             Assert.That(exception.ParamName, Is.EqualTo("headerBytes"));
+        }
+
+        [Test]
+        public void GetTimestamp_ReturnsMaxLastUpdatedTimestamp()
+        {
+            // Arrange
+            ContentDimension contentDimension = TestMockMetaBuilder.GetMockContentDimension("content");
+            ContentValueList values = contentDimension.Values;
+            const string expectedTimestamp = "202410100000";
+
+            // Act
+            string timestamp = BinaryBlobDataBaseConnector.GetTimestamp(values);
+
+            // Assert
+            Assert.That(timestamp, Is.EqualTo(expectedTimestamp));
         }
     }
 }

@@ -222,13 +222,21 @@ namespace PxApi.DataSources
 
                 using Stream stream = await OpenBlobReadStreamAsync(selectedBlobName, ct);
 
-                MatrixMetadata? metadata = await JsonSerializer.DeserializeAsync<MatrixMetadata>(stream, GlobalJsonConverterOptions.Default, ct);
-                if (metadata is null)
+                try
                 {
-                    Logger.LogError("Failed to deserialize metadata for id {FileId}", file.Id);
-                    throw new InvalidDataException("Failed to deserialize metadata file.");
+                    MatrixMetadata? metadata = await JsonSerializer.DeserializeAsync<MatrixMetadata>(stream, GlobalJsonConverterOptions.Default, ct);
+                    if (metadata is null)
+                    {
+                        Logger.LogError("Failed to deserialize metadata for id {FileId}", file.Id);
+                        throw new InvalidDataException("Failed to deserialize metadata file.");
+                    }
+                    return metadata;
                 }
-                return metadata;
+                catch (JsonException ex)
+                {
+                    Logger.LogError(ex, "Failed to deserialize metadata for id {FileId}", file.Id);
+                    throw new InvalidDataException("Failed to deserialize metadata file.", ex);
+                }
             }
         }
 
