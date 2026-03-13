@@ -127,7 +127,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             MemoryCacheConfig cacheSettings = new(configuration.GetSection("Cache"));
 
             // Assert
-            Assert.That(cacheSettings.MaxSizeBytes, Is.EqualTo(0));
+            Assert.That(cacheSettings.MaxSizeBytes, Is.Zero);
         }
 
         [Test]

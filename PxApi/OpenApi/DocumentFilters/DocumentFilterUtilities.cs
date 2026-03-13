@@ -1,4 +1,4 @@
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 
 namespace PxApi.OpenApi.DocumentFilters
 {
@@ -6,17 +6,25 @@ namespace PxApi.OpenApi.DocumentFilters
     {
         internal static void CleanUpErrorResponses(OpenApiOperation operation)
         {
-            foreach (KeyValuePair<string, OpenApiResponse> response in operation.Responses)
+            if (operation.Responses == null)
             {
-                if (response.Key == "200") continue;
+                return;
+            }
+
+            foreach (KeyValuePair<string, IOpenApiResponse> response in operation.Responses)
+            {
+                if (response.Key == "200" || response.Value is not OpenApiResponse concreteResponse)
+                {
+                    continue;
+                }
 
                 if (response.Key == "406")
                 {
-                    response.Value.Content.Clear();
+                    concreteResponse.Content?.Clear();
                 }
                 else
                 {
-                    response.Value.Content.Remove("text/csv");
+                    concreteResponse.Content?.Remove("text/csv");
                 }
             }
         }

@@ -299,7 +299,7 @@ namespace PxApi.UnitTests.Caching
             // Act & Assert
             using (Assert.EnterMultipleScope())
             {  
-                Assert.That(memoryCache.Keys.Count, Is.EqualTo(0));
+                Assert.That(memoryCache.Keys.Count, Is.Zero);
                 Assert.That(dbCache.TryGetMetadata(_file1, out _), Is.False);
                 Assert.DoesNotThrow(() => dbCache.TryRemoveMeta(_file1));
             }

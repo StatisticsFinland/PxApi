@@ -1,4 +1,4 @@
-﻿using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace PxApi.OpenApi
@@ -15,27 +15,22 @@ namespace PxApi.OpenApi
         /// <param name="context">The operation filter context.</param>
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
-            if (!operation.Responses.ContainsKey("500"))
+            if (operation.Responses == null || operation.Responses.ContainsKey("500"))
             {
-                operation.Responses["500"] = new OpenApiResponse
-                {
-                    Description = "Unexpected server error.",
-                    Content = new Dictionary<string, OpenApiMediaType>
-                    {
-                        ["application/json"] = new OpenApiMediaType
-                        {
-                            Schema = new OpenApiSchema
-                            {
-                                Reference = new OpenApiReference
-                                {
-                                    Type = ReferenceType.Schema,
-                                    Id = "ProblemDetails"
-                                }
-                            }
-                        }
-                    }
-                };
+                return;
             }
+
+            operation.Responses["500"] = new OpenApiResponse
+            {
+                Description = "Unexpected server error.",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchemaReference("ProblemDetails")
+                    }
+                }
+            };
         }
     }
 }

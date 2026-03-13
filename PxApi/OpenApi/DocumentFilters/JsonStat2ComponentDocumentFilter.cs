@@ -1,4 +1,4 @@
-﻿using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi;
 using PxApi.Models.JsonStat;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
