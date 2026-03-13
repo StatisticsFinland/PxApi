@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Moq;
 using PxApi.OpenApi.DocumentFilters;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -26,7 +26,7 @@ namespace PxApi.UnitTests.DocumentFilters
             {
                 Components = new OpenApiComponents
                 {
-                    Schemas = new Dictionary<string, OpenApiSchema>
+                    Schemas = new Dictionary<string, IOpenApiSchema>
                     {
                         { "CodeFilter", new OpenApiSchema() },
                         { "MyFromFilterExtra", new OpenApiSchema() },

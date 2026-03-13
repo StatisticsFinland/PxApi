@@ -1,9 +1,9 @@
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Moq;
 using PxApi.Models.QueryFilters;
 using PxApi.OpenApi.SchemaFilters;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Text.Json.Nodes;
 
 namespace PxApi.UnitTests.SchemaFilters
 {
@@ -27,7 +27,7 @@ namespace PxApi.UnitTests.SchemaFilters
             // Arrange
             OpenApiSchema schema = new()
             {
-                Properties = new Dictionary<string, OpenApiSchema> { { "dummy", new OpenApiSchema() } },
+                Properties = new Dictionary<string, IOpenApiSchema> { { "dummy", new OpenApiSchema() } },
                 AllOf = [new OpenApiSchema()],
                 OneOf = [new OpenApiSchema()],
                 AnyOf = [new OpenApiSchema()]
@@ -41,7 +41,7 @@ namespace PxApi.UnitTests.SchemaFilters
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(schema.Type, Is.EqualTo("object"));
+                Assert.That(schema.Type, Is.EqualTo(JsonSchemaType.Object));
                 Assert.That(schema.Required, Is.Not.Null);
                 Assert.That(schema.Required.Contains("type"), Is.True);
                 Assert.That(schema.Properties, Is.Not.Null);
@@ -52,30 +52,29 @@ namespace PxApi.UnitTests.SchemaFilters
                 Assert.That(schema.OneOf?.Count, Is.EqualTo(0));
                 Assert.That(schema.AnyOf?.Count, Is.EqualTo(0));
 
-                OpenApiSchema typeProperty = schema.Properties["type"];
-                Assert.That(typeProperty.Type, Is.EqualTo("string"));
-                IList<IOpenApiAny> enumValues = typeProperty.Enum;
+                OpenApiSchema typeProperty = (OpenApiSchema)schema.Properties["type"];
+                Assert.That(typeProperty.Type, Is.EqualTo(JsonSchemaType.String));
+                IList<JsonNode?> enumValues = typeProperty.Enum;
                 Assert.That(enumValues, Is.Not.Null);
-                List<string> enumStrings = [.. enumValues.Select(v => ((OpenApiString)v).Value)];
+                List<string> enumStrings = [.. enumValues.Select(v => v!.GetValue<string>())];
                 Assert.That(enumStrings, Has.Count.EqualTo(5));
                 Assert.That(enumStrings, Is.EquivalentTo(expected0));
 
-                OpenApiSchema queryProperty = schema.Properties["query"];
+                OpenApiSchema queryProperty = (OpenApiSchema)schema.Properties["query"];
                 Assert.That(queryProperty.OneOf, Is.Not.Null);
                 Assert.That(queryProperty.OneOf, Has.Count.EqualTo(3));
-                Assert.That(queryProperty.OneOf.Any(s => s.Type == "array"), Is.True);
-                Assert.That(queryProperty.OneOf.Any(s => s.Type == "string"), Is.True);
-                Assert.That(queryProperty.OneOf.Any(s => s.Type == "integer"), Is.True);
+                Assert.That(queryProperty.OneOf.Any(s => ((OpenApiSchema)s).Type == JsonSchemaType.Array), Is.True);
+                Assert.That(queryProperty.OneOf.Any(s => ((OpenApiSchema)s).Type == JsonSchemaType.String), Is.True);
+                Assert.That(queryProperty.OneOf.Any(s => ((OpenApiSchema)s).Type == JsonSchemaType.Integer), Is.True);
 
-                Assert.That(schema.Example, Is.TypeOf<OpenApiObject>());
-                OpenApiObject example = (OpenApiObject)schema.Example;
+                Assert.That(schema.Example, Is.TypeOf<JsonObject>());
+                JsonObject example = (JsonObject)schema.Example;
                 Assert.That(example.ContainsKey("type"), Is.True);
-                Assert.That(example["type"], Is.TypeOf<OpenApiString>());
-                Assert.That(((OpenApiString)example["type"]).Value, Is.EqualTo("Code"));
+                Assert.That(example["type"]?.GetValue<string>(), Is.EqualTo("Code"));
                 Assert.That(example.ContainsKey("query"), Is.True);
-                Assert.That(example["query"], Is.TypeOf<OpenApiArray>());
-                OpenApiArray exampleQuery = (OpenApiArray)example["query"];
-                List<string> queryValues = [.. exampleQuery.Select(v => ((OpenApiString)v).Value)];
+                Assert.That(example["query"], Is.TypeOf<JsonArray>());
+                JsonArray queryArray = (JsonArray)example["query"]!;
+                List<string> queryValues = [.. queryArray.Select(v => v!.GetValue<string>())];
                 Assert.That(queryValues, Is.EquivalentTo(expected1));
             });
         }
@@ -94,32 +93,31 @@ namespace PxApi.UnitTests.SchemaFilters
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(schema.Type, Is.EqualTo("object"));
+                Assert.That(schema.Type, Is.EqualTo(JsonSchemaType.Object));
                 Assert.That(schema.AdditionalProperties, Is.Not.Null);
-                Assert.That(schema.AdditionalProperties.Reference, Is.Not.Null);
-                Assert.That(schema.AdditionalProperties.Reference.Id, Is.EqualTo("Filter"));
+                Assert.That(schema.AdditionalProperties, Is.TypeOf<OpenApiSchemaReference>());
                 Assert.That(schema.Description, Is.EqualTo("Dictionary mapping dimension codes to filter objects (one per dimension)."));
 
-                Assert.That(schema.Example, Is.TypeOf<OpenApiObject>());
-                OpenApiObject example = (OpenApiObject)schema.Example;
+                Assert.That(schema.Example, Is.TypeOf<JsonObject>());
+                JsonObject example = (JsonObject)schema.Example;
                 Assert.That(example.ContainsKey("gender"), Is.True);
                 Assert.That(example.ContainsKey("year"), Is.True);
                 Assert.That(example.ContainsKey("region"), Is.True);
 
-                OpenApiObject gender = (OpenApiObject)example["gender"];
-                Assert.That(((OpenApiString)gender["type"]).Value, Is.EqualTo("Code"));
-                Assert.That(gender["query"], Is.TypeOf<OpenApiArray>());
-                OpenApiArray genderQuery = (OpenApiArray)gender["query"];
-                List<string> genderValues = [.. genderQuery.Select(v => ((OpenApiString)v).Value)];
+                JsonObject gender = (JsonObject)example["gender"]!;
+                Assert.That(gender["type"]?.GetValue<string>(), Is.EqualTo("Code"));
+                Assert.That(gender["query"], Is.TypeOf<JsonArray>());
+                JsonArray genderQuery = (JsonArray)gender["query"]!;
+                List<string> genderValues = [.. genderQuery.Select(v => v!.GetValue<string>())];
                 Assert.That(genderValues, Is.EquivalentTo(expected2));
 
-                OpenApiObject year = (OpenApiObject)example["year"];
-                Assert.That(((OpenApiString)year["type"]).Value, Is.EqualTo("From"));
-                Assert.That(((OpenApiString)year["query"]).Value, Is.EqualTo("2020"));
+                JsonObject year = (JsonObject)example["year"]!;
+                Assert.That(year["type"]?.GetValue<string>(), Is.EqualTo("From"));
+                Assert.That(year["query"]?.GetValue<string>(), Is.EqualTo("2020"));
 
-                OpenApiObject region = (OpenApiObject)example["region"];
-                Assert.That(((OpenApiString)region["type"]).Value, Is.EqualTo("First"));
-                Assert.That(((OpenApiInteger)region["query"]).Value, Is.EqualTo(5));
+                JsonObject region = (JsonObject)example["region"]!;
+                Assert.That(region["type"]?.GetValue<string>(), Is.EqualTo("First"));
+                Assert.That(region["query"]?.GetValue<int>(), Is.EqualTo(5));
             });
         }
     }

@@ -251,7 +251,7 @@ namespace PxApi.DataSources
         {
             BlobContainerClient containerClient = GetContainerClient();
             List<string> names = [];
-            await foreach (BlobItem blob in containerClient.GetBlobsAsync(prefix: prefix, cancellationToken: ct))
+            await foreach (BlobItem blob in containerClient.GetBlobsAsync(BlobTraits.None, BlobStates.None, prefix: prefix, cancellationToken: ct))
             {
                 names.Add(blob.Name);
             }

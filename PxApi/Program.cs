@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.ApplicationInsights;
 using Microsoft.FeatureManagement;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using NLog;
 using NLog.Web;
 using PxApi.Caching;
@@ -59,7 +60,7 @@ namespace PxApi
                     builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
                     {
                         LoggerFilterRule? defaultRule = options.Rules.FirstOrDefault(rule => rule.ProviderName
-                            == nameof(Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider));
+                            == nameof(ApplicationInsightsLoggerProvider));
                         if (defaultRule is not null)
                         {
                             options.Rules.Remove(defaultRule);

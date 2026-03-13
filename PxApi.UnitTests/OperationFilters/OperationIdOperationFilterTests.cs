@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Moq;
 using PxApi.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -15,7 +15,8 @@ namespace PxApi.UnitTests.OperationFilters
             ApiDescription apiDescription = new();
             ISchemaGenerator schemaGenerator = Mock.Of<ISchemaGenerator>();
             SchemaRepository schemaRepository = new();
-            OperationFilterContext context = new(apiDescription, schemaGenerator, schemaRepository, methodInfo);
+            OpenApiDocument document = new();
+            OperationFilterContext context = new(apiDescription, schemaGenerator, schemaRepository, document, methodInfo);
             return context;
         }
 
