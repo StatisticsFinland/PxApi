@@ -57,7 +57,7 @@ namespace PxApi.DataSources
                         }
                     }
 
-                    return PxFileRef.ValidateAndCreate(fileName, dataBase, hierarchy);
+                    return PxFileRef.ValidateAndCreate(fileName, DataBase, hierarchy);
                 }
             }
         }
