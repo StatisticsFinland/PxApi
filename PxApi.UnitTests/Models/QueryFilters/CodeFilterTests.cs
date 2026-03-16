@@ -1,4 +1,4 @@
-﻿using Px.Utils.Models.Metadata;
+using Px.Utils.Models.Metadata;
 using PxApi.Models.QueryFilters;
 
 namespace PxApi.UnitTests.Models.QueryFilters
