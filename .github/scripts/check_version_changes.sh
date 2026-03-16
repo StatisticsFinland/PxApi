@@ -1,9 +1,9 @@
 #!/bin/bash
-versionNumber=$(grep '<VersionPrefix>' ./PxApi/PxApi.csproj | grep -o "[0-9]*\.[0-9]*\.[0-9]*")
+versionNumber=$(grep '<Version>' ./PxApi/PxApi.csproj | grep -o "[0-9]*\.[0-9]*\.[0-9]*")
 
 git fetch origin dev --quiet
 
-versionInDev=$(git show origin/dev:PxApi/PxApi.csproj | grep '<VersionPrefix>' | grep -o "[0-9]*\.[0-9]*\.[0-9]*")
+versionInDev=$(git show origin/dev:PxApi/PxApi.csproj | grep '<Version>' | grep -o "[0-9]*\.[0-9]*\.[0-9]*")
 
 echo "Version: This branch $versionNumber, dev branch $versionInDev"
 
