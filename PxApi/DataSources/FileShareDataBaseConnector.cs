@@ -40,7 +40,7 @@ namespace PxApi.DataSources
 
                 ShareDirectoryClient dbDirectory = GetDatabaseDirectoryClient();
 
-                await ListAllFilesRecursivelyAsync(dbDirectory, [], files, dataBase, ct);
+                await ListAllFilesRecursivelyAsync(dbDirectory, [], files, DataBase, ct);
 
                 Logger.LogDebug("Found {Count} PX files in file share {ShareName}", files.Count, shareName);
                 return [.. files];
