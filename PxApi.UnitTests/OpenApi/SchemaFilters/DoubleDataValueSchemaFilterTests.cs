@@ -36,18 +36,18 @@ namespace PxApi.UnitTests.OpenApi.SchemaFilters
             filter.Apply(schema, context);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(schema.Type, Is.EqualTo(JsonSchemaType.Number | JsonSchemaType.Null));
                 Assert.That(schema.Format, Is.EqualTo("double"));
                 Assert.That(schema.Properties, Is.Not.Null);
-                Assert.That(schema.Properties?.Count, Is.EqualTo(0));
-                Assert.That(schema.AllOf?.Count, Is.EqualTo(0));
-                Assert.That(schema.OneOf?.Count, Is.EqualTo(0));
-                Assert.That(schema.AnyOf?.Count, Is.EqualTo(0));
+                Assert.That(schema.Properties, Has.Count.Zero);
+                Assert.That(schema.AllOf, Has.Count.Zero);
+                Assert.That(schema.OneOf, Has.Count.Zero);
+                Assert.That(schema.AnyOf, Has.Count.Zero);
                 Assert.That(schema.AdditionalProperties, Is.Null);
                 Assert.That(schema.Items, Is.Null);
-            });
+            }
         }
 
         [Test]
@@ -68,18 +68,18 @@ namespace PxApi.UnitTests.OpenApi.SchemaFilters
             filter.Apply(schema, context);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(schema.Type, Is.EqualTo(JsonSchemaType.Array));
                 Assert.That(schema.Items, Is.Not.Null);
-                OpenApiSchema itemsSchema = (OpenApiSchema)schema.Items;
-                Assert.That(itemsSchema.Type, Is.EqualTo(JsonSchemaType.Number | JsonSchemaType.Null));
+                OpenApiSchema itemsSchema = (OpenApiSchema)schema.Items!;
+                Assert.That(itemsSchema!.Type, Is.EqualTo(JsonSchemaType.Number | JsonSchemaType.Null));
                 Assert.That(itemsSchema.Format, Is.EqualTo("double"));
-                Assert.That(schema.Properties?.Count, Is.EqualTo(0));
-                Assert.That(schema.AllOf?.Count, Is.EqualTo(0));
-                Assert.That(schema.OneOf?.Count, Is.EqualTo(0));
-                Assert.That(schema.AnyOf?.Count, Is.EqualTo(0));
-            });
+                Assert.That(schema.Properties, Has.Count.Zero);
+                Assert.That(schema.AllOf, Has.Count.Zero);
+                Assert.That(schema.OneOf, Has.Count.Zero);
+                Assert.That(schema.AnyOf, Has.Count.Zero);
+            }
         }
     }
 }
