@@ -485,7 +485,7 @@ namespace PxApi.UnitTests.Caching
         }
 
         [Test]
-        public void TryGetDataSuperset_WhenSupersetFound_ReturnsTrueAndSupersetMap()
+        public async Task TryGetDataSuperset_WhenSupersetFound_ReturnsTrueAndSupersetMap()
         {
             // Arrange
             object? metaContainer = new MetaCacheContainer(MatrixMetadata);
@@ -529,8 +529,8 @@ namespace PxApi.UnitTests.Caching
             {
                 Assert.That(result, Is.True);
                 Assert.That(resultMap, Is.EqualTo(superMap));
-                Assert.That(resultData!, Is.EqualTo(superData));
-            };
+                Assert.That(await resultData!, Is.EqualTo(await superData));
+            }
         }
     }
 }

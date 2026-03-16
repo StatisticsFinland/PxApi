@@ -1,4 +1,4 @@
-using PxApi.Models;
+﻿using PxApi.Models;
 
 namespace PxApi.UnitTests.Models
 {
@@ -15,7 +15,6 @@ namespace PxApi.UnitTests.Models
         public void Create_WithValidIdAndDatabase_ReturnsPxFileRef(string id, string dbId)
         {
             DataBaseRef db = DataBaseRef.Create(dbId);
-            string filePath = Path.Combine("c:", "testfolder", $"{id}.px");
             PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(id, db, ["statisticalProgram"]);
             using (Assert.EnterMultipleScope())
             {
