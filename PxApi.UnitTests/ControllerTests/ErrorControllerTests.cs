@@ -68,12 +68,12 @@ namespace PxApi.UnitTests.ControllerTests
 
             object? responseValue = badRequest.Value;
             Assert.That(responseValue, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(GetPropertyValue(responseValue, "error"), Is.EqualTo("Invalid model"));
                 Assert.That(GetPropertyValue(responseValue, "message"), Is.EqualTo("The request model is invalid."));
                 Assert.That(GetPropertyValue(responseValue, "path"), Is.EqualTo(requestPath));
-            });
+            };
 
             // Verify logging
             _mockLogger.Verify(
@@ -104,12 +104,12 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
 
             // Verify exception properties are set correctly
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exception.Message, Is.EqualTo(customMessage));
                 Assert.That(exception.ModelState, Is.EqualTo(modelState));
                 Assert.That(exception.RequestPath, Is.EqualTo(requestPath));
-            });
+            };
 
             // Verify logging
             _mockLogger.Verify(
@@ -139,12 +139,12 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
 
             // Verify exception properties are set correctly with default message
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exception.Message, Is.EqualTo("Model validation failed"));
                 Assert.That(exception.ModelState, Is.EqualTo(modelState));
                 Assert.That(exception.RequestPath, Is.EqualTo(requestPath));
-            });
+            };
         }
 
         #endregion
@@ -169,12 +169,12 @@ namespace PxApi.UnitTests.ControllerTests
 
             object? responseValue = badRequest.Value;
             Assert.That(responseValue, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(GetPropertyValue(responseValue, "error"), Is.EqualTo("Malformed JSON"));
                 Assert.That(GetPropertyValue(responseValue, "message"), Is.EqualTo("The request contains malformed JSON."));
                 Assert.That(GetPropertyValue(responseValue, "path"), Is.EqualTo(requestPath));
-            });
+            };
 
             // Verify logging
             _mockLogger.Verify(
@@ -210,11 +210,11 @@ namespace PxApi.UnitTests.ControllerTests
 
             object? responseValue = objectResult.Value;
             Assert.That(responseValue, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(GetPropertyValue(responseValue, "error"), Is.EqualTo("Internal server error"));
                 Assert.That(GetPropertyValue(responseValue, "message"), Is.EqualTo("A system error occurred."));
-            });
+            };
 
             // Verify logging
             _mockLogger.Verify(
@@ -250,11 +250,11 @@ namespace PxApi.UnitTests.ControllerTests
 
             object? responseValue = objectResult.Value;
             Assert.That(responseValue, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(GetPropertyValue(responseValue, "error"), Is.EqualTo("Internal server error"));
                 Assert.That(GetPropertyValue(responseValue, "message"), Is.EqualTo("An unexpected error occurred."));
-            });
+            };
 
             // Verify logging
             _mockLogger.Verify(
@@ -328,12 +328,12 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(badRequest2, Is.Not.Null);
             object? responseValue2 = badRequest2.Value;
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(responseValue1, Is.Not.Null);
                 Assert.That(responseValue2, Is.Not.Null);
                 Assert.That(GetPropertyValue(responseValue2!, "path"), Is.EqualTo(""));
-            });
+            };
         }
 
         #endregion

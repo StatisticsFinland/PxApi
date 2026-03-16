@@ -1,4 +1,4 @@
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using PxApi.Models.QueryFilters;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -30,7 +30,7 @@ namespace PxApi.OpenApi.DocumentFilters
             if (swaggerDoc.Components?.Schemas != null)
             {
                 List<string> keysToRemove = [];
-                foreach (KeyValuePair<string, OpenApiSchema> schema in swaggerDoc.Components.Schemas)
+                foreach (KeyValuePair<string, IOpenApiSchema> schema in swaggerDoc.Components.Schemas)
                 {
                     // Remove any schema that matches Filter subclass names
                     if (FilterSubclassNames.Any(filterName => 
@@ -39,7 +39,7 @@ namespace PxApi.OpenApi.DocumentFilters
                         keysToRemove.Add(schema.Key);
                     }
                 }
-                
+
                 foreach (string key in keysToRemove)
                 {
                     swaggerDoc.Components.Schemas.Remove(key);

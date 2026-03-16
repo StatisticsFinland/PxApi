@@ -1,4 +1,4 @@
-﻿using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Data.DataValue;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -29,7 +29,7 @@ namespace PxApi.OpenApi.DocumentFilters
             if (swaggerDoc.Components?.Schemas != null)
             {
                 List<string> keysToRemove = [];
-                foreach (KeyValuePair<string, OpenApiSchema> schema in swaggerDoc.Components.Schemas)
+                foreach (KeyValuePair<string, IOpenApiSchema> schema in swaggerDoc.Components.Schemas)
                 {
                     // Remove any schema whose key contains one of the internal DataValue type name fragments.
                     if (DataValueTypeNames.Any(typeName => 
@@ -38,7 +38,7 @@ namespace PxApi.OpenApi.DocumentFilters
                         keysToRemove.Add(schema.Key);
                     }
                 }
-                
+
                 foreach (string key in keysToRemove)
                 {
                     swaggerDoc.Components.Schemas.Remove(key);

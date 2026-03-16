@@ -1,6 +1,6 @@
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Nodes;
 
 namespace PxApi.OpenApi.Examples
 {
@@ -19,64 +19,54 @@ namespace PxApi.OpenApi.Examples
             {
                 Summary = "Code filter",
                 Description = "Single gender, multiple ages, full wildcard region, partial wildcard category.",
-                Value = new OpenApiArray
-                {
-                    new OpenApiString("gender:code=1"),
-                    new OpenApiString("age:code=25-34,35-44"),
-                    new OpenApiString("region:code=*"),
-                    new OpenApiString("category:code=*manufacturing*")
-                }
+                Value = new JsonArray(
+                    "gender:code=1",
+                    "age:code=25-34,35-44",
+                    "region:code=*",
+                    "category:code=*manufacturing*"
+                )
             },
             ["from-filter"] = new OpenApiExample
             {
                 Summary = "From filter",
                 Description = "Years from 2020 onward; time codes starting with 202.",
-                Value = new OpenApiArray
-                {
-                    new OpenApiString("year:from=2020"),
-                    new OpenApiString("time:from=202*")
-                }
+                Value = new JsonArray(
+                    "year:from=2020",
+                    "time:from=202*"
+                )
             },
             ["to-filter"] = new OpenApiExample
             {
                 Summary = "To filter",
                 Description = "Years up to 2023; time codes up to first match starting with 2022.",
-                Value = new OpenApiArray
-                {
-                    new OpenApiString("year:to=2023"),
-                    new OpenApiString("time:to=2022*")
-                }
+                Value = new JsonArray(
+                    "year:to=2023",
+                    "time:to=2022*"
+                )
             },
             ["first-filter"] = new OpenApiExample
             {
                 Summary = "First filter",
                 Description = "First 10 region codes.",
-                Value = new OpenApiArray
-                {
-                    new OpenApiString("region:first=10")
-                }
+                Value = new JsonArray("region:first=10")
             },
             ["last-filter"] = new OpenApiExample
             {
                 Summary = "Last filter",
                 Description = "Last 5 region codes.",
-                Value = new OpenApiArray
-                {
-                    new OpenApiString("region:last=5")
-                }
+                Value = new JsonArray("region:last=5")
             },
             ["combined-filters"] = new OpenApiExample
             {
                 Summary = "Combined filters",
                 Description = "Multiple types together.",
-                Value = new OpenApiArray
-                {
-                    new OpenApiString("gender:code=1,2"),
-                    new OpenApiString("year:from=2020"),
-                    new OpenApiString("age:to=81-90"),
-                    new OpenApiString("region:first=3"),
-                    new OpenApiString("rooms:last=2")
-                }
+                Value = new JsonArray(
+                    "gender:code=1,2",
+                    "year:from=2020",
+                    "age:to=81-90",
+                    "region:first=3",
+                    "rooms:last=2"
+                )
             }
         };
     }

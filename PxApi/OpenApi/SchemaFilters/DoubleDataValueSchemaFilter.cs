@@ -1,4 +1,4 @@
-﻿using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi;
 using Px.Utils.Models.Data.DataValue;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -17,37 +17,37 @@ namespace PxApi.OpenApi.SchemaFilters
         /// </summary>
         /// <param name="schema">The OpenAPI schema to modify.</param>
         /// <param name="context">The schema filter context containing type information.</param>
-        public void Apply(OpenApiSchema schema, SchemaFilterContext context)
+        public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
         {
+            if (schema is not OpenApiSchema concreteSchema)
+            {
+                return;
+            }
+
             // Handle individual DoubleDataValue types
             if (context.Type == typeof(DoubleDataValue))
             {
-                schema.Type = "number";
-                schema.Format = "double";
-                schema.Nullable = true;
-                schema.Properties?.Clear();
-                schema.AllOf?.Clear();
-                schema.OneOf?.Clear();
-                schema.AnyOf?.Clear();
-                schema.AdditionalProperties = null;
-                schema.Reference = null;
+                concreteSchema.Type = JsonSchemaType.Number | JsonSchemaType.Null;
+                concreteSchema.Format = "double";
+                concreteSchema.Properties?.Clear();
+                concreteSchema.AllOf?.Clear();
+                concreteSchema.OneOf?.Clear();
+                concreteSchema.AnyOf?.Clear();
+                concreteSchema.AdditionalProperties = null;
             }
             // Handle DoubleDataValue arrays
             else if (context.Type == typeof(DoubleDataValue[]))
             {
-                schema.Type = "array";
-                schema.Items = new OpenApiSchema
+                concreteSchema.Type = JsonSchemaType.Array;
+                concreteSchema.Items = new OpenApiSchema
                 {
-                    Type = "number",
-                    Format = "double",
-                    Nullable = true,
-                    Reference = null
+                    Type = JsonSchemaType.Number | JsonSchemaType.Null,
+                    Format = "double"
                 };
-                schema.Properties?.Clear();
-                schema.AllOf?.Clear();
-                schema.OneOf?.Clear();
-                schema.AnyOf?.Clear();
-                schema.Reference = null;
+                concreteSchema.Properties?.Clear();
+                concreteSchema.AllOf?.Clear();
+                concreteSchema.OneOf?.Clear();
+                concreteSchema.AnyOf?.Clear();
             }
         }
     }

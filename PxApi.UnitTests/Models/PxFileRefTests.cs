@@ -1,4 +1,4 @@
-using PxApi.Models;
+﻿using PxApi.Models;
 
 namespace PxApi.UnitTests.Models
 {
@@ -20,7 +20,7 @@ namespace PxApi.UnitTests.Models
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(id));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
-            }
+            };
         }
 
         [Test]
@@ -51,7 +51,7 @@ namespace PxApi.UnitTests.Models
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(tableId));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
-            }
+            };
         }
 
         [Test]
@@ -69,7 +69,7 @@ namespace PxApi.UnitTests.Models
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(tableId));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
-            }
+            };
         }
 
         [Test]
@@ -87,7 +87,7 @@ namespace PxApi.UnitTests.Models
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(tableId));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
-            }
+            };
         }
 
         [Test]

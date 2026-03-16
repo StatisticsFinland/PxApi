@@ -26,14 +26,14 @@ namespace PxApi.UnitTests.Models.QueryFilters
             MatrixMap filtered = MetaFiltering.ApplyToMatrixMeta(meta, filters);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(filtered.DimensionMaps[0].ValueCodes, Has.Count.EqualTo(1));
                 Assert.That(filtered.DimensionMaps[0].ValueCodes[0], Is.EqualTo("dim0-val1"));
                 Assert.That(filtered.DimensionMaps[1].ValueCodes, Has.Count.EqualTo(4));
                 Assert.That(filtered.DimensionMaps[2].ValueCodes, Has.Count.EqualTo(2));
                 Assert.That(filtered.DimensionMaps[2].ValueCodes, Is.EquivalentTo(new List<string> { "dim2-val2", "dim2-val3" }));
-            });
+            };
         }
 
         [Test]
@@ -47,7 +47,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
             MatrixMap filtered = MetaFiltering.ApplyToMatrixMeta(meta, filters);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 // Content dimension (dim0) - should use FirstFilter(1)
                 Assert.That(filtered.DimensionMaps[0].ValueCodes, Has.Count.EqualTo(1));
@@ -57,7 +57,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
                 // Other dimension (dim2) - should use FirstFilter(1)
                 Assert.That(filtered.DimensionMaps[2].ValueCodes, Has.Count.EqualTo(1));
                 Assert.That(filtered.DimensionMaps[2].ValueCodes[0], Is.EqualTo("dim2-val0"));
-            });
+            };
         }
 
         [Test]
@@ -76,14 +76,14 @@ namespace PxApi.UnitTests.Models.QueryFilters
             MatrixMap filtered = MetaFiltering.ApplyToMatrixMeta(meta, filters);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(filtered.DimensionMaps[0].ValueCodes, Has.Count.EqualTo(1));
                 Assert.That(filtered.DimensionMaps[0].ValueCodes[0], Is.EqualTo("dim0-val2"));
                 Assert.That(filtered.DimensionMaps[1].ValueCodes, Has.Count.EqualTo(25)); // Default for Time - all values
                 Assert.That(filtered.DimensionMaps[2].ValueCodes, Has.Count.EqualTo(1)); // Default for Other - first value
                 Assert.That(filtered.DimensionMaps[2].ValueCodes[0], Is.EqualTo("dim2-val0"));
-            });
+            };
         }
 
         [Test]
@@ -98,12 +98,12 @@ namespace PxApi.UnitTests.Models.QueryFilters
             MatrixMap filtered = MetaFiltering.ApplyToMatrixMeta(meta, filters);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 // The dimension with ELIMINATION should only have one value
                 Assert.That(filtered.DimensionMaps[0].ValueCodes, Has.Count.EqualTo(1));
                 Assert.That(filtered.DimensionMaps[0].ValueCodes[0], Is.EqualTo("dim0-val1")); // The elimination value
-            });
+            };
         }
 
         [Test]
@@ -117,12 +117,12 @@ namespace PxApi.UnitTests.Models.QueryFilters
             MatrixMap filtered = MetaFiltering.ApplyToMatrixMeta(meta, filters);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 // The dimension with multilanguage ELIMINATION should only have one value
                 Assert.That(filtered.DimensionMaps[0].ValueCodes, Has.Count.EqualTo(1));
                 Assert.That(filtered.DimensionMaps[0].ValueCodes[0], Is.EqualTo("dim0-val2")); // The elimination value matched by name
-            });
+            };
         }
 
         [Test]

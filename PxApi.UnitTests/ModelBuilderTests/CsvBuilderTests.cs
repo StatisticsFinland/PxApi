@@ -145,7 +145,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             // Assert
             string[] lines = result.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(lines, Has.Length.EqualTo(5));
                 Assert.That(lines[0], Does.Contain("table-description.en")); // Should have the table description
@@ -154,7 +154,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(lines[0], Does.Contain("dim0-value0-name.en dim1-value0-name.en dim2-value1-name.en dim3-value0-name.en"));
                 Assert.That(lines[0], Does.Contain("dim0-value0-name.en dim1-value0-name.en dim2-value1-name.en dim3-value1-name.en"));
                 Assert.That(lines[0], Does.Contain("dim0-value1-name.en dim1-value1-name.en dim2-value1-name.en dim3-value1-name.en"));
-            });
+            };
         }
 
         [Test]
@@ -174,13 +174,13 @@ namespace PxApi.UnitTests.ModelBuilderTests
             string result = CsvBuilder.BuildCsvResponse(requestMatrix, lang, metadata);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Does.Contain("."));     // Missing value
                 Assert.That(result, Does.Contain("..."));   // Confidential value  
                 Assert.That(result, Does.Contain("1"));     // Existing value
                 Assert.That(result, Does.Contain("4"));     // Existing value
-            });
+            };
         }
 
         [Test]
@@ -196,14 +196,14 @@ namespace PxApi.UnitTests.ModelBuilderTests
             // Act - English  
             string resultEn = CsvBuilder.BuildCsvResponse(requestMatrix, "en", metadata);
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 // Assert
                 Assert.That(resultFi, Does.Contain("table-description.fi"));
                 Assert.That(resultEn, Does.Contain("table-description.en"));
                 // Both should have the same structure but potentially different value names
                 Assert.That(resultFi.Split('\n'), Has.Length.EqualTo(resultEn.Split('\n').Length));
-            });
+            };
         }
 
         [Test]
@@ -306,11 +306,11 @@ namespace PxApi.UnitTests.ModelBuilderTests
             string result = CsvBuilder.BuildCsvResponse(requestMatrix, lang, metadata);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Is.EqualTo(expected));
-            });
+            };
         }
 
         [Test]
@@ -338,11 +338,11 @@ namespace PxApi.UnitTests.ModelBuilderTests
             string result = CsvBuilder.BuildCsvResponse(requestMatrix, lang, metadata);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Is.EqualTo(expected));
-            });
+            };
         }
 
         [Test]
@@ -402,11 +402,11 @@ namespace PxApi.UnitTests.ModelBuilderTests
             string result = CsvBuilder.BuildCsvResponse(requestMatrix, filteredMeta.DefaultLanguage, complete);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Is.EqualTo(expected));
-            });
+            };
         }
 
         [Test]
@@ -465,13 +465,13 @@ namespace PxApi.UnitTests.ModelBuilderTests
             string result = CsvBuilder.BuildCsvResponse(requestMatrix, "en", completeMeta);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null.And.Not.Empty);
                 Assert.That(result, Is.EqualTo(expected));
                 // Verify that elimination dimensions are filtered out from headers
                 Assert.That(result, Does.Not.Contain("dim0-value0-name.en"));
-            });
+            };
         }
 
         // Helper method to create complete without description

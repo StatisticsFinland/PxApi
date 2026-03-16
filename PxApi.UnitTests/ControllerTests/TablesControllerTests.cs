@@ -138,7 +138,7 @@ namespace PxApi.UnitTests.ControllerTests
             PagedTableList? pagedTableList = okResult.Value as PagedTableList;
             Assert.That(pagedTableList, Is.Not.Null);
             Assert.That(pagedTableList.Tables, Has.Count.EqualTo(2));
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(pagedTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
                 Assert.That(pagedTableList.Tables[0].Title, Is.EqualTo("table-description.en"));
@@ -148,7 +148,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(pagedTableList.Tables[0].Links[0].Rel, Is.EqualTo("describedby"));
                 Assert.That(pagedTableList.Tables[0].Links[0].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/file1?lang=en"));
                 Assert.That(pagedTableList.Tables[0].Links[0].Method, Is.EqualTo("GET"));
-            });
+            };
         }
 
         [Test]
@@ -277,13 +277,13 @@ namespace PxApi.UnitTests.ControllerTests
                 if(page == 3) Assert.That(pagedTableList.Tables, Has.Count.EqualTo(1));
                 else Assert.That(pagedTableList.Tables, Has.Count.EqualTo(3));
 
-                Assert.Multiple(() =>
+                using (Assert.EnterMultipleScope())
                 {
                     for (int i = 0; i < (page == 3 ? 1 : pageSize); i++)
                     {
                         Assert.That(pagedTableList.Tables[i].Name, Is.EqualTo(files[tableIndex++].Id));
                     }
-                });
+                };
 
                 Assert.That(pagedTableList.PagingInfo.CurrentPage, Is.EqualTo(page));
             }
@@ -316,7 +316,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
             OkObjectResult? objectResult = result.Result as OkObjectResult;
             Assert.That(objectResult, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
                 if (objectResult.Value is not PagedTableList pageTableList)
@@ -330,7 +330,7 @@ namespace PxApi.UnitTests.ControllerTests
                     Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1"));
                     Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
                 }
-            });
+            };
         }
 
         [Test]
@@ -375,7 +375,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
             OkObjectResult? objectResult = result.Result as OkObjectResult;
             Assert.That(objectResult, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
                 if (objectResult.Value is not PagedTableList pageTableList)
@@ -390,7 +390,7 @@ namespace PxApi.UnitTests.ControllerTests
                     Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
                     Assert.That(pageTableList.Tables[0].LastUpdated, Is.EqualTo(DateTime.MinValue));
                 }
-            });
+            };
         }
 
         #region HeadTablesAsync Tests
@@ -491,11 +491,11 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = _controller.OptionsTables(database);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow.ToString(), Is.EqualTo("GET,HEAD,OPTIONS"));
-            });
+            };
         }
 
         #endregion

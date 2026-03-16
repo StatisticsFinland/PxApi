@@ -59,7 +59,7 @@ namespace PxApi.DataSources
                 string blobPrefix = $"{PxBlobPrefix}/{DataBase.Id}/";
 
                 BlobContainerClient containerClient = GetContainerClient();
-                AsyncPageable<BlobItem> blobs = containerClient.GetBlobsAsync(prefix: blobPrefix, cancellationToken: ct);
+                AsyncPageable<BlobItem> blobs = containerClient.GetBlobsAsync(BlobTraits.None, BlobStates.None, prefix: blobPrefix, cancellationToken: ct);
 
                 await foreach (BlobItem blob in blobs)
                 {

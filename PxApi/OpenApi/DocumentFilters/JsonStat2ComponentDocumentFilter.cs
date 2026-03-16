@@ -1,4 +1,4 @@
-﻿using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using PxApi.Models.JsonStat;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -16,6 +16,11 @@ namespace PxApi.OpenApi.DocumentFilters
         /// <param name="context">The document filter context.</param>
         public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
         {
+            if (swaggerDoc.Components?.Schemas == null)
+            {
+                return;
+            }
+
             // Ensure JsonStat2 schema is generated and present in the components
             if (!swaggerDoc.Components.Schemas.ContainsKey("JsonStat2"))
             {

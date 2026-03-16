@@ -56,11 +56,11 @@ namespace PxApi.UnitTests.Caching
             bool result = sut.TryGetMetadata(_tableId, out MetaCacheContainer? metaContainer);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.True);
                 Assert.That(metaContainer, Is.Not.Null);
-            });
+            };
         }
 
         [Test]
@@ -78,11 +78,11 @@ namespace PxApi.UnitTests.Caching
             bool result = sut.TryGetMetadata(_tableId, out MetaCacheContainer? metaContainer);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(metaContainer, Is.Null);
-            });
+            };
         }
 
         [Test]
@@ -154,12 +154,12 @@ namespace PxApi.UnitTests.Caching
             bool result = sut.TryGetData(matrixMap, out Task<int[]>? data, out DateTime? cached);
 
             // Assert
-            Assert.Multiple(async () =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.True);
-                Assert.That(await data!, Is.EqualTo(await testData));
+                Assert.That(data!, Is.EqualTo(testData));
                 Assert.That(cached!, Is.LessThanOrEqualTo(DateTime.UtcNow));
-            });
+            };
         }
 
         [Test]
@@ -181,12 +181,12 @@ namespace PxApi.UnitTests.Caching
             bool result = sut.TryGetData(matrixMap, out Task<int[]>? data, out DateTime? cached);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(data, Is.Null);
                 Assert.That(cached, Is.Null);
-            });
+            };
         }
 
         [Test]
@@ -215,13 +215,13 @@ namespace PxApi.UnitTests.Caching
             );
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(supersetMap, Is.Null);
                 Assert.That(data, Is.Null);
                 Assert.That(cached, Is.Null);
-            });
+            };
         }
 
         [Test]
@@ -244,17 +244,17 @@ namespace PxApi.UnitTests.Caching
             bool result = sut.TryGetDataSuperset(_tableId, matrixMap, out IMatrixMap? supersetMap, out Task<int[]>? data, out DateTime? cached);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
                 Assert.That(supersetMap, Is.Null);
                 Assert.That(data, Is.Null);
                 Assert.That(cached, Is.Null);
-            });
+            };
         }
 
         [Test]
-        public void TryGetDataSuperset_WhenSupersetFound_ReturnsTrueAndData()
+        public async System.Threading.Tasks.Task TryGetDataSuperset_WhenSupersetFound_ReturnsTrueAndData()
         {
             // Arrange
             MatrixMap requestedMap = new(
@@ -286,13 +286,13 @@ namespace PxApi.UnitTests.Caching
             bool result = sut.TryGetDataSuperset(_tableId, requestedMap, out IMatrixMap? resultSuper, out Task<int[]>? resultData, out DateTime? cached);
 
             // Assert
-            Assert.Multiple(async () =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.True);
                 Assert.That(resultSuper, Is.EqualTo(supersetMap));
                 Assert.That(await resultData!, Is.EqualTo(await supersetData));
                 Assert.That(cached, Is.LessThanOrEqualTo(DateTime.UtcNow));
-            });
+            }
         }
 
         [Test]
@@ -337,12 +337,12 @@ namespace PxApi.UnitTests.Caching
                 Times.Once);
 
             MetaCacheContainer? containerAfterTest = metaContainer as MetaCacheContainer;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(containerAfterTest!.GetRelatedMaps(), Has.Count.EqualTo(1));
                 Assert.That(containerAfterTest!.GetRelatedMaps().First(), Is.EqualTo(dataMap));
                 Assert.That(capturedObject!.PostEvictionCallbacks, Has.Count.EqualTo(1));
-            });
+            };
         }
 
         [Test]
@@ -364,12 +364,12 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache sut = new(memoryCacheMock.Object);
 
             // Act & Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 InvalidOperationException? ex = Assert.Throws<InvalidOperationException>(() => 
                     sut.SetData(_tableId, matrixMap, testData));
                 Assert.That(ex?.Message, Does.Contain(_tableId.Id));
-            });
+            };
         }
 
         [Test]
@@ -485,7 +485,7 @@ namespace PxApi.UnitTests.Caching
         }
 
         [Test]
-        public void TryGetDataSuperset_WhenSupersetFound_ReturnsTrueAndSupersetMap()
+        public async Task TryGetDataSuperset_WhenSupersetFound_ReturnsTrueAndSupersetMap()
         {
             // Arrange
             object? metaContainer = new MetaCacheContainer(MatrixMetadata);
@@ -525,12 +525,12 @@ namespace PxApi.UnitTests.Caching
                 out DateTime? cached);
 
             // Assert
-            Assert.Multiple(async () =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.True);
                 Assert.That(resultMap, Is.EqualTo(superMap));
                 Assert.That(await resultData!, Is.EqualTo(await superData));
-            });
+            }
         }
     }
 }

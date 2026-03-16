@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Moq;
 using PxApi.OpenApi.DocumentFilters;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace PxApi.UnitTests.DocumentFilters
+namespace PxApi.UnitTests.OpenApi.DocumentFilters
 {
     [TestFixture]
     public class ProblemDetailsDocumentFilterTests
@@ -27,10 +27,10 @@ namespace PxApi.UnitTests.DocumentFilters
                 Paths = [],
                 Components = new OpenApiComponents
                 {
-                    Schemas = new Dictionary<string, OpenApiSchema>
+                    Schemas = new Dictionary<string, IOpenApiSchema>
                     {
-                        ["ProblemDetails"] = new OpenApiSchema { Type = "object" },
-                        ["JsonStat2"] = new OpenApiSchema { Type = "object" }
+                        ["ProblemDetails"] = new OpenApiSchema { Type = JsonSchemaType.Object },
+                        ["JsonStat2"] = new OpenApiSchema { Type = JsonSchemaType.Object }
                     }
                 }
             };
@@ -58,9 +58,9 @@ namespace PxApi.UnitTests.DocumentFilters
                 Paths = [],
                 Components = new OpenApiComponents
                 {
-                    Schemas = new Dictionary<string, OpenApiSchema>
+                    Schemas = new Dictionary<string, IOpenApiSchema>
                     {
-                        ["JsonStat2"] = new OpenApiSchema { Type = "object" }
+                        ["JsonStat2"] = new OpenApiSchema { Type = JsonSchemaType.Object }
                     }
                 }
             };

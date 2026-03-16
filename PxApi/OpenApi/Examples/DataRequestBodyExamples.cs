@@ -1,6 +1,6 @@
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Nodes;
 using static PxApi.Models.QueryFilters.FilterJsonConverter;
 
 namespace PxApi.OpenApi.Examples
@@ -20,27 +20,27 @@ namespace PxApi.OpenApi.Examples
             {
                 Summary = "Code filter",
                 Description = "Specific codes, full wildcard, partial wildcard.",
-                Value = new OpenApiObject
+                Value = new JsonObject
                 {
-                    ["gender"] = new OpenApiObject
+                    ["gender"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.Code)),
-                        ["query"] = new OpenApiArray { new OpenApiString("1") }
+                        ["type"] = nameof(FilterType.Code),
+                        ["query"] = new JsonArray("1")
                     },
-                    ["age"] = new OpenApiObject
+                    ["age"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.Code)),
-                        ["query"] = new OpenApiArray { new OpenApiString("25-34"), new OpenApiString("35-44") }
+                        ["type"] = nameof(FilterType.Code),
+                        ["query"] = new JsonArray("25-34", "35-44")
                     },
-                    ["region"] = new OpenApiObject
+                    ["region"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.Code)),
-                        ["query"] = new OpenApiArray { new OpenApiString("*") }
+                        ["type"] = nameof(FilterType.Code),
+                        ["query"] = new JsonArray("*")
                     },
-                    ["category"] = new OpenApiObject
+                    ["category"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.Code)),
-                        ["query"] = new OpenApiArray { new OpenApiString("*manufacturing*") }
+                        ["type"] = nameof(FilterType.Code),
+                        ["query"] = new JsonArray("*manufacturing*")
                     }
                 }
             },
@@ -48,17 +48,17 @@ namespace PxApi.OpenApi.Examples
             {
                 Summary = "From filter",
                 Description = "Inclusive start at value or pattern.",
-                Value = new OpenApiObject
+                Value = new JsonObject
                 {
-                    ["year"] = new OpenApiObject
+                    ["year"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.From)),
-                        ["query"] = new OpenApiString("2020")
+                        ["type"] = nameof(FilterType.From),
+                        ["query"] = "2020"
                     },
-                    ["time"] = new OpenApiObject
+                    ["time"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.From)),
-                        ["query"] = new OpenApiString("202*")
+                        ["type"] = nameof(FilterType.From),
+                        ["query"] = "202*"
                     }
                 }
             },
@@ -66,17 +66,17 @@ namespace PxApi.OpenApi.Examples
             {
                 Summary = "To filter",
                 Description = "Inclusive end at value or pattern.",
-                Value = new OpenApiObject
+                Value = new JsonObject
                 {
-                    ["year"] = new OpenApiObject
+                    ["year"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.To)),
-                        ["query"] = new OpenApiString("2023")
+                        ["type"] = nameof(FilterType.To),
+                        ["query"] = "2023"
                     },
-                    ["time"] = new OpenApiObject
+                    ["time"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.To)),
-                        ["query"] = new OpenApiString("2022*")
+                        ["type"] = nameof(FilterType.To),
+                        ["query"] = "2022*"
                     }
                 }
             },
@@ -84,12 +84,12 @@ namespace PxApi.OpenApi.Examples
             {
                 Summary = "First filter",
                 Description = "First N values (N > 0).",
-                Value = new OpenApiObject
+                Value = new JsonObject
                 {
-                    ["region"] = new OpenApiObject
+                    ["region"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.First)),
-                        ["query"] = new OpenApiInteger(10)
+                        ["type"] = nameof(FilterType.First),
+                        ["query"] = 10
                     }
                 }
             },
@@ -97,12 +97,12 @@ namespace PxApi.OpenApi.Examples
             {
                 Summary = "Last filter",
                 Description = "Last N values (N > 0).",
-                Value = new OpenApiObject
+                Value = new JsonObject
                 {
-                    ["region"] = new OpenApiObject
+                    ["region"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.Last)),
-                        ["query"] = new OpenApiInteger(5)
+                        ["type"] = nameof(FilterType.Last),
+                        ["query"] = 5
                     }
                 }
             },
@@ -110,32 +110,32 @@ namespace PxApi.OpenApi.Examples
             {
                 Summary = "Combined filters",
                 Description = "Multiple filter types in one request.",
-                Value = new OpenApiObject
+                Value = new JsonObject
                 {
-                    ["gender"] = new OpenApiObject
+                    ["gender"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.Code)),
-                        ["query"] = new OpenApiArray { new OpenApiString("1"), new OpenApiString("2") }
+                        ["type"] = nameof(FilterType.Code),
+                        ["query"] = new JsonArray("1", "2")
                     },
-                    ["year"] = new OpenApiObject
+                    ["year"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.From)),
-                        ["query"] = new OpenApiString("2020")
+                        ["type"] = nameof(FilterType.From),
+                        ["query"] = "2020"
                     },
-                    ["age"] = new OpenApiObject
+                    ["age"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.To)),
-                        ["query"] = new OpenApiString("81-90")
+                        ["type"] = nameof(FilterType.To),
+                        ["query"] = "81-90"
                     },
-                    ["region"] = new OpenApiObject
+                    ["region"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.First)),
-                        ["query"] = new OpenApiInteger(3)
+                        ["type"] = nameof(FilterType.First),
+                        ["query"] = 3
                     },
-                    ["rooms"] = new OpenApiObject
+                    ["rooms"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString(nameof(FilterType.Last)),
-                        ["query"] = new OpenApiInteger(2)
+                        ["type"] = nameof(FilterType.Last),
+                        ["query"] = 2
                     }
                 }
             }

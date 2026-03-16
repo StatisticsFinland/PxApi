@@ -1,8 +1,8 @@
-﻿using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi;
 using PxApi.Models.QueryFilters;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Nodes;
 using static PxApi.Models.QueryFilters.FilterJsonConverter;
 
 namespace PxApi.OpenApi.SchemaFilters
@@ -19,23 +19,28 @@ namespace PxApi.OpenApi.SchemaFilters
         /// <param name="schema">The OpenAPI schema to modify.</param>
         /// <param name="context">The schema filter context containing type information.</param>
         [SuppressMessage("SonarAnalyzer.CSharp", "S1192", Justification = "Duplicate string literals are intentional to represent example JSON structure.")]
-        public void Apply(OpenApiSchema schema, SchemaFilterContext context)
+        public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
         {
+            if (schema is not OpenApiSchema concreteSchema)
+            {
+                return;
+            }
+
             if (context.Type == typeof(Filter))
             {
-                schema.Properties?.Clear();
-                schema.AllOf?.Clear();
-                schema.OneOf?.Clear();
-                schema.AnyOf?.Clear();
+                concreteSchema.Properties?.Clear();
+                concreteSchema.AllOf?.Clear();
+                concreteSchema.OneOf?.Clear();
+                concreteSchema.AnyOf?.Clear();
 
-                schema.Type = "object";
-                schema.Required = new HashSet<string> { "type" };
-                schema.Properties = new Dictionary<string, OpenApiSchema>
+                concreteSchema.Type = JsonSchemaType.Object;
+                concreteSchema.Required = new HashSet<string> { "type" };
+                concreteSchema.Properties = new Dictionary<string, IOpenApiSchema>
                 {
                     ["type"] = new OpenApiSchema
                     {
-                        Type = "string",
-                        Enum = [.. Enum.GetNames<FilterType>().Select(n => (IOpenApiAny)new OpenApiString(n))],
+                        Type = JsonSchemaType.String,
+                        Enum = [.. Enum.GetNames<FilterType>().Select(n => (JsonNode)n)],
                         Description = "Filter type. Code | From | To | First | Last"
                     },
                     ["query"] = new OpenApiSchema
@@ -45,69 +50,53 @@ namespace PxApi.OpenApi.SchemaFilters
                         [
                             new OpenApiSchema
                             {
-                                Type = "array",
-                                Items = new OpenApiSchema { Type = "string" },
+                                Type = JsonSchemaType.Array,
+                                Items = new OpenApiSchema { Type = JsonSchemaType.String },
                                 Description = "Code filter: list of codes or wildcard patterns. Comma list in GET; array in POST body. '*' matches zero or more characters."
                             },
                             new OpenApiSchema
                             {
-                                Type = "string",
+                                Type = JsonSchemaType.String,
                                 Description = "From / To filters: single inclusive boundary value; wildcard '*' allowed."
                             },
                             new OpenApiSchema
                             {
-                                Type = "integer",
-                                Minimum = 1,
+                                Type = JsonSchemaType.Integer,
+                                Minimum = "1",
                                 Description = "First / Last filters: positive count (N > 0)."
                             }
                         ]
                     }
                 };
 
-                schema.Example = new OpenApiObject
+                concreteSchema.Example = new JsonObject
                 {
-                    ["type"] = new OpenApiString("Code"),
-                    ["query"] = new OpenApiArray
-                    {
-                        new OpenApiString("A01"),
-                        new OpenApiString("A02"),
-                        new OpenApiString("*MANUF*")
-                    }
+                    ["type"] = "Code",
+                    ["query"] = new JsonArray("A01", "A02", "*MANUF*")
                 };
             }
             else if (context.Type == typeof(Dictionary<string, Filter>))
             {
-                schema.Type = "object";
-                schema.AdditionalProperties = new OpenApiSchema
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.Schema,
-                        Id = nameof(Filter)
-                    }
-                };
-                schema.Description = "Dictionary mapping dimension codes to filter objects (one per dimension).";
+                concreteSchema.Type = JsonSchemaType.Object;
+                concreteSchema.AdditionalProperties = new OpenApiSchemaReference(nameof(Filter));
+                concreteSchema.Description = "Dictionary mapping dimension codes to filter objects (one per dimension).";
 
-                schema.Example = new OpenApiObject
+                concreteSchema.Example = new JsonObject
                 {
-                    ["gender"] = new OpenApiObject
+                    ["gender"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString("Code"),
-                        ["query"] = new OpenApiArray
-                        {
-                            new OpenApiString("1"),
-                            new OpenApiString("2")
-                        }
+                        ["type"] = "Code",
+                        ["query"] = new JsonArray("1", "2")
                     },
-                    ["year"] = new OpenApiObject
+                    ["year"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString("From"),
-                        ["query"] = new OpenApiString("2020")
+                        ["type"] = "From",
+                        ["query"] = "2020"
                     },
-                    ["region"] = new OpenApiObject
+                    ["region"] = new JsonObject
                     {
-                        ["type"] = new OpenApiString("First"),
-                        ["query"] = new OpenApiInteger(5)
+                        ["type"] = "First",
+                        ["query"] = 5
                     }
                 };
             }

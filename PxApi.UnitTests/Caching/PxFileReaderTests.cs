@@ -44,7 +44,7 @@ namespace PxApi.UnitTests.Caching
             IReadOnlyMatrixMetadata result = await connector.ReadMetadataAsync(fileRef, CancellationToken.None);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Is.InstanceOf<IReadOnlyMatrixMetadata>());
@@ -55,7 +55,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result.Dimensions[1].Code, Is.EqualTo("dim2"));
                 Assert.That(result.Dimensions[0].Values, Has.Count.EqualTo(1));
                 Assert.That(result.Dimensions[1].Values, Has.Count.EqualTo(2));
-            });
+            };
         }
 
         [Test]
@@ -74,14 +74,14 @@ namespace PxApi.UnitTests.Caching
             DoubleDataValue[] result = await connector.ReadDataAsync(fileRef, targetMap, meta, CancellationToken.None);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0], Is.InstanceOf<DoubleDataValue>());
                 Assert.That(result[0].Type, Is.EqualTo(DataValueType.Exists));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
-            });
+            };
         }
     }
 }

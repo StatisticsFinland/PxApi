@@ -21,12 +21,12 @@ namespace PxApi.UnitTests.UtilitiesTests
             Dictionary<string, Filter> result = QueryFilterUtils.ConvertFiltersArrayToFilters(filtersArray);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Has.Count.EqualTo(1));
                 Assert.That(result.ContainsKey("gender"), Is.True);
                 Assert.That(result["gender"], Is.TypeOf<CodeFilter>());
-            });
+            };
 
             CodeFilter codeFilter = (CodeFilter)result["gender"];
             Assert.That(codeFilter.FilterStrings, Is.EqualTo(expected));
@@ -42,7 +42,7 @@ namespace PxApi.UnitTests.UtilitiesTests
             Dictionary<string, Filter> result = QueryFilterUtils.ConvertFiltersArrayToFilters(filtersArray);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Has.Count.EqualTo(3));
                 Assert.That(result.ContainsKey("gender"), Is.True);
@@ -63,7 +63,7 @@ namespace PxApi.UnitTests.UtilitiesTests
                 Assert.That(result["region"], Is.TypeOf<LastFilter>());
                 LastFilter regionFilter = (LastFilter)result["region"];
                 Assert.That(regionFilter.Count, Is.EqualTo(5));
-            });
+            };
         }
 
         [Test]
@@ -83,7 +83,7 @@ namespace PxApi.UnitTests.UtilitiesTests
             Dictionary<string, Filter> result = QueryFilterUtils.ConvertFiltersArrayToFilters(filtersArray);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Has.Count.EqualTo(6));
 
@@ -110,7 +110,7 @@ namespace PxApi.UnitTests.UtilitiesTests
                 Assert.That(result["area"], Is.TypeOf<LastFilter>());
                 LastFilter? lastFilter = result["area"] as LastFilter;
                 Assert.That(lastFilter!.Count, Is.EqualTo(5));
-            });
+            };
         }
 
         [Test]
@@ -136,12 +136,12 @@ namespace PxApi.UnitTests.UtilitiesTests
             Dictionary<string, Filter> result = QueryFilterUtils.ConvertFiltersArrayToFilters(filtersArray);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Has.Count.EqualTo(2));
                 Assert.That(result.ContainsKey("gender"), Is.True);
                 Assert.That(result.ContainsKey("year"), Is.True);
-            });
+            };
         }
 
         [Test]
@@ -227,7 +227,7 @@ namespace PxApi.UnitTests.UtilitiesTests
             Dictionary<string, Filter> result = QueryFilterUtils.ConvertFiltersArrayToFilters(filtersArray);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Has.Count.EqualTo(3));
                 
@@ -239,7 +239,7 @@ namespace PxApi.UnitTests.UtilitiesTests
                 
                 CodeFilter yearFilter = (CodeFilter)result["year"];
                 Assert.That(yearFilter.FilterStrings, Is.EqualTo(expected2));
-            });
+            };
         }
     }
 }
