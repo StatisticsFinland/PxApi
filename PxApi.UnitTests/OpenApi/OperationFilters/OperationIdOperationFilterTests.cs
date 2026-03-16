@@ -79,11 +79,11 @@ namespace PxApi.UnitTests.OpenApi.OperationFilters
         public void OperationIdAttribute_Construct_NullOrWhitespace_Throws()
         {
             // Arrange
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(() => new OperationIdAttribute(""), Throws.ArgumentException);
                 Assert.That(() => new OperationIdAttribute(" \t"), Throws.ArgumentException);
-            });
+            }
         }
     }
 }

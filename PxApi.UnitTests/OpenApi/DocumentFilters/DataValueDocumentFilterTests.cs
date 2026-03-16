@@ -43,7 +43,7 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
 
             // Assert
             ICollection<string> remainingKeys = document.Components.Schemas.Keys;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(remainingKeys.Contains("DoubleDataValue"), Is.False);
                 Assert.That(remainingKeys.Contains("SomePrefixDoubleDataValueSuffix"), Is.False);
@@ -51,7 +51,7 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
                 Assert.That(remainingKeys.Contains("doubledatavalue"), Is.False);
                 Assert.That(remainingKeys.Contains("UnrelatedType"), Is.True);
                 Assert.That(remainingKeys, Has.Count.EqualTo(1));
-            });
+            }
         }
 
         [Test]

@@ -39,22 +39,22 @@ namespace PxApi.UnitTests.OpenApi.SchemaFilters
             filter.Apply(schema, context);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(schema.Type, Is.EqualTo(JsonSchemaType.Object));
                 Assert.That(schema.Required, Is.Not.Null);
-                Assert.That(schema.Required.Contains("type"), Is.True);
+                Assert.That(schema.Required!.Contains("type"), Is.True);
                 Assert.That(schema.Properties, Is.Not.Null);
                 Assert.That(schema.Properties, Has.Count.EqualTo(2));
                 Assert.That(schema.Properties.ContainsKey("type"), Is.True);
                 Assert.That(schema.Properties.ContainsKey("query"), Is.True);
-                Assert.That(schema.AllOf?.Count, Is.EqualTo(0));
-                Assert.That(schema.OneOf?.Count, Is.EqualTo(0));
-                Assert.That(schema.AnyOf?.Count, Is.EqualTo(0));
+                Assert.That(schema.AllOf, Has.Count.EqualTo(0));
+                Assert.That(schema.OneOf, Has.Count.EqualTo(0));
+                Assert.That(schema.AnyOf, Has.Count.EqualTo(0));
 
                 OpenApiSchema typeProperty = (OpenApiSchema)schema.Properties["type"];
                 Assert.That(typeProperty.Type, Is.EqualTo(JsonSchemaType.String));
-                IList<JsonNode?> enumValues = typeProperty.Enum;
+                IList<JsonNode?> enumValues = typeProperty.Enum!;
                 Assert.That(enumValues, Is.Not.Null);
                 List<string> enumStrings = [.. enumValues.Select(v => v!.GetValue<string>())];
                 Assert.That(enumStrings, Has.Count.EqualTo(5));
@@ -63,12 +63,12 @@ namespace PxApi.UnitTests.OpenApi.SchemaFilters
                 OpenApiSchema queryProperty = (OpenApiSchema)schema.Properties["query"];
                 Assert.That(queryProperty.OneOf, Is.Not.Null);
                 Assert.That(queryProperty.OneOf, Has.Count.EqualTo(3));
-                Assert.That(queryProperty.OneOf.Any(s => ((OpenApiSchema)s).Type == JsonSchemaType.Array), Is.True);
-                Assert.That(queryProperty.OneOf.Any(s => ((OpenApiSchema)s).Type == JsonSchemaType.String), Is.True);
-                Assert.That(queryProperty.OneOf.Any(s => ((OpenApiSchema)s).Type == JsonSchemaType.Integer), Is.True);
+                Assert.That(queryProperty.OneOf!.Any(s => ((OpenApiSchema)s).Type == JsonSchemaType.Array), Is.True);
+                Assert.That(queryProperty.OneOf!.Any(s => ((OpenApiSchema)s).Type == JsonSchemaType.String), Is.True);
+                Assert.That(queryProperty.OneOf!.Any(s => ((OpenApiSchema)s).Type == JsonSchemaType.Integer), Is.True);
 
                 Assert.That(schema.Example, Is.TypeOf<JsonObject>());
-                JsonObject example = (JsonObject)schema.Example;
+                JsonObject example = (JsonObject)schema.Example!;
                 Assert.That(example.ContainsKey("type"), Is.True);
                 Assert.That(example["type"]?.GetValue<string>(), Is.EqualTo("Code"));
                 Assert.That(example.ContainsKey("query"), Is.True);
@@ -76,7 +76,7 @@ namespace PxApi.UnitTests.OpenApi.SchemaFilters
                 JsonArray queryArray = (JsonArray)example["query"]!;
                 List<string> queryValues = [.. queryArray.Select(v => v!.GetValue<string>())];
                 Assert.That(queryValues, Is.EquivalentTo(expected1));
-            });
+            }
         }
 
         [Test]
@@ -91,7 +91,7 @@ namespace PxApi.UnitTests.OpenApi.SchemaFilters
             filter.Apply(schema, context);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(schema.Type, Is.EqualTo(JsonSchemaType.Object));
                 Assert.That(schema.AdditionalProperties, Is.Not.Null);
@@ -99,7 +99,7 @@ namespace PxApi.UnitTests.OpenApi.SchemaFilters
                 Assert.That(schema.Description, Is.EqualTo("Dictionary mapping dimension codes to filter objects (one per dimension)."));
 
                 Assert.That(schema.Example, Is.TypeOf<JsonObject>());
-                JsonObject example = (JsonObject)schema.Example;
+                JsonObject example = (JsonObject)schema.Example!;
                 Assert.That(example.ContainsKey("gender"), Is.True);
                 Assert.That(example.ContainsKey("year"), Is.True);
                 Assert.That(example.ContainsKey("region"), Is.True);
@@ -118,7 +118,7 @@ namespace PxApi.UnitTests.OpenApi.SchemaFilters
                 JsonObject region = (JsonObject)example["region"]!;
                 Assert.That(region["type"]?.GetValue<string>(), Is.EqualTo("First"));
                 Assert.That(region["query"]?.GetValue<int>(), Is.EqualTo(5));
-            });
+            }
         }
     }
 }

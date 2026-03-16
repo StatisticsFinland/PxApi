@@ -103,25 +103,25 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
 
             Assert.That(operation.Responses.ContainsKey("200"), Is.True);
             OpenApiResponse response200 = (OpenApiResponse)operation.Responses["200"];
-            OpenApiMediaType jsonMediaType = response200.Content["application/json"];
+            OpenApiMediaType jsonMediaType = response200.Content!["application/json"];
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(jsonMediaType.Schema, Is.Not.Null);
                 Assert.That(jsonMediaType.Schema, Is.TypeOf<OpenApiSchemaReference>());
                 Assert.That(jsonMediaType.Examples, Is.Not.Null);
-                Assert.That(jsonMediaType.Examples.Count, Is.EqualTo(1));
-                Assert.That(jsonMediaType.Examples.ContainsKey("default"), Is.True);
+                Assert.That(jsonMediaType.Examples!, Has.Count.EqualTo(1));
+                Assert.That(jsonMediaType.Examples!.ContainsKey("default"), Is.True);
                 Assert.That(response200.Description, Does.Contain("JSON-stat"));
             }
 
             OpenApiMediaType csvMediaType = response200.Content["text/csv"];
-            OpenApiSchema csvSchema = (OpenApiSchema)csvMediaType.Schema;
-            Assert.That(csvSchema.Description, Does.Contain("CSV dataset"));
+            OpenApiSchema csvSchema = (OpenApiSchema)csvMediaType.Schema!;
+            Assert.That(csvSchema!.Description, Does.Contain("CSV dataset"));
 
             OpenApiResponse response400 = (OpenApiResponse)operation.Responses["400"];
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(response400.Content.ContainsKey("text/csv"), Is.False);
+                Assert.That(response400.Content!.ContainsKey("text/csv"), Is.False);
                 Assert.That(response400.Content["application/json"], Is.Not.Null);
             }
 
@@ -131,7 +131,7 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
             OpenApiResponse response500 = (OpenApiResponse)operation.Responses["500"];
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(response500.Content.ContainsKey("text/csv"), Is.False);
+                Assert.That(response500.Content!.ContainsKey("text/csv"), Is.False);
                 Assert.That(response500.Content["application/json"], Is.Not.Null);
             }
         }
@@ -178,7 +178,7 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
             filter.Apply(document, context);
 
             // Assert (unchanged: description still null, example not set because logic not run)
-            OpenApiMediaType jsonMediaType = operation.Responses["200"].Content["application/json"];
+            OpenApiMediaType jsonMediaType = operation.Responses["200"].Content!["application/json"];
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(operation.Description, Is.Null);

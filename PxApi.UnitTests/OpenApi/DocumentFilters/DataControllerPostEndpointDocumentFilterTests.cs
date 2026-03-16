@@ -99,24 +99,24 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
 
             // Assert request body examples
             OpenApiMediaType rbMediaType = operation.RequestBody.Content!["application/json"];
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(rbMediaType.Examples, Is.Not.Null);
                 Assert.That(rbMediaType.Examples, Is.Not.Empty);
                 Assert.That(rbMediaType.Examples, Has.Count.EqualTo(DataRequestBodyExamples.Examples.Count));
                 Assert.That(rbMediaType.Schema!.Description, Does.Contain("Dictionary mapping dimension codes"));
-            });
+            }
 
             // Assert response
             OpenApiResponse response200 = (OpenApiResponse)operation.Responses["200"];
-            OpenApiMediaType jsonMediaType = response200.Content["application/json"];
+            OpenApiMediaType jsonMediaType = response200.Content!["application/json"];
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(jsonMediaType.Schema, Is.Not.Null);
                 Assert.That(jsonMediaType.Schema, Is.TypeOf<OpenApiSchemaReference>());
                 Assert.That(jsonMediaType.Examples, Is.Not.Null);
-                Assert.That(jsonMediaType.Examples!.Count, Is.EqualTo(1));
-                Assert.That(jsonMediaType.Examples.ContainsKey("default"), Is.True);
+                Assert.That(jsonMediaType.Examples!, Has.Count.EqualTo(1));
+                Assert.That(jsonMediaType.Examples!.ContainsKey("default"), Is.True);
                 Assert.That(response200.Description, Does.Contain("JSON-stat 2.0"));
             }
 

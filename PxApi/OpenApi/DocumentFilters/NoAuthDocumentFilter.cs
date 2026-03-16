@@ -27,10 +27,7 @@ namespace PxApi.OpenApi.DocumentFilters
             const string noAuthNote = "Authentication: This public API requires no authentication.";
             if (swaggerDoc.Info?.Description is null || !swaggerDoc.Info.Description.Contains("requires no authentication"))
             {
-                if (swaggerDoc.Info != null)
-                {
-                    swaggerDoc.Info.Description = (swaggerDoc.Info.Description ?? string.Empty) + noAuthNote;
-                }
+                swaggerDoc.Info?.Description = (swaggerDoc.Info.Description ?? string.Empty) + noAuthNote;
             }
         }
     }
