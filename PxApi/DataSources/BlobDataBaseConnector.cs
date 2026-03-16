@@ -1,5 +1,9 @@
+using Azure;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Azure;
+using System.Diagnostics.CodeAnalysis;
+using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
 
@@ -27,27 +31,87 @@ namespace PxApi.DataSources
         /// </summary>
         protected string ContainerName => containerName;
 
-        private const string PxBlobPrefix = "px";
+        /// <summary>
+        /// Root level for all px and auxiliary files in blob storage.
+        /// </summary>
+        protected const string PxBlobPrefix = "px";
+
+        /// <summary>
+        /// Indicates whether the px files are identified by short form names e.g. 12ts or the old long format statfin_tyonv_pxt_12ts.
+        /// </summary>
+        protected abstract bool UseShortFormNames { get; }
+
+        /// <inheritdoc/>
+        [ExcludeFromCodeCoverage]
+        public override async Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default)
+        {
+            using (Logger.BeginScope(
+                new Dictionary<string, object>
+                {
+                    [LoggerConsts.DB_ID] = DataBase.Id,
+                    [LoggerConsts.CONTROLLER] = nameof(BlobDataBaseConnector),
+                    [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync),
+                    [LoggerConsts.CONTAINER_NAME] = ContainerName
+                }))
+            {
+                Logger.LogDebug("Getting all files from blob storage container.");
+                List<PxFileRef> files = [];
+                string blobPrefix = $"{PxBlobPrefix}/{DataBase.Id}/";
+
+                BlobContainerClient containerClient = GetContainerClient();
+                AsyncPageable<BlobItem> blobs = containerClient.GetBlobsAsync(prefix: blobPrefix, cancellationToken: ct);
+
+                await foreach (BlobItem blob in blobs)
+                {
+                    if (blob.Name.EndsWith(PxFileConstants.FILE_ENDING, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string relativePath = blob.Name.StartsWith(blobPrefix, StringComparison.OrdinalIgnoreCase)
+                            ? blob.Name[blobPrefix.Length..]
+                            : blob.Name;
+
+                        string[] segments = relativePath.Split('/');
+                        string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(segments[^1]);
+                        string tableId = UseShortFormNames
+                            ? fileNameWithoutExtension.Split('_')[^1]
+                            : fileNameWithoutExtension;
+                        string[]? hierarchy = segments.Length > 1 ? segments[..^1] : null;
+
+                        files.Add(PxFileRef.ValidateAndCreate(tableId, DataBase, hierarchy));
+                    }
+                }
+
+                Logger.LogDebug("Found {Count} PX files.", files.Count);
+                return [.. files];
+            }
+        }
 
         /// <summary>
         /// Attempts to read an auxiliary file from blob storage.
         /// </summary>
-        /// <param name="relativePath">Path to the auxiliary file relative to the <see cref="PxBlobPrefix"/> prefix.</param>
+        /// <param name="fileName">The name of the auxiliary file.</param>
+        /// <param name="hierarchy">Optional hierarchy under the database root where the file is located.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <returns>An open, readable stream for the requested auxiliary file.</returns>
         /// <exception cref="FileNotFoundException">Thrown when the auxiliary file does not exist in the configured container.</exception>
-        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct = default)
+        [ExcludeFromCodeCoverage]
+        public override async Task<Stream> TryReadAuxiliaryFileAsync(string fileName, string[]? hierarchy, CancellationToken ct = default)
         {
             using (Logger.BeginScope(new Dictionary<string, object>
             {
                 [LoggerConsts.DB_ID] = DataBase.Id,
                 [LoggerConsts.FUNCTION] = nameof(TryReadAuxiliaryFileAsync),
-                [LoggerConsts.AUXILIARY_PATH] = relativePath,
+                [LoggerConsts.AUXILIARY_PATH] = fileName,
                 [LoggerConsts.CONTAINER_NAME] = ContainerName
             }))
             {
                 BlobContainerClient containerClient = GetContainerClient();
-                string blobName = BlobPathHelper.CombineBlobPath(PxBlobPrefix, relativePath);
+                List<string> pathSegments = [PxBlobPrefix, DataBase.Id];
+                if (hierarchy is { Length: > 0 })
+                {
+                    pathSegments.AddRange(hierarchy);
+                }
+                pathSegments.Add(fileName);
+                string blobName = string.Join('/', pathSegments);
                 BlobClient blob = containerClient.GetBlobClient(blobName);
                 if (!await blob.ExistsAsync(ct))
                 {
@@ -66,6 +130,7 @@ namespace PxApi.DataSources
         /// <returns>An open, readable stream positioned at the beginning of the PX file content.</returns>
         /// <exception cref="InvalidOperationException">Thrown when <paramref name="file"/> does not belong to this connector's database.</exception>
         /// <exception cref="FileNotFoundException">Thrown when the referenced blob does not exist in the configured container.</exception>
+        [ExcludeFromCodeCoverage]
         protected override async Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct = default)
         {
             using (Logger.BeginScope(
@@ -86,13 +151,13 @@ namespace PxApi.DataSources
                 }
 
                 BlobContainerClient containerClient = GetContainerClient();
-                string normalizedPath = BlobPathHelper.NormalizeBlobPath(file.FilePath);
-                BlobClient blobClient = containerClient.GetBlobClient(normalizedPath);
+                string blobPath = GetBlobName(file.Id, file.DataBase, PxBlobPrefix, file.GetHierarchyLevels());
+                BlobClient blobClient = containerClient.GetBlobClient(blobPath);
 
                 if (!await blobClient.ExistsAsync(ct))
                 {
-                    Logger.LogError("PX file {FileId} not found in blob storage path {Path}", file.Id, normalizedPath);
-                    throw new FileNotFoundException($"File {file.Id} not found in blob storage path {normalizedPath}.");
+                    Logger.LogError("PX file {FileId} not found in blob storage path {Path}", file.Id, blobPath);
+                    throw new FileNotFoundException($"File {file.Id} not found in blob storage path {blobPath}.");
                 }
                 return await blobClient.OpenReadAsync(cancellationToken: ct);
             }
@@ -106,10 +171,27 @@ namespace PxApi.DataSources
         /// allowing multiple different storage accounts/endpoints to be configured via dependency injection.
         /// </remarks>
         /// <returns>A container client for <see cref="ContainerName"/>.</returns>
+        [ExcludeFromCodeCoverage]
         protected BlobContainerClient GetContainerClient()
         {
             BlobServiceClient serviceClient = blobServiceClientFactory.CreateClient(DataBase.Id);
             return serviceClient.GetBlobContainerClient(containerName);
+        }
+
+        /// <summary>
+        /// Constructs the full blob name for a file based on its name and optional hierarchy.
+        /// </summary>
+        /// <param name="fileName">The name of the file.</param>
+        /// <param name="db"><see cref="DataBaseRef"/> reference to the database.</param>
+        /// <param name="root">The root path or prefix for the blob.</param>
+        /// <param name="hierarchy">Optional hierarchy of folders leading to the file.</param>
+        /// <returns>The full blob name.</returns>
+        protected static string GetBlobName(string fileName, DataBaseRef db, string root, string[]? hierarchy)
+        {
+            List<string> completePath = [root, db.Id];
+            if (hierarchy != null && hierarchy.Length > 0) completePath.AddRange(hierarchy);
+            completePath.Add(fileName);
+            return string.Join('/', completePath) + PxFileConstants.FILE_ENDING;
         }
     }
 }

@@ -15,7 +15,7 @@ namespace PxApi.UnitTests.DataSources
     internal class DataBaseConnectorTests
     {
         private static readonly DataBaseRef TestDb = DataBaseRef.Create("testdb");
-        private static readonly PxFileRef TestFileRef = PxFileRef.CreateFromPath("test.px", TestDb);
+        private static readonly PxFileRef TestFileRef = PxFileRef.ValidateAndCreate("test", TestDb, ["statisticalProgram"]);
 
         #region TestableConnector
 
@@ -23,14 +23,14 @@ namespace PxApi.UnitTests.DataSources
         {
             protected override ILogger Logger { get; } = new Mock<ILogger>().Object;
 
-            public override Task<string[]> GetAllFilesAsync(CancellationToken ct) =>
-                Task.FromResult<string[]>([]);
+            public override Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct) =>
+                Task.FromResult<PxFileRef[]>([]);
 
             public override Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct) =>
                 Task.FromResult(DateTime.UtcNow);
 
-            public override Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct) =>
-                throw new FileNotFoundException();
+            public override Task<Stream> TryReadAuxiliaryFileAsync(string fileName, string[]? hierarchy, CancellationToken ct = default) =>
+                throw new NotImplementedException();
 
             protected override Task<Stream> OpenPxFileStreamAsync(PxFileRef file, CancellationToken ct)
             {

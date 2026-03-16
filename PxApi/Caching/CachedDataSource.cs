@@ -57,10 +57,9 @@ namespace PxApi.Caching
                 .ContinueWith(t =>
                 {
                     Dictionary<string, PxFileRef> fileDict = [];
-                    foreach (string file in t.Result)
+                    foreach (PxFileRef file in t.Result)
                     {
-                        PxFileRef fileRef = PxFileRef.CreateFromPath(file, dbConnector.DataBase);
-                        fileDict.TryAdd(fileRef.Id, fileRef);
+                        fileDict.TryAdd(file.Id, file);
                     }
                     return fileDict.ToImmutableSortedDictionary();
                 });
@@ -109,7 +108,7 @@ namespace PxApi.Caching
             }
 
             IDataBaseConnector connector = dbConnectorFactory.GetConnector(dataBase);
-            Task<MultilanguageString> buildTask = ReadAliasNameAsync(folderRelativePath, connector, ct);
+            Task<MultilanguageString> buildTask = ReadAliasNameAsync([], connector, ct);
             cache.SetDatabaseName(dataBase, buildTask);
             return await buildTask;
         }
@@ -216,25 +215,24 @@ namespace PxApi.Caching
 
         private static async Task<IReadOnlyList<TableGroup>> BuildGroupingsAsync(PxFileRef pxFile, IDataBaseConnector connector, CancellationToken ct = default)
         {
+            if (pxFile.Hierarchy is null || pxFile.Hierarchy.Length == 0) return [];
+
             try
             {
-                using Stream groupingStream = await connector.TryReadAuxiliaryFileAsync(GROUPINGS_FILE, ct);
+                using Stream groupingStream = await connector.TryReadAuxiliaryFileAsync(GROUPINGS_FILE, [], ct);
                 JsonSerializerOptions converterOptions = GlobalJsonConverterOptions.Default;
-                GroupingFileModel? groupingModel = await JsonSerializer.DeserializeAsync<GroupingFileModel>(groupingStream, converterOptions, ct);
-                string? fileDirName = Path.GetDirectoryName(pxFile.FilePath)?
-                    .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)[^1];
-                if (groupingModel is null || fileDirName is null) return [];
+                GroupingFileModel? groupingModel = await JsonSerializer.DeserializeAsync<GroupingFileModel>(groupingStream, converterOptions, ct)
+                    ?? throw new InvalidDataException($"Grouping file {GROUPINGS_FILE} is empty or malformed.");
 
                 // Reuse alias reading logic
-                MultilanguageString groupNameAliases = await ReadAliasNameAsync(fileDirName, connector, ct);
+                MultilanguageString groupNameAliases = await ReadAliasNameAsync(pxFile.GetHierarchyLevels(), connector, ct);
 
-                MultilanguageString groupingName = new(groupingModel.Name);
                 TableGroup group = new()
                 {
-                    Code = fileDirName,
+                    Code = pxFile.Hierarchy,
                     Name = groupNameAliases,
                     GroupingCode = groupingModel.Code,
-                    GroupingName = groupingName,
+                    GroupingName = new(groupingModel.Name),
                     Links = []
                 };
 
@@ -248,13 +246,13 @@ namespace PxApi.Caching
         }
 
         // Reads alias files (Alias_{lang}.txt) from a folder and builds a MultilanguageString from the first line of each file.
-        private static async Task<MultilanguageString> ReadAliasNameAsync(string folderRelativePath, IDataBaseConnector connector, CancellationToken ct = default)
+        private static async Task<MultilanguageString> ReadAliasNameAsync(string[]? hierarchy, IDataBaseConnector connector, CancellationToken ct = default)
         {
             Dictionary<string, string> translations = new(StringComparer.OrdinalIgnoreCase);
             foreach (string lang in new string[] { "fi", "sv", "en" })
             {
-                string aliasFilePath = Path.Combine(folderRelativePath, GROUP_ALIAS_PREFIX + lang + GROUP_ALIAS_SUFFIX);
-                using Stream aliasStream = await connector.TryReadAuxiliaryFileAsync(aliasFilePath, ct);
+                string fileName = GROUP_ALIAS_PREFIX + lang + GROUP_ALIAS_SUFFIX;
+                using Stream aliasStream = await connector.TryReadAuxiliaryFileAsync(fileName, hierarchy, ct);
                 using StreamReader sr = new(aliasStream, Encoding.UTF8, true);
                 string? alias = await sr.ReadLineAsync(ct);
                 if (!string.IsNullOrWhiteSpace(alias))

@@ -12,7 +12,7 @@ namespace PxApi.UnitTests.Caching
     [TestFixture]
     internal class MatrixCacheTests
     {
-        private readonly PxFileRef _tableId = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", "testTable.px"), DataBaseRef.Create("PxApiUnitTestsDb"));
+        private readonly PxFileRef _tableId = PxFileRef.ValidateAndCreate("testTable", DataBaseRef.Create("PxApiUnitTestsDb"), ["statisticalProgram"]);
         private static Task<IReadOnlyMatrixMetadata> MatrixMetadata
         {
             get

@@ -1,5 +1,6 @@
 using PxApi.Configuration;
 using PxApi.DataSources;
+using PxApi.Models;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PxApi.Utilities
@@ -31,7 +32,7 @@ namespace PxApi.Utilities
                 try
                 {
                     // Test connection by getting all files - if it returns any files, connection is working
-                    string[] files = await connector.GetAllFilesAsync(default);
+                    PxFileRef[] files = await connector.GetAllFilesAsync(default);
 
                     if (files.Length == 0)
                     {

@@ -113,8 +113,8 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            PxFileRef file1 = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "file1.px"), db);
-            PxFileRef file2 = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "file2.px"), db);
+            PxFileRef file1 = PxFileRef.ValidateAndCreate("file1", db, ["statisticalProgram"]);
+            PxFileRef file2 = PxFileRef.ValidateAndCreate("file2", db, ["statisticalProgram"]);
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxFileRef>
             {
                 { "file1", file1 },
@@ -242,13 +242,13 @@ namespace PxApi.UnitTests.ControllerTests
             
             List<PxFileRef> files =
             [
-                PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "file1.px"), db),
-                PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "file2.px"), db),
-                PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "file3.px"), db),
-                PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "file4.px"), db),
-                PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "file5.px"), db),
-                PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "file6.px"), db),
-                PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "file7.px"), db),
+                PxFileRef.ValidateAndCreate("file1", db, ["statisticalProgram"]),
+                PxFileRef.ValidateAndCreate("file2", db, ["statisticalProgram"]),
+                PxFileRef.ValidateAndCreate("file3", db, ["statisticalProgram"]),
+                PxFileRef.ValidateAndCreate("file4", db, ["statisticalProgram"]),
+                PxFileRef.ValidateAndCreate("file5", db, ["statisticalProgram"]),
+                PxFileRef.ValidateAndCreate("file6", db, ["statisticalProgram"]),
+                PxFileRef.ValidateAndCreate("file7", db, ["statisticalProgram"]),
             ];
             
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
@@ -301,7 +301,7 @@ namespace PxApi.UnitTests.ControllerTests
             int page = 1;
             int pageSize = 50;
             
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "table1.px"), db);
+            PxFileRef file = PxFileRef.ValidateAndCreate("table1", db, ["statisticalProgram"]);
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
                 new Dictionary<string, PxFileRef> { { file.Id, file } });
 
@@ -343,7 +343,7 @@ namespace PxApi.UnitTests.ControllerTests
             int page = 1;
             int pageSize = 50;
             
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "table1.px"), db);
+            PxFileRef file = PxFileRef.ValidateAndCreate("table1", db, ["statisticalProgram"]);
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
                 new Dictionary<string, PxFileRef> { { file.Id, file } });
 

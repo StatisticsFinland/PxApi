@@ -314,7 +314,7 @@ namespace PxApi.UnitTests.ControllerTests
         private void SetupTestData()
         {
             _testDatabase = DataBaseRef.Create("testdb");
-            _testTable = PxFileRef.CreateFromPath(Path.Combine("c:", "foo", "testtable"), _testDatabase);
+            _testTable = PxFileRef.ValidateAndCreate("testtable", _testDatabase, ["statisticalProgram"]);
         }
 
         private static long ComputeDataOffset()
@@ -349,8 +349,8 @@ namespace PxApi.UnitTests.ControllerTests
             _mockConnector.Setup(c => c.GetLastWriteTimeAsync(_testTable, CancellationToken.None))
                 .ReturnsAsync(DateTime.UtcNow.AddMinutes(-10));
             _mockConnector.Setup(c => c.GetAllFilesAsync(CancellationToken.None))
-                .ReturnsAsync([_testTable.FilePath]);
-            _mockConnector.Setup(c => c.TryReadAuxiliaryFileAsync(It.IsAny<string>(), CancellationToken.None))
+                .ReturnsAsync([_testTable]);
+            _mockConnector.Setup(c => c.TryReadAuxiliaryFileAsync(It.IsAny<string>(), It.IsAny<string[]?>(), CancellationToken.None))
                 .ThrowsAsync(new FileNotFoundException());
             _mockConnectorFactory.Setup(f => f.GetAvailableDatabases())
                 .Returns([_testDatabase]);

@@ -45,6 +45,9 @@ namespace PxApi.DataSources
         /// <inheritdoc/>
         protected override ILogger Logger => logger;
 
+        /// <inheritdoc/>
+        protected override bool UseShortFormNames => true;
+
         private const string MetaPrefix = "meta";
         private const string MetaFileSuffix = ".meta.json";
 
@@ -52,36 +55,6 @@ namespace PxApi.DataSources
         private const string DataFileSuffix = ".pxb";
 
         private const int DefaultMaxDegreeOfParallelism = 4;
-
-        /// <inheritdoc/>
-        public override async Task<string[]> GetAllFilesAsync(CancellationToken ct = default)
-        {
-            using (Logger.BeginScope(
-                new Dictionary<string, object>
-                {
-                    [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync),
-                    [LoggerConsts.CONTAINER_NAME] = ContainerName
-                }))
-            {
-                Logger.LogDebug("Getting all meta files from blob storage container.");
-                List<string> fileNames = [];
-
-                IReadOnlyList<string> blobNames = await GetBlobItemsAsync(MetaPrefix, ct);
-
-                foreach (string blobName in blobNames)
-                {
-                    string? fileName = TryParseFileIdFromMetaBlobName(blobName);
-                    if (fileName is not null)
-                    {
-                        fileNames.Add(fileName);
-                    }
-                }
-
-                Logger.LogDebug("Found {Count} meta files.", fileNames.Count);
-                return [.. fileNames];
-            }
-        }
 
         /// <inheritdoc/>
         public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default)
@@ -228,9 +201,7 @@ namespace PxApi.DataSources
 
                 string prefix = BuildMetadataPrefix(file.DataBase.Id, file.Id);
                 IReadOnlyList<string> blobNames = await GetBlobItemsAsync(prefix, ct);
-                List<string> metaBlobNames = blobNames
-                    .Where(name => name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
+                List<string> metaBlobNames = [.. blobNames.Where(name => name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase))];
 
                 string? selectedBlobName = null;
 
@@ -251,13 +222,21 @@ namespace PxApi.DataSources
 
                 using Stream stream = await OpenBlobReadStreamAsync(selectedBlobName, ct);
 
-                MatrixMetadata? metadata = await JsonSerializer.DeserializeAsync<MatrixMetadata>(stream, GlobalJsonConverterOptions.Default, ct);
-                if (metadata is null)
+                try
                 {
-                    Logger.LogError("Failed to deserialize metadata for id {FileId}", file.Id);
-                    throw new InvalidDataException("Failed to deserialize metadata file.");
+                    MatrixMetadata? metadata = await JsonSerializer.DeserializeAsync<MatrixMetadata>(stream, GlobalJsonConverterOptions.Default, ct);
+                    if (metadata is null)
+                    {
+                        Logger.LogError("Failed to deserialize metadata for id {FileId}", file.Id);
+                        throw new InvalidDataException("Failed to deserialize metadata file.");
+                    }
+                    return metadata;
                 }
-                return metadata;
+                catch (JsonException ex)
+                {
+                    Logger.LogError(ex, "Failed to deserialize metadata for id {FileId}", file.Id);
+                    throw new InvalidDataException("Failed to deserialize metadata file.", ex);
+                }
             }
         }
 
@@ -340,23 +319,6 @@ namespace PxApi.DataSources
             BlobClient blob = containerClient.GetBlobClient(blobName);
             Response<BlobDownloadStreamingResult> result = await blob.DownloadStreamingAsync(new HttpRange(offset, length), null, false, ct);
             return result.Value.Content;
-        }
-
-        internal static string? TryParseFileIdFromMetaBlobName(string blobName)
-        {
-            if (!blobName.StartsWith(MetaPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
-
-            if (!blobName.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
-
-            string withoutPrefixAndSuffix = blobName[(MetaPrefix.Length + 1)..^MetaFileSuffix.Length];
-            string candidate = withoutPrefixAndSuffix.Split('_')[0];
-            return string.IsNullOrWhiteSpace(candidate) ? null : candidate;
         }
 
         internal static string BuildMetadataPrefix(string dbId, string fileId)

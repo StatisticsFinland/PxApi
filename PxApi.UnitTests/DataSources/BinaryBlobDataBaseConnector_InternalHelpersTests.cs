@@ -1,63 +1,13 @@
 using Px.Utils.BinaryData.ValueConverters;
+using Px.Utils.Models.Metadata.Dimensions;
 using PxApi.DataSources;
+using PxApi.UnitTests.ModelBuilderTests;
 
 namespace PxApi.UnitTests.DataSources
 {
     [TestFixture]
     internal class BinaryBlobDataBaseConnector_InternalHelpersTests
     {
-        [Test]
-        public void TryParseFileIdFromMetaBlobName_WhenValidMetaBlobNameWithTimestamp_ReturnsFileIdWithoutTimestamp()
-        {
-            // Arrange
-            string blobName = "meta/db1/table_202501010000.meta.json";
-
-            // Act
-            string? fileId = BinaryBlobDataBaseConnector.TryParseFileIdFromMetaBlobName(blobName);
-
-            // Assert
-            Assert.That(fileId, Is.EqualTo("db1/table"));
-        }
-
-        [Test]
-        public void TryParseFileIdFromMetaBlobName_WhenValidMetaBlobNameWithoutTimestamp_ReturnsFileId()
-        {
-            // Arrange
-            string blobName = "meta/db1/table.meta.json";
-
-            // Act
-            string? fileId = BinaryBlobDataBaseConnector.TryParseFileIdFromMetaBlobName(blobName);
-
-            // Assert
-            Assert.That(fileId, Is.EqualTo("db1/table"));
-        }
-
-        [Test]
-        public void TryParseFileIdFromMetaBlobName_WhenMissingPrefix_ReturnsNull()
-        {
-            // Arrange
-            string blobName = "db1/table_202501010000.meta.json";
-
-            // Act
-            string? fileId = BinaryBlobDataBaseConnector.TryParseFileIdFromMetaBlobName(blobName);
-
-            // Assert
-            Assert.That(fileId, Is.Null);
-        }
-
-        [Test]
-        public void TryParseFileIdFromMetaBlobName_WhenMissingSuffix_ReturnsNull()
-        {
-            // Arrange
-            string blobName = "meta/db1/table_202501010000.json";
-
-            // Act
-            string? fileId = BinaryBlobDataBaseConnector.TryParseFileIdFromMetaBlobName(blobName);
-
-            // Assert
-            Assert.That(fileId, Is.Null);
-        }
-
         [Test]
         public void BuildMetadataPrefix_ReturnsExpectedFormat()
         {
@@ -122,6 +72,21 @@ namespace PxApi.UnitTests.DataSources
 
             // Assert
             Assert.That(exception.ParamName, Is.EqualTo("headerBytes"));
+        }
+
+        [Test]
+        public void GetTimestamp_ReturnsMaxLastUpdatedTimestamp()
+        {
+            // Arrange
+            ContentDimension contentDimension = TestMockMetaBuilder.GetMockContentDimension("content");
+            ContentValueList values = contentDimension.Values;
+            const string expectedTimestamp = "202410100000";
+
+            // Act
+            string timestamp = BinaryBlobDataBaseConnector.GetTimestamp(values);
+
+            // Assert
+            Assert.That(timestamp, Is.EqualTo(expectedTimestamp));
         }
     }
 }

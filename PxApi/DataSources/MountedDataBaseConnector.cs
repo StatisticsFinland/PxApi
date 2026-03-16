@@ -17,7 +17,7 @@ namespace PxApi.DataSources
         protected override ILogger Logger => logger;
 
         /// <inheritdoc/>
-        public override Task<string[]> GetAllFilesAsync(CancellationToken ct = default)
+        public override Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
@@ -38,7 +38,27 @@ namespace PxApi.DataSources
                 return Task.Run(() => Directory.GetFiles(
                     fullPath,
                     $"*{PxFileConstants.FILE_ENDING}",
-                    SearchOption.AllDirectories), ct);
+                    SearchOption.AllDirectories)
+                    .Select(FileRefFromPath)
+                    .ToArray(), ct);
+
+                PxFileRef FileRefFromPath(string path)
+                {
+                    string fileName = Path.GetFileNameWithoutExtension(path);
+                    string? directoryPath = Path.GetDirectoryName(path);
+                    string[]? hierarchy = null;
+
+                    if (directoryPath is not null)
+                    {
+                        string relativePath = Path.GetRelativePath(fullPath, directoryPath);
+                        if (relativePath != ".")
+                        {
+                            hierarchy = relativePath.Split(Path.DirectorySeparatorChar);
+                        }
+                    }
+
+                    return PxFileRef.ValidateAndCreate(fileName, DataBase, hierarchy);
+                }
             }
         }
 
@@ -61,39 +81,8 @@ namespace PxApi.DataSources
                     throw new InvalidOperationException("The file does not belong to the database.");
                 }
 
-                // Use the FilePath property if it exists and points to a valid file
-                if (!string.IsNullOrEmpty(file.FilePath) && File.Exists(file.FilePath))
-                {
-                    return await Task.Run(() => File.OpenRead(file.FilePath), ct);
-                }
-
-                // Fall back to constructing the path from components
-                string path = Path.Combine(rootPath, file.DataBase.Id, file.Id);
-                
-                return await Task.Run(() =>
-                {
-                    // If the file doesn't exist with just the ID (which is now potentially different from the filename),
-                    // try to find it by searching for the ID with the file extension
-                    if (!File.Exists(path))
-                    {
-                        string searchPath = Path.Combine(rootPath, file.DataBase.Id);
-                        if (Directory.Exists(searchPath))
-                        {
-                            string[] matchingFiles = Directory.GetFiles(
-                                searchPath,
-                                $"*{file.Id}*{PxFileConstants.FILE_ENDING}",
-                                SearchOption.AllDirectories);
-
-                            if (matchingFiles.Length > 0)
-                            {
-                                path = matchingFiles[0];
-                            }
-                        }
-                    }
-
-                    return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-
-                }, ct);
+                string fullPath = GetValidatedPxFilePath(file);
+                return await Task.Run(() => new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read), ct);
             }
         }
 
@@ -110,32 +99,29 @@ namespace PxApi.DataSources
                 }))
             {
                 Logger.LogDebug("Getting last write time");
-                
-                // Use the FilePath property if it exists and points to a valid file
-                if (!string.IsNullOrEmpty(file.FilePath) && File.Exists(file.FilePath))
-                {
-                    return await Task.Run(() => File.GetLastWriteTimeUtc(file.FilePath), ct);
-                }
-                
-                // Fall back to constructing the path from components
-                string path = Path.Combine(rootPath, file.DataBase.Id, file.Id);
-                return await Task.Run(() => File.GetLastWriteTimeUtc(path), ct);
+
+                string fullPath = GetValidatedPxFilePath(file);
+                return await Task.Run(() => File.GetLastWriteTimeUtc(fullPath), ct);
             }
         }
 
         /// <inheritdoc/>
-        public override async Task<Stream> TryReadAuxiliaryFileAsync(string relativePath, CancellationToken ct = default)
+        public override async Task<Stream> TryReadAuxiliaryFileAsync(string fileName, string[]? hierarchy, CancellationToken ct = default)
         {
             using (Logger.BeginScope(new Dictionary<string, object>
             {
                 [LoggerConsts.DB_ID] = DataBase.Id,
                 [LoggerConsts.CONTROLLER] = nameof(MountedDataBaseConnector),
                 [LoggerConsts.FUNCTION] = nameof(TryReadAuxiliaryFileAsync),
-                [LoggerConsts.AUXILIARY_PATH] = relativePath
+                [LoggerConsts.AUXILIARY_PATH] = fileName
             }))
             {
                 string dbRoot = NormalizeDirectoryPath(Path.Combine(_normalizedRootPath, DataBase.Id));
-                string fullPath = Path.GetFullPath(Path.Combine(dbRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+                string[] pathSegments = hierarchy is not null
+                    ? [dbRoot, .. hierarchy, fileName]
+                    : [dbRoot, fileName];
+                string fullPath = Path.GetFullPath(Path.Combine(pathSegments));
+
                 if (!IsWithinDirectory(fullPath, dbRoot))
                 {
                     Logger.LogWarning("Aux file path escaped database root");
@@ -152,6 +138,30 @@ namespace PxApi.DataSources
                     return new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
                 }, ct);
             }
+        }
+
+        /// <summary>
+        /// Builds the full file system path for the given <see cref="PxFileRef"/> using its hierarchy and ID,
+        /// and validates that the resolved path is within the database root directory.
+        /// </summary>
+        /// <param name="file">The PX file reference containing the database, hierarchy, and file ID.</param>
+        /// <returns>The validated full file path.</returns>
+        /// <exception cref="UnauthorizedAccessException">If the resolved path is outside the database root directory.</exception>
+        internal string GetValidatedPxFilePath(PxFileRef file)
+        {
+            string dbRoot = NormalizeDirectoryPath(Path.Combine(_normalizedRootPath, file.DataBase.Id));
+            string[] pathSegments = file.Hierarchy is not null
+                ? [dbRoot, .. file.GetHierarchyLevels()!, $"{file.Id}{PxFileConstants.FILE_ENDING}"]
+                : [dbRoot, $"{file.Id}{PxFileConstants.FILE_ENDING}"];
+            string fullPath = Path.GetFullPath(Path.Combine(pathSegments));
+
+            if (!IsWithinDirectory(fullPath, dbRoot))
+            {
+                Logger.LogWarning("Unauthorized access attempt: The file path is outside the database root.");
+                throw new UnauthorizedAccessException("The file path is outside the database root.");
+            }
+
+            return fullPath;
         }
 
         /// <summary>
