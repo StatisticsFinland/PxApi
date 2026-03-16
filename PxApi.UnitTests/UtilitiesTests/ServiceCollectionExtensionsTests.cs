@@ -50,12 +50,12 @@ namespace PxApi.UnitTests.UtilitiesTests
                 sd.ServiceType == typeof(IDataBaseConnector) &&
                 sd.ServiceKey?.ToString() == "TestMountedDb");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(serviceDescriptor, Is.Not.Null);
                 Assert.That(serviceDescriptor!.Lifetime, Is.EqualTo(ServiceLifetime.Scoped));
                 Assert.That(serviceDescriptor.ServiceKey, Is.EqualTo("TestMountedDb"));
-            });
+            };
         }
 
         [Test]
@@ -72,12 +72,12 @@ namespace PxApi.UnitTests.UtilitiesTests
                 sd.ServiceType == typeof(IDataBaseConnector) &&
                 sd.ServiceKey?.ToString() == "TestFileShareDb");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(serviceDescriptor, Is.Not.Null);
                 Assert.That(serviceDescriptor!.Lifetime, Is.EqualTo(ServiceLifetime.Scoped));
                 Assert.That(serviceDescriptor.ServiceKey, Is.EqualTo("TestFileShareDb"));
-            });
+            };
         }
 
         [Test]
@@ -94,12 +94,12 @@ namespace PxApi.UnitTests.UtilitiesTests
                 sd.ServiceType == typeof(IDataBaseConnector) &&
                 sd.ServiceKey?.ToString() == "TestBlobStorageDb");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(serviceDescriptor, Is.Not.Null);
                 Assert.That(serviceDescriptor!.Lifetime, Is.EqualTo(ServiceLifetime.Scoped));
                 Assert.That(serviceDescriptor.ServiceKey, Is.EqualTo("TestBlobStorageDb"));
-            });
+            };
         }
 
         [Test]
@@ -120,7 +120,7 @@ namespace PxApi.UnitTests.UtilitiesTests
             // Assert
             List<ServiceDescriptor> connectorServices = [.. _services.Where(sd => sd.ServiceType == typeof(IDataBaseConnector))];
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(connectorServices, Has.Count.EqualTo(3));
                 Assert.That(connectorServices.Select(sd => sd.ServiceKey?.ToString()),
@@ -129,7 +129,7 @@ namespace PxApi.UnitTests.UtilitiesTests
                            Contains.Item("FileShareDb"));
                 Assert.That(connectorServices.Select(sd => sd.ServiceKey?.ToString()),
                            Contains.Item("BlobStorageDb"));
-            });
+            };
         }
 
         [Test]
@@ -146,11 +146,11 @@ namespace PxApi.UnitTests.UtilitiesTests
             IDataBaseConnector connector = (IDataBaseConnector)serviceDescriptor.KeyedImplementationFactory!(_mockServiceProvider.Object, "TestMountedDb");
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(connector, Is.InstanceOf<MountedDataBaseConnector>());
                 Assert.That(connector.DataBase.Id, Is.EqualTo("TestMountedDb"));
-            });
+            };
         }
 
         [Test]
@@ -167,13 +167,13 @@ namespace PxApi.UnitTests.UtilitiesTests
                 sd.ServiceType == typeof(IDataBaseConnector) &&
                 sd.ServiceKey?.ToString() == "TestFileShareDb");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(serviceDescriptor, Is.Not.Null);
                 Assert.That(serviceDescriptor!.Lifetime, Is.EqualTo(ServiceLifetime.Scoped));
                 Assert.That(serviceDescriptor.ServiceKey, Is.EqualTo("TestFileShareDb"));
                 Assert.That(serviceDescriptor.KeyedImplementationFactory, Is.Not.Null);
-            });
+            };
         }
 
         [Test]
@@ -190,13 +190,13 @@ namespace PxApi.UnitTests.UtilitiesTests
                 sd.ServiceType == typeof(IDataBaseConnector) &&
                 sd.ServiceKey?.ToString() == "TestBlobStorageDb");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(serviceDescriptor, Is.Not.Null);
                 Assert.That(serviceDescriptor!.Lifetime, Is.EqualTo(ServiceLifetime.Scoped));
                 Assert.That(serviceDescriptor.ServiceKey, Is.EqualTo("TestBlobStorageDb"));
                 Assert.That(serviceDescriptor.KeyedImplementationFactory, Is.Not.Null);
-            });
+            };
         }
 
         [Test]

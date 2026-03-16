@@ -45,7 +45,7 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
 
             // Assert
             ICollection<string> remainingKeys = document.Components.Schemas.Keys;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(remainingKeys.Contains("CodeFilter"), Is.False);
                 Assert.That(remainingKeys.Contains("MyFromFilterExtra"), Is.False);
@@ -53,7 +53,7 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
                 Assert.That(remainingKeys.Contains("tofilter"), Is.False);
                 Assert.That(remainingKeys.Contains("Filter"), Is.True);
                 Assert.That(remainingKeys.Contains("Unrelated"), Is.True);
-            });
+            }
         }
 
         [Test]

@@ -15,12 +15,13 @@ namespace PxApi.UnitTests.Models
         public void Create_WithValidIdAndDatabase_ReturnsPxFileRef(string id, string dbId)
         {
             DataBaseRef db = DataBaseRef.Create(dbId);
+            string filePath = Path.Combine("c:", "testfolder", $"{id}.px");
             PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(id, db, ["statisticalProgram"]);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(id));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
-            }
+            };
         }
 
         [Test]
@@ -51,7 +52,7 @@ namespace PxApi.UnitTests.Models
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(tableId));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
-            }
+            };
         }
 
         [Test]
@@ -69,7 +70,7 @@ namespace PxApi.UnitTests.Models
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(tableId));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
-            }
+            };
         }
 
         [Test]
@@ -87,7 +88,7 @@ namespace PxApi.UnitTests.Models
             {
                 Assert.That(pxFileRef.Id, Is.EqualTo(tableId));
                 Assert.That(pxFileRef.DataBase, Is.EqualTo(db));
-            }
+            };
         }
 
         [Test]

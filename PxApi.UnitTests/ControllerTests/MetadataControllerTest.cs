@@ -116,14 +116,14 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(okResult, Is.Not.Null);
             JsonStat2? resultMeta = okResult.Value as JsonStat2;
             Assert.That(resultMeta, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(resultMeta.Id, Is.EqualTo(expectedId));
                 Assert.That(resultMeta.Label, Is.EqualTo("table-description.en"));
                 Assert.That(resultMeta.Source, Is.EqualTo("table-source.en"));
                 Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
                 Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
-            });
+            };
         }
 
         [Test]
@@ -151,7 +151,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(okResult, Is.Not.Null);
             JsonStat2? resultMeta = okResult.Value as JsonStat2;
             Assert.That(resultMeta, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(resultMeta.Id, Is.EqualTo(expectedId));
                 Assert.That(resultMeta.Label, Is.EqualTo("table-description.fi")); // Using default language
@@ -162,7 +162,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(resultMeta.Extension!.ContainsKey("groupings"));
                 Assert.That(resultMeta.Extension["groupings"], Is.InstanceOf<List<TableGroupJsonStatExtension>>());
                 Assert.That(resultMeta.Extension["groupings"] as List<TableGroupJsonStatExtension>, Has.Count.EqualTo(3));
-            });
+            };
 
             // Verify that GetGroupingsCachedAsync was called with the correct file
             _mockDbConnector.Verify(x => x.GetGroupingsCachedAsync(file, CancellationToken.None), Times.Once);
@@ -193,7 +193,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(okResult, Is.Not.Null);
             JsonStat2? resultMeta = okResult.Value as JsonStat2;
             Assert.That(resultMeta, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(resultMeta.Id, Is.EqualTo(expectedId));
                 Assert.That(resultMeta.Label, Is.EqualTo("table-description.sv"));
@@ -203,7 +203,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(resultMeta.Extension!.ContainsKey("groupings"));
                 Assert.That(resultMeta.Extension["groupings"], Is.InstanceOf<List<TableGroupJsonStatExtension>>());
                 Assert.That(resultMeta.Extension["groupings"] as List<TableGroupJsonStatExtension>, Has.Count.EqualTo(0));
-            });
+            };
 
             // Verify that GetGroupingsCachedAsync was called even when returning empty list
             _mockDbConnector.Verify(x => x.GetGroupingsCachedAsync(file, CancellationToken.None), Times.Once);
@@ -252,11 +252,11 @@ namespace PxApi.UnitTests.ControllerTests
             // Assert
             Assert.That(result.Result, Is.InstanceOf<ObjectResult>());
             ObjectResult? objectResult = result.Result as ObjectResult;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(objectResult?.StatusCode, Is.EqualTo(500));
                 Assert.That(objectResult?.Value, Is.EqualTo("Unexpected server error."));
-            });
+            };
         }
 
         [Test]
@@ -329,11 +329,11 @@ namespace PxApi.UnitTests.ControllerTests
             // Assert
             Assert.That(result.Result, Is.InstanceOf<ObjectResult>());
             ObjectResult? objectResult = result.Result as ObjectResult;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(objectResult?.StatusCode, Is.EqualTo(500));
                 Assert.That(objectResult?.Value, Is.EqualTo("Unexpected server error."));
-            });
+            };
         }
 
         [Test]
@@ -383,14 +383,14 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(okResult, Is.Not.Null);
             JsonStat2? resultMeta = okResult.Value as JsonStat2;
             Assert.That(resultMeta, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(resultMeta.Id, Is.EqualTo(expectedId));
                 Assert.That(resultMeta.Label, Is.EqualTo("table-description.fi"));
                 Assert.That(resultMeta.Source, Is.EqualTo("table-source.fi"));
                 Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
                 Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
-            });
+            };
         }
 
         [Test]
@@ -496,11 +496,11 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = _controller.OptionsMetadata(database, table);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow.ToString(), Is.EqualTo("GET,HEAD,OPTIONS"));
-            });
+            };
         }
 
         [Test]
@@ -514,11 +514,11 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = _controller.OptionsMetadata(database, table);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow.ToString(), Is.EqualTo("GET,HEAD,OPTIONS"));
-            });
+            };
             _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
     }

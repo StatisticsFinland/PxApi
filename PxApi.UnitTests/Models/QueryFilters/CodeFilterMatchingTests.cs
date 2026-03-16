@@ -188,36 +188,36 @@ namespace PxApi.UnitTests.Models.QueryFilters
         [Test]
         public void IsCodeMatch_EmptySegments_HandledCorrectly()
         {
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 // Arrange & Act & Assert
                 Assert.That(FilterUtils.IsCodeMatch("anything", "**"), Is.True);
                 Assert.That(FilterUtils.IsCodeMatch("ab", "a**b"), Is.True);
-            });
+            };
         }
 
         [Test]
         public void IsCodeMatch_LotsOfWildCards_HandledCorrectly()
         {
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 // Arrange & Act & Assert
                 Assert.That(FilterUtils.IsCodeMatch("anything", "**************"), Is.True);
                 Assert.That(FilterUtils.IsCodeMatch("ab", "a**********b"), Is.True);
                 Assert.That(FilterUtils.IsCodeMatch("ab", "**********ab*************"), Is.True);
                 Assert.That(FilterUtils.IsCodeMatch("ab", "**********a******b*************"), Is.True);
-            });
+            };
         }
 
         [Test]
         public void IsCodeMatch_CaseSensitivity_IgnoresCase()
         {
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 // Arrange & Act & Assert
                 Assert.That(FilterUtils.IsCodeMatch("abcdef", "AbC*"), Is.True);
                 Assert.That(FilterUtils.IsCodeMatch( "ABCDEF", "*DeF"), Is.True);
-            });
+            };
         }
     }
 }

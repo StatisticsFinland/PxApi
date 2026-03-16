@@ -55,14 +55,14 @@ namespace PxApi.UnitTests.ConfigurationTests
             MemoryCacheConfig cacheSettings = new(configuration.GetSection("Cache"));
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(cacheSettings.DefaultDataCellSize, Is.EqualTo(16));
                 Assert.That(cacheSettings.DefaultUpdateTaskSize, Is.EqualTo(50));
                 Assert.That(cacheSettings.DefaultTableGroupSize, Is.EqualTo(100));
                 Assert.That(cacheSettings.DefaultFileListSize, Is.EqualTo(350000));
                 Assert.That(cacheSettings.DefaultMetaSize, Is.EqualTo(200000));
-            });
+            };
         }
 
         [Test]
@@ -85,14 +85,14 @@ namespace PxApi.UnitTests.ConfigurationTests
             MemoryCacheConfig cacheSettings = new(configuration.GetSection("Cache"));
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(cacheSettings.DefaultDataCellSize, Is.EqualTo(32));
                 Assert.That(cacheSettings.DefaultUpdateTaskSize, Is.EqualTo(100));
                 Assert.That(cacheSettings.DefaultTableGroupSize, Is.EqualTo(200));
                 Assert.That(cacheSettings.DefaultFileListSize, Is.EqualTo(500000));
                 Assert.That(cacheSettings.DefaultMetaSize, Is.EqualTo(300000));
-            });
+            };
         }
 
         [Test]

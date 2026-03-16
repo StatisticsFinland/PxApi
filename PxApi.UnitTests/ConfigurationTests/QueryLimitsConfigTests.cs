@@ -24,11 +24,11 @@ namespace PxApi.UnitTests.ConfigurationTests
             QueryLimitsConfig config = new(section);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.JsonMaxCells, Is.EqualTo(50000));
                 Assert.That(config.JsonStatMaxCells, Is.EqualTo(75000));
-            });
+            };
         }
 
         [Test]
@@ -45,11 +45,11 @@ namespace PxApi.UnitTests.ConfigurationTests
             QueryLimitsConfig config = new(section);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.JsonMaxCells, Is.EqualTo(long.MaxValue));
                 Assert.That(config.JsonStatMaxCells, Is.EqualTo(long.MaxValue));
-            });
+            };
         }
 
         [Test]
@@ -69,11 +69,11 @@ namespace PxApi.UnitTests.ConfigurationTests
             QueryLimitsConfig config = new(section);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.JsonMaxCells, Is.EqualTo(25000));
                 Assert.That(config.JsonStatMaxCells, Is.EqualTo(long.MaxValue));
-            });
+            };
         }
 
         [Test]
@@ -93,11 +93,11 @@ namespace PxApi.UnitTests.ConfigurationTests
             QueryLimitsConfig config = new(section);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.JsonMaxCells, Is.EqualTo(long.MaxValue));
                 Assert.That(config.JsonStatMaxCells, Is.EqualTo(35000));
-            });
+            };
         }
 
         [Test]

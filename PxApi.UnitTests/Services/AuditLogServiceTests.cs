@@ -115,7 +115,7 @@ namespace PxApi.UnitTests.Services
             // Assert scope
             Dictionary<string, string>? scope = _testLogger.LastScope;
             Assert.That(scope, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(scope!.ContainsKey("Category"), Is.True);
                 Assert.That(scope["Category"], Is.EqualTo("Audit"));
@@ -123,20 +123,20 @@ namespace PxApi.UnitTests.Services
                 Assert.That(scope["X-Correlation-Id"], Is.EqualTo("abc123"));
                 Assert.That(scope.ContainsKey("X-Ignored"), Is.False);
                 Assert.That(scope.ContainsKey("X-Request-Id"), Is.False); // Header whitelisted but absent
-            });
+            };
 
             // Assert log content
             (LogLevel Level, EventId EventId, IReadOnlyList<KeyValuePair<string, object>> State, Exception? Exception) infoEntry
                 = _testLogger.Entries.FirstOrDefault(e => e.Level == LogLevel.Information);
             Assert.That(infoEntry.State, Is.Not.Null);
             Dictionary<string, object> dict = infoEntry.State.ToDictionary(k => k.Key, v => v.Value);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(dict.ContainsKey("User"), Is.True);
                 Assert.That(dict.ContainsKey("ClientIP"), Is.True);
                 Assert.That(dict["User"], Is.EqualTo("TestUser"));
                 Assert.That(dict["ClientIP"], Is.EqualTo("127.0.0.1"));
-            });
+            };
         }
     }
 }
