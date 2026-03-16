@@ -32,12 +32,12 @@ namespace PxApi.UnitTests.Models.QueryFilters
             Filter? deserialized = JsonSerializer.Deserialize<Filter>(json, _options);
             Assert.That(deserialized, Is.TypeOf<CodeFilter>());
             CodeFilter result = (CodeFilter)deserialized!;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result.FilterStrings, Has.Count.EqualTo(2));
                 Assert.That(result.FilterStrings[0], Is.EqualTo("X1"));
                 Assert.That(result.FilterStrings[1], Is.EqualTo("Y_*"));
-            });
+            };
         }
 
         [Test]

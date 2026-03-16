@@ -1,4 +1,4 @@
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using PxApi.OpenApi.Examples;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Diagnostics.CodeAnalysis;
@@ -18,10 +18,17 @@ namespace PxApi.OpenApi.DocumentFilters
         /// <param name="context">Filter context.</param>
         public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
         {
-            foreach (KeyValuePair<string, OpenApiPathItem> path in swaggerDoc.Paths)
+            if (swaggerDoc.Paths == null)
+            {
+                return;
+            }
+
+            foreach (KeyValuePair<string, IOpenApiPathItem> path in swaggerDoc.Paths)
             {
                 if (path.Key.Equals("/databases", StringComparison.OrdinalIgnoreCase) &&
-                path.Value.Operations.TryGetValue(OperationType.Get, out OpenApiOperation? getOp))
+                    path.Value is OpenApiPathItem pathItem &&
+                    pathItem.Operations != null &&
+                    pathItem.Operations.TryGetValue(HttpMethod.Get, out OpenApiOperation? getOp))
                 {
                     AddResponseExample(getOp);
                 }
@@ -30,13 +37,23 @@ namespace PxApi.OpenApi.DocumentFilters
 
         private static void AddResponseExample(OpenApiOperation operation)
         {
-            if (!operation.Responses.TryGetValue("200", out OpenApiResponse? response)) return;
-            if (!response.Content.TryGetValue("application/json", out OpenApiMediaType? jsonMediaType)) return;
-
-            jsonMediaType.Example = DatabaseListingExample.Instance;
-            if (string.IsNullOrWhiteSpace(response.Description))
+            if (operation.Responses == null ||
+                !operation.Responses.TryGetValue("200", out IOpenApiResponse? response) ||
+                response is not OpenApiResponse concreteResponse ||
+                concreteResponse.Content == null ||
+                !concreteResponse.Content.TryGetValue("application/json", out OpenApiMediaType? jsonMediaType))
             {
-                response.Description = "Returns list of available databases including translated name, optional translated description (nullable), tableCount, available languages and related links.";
+                return;
+            }
+
+            jsonMediaType.Examples = new Dictionary<string, IOpenApiExample>
+            {
+                ["default"] = new OpenApiExample { Value = DatabaseListingExample.Instance }
+            };
+
+            if (string.IsNullOrWhiteSpace(concreteResponse.Description))
+            {
+                concreteResponse.Description = "Returns list of available databases including translated name, optional translated description (nullable), tableCount, available languages and related links.";
             }
         }
     }

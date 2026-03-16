@@ -21,11 +21,11 @@ namespace PxApi.UnitTests.Models.QueryFilters
             DimensionMap result = filter.Apply(input);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result.ValueCodes, Has.Count.EqualTo(3));
                 Assert.That(result.ValueCodes, Is.EquivalentTo(expectedValues));
-            });
+            };
         }
 
         [Test]
@@ -40,11 +40,11 @@ namespace PxApi.UnitTests.Models.QueryFilters
             DimensionMap result = filter.Apply(input);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result.ValueCodes, Has.Count.EqualTo(5));
                 Assert.That(result.ValueCodes, Is.EquivalentTo(expectedValues));
-            });
+            };
         }
 
         [Test]
@@ -59,11 +59,11 @@ namespace PxApi.UnitTests.Models.QueryFilters
             DimensionMap result = filter.Apply(input);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result.ValueCodes, Has.Count.EqualTo(5));
                 Assert.That(result.ValueCodes, Is.EquivalentTo(expectedValues));
-            });
+            };
         }
 
         [Test]
@@ -120,11 +120,11 @@ namespace PxApi.UnitTests.Models.QueryFilters
             DimensionMap result = filter.Apply(input);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result.ValueCodes, Has.Count.EqualTo(1));
                 Assert.That(result.ValueCodes, Is.EquivalentTo(expectedValues));
-            });
+            };
         }
 
         [Test]

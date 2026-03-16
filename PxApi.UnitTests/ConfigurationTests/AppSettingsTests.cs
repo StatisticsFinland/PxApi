@@ -33,7 +33,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             AppSettings.Load(configuration);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(AppSettings.Active.Cache.MaxSizeBytes, Is.EqualTo(expectedCacheSize));
                 Assert.That(AppSettings.Active.Cache.DefaultDataCellSize, Is.EqualTo(32));
@@ -41,7 +41,7 @@ namespace PxApi.UnitTests.ConfigurationTests
                 Assert.That(AppSettings.Active.Cache.DefaultTableGroupSize, Is.EqualTo(200));
                 Assert.That(AppSettings.Active.Cache.DefaultFileListSize, Is.EqualTo(500000));
                 Assert.That(AppSettings.Active.Cache.DefaultMetaSize, Is.EqualTo(300000));
-            });
+            }
         }
 
         [Test]
@@ -60,7 +60,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             AppSettings.Load(configuration);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(AppSettings.Active.Cache.MaxSizeBytes, Is.EqualTo(524288000)); // 512 MB default
                 Assert.That(AppSettings.Active.Cache.DefaultDataCellSize, Is.EqualTo(16));
@@ -68,7 +68,7 @@ namespace PxApi.UnitTests.ConfigurationTests
                 Assert.That(AppSettings.Active.Cache.DefaultTableGroupSize, Is.EqualTo(100));
                 Assert.That(AppSettings.Active.Cache.DefaultFileListSize, Is.EqualTo(350000));
                 Assert.That(AppSettings.Active.Cache.DefaultMetaSize, Is.EqualTo(200000));
-            });
+            }
         }
     }
 }

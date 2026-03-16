@@ -26,7 +26,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             AuthenticationConfig config = new(configuration.GetSection("Authentication"));
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.IsEnabled, Is.False);
                 Assert.That(config.Cache.IsEnabled, Is.False);
@@ -34,7 +34,7 @@ namespace PxApi.UnitTests.ConfigurationTests
                 Assert.That(config.Tables.IsEnabled, Is.False);
                 Assert.That(config.Metadata.IsEnabled, Is.False);
                 Assert.That(config.Data.IsEnabled, Is.False);
-            });
+            };
         }
 
         [Test]
@@ -53,7 +53,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             AuthenticationConfig config = new(configuration.GetSection("Authentication"));
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.IsEnabled, Is.True);
                 Assert.That(config.Cache.IsEnabled, Is.True);
@@ -61,7 +61,7 @@ namespace PxApi.UnitTests.ConfigurationTests
                 Assert.That(config.Tables.IsEnabled, Is.False);
                 Assert.That(config.Metadata.IsEnabled, Is.False);
                 Assert.That(config.Data.IsEnabled, Is.False);
-            });
+            };
         }
 
         [Test]
@@ -81,7 +81,7 @@ namespace PxApi.UnitTests.ConfigurationTests
             AuthenticationConfig config = new(configuration.GetSection("Authentication"));
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.IsEnabled, Is.True);
                 Assert.That(config.Cache.IsEnabled, Is.False);
@@ -89,7 +89,7 @@ namespace PxApi.UnitTests.ConfigurationTests
                 Assert.That(config.Tables.IsEnabled, Is.False);
                 Assert.That(config.Metadata.IsEnabled, Is.False);
                 Assert.That(config.Data.IsEnabled, Is.True);
-            });
+            };
         }
 
         [Test]
@@ -109,11 +109,11 @@ namespace PxApi.UnitTests.ConfigurationTests
             CacheApiKeyConfig config = new(configuration.GetSection("Authentication:Cache"));
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.IsEnabled, Is.False);
                 Assert.That(config.Key, Is.Null);
-            });
+            };
         }
 
         [Test]
@@ -133,12 +133,12 @@ namespace PxApi.UnitTests.ConfigurationTests
             DatabasesApiKeyConfig config = new(configuration.GetSection("Authentication:Databases"));
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.IsEnabled, Is.True);
                 Assert.That(config.Key, Is.EqualTo("test-key"));
                 Assert.That(config.HeaderName, Is.EqualTo("X-Databases-API-Key"));
-            });
+            };
         }
 
         [Test]
@@ -196,11 +196,11 @@ namespace PxApi.UnitTests.ConfigurationTests
             DataApiKeyConfig config = new(configuration.GetSection("Authentication:Data"));
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.IsEnabled, Is.True);
                 Assert.That(config.HeaderName, Is.EqualTo("X-Data-API-Key"));
-            });
+            };
         }
 
         [Test]
@@ -220,11 +220,11 @@ namespace PxApi.UnitTests.ConfigurationTests
             CacheApiKeyConfig config = new(configuration.GetSection("Authentication:Cache"));
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.IsEnabled, Is.False);
                 Assert.That(config.Key, Is.EqualTo(""));
-            });
+            };
         }
 
         [Test]
@@ -244,12 +244,12 @@ namespace PxApi.UnitTests.ConfigurationTests
             CacheApiKeyConfig config = new(configuration.GetSection("Authentication:Cache"));
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(config.IsEnabled, Is.True);
                 Assert.That(config.Key, Is.EqualTo("test-key"));
                 Assert.That(config.HeaderName, Is.EqualTo("X-Cache-API-Key"));
-            });
+            };
         }
 
         [Test]
@@ -326,14 +326,14 @@ namespace PxApi.UnitTests.ConfigurationTests
                 AuthenticationConfig config = new(configuration.GetSection("Authentication"));
 
                 // Assert
-                Assert.Multiple(() =>
+                using (Assert.EnterMultipleScope())
                 {
                     Assert.That(config.Cache.Key, Is.EqualTo("env-cache-key"));
                     Assert.That(config.Databases.Key, Is.EqualTo("env-databases-key"));
                     Assert.That(config.Tables.Key, Is.EqualTo("env-tables-key"));
                     Assert.That(config.Metadata.Key, Is.EqualTo("env-metadata-key"));
                     Assert.That(config.Data.Key, Is.EqualTo("env-data-key"));
-                });
+                };
             }
             finally
             {

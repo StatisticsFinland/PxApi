@@ -14,6 +14,7 @@ using PxApi.OpenApi;
 using PxApi.Services;
 using PxApi.Utilities;
 using PxApi.Authentication;
+using PxApi.Exceptions;
 
 namespace PxApi.Controllers
 {
@@ -45,17 +46,19 @@ namespace PxApi.Controllers
         /// <response code="413">Request exceeds maximum allowed cell count.</response>
         /// <response code="415">Unsupported Content-Type header.</response>
         /// <response code="500">Unexpected internal server error.</response>
+        /// <response code="503">The request is valid but the data is temporarily unavailable due to a database update.</response>
         [HttpGet("{database}/{table}")]
         [OperationId("getData")]
         [Produces("application/json", "text/csv")]
         [ProducesResponseType(typeof(JsonStat2), 200, "application/json")]
         [ProducesResponseType(typeof(string), 200, "text/csv")]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(406)]
-        [ProducesResponseType(413)]
-        [ProducesResponseType(415)]
-        [ProducesResponseType(500)]
+        [ProducesResponseType(typeof(string), 400)]
+        [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(string), 406)]
+        [ProducesResponseType(typeof(string), 413)]
+        [ProducesResponseType(typeof(string), 415)]
+        [ProducesResponseType(typeof(string), 500)]
+        [ProducesResponseType(typeof(string), 503)]
         public async Task<IActionResult> GetDataAsync(
             [FromRoute] string database,
             [FromRoute] string table,
@@ -101,18 +104,20 @@ namespace PxApi.Controllers
         /// <response code="413">Request exceeds maximum allowed cell count.</response>
         /// <response code="415">Unsupported Content-Type for request body.</response>
         /// <response code="500">Unexpected internal server error.</response>
+        /// <response code="503">The request is valid but the data is temporarily unavailable due to a database update.</response>
         [HttpPost("{database}/{table}")]
         [OperationId("postData")]
         [Consumes("application/json")]
         [Produces("application/json", "text/csv")]
         [ProducesResponseType(typeof(JsonStat2), 200, "application/json")]
         [ProducesResponseType(typeof(string), 200, "text/csv")]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(404)]
-        [ProducesResponseType(406)]
-        [ProducesResponseType(413)]
-        [ProducesResponseType(415)]
-        [ProducesResponseType(500)]
+        [ProducesResponseType(typeof(string), 400)]
+        [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(string), 406)]
+        [ProducesResponseType(typeof(string), 413)]
+        [ProducesResponseType(typeof(string), 415)]
+        [ProducesResponseType(typeof(string), 500)]
+        [ProducesResponseType(typeof(string), 503)]
         public async Task<ActionResult> PostDataAsync(
             [FromRoute] string database,
             [FromRoute] string table,
@@ -154,6 +159,7 @@ namespace PxApi.Controllers
             }))
             {
                 Response.Headers.Allow = "GET,POST,HEAD,OPTIONS";
+                SetMaxCellsHeader();
                 auditLogService.LogAuditEvent();
                 return Ok();
             }
@@ -185,6 +191,7 @@ namespace PxApi.Controllers
                 { LoggerConsts.PX_FILE, table }
             }))
             {
+                SetMaxCellsHeader();
                 try
                 {
                     DataBaseRef? dbRef = dataSource.GetDataBaseReference(database);
@@ -205,8 +212,17 @@ namespace PxApi.Controllers
             }
         }
 
+        private void SetMaxCellsHeader()
+        {
+            long maxSize = AppSettings.Active.QueryLimits.JsonStatMaxCells;
+            Response.Headers["X-Max-Cells"] = maxSize.ToString();
+        }
+
         private async Task<ActionResult> GenerateResponse(string database, string table, string? lang, Dictionary<string, Filter> query)
         {
+            SetMaxCellsHeader();
+            long maxSize = AppSettings.Active.QueryLimits.JsonStatMaxCells;
+
             DataBaseRef? dbRef = dataSource.GetDataBaseReference(database);
             if (dbRef is null)
             {
@@ -229,14 +245,14 @@ namespace PxApi.Controllers
                 string actualLang = lang ?? meta.DefaultLanguage;
                 if (!meta.AvailableLanguages.Contains(actualLang))
                 {
+                    const string message = "The content is not available in the requested language.";
                     logger.LogDebug("The Requested language was not available in the table {Table}.", fileRef.Value.Id);
-                    return BadRequest("The content is not available in the requested language.");
+                    return BadRequest(message);
                 }
 
                 MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
 
-                long maxSize = AppSettings.Active.QueryLimits.JsonStatMaxCells;
-                int size = requestMap.GetSize();
+                long size = requestMap.GetSize();
                 if (size > maxSize)
                 {
                     logger.LogInformation("Too large request received. Size: {Size}.", size);
@@ -261,6 +277,11 @@ namespace PxApi.Controllers
                     return Ok(jsonStat);
                 }
             }
+            catch (BinaryBlobSynchronizationException syncEx)
+            {
+                logger.LogInformation(syncEx, "Binary blob data is not yet synchronized for table {Table}.", table);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, "The requested data is temporarily unavailable due to a database update. Please retry shortly.");
+            }
             catch (ArgumentException argEx)
             {
                 logger.LogDebug(argEx, "Argument exception occurred while processing request: {Message}", argEx.Message);
@@ -272,7 +293,7 @@ namespace PxApi.Controllers
                 return StatusCode(500, HttpConsts.INTERNAL_SERVER_ERROR);
             }
 
-            return StatusCode(406); // Not Acceptable for unsupported Accept header values.
+            return StatusCode(406);
         }
     }
 }

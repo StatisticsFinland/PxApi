@@ -20,30 +20,40 @@ env:
   CI: false
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        dotnet-version: ['9.x']
-        configuration: [ 'Debug' ]
-
-    runs-on: ${{ matrix.os }}
+  check-version:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'dev' && github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Check project version
+        run: bash .github/scripts/check_version_changes.sh
+
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dotnet-version: ['10.x']
+        configuration: [ 'Debug' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Set up dotnet 
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
 
-      - name: Install backend dependencies
+      - name: Install dependencies
         run: dotnet restore
 
-      - name: Build backend
-        run: dotnet build --no-restore --verbosity normal --configuration ${{ matrix.configuration }} /p:TargetFramework=net9.0
+      - name: Build
+        run: dotnet build --no-restore --verbosity normal --configuration ${{ matrix.configuration }} /p:TargetFramework=net10.0
 
-      - name: Run backend tests
-        run: dotnet test --no-restore --verbosity normal --configuration ${{ matrix.configuration }} /p:TargetFramework=net9.0
+      - name: Run tests
+        run: dotnet test --no-restore --verbosity normal --configuration ${{ matrix.configuration }} /p:TargetFramework=net10.0

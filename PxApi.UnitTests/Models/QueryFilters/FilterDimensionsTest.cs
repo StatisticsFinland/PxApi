@@ -23,14 +23,14 @@ namespace PxApi.UnitTests.Models.QueryFilters
             MatrixMap filtered = FilterUtils.FilterDimensions(meta, filters);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(filtered.DimensionMaps[0].ValueCodes, Has.Count.EqualTo(1));
                 Assert.That(filtered.DimensionMaps[0].ValueCodes[0], Is.EqualTo("dim0-val1"));
                 Assert.That(filtered.DimensionMaps[1].ValueCodes, Has.Count.EqualTo(4));
                 Assert.That(filtered.DimensionMaps[2].ValueCodes, Has.Count.EqualTo(2));
                 Assert.That(filtered.DimensionMaps[2].ValueCodes, Is.EqualTo(new List<string>() { "dim2-val2", "dim2-val3" }));
-            });
+            };
         }
 
         [Test]
@@ -42,12 +42,12 @@ namespace PxApi.UnitTests.Models.QueryFilters
             // Act
             MatrixMap filtered = FilterUtils.FilterDimensions(meta, filters);
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(filtered.DimensionMaps[0].ValueCodes, Has.Count.EqualTo(4));
                 Assert.That(filtered.DimensionMaps[1].ValueCodes, Has.Count.EqualTo(4));
                 Assert.That(filtered.DimensionMaps[2].ValueCodes, Has.Count.EqualTo(4));
-            });
+            };
         }
 
         [Test]
@@ -68,11 +68,11 @@ namespace PxApi.UnitTests.Models.QueryFilters
             MatrixMap filtered = FilterUtils.FilterDimensions(meta, filters);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(filtered.DimensionMaps[0].ValueCodes, Has.Count.EqualTo(2));
                 Assert.That(filtered.DimensionMaps[0].ValueCodes, Is.EqualTo(new List<string>() { "dim0-val1", "dim0-val2" }));
-            });
+            };
         }
 
         [Test]
@@ -92,10 +92,10 @@ namespace PxApi.UnitTests.Models.QueryFilters
             MatrixMap filtered = FilterUtils.FilterDimensions(meta, filters);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(filtered.DimensionMaps[0].ValueCodes, Has.Count.EqualTo(0));
-            });
+            };
         }
     }
 }

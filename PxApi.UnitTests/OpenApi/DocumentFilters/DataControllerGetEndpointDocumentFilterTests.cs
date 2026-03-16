@@ -1,10 +1,10 @@
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Moq;
 using PxApi.OpenApi.DocumentFilters;
 using PxApi.OpenApi.Examples;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace PxApi.UnitTests.DocumentFilters
+namespace PxApi.UnitTests.OpenApi.DocumentFilters
 {
     [TestFixture]
     public class DataControllerGetEndpointDocumentFilterTests
@@ -37,15 +37,39 @@ namespace PxApi.UnitTests.DocumentFilters
                             ["application/json"] = new OpenApiMediaType(),
                             ["text/csv"] = new OpenApiMediaType { Schema = new OpenApiSchema() }
                         }
+                    },
+                    ["400"] = new OpenApiResponse
+                    {
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType(),
+                            ["text/csv"] = new OpenApiMediaType()
+                        }
+                    },
+                    ["406"] = new OpenApiResponse
+                    {
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType(),
+                            ["text/csv"] = new OpenApiMediaType()
+                        }
+                    },
+                    ["500"] = new OpenApiResponse
+                    {
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType(),
+                            ["text/csv"] = new OpenApiMediaType()
+                        }
                     }
                 }
             };
 
             OpenApiPathItem pathItem = new()
             {
-                Operations = new Dictionary<OperationType, OpenApiOperation>
+                Operations = new Dictionary<HttpMethod, OpenApiOperation>
                 {
-                    [OperationType.Get] = operation
+                    [HttpMethod.Get] = operation
                 }
             };
 
@@ -64,9 +88,9 @@ namespace PxApi.UnitTests.DocumentFilters
             filter.Apply(document, context);
 
             // Assert
-            OpenApiParameter? filtersParam = operation.Parameters.FirstOrDefault(p => p.Name == "filters");
-            OpenApiParameter? langParam = operation.Parameters.FirstOrDefault(p => p.Name == "lang");
-            Assert.Multiple(() =>
+            OpenApiParameter? filtersParam = operation.Parameters.FirstOrDefault(p => p.Name == "filters") as OpenApiParameter;
+            OpenApiParameter? langParam = operation.Parameters.FirstOrDefault(p => p.Name == "lang") as OpenApiParameter;
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(filtersParam, Is.Not.Null);
                 Assert.That(filtersParam!.Description, Does.Contain("Array of filter specs"));
@@ -75,23 +99,41 @@ namespace PxApi.UnitTests.DocumentFilters
                 Assert.That(operation.Description, Does.Contain("Accept header options:"));
                 Assert.That(langParam, Is.Not.Null);
                 Assert.That(langParam!.Description, Does.Contain("Optional language code"));
-            });
+            }
 
             Assert.That(operation.Responses.ContainsKey("200"), Is.True);
-            OpenApiResponse response200 = operation.Responses["200"];
-            OpenApiMediaType jsonMediaType = response200.Content["application/json"];
-            Assert.Multiple(() =>
+            OpenApiResponse response200 = (OpenApiResponse)operation.Responses["200"];
+            OpenApiMediaType jsonMediaType = response200.Content!["application/json"];
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(jsonMediaType.Schema, Is.Not.Null);
-                Assert.That(jsonMediaType.Schema.Reference, Is.Not.Null);
-                Assert.That(jsonMediaType.Schema.Reference.Id, Is.EqualTo("JsonStat2"));
-                Assert.That(jsonMediaType.Example, Is.Not.Null);
-                Assert.That(jsonMediaType.Example, Is.EqualTo(JsonStat2Example.Instance));
+                Assert.That(jsonMediaType.Schema, Is.TypeOf<OpenApiSchemaReference>());
+                Assert.That(jsonMediaType.Examples, Is.Not.Null);
+                Assert.That(jsonMediaType.Examples!, Has.Count.EqualTo(1));
+                Assert.That(jsonMediaType.Examples!.ContainsKey("default"), Is.True);
                 Assert.That(response200.Description, Does.Contain("JSON-stat"));
-            });
+            }
 
             OpenApiMediaType csvMediaType = response200.Content["text/csv"];
-            Assert.That(csvMediaType.Schema.Description, Does.Contain("CSV dataset"));
+            OpenApiSchema csvSchema = (OpenApiSchema)csvMediaType.Schema!;
+            Assert.That(csvSchema!.Description, Does.Contain("CSV dataset"));
+
+            OpenApiResponse response400 = (OpenApiResponse)operation.Responses["400"];
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(response400.Content!.ContainsKey("text/csv"), Is.False);
+                Assert.That(response400.Content["application/json"], Is.Not.Null);
+            }
+
+            OpenApiResponse response406 = (OpenApiResponse)operation.Responses["406"];
+            Assert.That(response406.Content, Is.Empty);
+
+            OpenApiResponse response500 = (OpenApiResponse)operation.Responses["500"];
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(response500.Content!.ContainsKey("text/csv"), Is.False);
+                Assert.That(response500.Content["application/json"], Is.Not.Null);
+            }
         }
 
         [Test]
@@ -115,9 +157,9 @@ namespace PxApi.UnitTests.DocumentFilters
 
             OpenApiPathItem pathItem = new()
             {
-                Operations = new Dictionary<OperationType, OpenApiOperation>
+                Operations = new Dictionary<HttpMethod, OpenApiOperation>
                 {
-                    [OperationType.Get] = operation
+                    [HttpMethod.Get] = operation
                 }
             };
 
@@ -136,13 +178,13 @@ namespace PxApi.UnitTests.DocumentFilters
             filter.Apply(document, context);
 
             // Assert (unchanged: description still null, example not set because logic not run)
-            OpenApiMediaType jsonMediaType = operation.Responses["200"].Content["application/json"];
-            Assert.Multiple(() =>
+            OpenApiMediaType jsonMediaType = operation.Responses["200"].Content!["application/json"];
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(operation.Description, Is.Null);
                 Assert.That(jsonMediaType.Schema, Is.Null);
                 Assert.That(jsonMediaType.Example, Is.Null);
-            });
+            }
         }
     }
 }

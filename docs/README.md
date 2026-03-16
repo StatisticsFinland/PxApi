@@ -168,6 +168,10 @@ Provided via `appsettings.json`.
 
 Key sections:
 - `RootUrl` Base absolute URL used for generated links & OpenAPI servers.
+- `ApplicationInsights` Application Insights connection configuration:
+  - `ConnectionString` Application Insights connection string (can be overridden by `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable)
+- `Logging` Standard .NET logging configuration for Application Insights log level filtering:
+  - `ApplicationInsights:LogLevel:Default` Minimum log level to send to Application Insights (Debug, Information, Warning, Error, Critical). Defaults to Information.
 - `DataBases` Array of database definitions:
   - `Type` One of `Mounted`, `FileShare`, `BlobStorage`
   - `Id` Unique id
@@ -186,6 +190,52 @@ Key sections:
 - `FeatureManagement` Feature flags (e.g. `CacheController`)
 - `Authentication` Controller-specific API key settings - see Authentication section below
 - `OpenApi` Metadata (contact, license) for Swagger document
+- `LogOptions` NLog file logging configuration:
+  - `Folder` Directory for log files (empty disables file logging)
+  - `SysId` System identifier for log entries
+  - `Level` Minimum log level for file logging (Debug, Information, Warning, Error, Critical)
+  - `AuditLog` Audit logging settings
+
+### Application Insights Configuration
+
+Application Insights integration is optional and automatically enabled when a connection string is provided. Log level filtering uses the standard .NET `Logging` configuration section, keeping it separate from file logging controlled by `LogOptions` and NLog.
+
+```json
+{
+  "ApplicationInsights": {
+    "ConnectionString": "InstrumentationKey=your-key;IngestionEndpoint=https://..."
+  },
+  "Logging": {
+    "ApplicationInsights": {
+      "LogLevel": {
+        "Default": "Information"
+      }
+    }
+  }
+}
+```
+
+**Connection String Sources (in order of priority):**
+1. `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable
+2. `ApplicationInsights:ConnectionString` in appsettings.json
+
+**Settings:**
+- **ApplicationInsights:ConnectionString**: Application Insights connection string. If empty or missing, Application Insights is disabled.
+- **Logging:ApplicationInsights:LogLevel:Default**: Minimum log level to send to Application Insights (Debug, Information, Warning, Error, Critical). Defaults to Information. You can also set per-category log levels (e.g., `"Microsoft": "Warning"`).
+
+**Environment Variable Configuration:**
+```bash
+# Enable Application Insights via environment variable
+APPLICATIONINSIGHTS_CONNECTION_STRING="InstrumentationKey=your-key;IngestionEndpoint=https://..."
+
+# Override log level via environment variable
+Logging__ApplicationInsights__LogLevel__Default=Debug
+```
+
+**Logging Architecture:**
+- **File Logs**: Controlled by NLog configuration and `LogOptions` section
+- **Application Insights**: Connection controlled by `ApplicationInsights` section, log level controlled by `Logging:ApplicationInsights:LogLevel` section
+- Both systems operate independently - you can have file logging without Application Insights, Application Insights without file logging, or both together
 
 ## Authentication
 

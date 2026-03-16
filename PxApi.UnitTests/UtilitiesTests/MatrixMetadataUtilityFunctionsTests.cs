@@ -52,12 +52,12 @@ namespace PxApi.UnitTests.UtilitiesTests
             MatrixMetadataUtilityFunctions.AssignOrdinalDimensionTypes(meta);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(meta.Dimensions[4].Type, Is.EqualTo(DimensionType.Ordinal));
                 Assert.That(meta.Dimensions[5].Type, Is.EqualTo(DimensionType.Nominal));
                 Assert.That(meta.Dimensions[6].Type, Is.EqualTo(DimensionType.Unknown));
-            });
+            };
         }
 
         [Test]
@@ -78,12 +78,12 @@ namespace PxApi.UnitTests.UtilitiesTests
             };
 
             // Act & Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(propertyCollection.GetValueByLanguage("TEST_KEY", "fi"), Is.EqualTo("Arvo suomeksi"));
                 Assert.That(propertyCollection.GetValueByLanguage("TEST_KEY", "sv"), Is.EqualTo("Värde på svenska"));
                 Assert.That(propertyCollection.GetValueByLanguage("TEST_KEY", "en"), Is.EqualTo("Value in English"));
-            });
+            };
         }
 
         [Test]
@@ -97,12 +97,12 @@ namespace PxApi.UnitTests.UtilitiesTests
             };
 
             // Act & Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(propertyCollection.GetValueByLanguage("TEST_KEY", "fi"), Is.EqualTo("Single language value"));
                 Assert.That(propertyCollection.GetValueByLanguage("TEST_KEY", "sv"), Is.EqualTo("Single language value"));
                 Assert.That(propertyCollection.GetValueByLanguage("TEST_KEY", "en"), Is.EqualTo("Single language value"));
-            });
+            };
         }
 
         [Test]
@@ -157,12 +157,12 @@ namespace PxApi.UnitTests.UtilitiesTests
             string[]? resultEn = propertyCollection.GetValueListByLanguage("TEST_LIST_KEY", "en");
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(resultFi, Is.EqualTo(expectedFi));
                 Assert.That(resultSv, Is.EqualTo(expectedEn));
                 Assert.That(resultEn, Is.EqualTo(expectedSv));
-            });
+            };
         }
 
         [Test]
@@ -182,12 +182,12 @@ namespace PxApi.UnitTests.UtilitiesTests
             string[]? resultEn = propertyCollection.GetValueListByLanguage("TEST_LIST_KEY", "en");
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(resultFi, Is.EqualTo(testStringList.ToArray()));
                 Assert.That(resultSv, Is.EqualTo(testStringList.ToArray()));
                 Assert.That(resultEn, Is.EqualTo(testStringList.ToArray()));
-            });
+            };
         }
 
         [Test]

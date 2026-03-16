@@ -1,6 +1,11 @@
-﻿using PxApi.Configuration;
+using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Models;
+using Microsoft.Extensions.Azure;
+using Azure.Identity;
+using Azure.Storage.Files.Shares;
+using Azure.Storage.Files.Shares.Models;
+using Azure.Storage.Blobs;
 
 namespace PxApi.Utilities
 {
@@ -29,6 +34,9 @@ namespace PxApi.Utilities
                     case DataBaseType.BlobStorage:
                         AddBlobStorageConnector(services, dbConfig, db);
                         break;
+                    case DataBaseType.BinaryBlobStorage:
+                        AddBinaryBlobStorageConnector(services, dbConfig, db);
+                        break;
                     default:
                         throw new InvalidOperationException($"Unsupported database type: {dbConfig.Type} for database {dbConfig.Id}");
                 }
@@ -51,34 +59,93 @@ namespace PxApi.Utilities
 
         private static void AddFileShareConnector(IServiceCollection services, DataBaseConfig dbConfig, DataBaseRef db)
         {
+            if (!dbConfig.Custom.TryGetValue("StoragePath", out string? storagePath) || string.IsNullOrEmpty(storagePath))
+            {
+                throw new InvalidOperationException($"Missing required custom configuration value 'StoragePath' for database {dbConfig.Id}");
+            }
+
+            if (!dbConfig.Custom.TryGetValue("ShareName", out string? shareName) || string.IsNullOrEmpty(shareName))
+            {
+                throw new InvalidOperationException($"Missing required custom configuration value 'ShareName' for database {dbConfig.Id}");
+            }
+
+            // Register a named ShareServiceClient for this database using DefaultAzureCredential and ShareTokenIntent
+            services.AddAzureClients(clientBuilder =>
+            {
+                clientBuilder.UseCredential(new DefaultAzureCredential());
+                Uri storageUri = new(storagePath);
+
+                clientBuilder
+                    .AddClient<ShareServiceClient, ShareClientOptions>((options, credential, sp) => new ShareServiceClient(storageUri, credential, options))
+                    .ConfigureOptions(o => o.ShareTokenIntent = ShareTokenIntent.Backup)
+                    .WithName(dbConfig.Id);
+            });
+
             services.AddKeyedScoped<IDataBaseConnector>(dbConfig.Id, (serviceProvider, key) =>
             {
-                if (!dbConfig.Custom.TryGetValue("SharePath", out string? sharePath) || string.IsNullOrEmpty(sharePath))
-                {
-                    throw new InvalidOperationException($"Missing required custom configuration value 'SharePath' for database {dbConfig.Id}");
-                }
-
                 ILogger<FileShareDataBaseConnector> logger = serviceProvider.GetRequiredService<ILogger<FileShareDataBaseConnector>>();
-                return new FileShareDataBaseConnector(db, sharePath, logger);
+                IAzureClientFactory<ShareServiceClient> factory = serviceProvider.GetRequiredService<IAzureClientFactory<ShareServiceClient>>();
+                return new FileShareDataBaseConnector(db, shareName, factory, logger);
             });
         }
 
         private static void AddBlobStorageConnector(IServiceCollection services, DataBaseConfig dbConfig, DataBaseRef db)
         {
+            AddBlobStorageConnectorInternal<PxBlobDataBaseConnector>(
+                services,
+                dbConfig,
+                db,
+                (dataBaseRef, containerName, factory, logger) =>
+                    new PxBlobDataBaseConnector(dataBaseRef, containerName, factory, logger));
+        }
+
+        private static void AddBinaryBlobStorageConnector(IServiceCollection services, DataBaseConfig dbConfig, DataBaseRef db)
+        {
+            AddBlobStorageConnectorInternal<BinaryBlobDataBaseConnector>(
+                services,
+                dbConfig,
+                db,
+                (dataBaseRef, containerName, factory, logger) =>
+                    new BinaryBlobDataBaseConnector(dataBaseRef, containerName, factory, logger));
+        }
+
+        private static void AddBlobStorageConnectorInternal<TConnector>(
+            IServiceCollection services,
+            DataBaseConfig dbConfig,
+            DataBaseRef db,
+            Func<DataBaseRef, string, IAzureClientFactory<BlobServiceClient>, ILogger<TConnector>, TConnector> connectorFactory)
+            where TConnector : BlobDataBaseConnector
+        {
+            if (!dbConfig.Custom.TryGetValue("StoragePath", out string? storagePath) || string.IsNullOrEmpty(storagePath))
+            {
+                throw new InvalidOperationException($"Missing required custom configuration value 'StoragePath' for database {dbConfig.Id}");
+            }
+
+            if (!dbConfig.Custom.TryGetValue("ContainerName", out string? containerName) || string.IsNullOrEmpty(containerName))
+            {
+                throw new InvalidOperationException($"Missing required custom configuration value 'ContainerName' for database {dbConfig.Id}");
+            }
+
+            RegisterBlobServiceClient(services, dbConfig.Id, storagePath);
+
             services.AddKeyedScoped<IDataBaseConnector>(dbConfig.Id, (serviceProvider, key) =>
             {
-                if (!dbConfig.Custom.TryGetValue("ConnectionString", out string? connectionString) || string.IsNullOrEmpty(connectionString))
-                {
-                    throw new InvalidOperationException($"Missing required custom configuration value 'ConnectionString' for database {dbConfig.Id}");
-                }
+                ILogger<TConnector> logger = serviceProvider.GetRequiredService<ILogger<TConnector>>();
+                IAzureClientFactory<BlobServiceClient> factory = serviceProvider.GetRequiredService<IAzureClientFactory<BlobServiceClient>>();
+                return connectorFactory(db, containerName, factory, logger);
+            });
+        }
 
-                if (!dbConfig.Custom.TryGetValue("ContainerName", out string? containerName) || string.IsNullOrEmpty(containerName))
-                {
-                    throw new InvalidOperationException($"Missing required custom configuration value 'ContainerName' for database {dbConfig.Id}");
-                }
+        private static void RegisterBlobServiceClient(IServiceCollection services, string databaseId, string storagePath)
+        {
+            services.AddAzureClients(clientBuilder =>
+            {
+                clientBuilder.UseCredential(new DefaultAzureCredential());
+                Uri storageUri = new(storagePath);
 
-                ILogger<BlobStorageDataBaseConnector> logger = serviceProvider.GetRequiredService<ILogger<BlobStorageDataBaseConnector>>();
-                return new BlobStorageDataBaseConnector(db, connectionString, containerName, logger);
+                clientBuilder
+                    .AddClient<BlobServiceClient, BlobClientOptions>((options, credential, sp) => new BlobServiceClient(storageUri, credential, options))
+                    .WithName(databaseId);
             });
         }
     }

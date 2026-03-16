@@ -11,13 +11,7 @@ on:
 
 jobs:
   sonar:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        dotnet-version: ['9.x']
-        configuration: [ 'Debug' ]
-        
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     if: ${{ github.actor != 'dependabot[bot]' }}
 
     steps:
@@ -28,7 +22,7 @@ jobs:
       - name: Setup dotnet
         uses: actions/setup-dotnet@v4
         with:
-            dotnet-version: '9.x'
+            dotnet-version: '10.x'
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -50,11 +44,11 @@ jobs:
             /d:sonar.cs.vscoveragexml.reportsPaths=**/coverage.xml
             /d:sonar.scanner.scanAll=false
 
-      - name: Build backend
-        run: dotnet build --configuration ${{ matrix.configuration }} /p:TargetFramework=net9.0
+      - name: Build
+        run: dotnet build --configuration Debug /p:TargetFramework=net10.0
 
       - name: Run coverage test
-        run: dotnet-coverage collect "dotnet test --configuration ${{ matrix.configuration }} --logger trx /p:TargetFramework=net9.0" -f xml -o coverage.xml
+        run: dotnet-coverage collect "dotnet test --configuration Debug --logger trx /p:TargetFramework=net10.0" -f xml -o coverage.xml
         
       - name: End SonarScanner
         run: dotnet sonarscanner end /d:sonar.token=${{ secrets.SONAR_TOKEN }}

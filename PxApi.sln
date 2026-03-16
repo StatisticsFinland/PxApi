@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.12.35527.113
+# Visual Studio Version 18
+VisualStudioVersion = 18.4.11605.240
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PxApi", "PxApi\PxApi.csproj", "{523A3458-932D-4936-BC19-0A6175965B19}"
 EndProject
@@ -26,6 +26,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{9FD4A85B-5
 		docs\README.md = docs\README.md
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{5C6E13B8-2410-44BA-98F5-8830DA756959}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\ci.yml = .github\workflows\ci.yml
+		.github\workflows\sonar.yml = .github\workflows\sonar.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{11A8C8BB-BE45-4CF4-BBA9-80E0B0E862EC}"
+	ProjectSection(SolutionItems) = preProject
+		.github\scripts\check_version_changes.sh = .github\scripts\check_version_changes.sh
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,6 +54,10 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{5C6E13B8-2410-44BA-98F5-8830DA756959} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{11A8C8BB-BE45-4CF4-BBA9-80E0B0E862EC} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5B90BE07-D6C0-4E62-9F2B-7CCDF785ACFB}

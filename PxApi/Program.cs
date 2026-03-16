@@ -1,19 +1,20 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.ApplicationInsights;
 using Microsoft.FeatureManagement;
-using Microsoft.OpenApi.Models;
-using NLog.Web;
+using Microsoft.OpenApi;
 using NLog;
+using NLog.Web;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.DataSources;
+using PxApi.Exceptions;
+using PxApi.OpenApi;
+using PxApi.OpenApi.DocumentFilters;
+using PxApi.OpenApi.SchemaFilters;
+using PxApi.Services;
 using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
-using PxApi.OpenApi.DocumentFilters;
-using PxApi.OpenApi.SchemaFilters;
-using PxApi.OpenApi;
-using PxApi.Services;
-using PxApi.Exceptions;
 
 namespace PxApi
 {
@@ -46,6 +47,26 @@ namespace PxApi
                 logger.Debug("Main called and logger initialized. Environment={Environment} AuditEnabled={AuditEnabled}",
                     builder.Environment.EnvironmentName,
                     builder.Configuration.GetValue<bool>("LogOptions:AuditLog:Enabled"));
+
+                // Configure Application Insights if connection string is available
+                ApplicationInsightsConfig aiConfig = AppSettings.Active.ApplicationInsights;
+                if (aiConfig.IsEnabled)
+                {
+                    // Add Application Insights telemetry
+                    builder.Services.AddApplicationInsightsTelemetry();
+
+                    // Remove the default Application Insights logger filter rule to allow
+                    // the log level to be controlled via the Logging:ApplicationInsights:LogLevel configuration section
+                    builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
+                    {
+                        LoggerFilterRule? defaultRule = options.Rules.FirstOrDefault(rule => rule.ProviderName
+                            == nameof(ApplicationInsightsLoggerProvider));
+                        if (defaultRule is not null)
+                        {
+                            options.Rules.Remove(defaultRule);
+                        }
+                    });
+                }
 
                 // Add services to the container.
                 AddServices(builder.Services);
@@ -95,7 +116,7 @@ namespace PxApi
         {
             // Add feature management first and API explorer conventions to control Swagger visibility
             serviceCollection.AddFeatureManagement();
-            
+
             serviceCollection.AddControllers(options =>
             {
                 options.Conventions.Add(new ApiExplorerConventionsFactory());
@@ -181,6 +202,9 @@ namespace PxApi
 
                 // Remove bodies from all HEAD responses
                 c.DocumentFilter<HeadResponsesNoBodyDocumentFilter>();
+
+                // Remove orphaned ProblemDetails schema from components
+                c.DocumentFilter<ProblemDetailsDocumentFilter>();
 
                 // Global 500 response description for all operations (added via operation filter style hook)
                 c.OperationFilter<UnhandledErrorResponseOperationFilter>();
