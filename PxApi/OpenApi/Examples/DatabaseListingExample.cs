@@ -1,4 +1,3 @@
-using Microsoft.OpenApi;
 using PxApi.Configuration;
 using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
@@ -11,10 +10,10 @@ namespace PxApi.OpenApi.Examples
     /// </summary>
     public static class DatabaseListingExample
     {
-        private static readonly string TablesHrefExample = AppSettings.Active.RootUrl
-                .AddRelativePath("tables", "StatFin")
-                .AddQueryParameters(("lang", "fi"))
-                .ToString();
+        private static string TablesHrefExample => AppSettings.Active.RootUrl
+            .AddRelativePath("tables", "StatFin")
+            .AddQueryParameters(("lang", "fi"))
+            .ToString();
 
         /// <summary>
         /// Gets the singleton instance of the databases listing example.

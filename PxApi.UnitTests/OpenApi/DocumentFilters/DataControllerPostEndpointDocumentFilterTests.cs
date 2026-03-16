@@ -5,7 +5,7 @@ using PxApi.OpenApi.DocumentFilters;
 using PxApi.OpenApi.Examples;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace PxApi.UnitTests.DocumentFilters
+namespace PxApi.UnitTests.OpenApi.DocumentFilters
 {
     [TestFixture]
     public class DataControllerPostEndpointDocumentFilterTests
@@ -98,13 +98,13 @@ namespace PxApi.UnitTests.DocumentFilters
             filter.Apply(document, context);
 
             // Assert request body examples
-            OpenApiMediaType rbMediaType = operation.RequestBody!.Content["application/json"];
+            OpenApiMediaType rbMediaType = operation.RequestBody.Content!["application/json"];
             Assert.Multiple(() =>
             {
                 Assert.That(rbMediaType.Examples, Is.Not.Null);
                 Assert.That(rbMediaType.Examples, Is.Not.Empty);
                 Assert.That(rbMediaType.Examples, Has.Count.EqualTo(DataRequestBodyExamples.Examples.Count));
-                Assert.That(rbMediaType.Schema.Description, Does.Contain("Dictionary mapping dimension codes"));
+                Assert.That(rbMediaType.Schema!.Description, Does.Contain("Dictionary mapping dimension codes"));
             });
 
             // Assert response
@@ -115,13 +115,13 @@ namespace PxApi.UnitTests.DocumentFilters
                 Assert.That(jsonMediaType.Schema, Is.Not.Null);
                 Assert.That(jsonMediaType.Schema, Is.TypeOf<OpenApiSchemaReference>());
                 Assert.That(jsonMediaType.Examples, Is.Not.Null);
-                Assert.That(jsonMediaType.Examples.Count, Is.EqualTo(1));
+                Assert.That(jsonMediaType.Examples!.Count, Is.EqualTo(1));
                 Assert.That(jsonMediaType.Examples.ContainsKey("default"), Is.True);
-                Assert.That(response200.Description, Does.Contain("JSON-stat2.0"));
+                Assert.That(response200.Description, Does.Contain("JSON-stat 2.0"));
             }
 
             OpenApiMediaType csvMediaType = response200.Content["text/csv"];
-            OpenApiSchema csvSchema = (OpenApiSchema)csvMediaType.Schema;
+            OpenApiSchema csvSchema = (OpenApiSchema)csvMediaType.Schema!;
             Assert.That(csvSchema.Description, Does.Contain("CSV dataset"));
 
             // Accept header note and lang parameter
@@ -140,7 +140,7 @@ namespace PxApi.UnitTests.DocumentFilters
             OpenApiResponse response400 = (OpenApiResponse)operation.Responses["400"];
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(response400.Content.ContainsKey("text/csv"), Is.False);
+                Assert.That(response400.Content!.ContainsKey("text/csv"), Is.False);
                 Assert.That(response400.Content["application/json"], Is.Not.Null);
             }
 
@@ -150,7 +150,7 @@ namespace PxApi.UnitTests.DocumentFilters
             OpenApiResponse response500 = (OpenApiResponse)operation.Responses["500"];
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(response500.Content.ContainsKey("text/csv"), Is.False);
+                Assert.That(response500.Content!.ContainsKey("text/csv"), Is.False);
                 Assert.That(response500.Content["application/json"], Is.Not.Null);
             }
         }
@@ -203,7 +203,7 @@ namespace PxApi.UnitTests.DocumentFilters
             filter.Apply(document, context);
 
             // Assert
-            OpenApiMediaType rbMediaType = operation.RequestBody!.Content["application/json"];
+            OpenApiMediaType rbMediaType = operation.RequestBody.Content!["application/json"];
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(rbMediaType.Examples, Is.Null.Or.Empty);

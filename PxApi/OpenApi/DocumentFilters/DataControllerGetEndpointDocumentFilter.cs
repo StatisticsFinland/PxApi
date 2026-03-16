@@ -30,7 +30,7 @@ namespace PxApi.OpenApi.DocumentFilters
                 {
                     AddFiltersParameterDescription(getOp);
                     AddFiltersParameterExamples(getOp);
-                    AddResponseExamples(getOp);
+                    DocumentFilterUtilities.AddResponseExamples(getOp);
                     DocumentFilterUtilities.AppendAcceptHeaderNote(getOp);
                     ImproveLanguageParameter(getOp);
                     DocumentFilterUtilities.CleanUpErrorResponses(getOp);
@@ -43,37 +43,6 @@ namespace PxApi.OpenApi.DocumentFilters
             bool isDataPath = pathKey.Equals("/data/{database}/{table}", StringComparison.OrdinalIgnoreCase);
             bool hasFiltersParam = operation.Parameters?.Any(p => p.Name == "filters") == true;
             return isDataPath && hasFiltersParam;
-        }
-
-        private static void AddResponseExamples(OpenApiOperation operation)
-        {
-            if (operation.Responses == null ||
-                !operation.Responses.TryGetValue("200", out IOpenApiResponse? response) ||
-                response is not OpenApiResponse concreteResponse ||
-                concreteResponse.Content == null)
-            {
-                return;
-            }
-
-            if (concreteResponse.Content.TryGetValue("application/json", out OpenApiMediaType? jsonMediaType))
-            {
-                jsonMediaType.Schema = new OpenApiSchemaReference("JsonStat2");
-                jsonMediaType.Examples = new Dictionary<string, IOpenApiExample>
-                {
-                    ["default"] = new OpenApiExample { Value = JsonStat2Example.Instance }
-                };
-                if (string.IsNullOrWhiteSpace(concreteResponse.Description))
-                {
-                    concreteResponse.Description = "Returns JSON-stat 2.0 dataset when 'Accept: application/json' or '*/*'. Use 'Accept: text/csv' for CSV output.";
-                }
-            }
-
-            if (concreteResponse.Content.TryGetValue("text/csv", out OpenApiMediaType? csvMediaType) &&
-                csvMediaType.Schema is OpenApiSchema csvSchema &&
-                string.IsNullOrWhiteSpace(csvSchema.Description))
-            {
-                csvSchema.Description = "CSV dataset (UTF-8, comma separated, header row). Column order follows dimension order then metric.";
-            }
         }
 
         private static void AddFiltersParameterDescription(OpenApiOperation operation)

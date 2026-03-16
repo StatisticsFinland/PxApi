@@ -29,7 +29,7 @@ namespace PxApi.OpenApi.DocumentFilters
                     IsDataControllerPostOperation(path.Key, postOp))
                 {
                     AddComprehensiveRequestBodyExamples(postOp);
-                    AddResponseExamples(postOp);
+                    DocumentFilterUtilities.AddResponseExamples(postOp);
                     RefineLanguageParameter(postOp);
                     DocumentFilterUtilities.AppendAcceptHeaderNote(postOp);
                     DocumentFilterUtilities.CleanUpErrorResponses(postOp);
@@ -42,37 +42,6 @@ namespace PxApi.OpenApi.DocumentFilters
                 string.IsNullOrWhiteSpace(concreteFilterSchema.Description))
             {
                 concreteFilterSchema.Description = "Filter object. type determines behavior (Code | From | To | First | Last). query is array[string] (Code), string (From/To), integer>0 (First/Last). '*' wildcard matches zero or more characters.";
-            }
-        }
-
-        private static void AddResponseExamples(OpenApiOperation operation)
-        {
-            if (operation.Responses == null ||
-                !operation.Responses.TryGetValue("200", out IOpenApiResponse? response) ||
-                response is not OpenApiResponse concreteResponse ||
-                concreteResponse.Content == null)
-            {
-                return;
-            }
-
-            if (concreteResponse.Content.TryGetValue("application/json", out OpenApiMediaType? jsonMediaType))
-            {
-                jsonMediaType.Schema = new OpenApiSchemaReference("JsonStat2");
-                jsonMediaType.Examples = new Dictionary<string, IOpenApiExample>
-                {
-                    ["default"] = new OpenApiExample { Value = JsonStat2Example.Instance }
-                };
-                if (string.IsNullOrWhiteSpace(concreteResponse.Description))
-                {
-                    concreteResponse.Description = "Returns JSON-stat2.0 dataset when 'Accept: application/json' or '*/*'. Use 'Accept: text/csv' for CSV output.";
-                }
-            }
-
-            if (concreteResponse.Content.TryGetValue("text/csv", out OpenApiMediaType? csvMediaType) &&
-                csvMediaType.Schema is OpenApiSchema csvSchema &&
-                string.IsNullOrWhiteSpace(csvSchema.Description))
-            {
-                csvSchema.Description = "CSV dataset (UTF-8, comma separated, header row). Column order follows dimension order then metric.";
             }
         }
 

@@ -5,7 +5,7 @@ using PxApi.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 
-namespace PxApi.UnitTests.OperationFilters
+namespace PxApi.UnitTests.OpenApi.OperationFilters
 {
     [TestFixture]
     public class OperationIdOperationFilterTests

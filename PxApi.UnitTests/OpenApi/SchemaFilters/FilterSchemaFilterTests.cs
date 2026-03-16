@@ -5,7 +5,7 @@ using PxApi.OpenApi.SchemaFilters;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text.Json.Nodes;
 
-namespace PxApi.UnitTests.SchemaFilters
+namespace PxApi.UnitTests.OpenApi.SchemaFilters
 {
     [TestFixture]
     public class FilterSchemaFilterTests

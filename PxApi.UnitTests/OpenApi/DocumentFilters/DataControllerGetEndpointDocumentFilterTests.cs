@@ -4,7 +4,7 @@ using PxApi.OpenApi.DocumentFilters;
 using PxApi.OpenApi.Examples;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace PxApi.UnitTests.DocumentFilters
+namespace PxApi.UnitTests.OpenApi.DocumentFilters
 {
     [TestFixture]
     public class DataControllerGetEndpointDocumentFilterTests

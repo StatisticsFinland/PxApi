@@ -1,4 +1,5 @@
 using Microsoft.OpenApi;
+using PxApi.OpenApi.Examples;
 
 namespace PxApi.OpenApi.DocumentFilters
 {
@@ -33,6 +34,37 @@ namespace PxApi.OpenApi.DocumentFilters
         {
             operation.Description = (operation.Description ?? string.Empty) +
                 " Accept header options: application/json (JSON-stat), text/csv (CSV), */* treated as JSON-stat. Unsupported media types yield 406.";
+        }
+
+        internal static void AddResponseExamples(OpenApiOperation operation)
+        {
+            if (operation.Responses == null ||
+                !operation.Responses.TryGetValue("200", out IOpenApiResponse? response) ||
+                response is not OpenApiResponse concreteResponse ||
+                concreteResponse.Content == null)
+            {
+                return;
+            }
+
+            if (concreteResponse.Content.TryGetValue("application/json", out OpenApiMediaType? jsonMediaType))
+            {
+                jsonMediaType.Schema = new OpenApiSchemaReference("JsonStat2");
+                jsonMediaType.Examples = new Dictionary<string, IOpenApiExample>
+                {
+                    ["default"] = new OpenApiExample { Value = JsonStat2Example.Instance }
+                };
+                if (string.IsNullOrWhiteSpace(concreteResponse.Description))
+                {
+                    concreteResponse.Description = "Returns JSON-stat 2.0 dataset when 'Accept: application/json' or '*/*'. Use 'Accept: text/csv' for CSV output.";
+                }
+            }
+
+            if (concreteResponse.Content.TryGetValue("text/csv", out OpenApiMediaType? csvMediaType) &&
+                csvMediaType.Schema is OpenApiSchema csvSchema &&
+                string.IsNullOrWhiteSpace(csvSchema.Description))
+            {
+                csvSchema.Description = "CSV dataset (UTF-8, comma separated, header row). Column order follows dimension order then metric.";
+            }
         }
     }
 }
