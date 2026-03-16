@@ -279,7 +279,7 @@ namespace PxApi.Controllers
             }
             catch (BinaryBlobSynchronizationException syncEx)
             {
-                logger.LogInformation(syncEx, "Binary blob data is not yet synchronized for table {Table}.", table);
+                logger.LogInformation(syncEx, "Binary blob data is not yet synchronized for table {Table}.", fileRef.Value.Id);
                 return StatusCode(StatusCodes.Status503ServiceUnavailable, "The requested data is temporarily unavailable due to a database update. Please retry shortly.");
             }
             catch (ArgumentException argEx)
