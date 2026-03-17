@@ -1,4 +1,4 @@
-﻿namespace PxApi.Configuration
+namespace PxApi.Configuration
 {
     /// <summary>
     /// Different types of databases supported by the API.
@@ -17,5 +17,9 @@
         /// Database accessed via Microsoft Azure Blob Storage API.
         /// </summary>
         BlobStorage,
+        /// <summary>
+        /// Database accessed via Microsoft Azure Blob Storage API utilizing binary blobs for data storage.
+        /// </summary>
+        BinaryBlobStorage
     }
 }

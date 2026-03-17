@@ -1,10 +1,11 @@
-﻿using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Microsoft.OpenApi;
 using Moq;
 using PxApi.OpenApi.DocumentFilters;
 using PxApi.OpenApi.Examples;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace PxApi.UnitTests.DocumentFilters
+namespace PxApi.UnitTests.OpenApi.DocumentFilters
 {
     [TestFixture]
     public class DataControllerPostEndpointDocumentFilterTests
@@ -13,7 +14,7 @@ namespace PxApi.UnitTests.DocumentFilters
         {
             ISchemaGenerator schemaGenerator = Mock.Of<ISchemaGenerator>();
             SchemaRepository repository = new();
-            List<Microsoft.AspNetCore.Mvc.ApiExplorer.ApiDescription> apiDescriptions = [];
+            List<ApiDescription> apiDescriptions = [];
             DocumentFilterContext context = new(apiDescriptions, schemaGenerator, repository);
             return context;
         }
@@ -41,15 +42,39 @@ namespace PxApi.UnitTests.DocumentFilters
                             ["application/json"] = new OpenApiMediaType(),
                             ["text/csv"] = new OpenApiMediaType { Schema = new OpenApiSchema() }
                         }
+                    },
+                    ["400"] = new OpenApiResponse
+                    {
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType(),
+                            ["text/csv"] = new OpenApiMediaType()
+                        }
+                    },
+                    ["406"] = new OpenApiResponse
+                    {
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType(),
+                            ["text/csv"] = new OpenApiMediaType()
+                        }
+                    },
+                    ["500"] = new OpenApiResponse
+                    {
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType(),
+                            ["text/csv"] = new OpenApiMediaType()
+                        }
                     }
                 }
             };
 
             OpenApiPathItem pathItem = new()
             {
-                Operations = new Dictionary<OperationType, OpenApiOperation>
+                Operations = new Dictionary<HttpMethod, OpenApiOperation>
                 {
-                    [OperationType.Post] = operation
+                    [HttpMethod.Post] = operation
                 }
             };
 
@@ -59,7 +84,7 @@ namespace PxApi.UnitTests.DocumentFilters
                 Paths = new OpenApiPaths { ["/data/{database}/{table}"] = pathItem },
                 Components = new OpenApiComponents
                 {
-                    Schemas = new Dictionary<string, OpenApiSchema>
+                    Schemas = new Dictionary<string, IOpenApiSchema>
                     {
                         ["Filter"] = filterSchema
                     }
@@ -73,41 +98,61 @@ namespace PxApi.UnitTests.DocumentFilters
             filter.Apply(document, context);
 
             // Assert request body examples
-            OpenApiMediaType rbMediaType = operation.RequestBody!.Content["application/json"];
-            Assert.Multiple(() =>
+            OpenApiMediaType rbMediaType = operation.RequestBody.Content!["application/json"];
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(rbMediaType.Examples, Is.Not.Null);
                 Assert.That(rbMediaType.Examples, Is.Not.Empty);
                 Assert.That(rbMediaType.Examples, Has.Count.EqualTo(DataRequestBodyExamples.Examples.Count));
-                Assert.That(rbMediaType.Schema.Description, Does.Contain("Dictionary mapping dimension codes"));
-            });
+                Assert.That(rbMediaType.Schema!.Description, Does.Contain("Dictionary mapping dimension codes"));
+            }
 
             // Assert response
-            OpenApiResponse response200 = operation.Responses["200"];
-            OpenApiMediaType jsonMediaType = response200.Content["application/json"];
-            Assert.Multiple(() =>
+            OpenApiResponse response200 = (OpenApiResponse)operation.Responses["200"];
+            OpenApiMediaType jsonMediaType = response200.Content!["application/json"];
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(jsonMediaType.Schema, Is.Not.Null);
-                Assert.That(jsonMediaType.Schema.Reference, Is.Not.Null);
-                Assert.That(jsonMediaType.Schema.Reference.Id, Is.EqualTo("JsonStat2"));
-                Assert.That(jsonMediaType.Example, Is.EqualTo(JsonStat2Example.Instance));
-                Assert.That(response200.Description, Does.Contain("JSON-stat2.0"));
-            });
+                Assert.That(jsonMediaType.Schema, Is.TypeOf<OpenApiSchemaReference>());
+                Assert.That(jsonMediaType.Examples, Is.Not.Null);
+                Assert.That(jsonMediaType.Examples!, Has.Count.EqualTo(1));
+                Assert.That(jsonMediaType.Examples!.ContainsKey("default"), Is.True);
+                Assert.That(response200.Description, Does.Contain("JSON-stat 2.0"));
+            }
 
             OpenApiMediaType csvMediaType = response200.Content["text/csv"];
-            Assert.That(csvMediaType.Schema.Description, Does.Contain("CSV dataset"));
+            OpenApiSchema csvSchema = (OpenApiSchema)csvMediaType.Schema!;
+            Assert.That(csvSchema.Description, Does.Contain("CSV dataset"));
 
             // Accept header note and lang parameter
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(operation.Description, Does.Contain("Accept header options:"));
-                OpenApiParameter? langParam = operation.Parameters.FirstOrDefault(p => p.Name == "lang");
+                OpenApiParameter? langParam = operation.Parameters.FirstOrDefault(p => p.Name == "lang") as OpenApiParameter;
                 Assert.That(langParam, Is.Not.Null);
                 Assert.That(langParam!.Description, Does.Contain("Optional language code"));
-            });
+            }
 
             // Filter schema description
             Assert.That(filterSchema.Description, Does.Contain("Filter object"));
+
+            // Error responses: text/csv removed, 406 has no content
+            OpenApiResponse response400 = (OpenApiResponse)operation.Responses["400"];
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(response400.Content!.ContainsKey("text/csv"), Is.False);
+                Assert.That(response400.Content["application/json"], Is.Not.Null);
+            }
+
+            OpenApiResponse response406 = (OpenApiResponse)operation.Responses["406"];
+            Assert.That(response406.Content, Is.Empty);
+
+            OpenApiResponse response500 = (OpenApiResponse)operation.Responses["500"];
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(response500.Content!.ContainsKey("text/csv"), Is.False);
+                Assert.That(response500.Content["application/json"], Is.Not.Null);
+            }
         }
 
         [Test]
@@ -137,9 +182,9 @@ namespace PxApi.UnitTests.DocumentFilters
 
             OpenApiPathItem pathItem = new()
             {
-                Operations = new Dictionary<OperationType, OpenApiOperation>
+                Operations = new Dictionary<HttpMethod, OpenApiOperation>
                 {
-                    [OperationType.Post] = operation
+                    [HttpMethod.Post] = operation
                 }
             };
 
@@ -158,12 +203,12 @@ namespace PxApi.UnitTests.DocumentFilters
             filter.Apply(document, context);
 
             // Assert
-            OpenApiMediaType rbMediaType = operation.RequestBody!.Content["application/json"];
-            Assert.Multiple(() =>
+            OpenApiMediaType rbMediaType = operation.RequestBody.Content!["application/json"];
+            using (Assert.EnterMultipleScope())
             {
-                Assert.That(rbMediaType.Examples, Is.Empty);
+                Assert.That(rbMediaType.Examples, Is.Null.Or.Empty);
                 Assert.That(operation.Description, Is.Null);
-            });
+            }
         }
     }
 }

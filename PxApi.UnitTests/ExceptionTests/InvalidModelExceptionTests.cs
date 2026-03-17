@@ -22,12 +22,12 @@ namespace PxApi.UnitTests.ExceptionTests
             InvalidModelException exception = new(modelState, requestPath);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exception.Message, Is.EqualTo("Model validation failed"));
                 Assert.That(exception.ModelState, Is.EqualTo(modelState));
                 Assert.That(exception.RequestPath, Is.EqualTo(requestPath));
-            });
+            };
         }
 
         [Test]
@@ -43,12 +43,12 @@ namespace PxApi.UnitTests.ExceptionTests
             InvalidModelException exception = new(customMessage, modelState, requestPath);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exception.Message, Is.EqualTo(customMessage));
                 Assert.That(exception.ModelState, Is.EqualTo(modelState));
                 Assert.That(exception.RequestPath, Is.EqualTo(requestPath));
-            });
+            };
         }
 
         [Test]
@@ -110,14 +110,14 @@ namespace PxApi.UnitTests.ExceptionTests
             InvalidModelException exception = new(modelState, requestPath);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exception.ModelState.ErrorCount, Is.EqualTo(3));
                 Assert.That(exception.ModelState.Keys, Contains.Item("field1"));
                 Assert.That(exception.ModelState.Keys, Contains.Item("field2"));
                 Assert.That(exception.ModelState["field1"]?.Errors, Has.Count.EqualTo(2));
                 Assert.That(exception.ModelState["field2"]?.Errors, Has.Count.EqualTo(1));
-            });
+            };
         }
     }
 }

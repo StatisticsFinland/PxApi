@@ -1,4 +1,4 @@
-﻿using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using PxApi.Configuration;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -17,6 +17,7 @@ namespace PxApi.OpenApi.DocumentFilters
         public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
         {
             string rootUrl = AppSettings.Active.RootUrl.ToString().TrimEnd('/');
+            swaggerDoc.Servers ??= [];
             swaggerDoc.Servers.Clear();
             if (!string.IsNullOrWhiteSpace(rootUrl))
             {

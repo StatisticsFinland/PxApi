@@ -35,11 +35,13 @@ namespace PxApi.Controllers
         /// <returns>A list of <see cref="DataBaseListingItem"/> objects describing each available database.</returns>
         /// <response code="200">Successful retrieval of database listing.</response>
         /// <response code="400">Requested language not supported.</response>
+        /// <response code="500">Unexpected server error.</response>
         [HttpGet]
         [OperationId("listDatabases")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(List<DataBaseListingItem>),200, "application/json")]
-        [ProducesResponseType(400)]
+        [ProducesResponseType(typeof(string), 400)]
+        [ProducesResponseType(typeof(string), 500)]
         public async Task<ActionResult<List<DataBaseListingItem>>> GetDatabases([FromQuery] string? lang = null)
         {
             using (logger.BeginScope(new Dictionary<string, object>()
@@ -105,9 +107,11 @@ namespace PxApi.Controllers
         /// </summary>
         /// <returns><see cref="OkResult"/> indicating the collection resource exists.</returns>
         /// <response code="200">Resource exists.</response>
+        /// <response code="500">Unexpected server error.</response>
         [HttpHead]
         [OperationId("headDatabases")]
         [ProducesResponseType(200)]
+        [ProducesResponseType(500)]
         public IActionResult HeadDatabases()
         {
             using (logger.BeginScope(new Dictionary<string, object>()
@@ -126,9 +130,11 @@ namespace PxApi.Controllers
         /// </summary>
         /// <returns><see cref="OkResult"/> with Allow header populated.</returns>
         /// <response code="200">Allowed methods returned.</response>
+        /// <response code="500">Unexpected server error.</response>
         [HttpOptions]
         [OperationId("optionsDatabases")]
         [ProducesResponseType(200)]
+        [ProducesResponseType(500)]
         public IActionResult OptionsDatabases()
         {
             using (logger.BeginScope(new Dictionary<string, object>()

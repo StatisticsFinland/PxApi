@@ -54,14 +54,14 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             string lang = "en";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
             List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file)).ReturnsAsync(groups);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ReturnsAsync(groups);
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
@@ -76,11 +76,11 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
             string lang = "en";
 
             // Act
@@ -96,16 +96,16 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             string lang = "en";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
             List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
             string[] expectedId = ["content-code", "time-code", "dim0-code", "dim1-code"];
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file)).ReturnsAsync(groups);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ReturnsAsync(groups);
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
@@ -116,14 +116,14 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(okResult, Is.Not.Null);
             JsonStat2? resultMeta = okResult.Value as JsonStat2;
             Assert.That(resultMeta, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(resultMeta.Id, Is.EqualTo(expectedId));
                 Assert.That(resultMeta.Label, Is.EqualTo("table-description.en"));
                 Assert.That(resultMeta.Source, Is.EqualTo("table-source.en"));
                 Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
                 Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
-            });
+            };
         }
 
         [Test]
@@ -131,16 +131,16 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             string lang = "fi";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
             List<TableGroup> groups = TableGroupTestUtils.CreateTestTableGroups(3);
             string[] expectedId = ["content-code", "time-code", "dim0-code", "dim1-code"];
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file)).ReturnsAsync(groups);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ReturnsAsync(groups);
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
@@ -151,7 +151,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(okResult, Is.Not.Null);
             JsonStat2? resultMeta = okResult.Value as JsonStat2;
             Assert.That(resultMeta, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(resultMeta.Id, Is.EqualTo(expectedId));
                 Assert.That(resultMeta.Label, Is.EqualTo("table-description.fi")); // Using default language
@@ -162,10 +162,10 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(resultMeta.Extension!.ContainsKey("groupings"));
                 Assert.That(resultMeta.Extension["groupings"], Is.InstanceOf<List<TableGroupJsonStatExtension>>());
                 Assert.That(resultMeta.Extension["groupings"] as List<TableGroupJsonStatExtension>, Has.Count.EqualTo(3));
-            });
+            };
 
             // Verify that GetGroupingsCachedAsync was called with the correct file
-            _mockDbConnector.Verify(x => x.GetGroupingsCachedAsync(file), Times.Once);
+            _mockDbConnector.Verify(x => x.GetGroupingsCachedAsync(file, CancellationToken.None), Times.Once);
         }
 
         [Test]
@@ -173,16 +173,16 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             string lang = "sv";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
             List<TableGroup> emptyGroups = []; // Empty groupings list
             string[] expectedId = ["content-code", "time-code", "dim0-code", "dim1-code"];
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file)).ReturnsAsync(emptyGroups);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ReturnsAsync(emptyGroups);
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
@@ -193,7 +193,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(okResult, Is.Not.Null);
             JsonStat2? resultMeta = okResult.Value as JsonStat2;
             Assert.That(resultMeta, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(resultMeta.Id, Is.EqualTo(expectedId));
                 Assert.That(resultMeta.Label, Is.EqualTo("table-description.sv"));
@@ -203,10 +203,10 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(resultMeta.Extension!.ContainsKey("groupings"));
                 Assert.That(resultMeta.Extension["groupings"], Is.InstanceOf<List<TableGroupJsonStatExtension>>());
                 Assert.That(resultMeta.Extension["groupings"] as List<TableGroupJsonStatExtension>, Has.Count.EqualTo(0));
-            });
+            };
 
             // Verify that GetGroupingsCachedAsync was called even when returning empty list
-            _mockDbConnector.Verify(x => x.GetGroupingsCachedAsync(file), Times.Once);
+            _mockDbConnector.Verify(x => x.GetGroupingsCachedAsync(file, CancellationToken.None), Times.Once);
         }
 
         [Test]
@@ -214,14 +214,14 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             string lang = "en";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file)).ThrowsAsync(new FileNotFoundException("Grouping file not found"));
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ThrowsAsync(new FileNotFoundException("Grouping file not found"));
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
@@ -237,14 +237,14 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             string lang = "en";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file)).ThrowsAsync(new InvalidOperationException("Cache error"));
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ThrowsAsync(new InvalidOperationException("Cache error"));
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
@@ -252,11 +252,11 @@ namespace PxApi.UnitTests.ControllerTests
             // Assert
             Assert.That(result.Result, Is.InstanceOf<ObjectResult>());
             ObjectResult? objectResult = result.Result as ObjectResult;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(objectResult?.StatusCode, Is.EqualTo(500));
                 Assert.That(objectResult?.Value, Is.EqualTo("Unexpected server error."));
-            });
+            };
         }
 
         [Test]
@@ -285,7 +285,7 @@ namespace PxApi.UnitTests.ControllerTests
             string tableId = "nonexistenttable";
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(tableId, database)).ReturnsAsync((PxFileRef?)null);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(tableId, database, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, tableId, null);
@@ -301,9 +301,9 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
 
-            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ThrowsAsync(new FileNotFoundException());
+            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ThrowsAsync(new FileNotFoundException());
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, null);
@@ -317,11 +317,11 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ThrowsAsync(new InvalidOperationException("Unexpected error"));
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ThrowsAsync(new InvalidOperationException("Unexpected error"));
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, null);
@@ -329,11 +329,11 @@ namespace PxApi.UnitTests.ControllerTests
             // Assert
             Assert.That(result.Result, Is.InstanceOf<ObjectResult>());
             ObjectResult? objectResult = result.Result as ObjectResult;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(objectResult?.StatusCode, Is.EqualTo(500));
                 Assert.That(objectResult?.Value, Is.EqualTo("Unexpected server error."));
-            });
+            };
         }
 
         [Test]
@@ -341,13 +341,13 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             string lang = "de";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
@@ -363,16 +363,16 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
             List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
             string[] expectedId = ["content-code", "time-code", "dim0-code", "dim1-code"];
 
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file)).ReturnsAsync(groups);
+            _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ReturnsAsync(groups);
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, null);
@@ -383,14 +383,14 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(okResult, Is.Not.Null);
             JsonStat2? resultMeta = okResult.Value as JsonStat2;
             Assert.That(resultMeta, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(resultMeta.Id, Is.EqualTo(expectedId));
                 Assert.That(resultMeta.Label, Is.EqualTo("table-description.fi"));
                 Assert.That(resultMeta.Source, Is.EqualTo("table-source.fi"));
                 Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
                 Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
-            });
+            };
         }
 
         [Test]
@@ -398,13 +398,13 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             string lang = "en";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
 
             // Act
             IActionResult result = await _controller.HeadMetadataAsync(database.Id, file.Id, lang);
@@ -437,7 +437,7 @@ namespace PxApi.UnitTests.ControllerTests
             string tableId = "nonexistenttable";
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(tableId, database)).ReturnsAsync((PxFileRef?)null);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(tableId, database, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
 
             // Act
             IActionResult result = await _controller.HeadMetadataAsync(database.Id, tableId, null);
@@ -451,13 +451,13 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             string lang = "de";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
 
             // Act
             IActionResult result = await _controller.HeadMetadataAsync(database.Id, file.Id, lang);
@@ -471,12 +471,12 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.CreateFromPath(Path.Combine("c:", "testfolder", "filename.px"), database);
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file)).ReturnsAsync(meta);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
 
             // Act
             IActionResult result = await _controller.HeadMetadataAsync(database.Id, file.Id, null);
@@ -496,11 +496,11 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = _controller.OptionsMetadata(database, table);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow.ToString(), Is.EqualTo("GET,HEAD,OPTIONS"));
-            });
+            };
         }
 
         [Test]
@@ -514,11 +514,11 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = _controller.OptionsMetadata(database, table);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow.ToString(), Is.EqualTo("GET,HEAD,OPTIONS"));
-            });
+            };
             _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
     }

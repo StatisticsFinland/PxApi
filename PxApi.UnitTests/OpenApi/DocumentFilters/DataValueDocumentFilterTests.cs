@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Moq;
 using PxApi.OpenApi.DocumentFilters;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace PxApi.UnitTests.DocumentFilters
+namespace PxApi.UnitTests.OpenApi.DocumentFilters
 {
     [TestFixture]
     public class DataValueDocumentFilterTests
@@ -26,7 +26,7 @@ namespace PxApi.UnitTests.DocumentFilters
             {
                 Components = new OpenApiComponents
                 {
-                    Schemas = new Dictionary<string, OpenApiSchema> {
+                    Schemas = new Dictionary<string, IOpenApiSchema> {
                         { "DoubleDataValue", new OpenApiSchema() },
                         { "SomePrefixDoubleDataValueSuffix", new OpenApiSchema() },
                         { "DataValueType", new OpenApiSchema() },
@@ -43,7 +43,7 @@ namespace PxApi.UnitTests.DocumentFilters
 
             // Assert
             ICollection<string> remainingKeys = document.Components.Schemas.Keys;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(remainingKeys.Contains("DoubleDataValue"), Is.False);
                 Assert.That(remainingKeys.Contains("SomePrefixDoubleDataValueSuffix"), Is.False);
@@ -51,7 +51,7 @@ namespace PxApi.UnitTests.DocumentFilters
                 Assert.That(remainingKeys.Contains("doubledatavalue"), Is.False);
                 Assert.That(remainingKeys.Contains("UnrelatedType"), Is.True);
                 Assert.That(remainingKeys, Has.Count.EqualTo(1));
-            });
+            }
         }
 
         [Test]

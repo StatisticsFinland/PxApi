@@ -11,9 +11,10 @@ using PxApi.Controllers;
 using PxApi.Models.JsonStat;
 using PxApi.Models.QueryFilters;
 using PxApi.Models;
+using PxApi.Services;
 using PxApi.UnitTests.ModelBuilderTests;
 using PxApi.UnitTests.Utils;
-using PxApi.Services;
+using PxApi.Exceptions;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -72,7 +73,7 @@ namespace PxApi.UnitTests.ControllerTests
         private void SetupMockDataSourceForValidRequest(string database, string table)
         {
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             DoubleDataValue[] mockData = [
                 new DoubleDataValue(1.0, DataValueType.Exists),
@@ -100,10 +101,10 @@ namespace PxApi.UnitTests.ControllerTests
             ];
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
-            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(mockMetadata);
-            _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>())).ReturnsAsync(mockData);
-            _cachedDbConnector.Setup(x => x.GetGroupingsCachedAsync(It.IsAny<PxFileRef>())).ReturnsAsync(groupingsFixture);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>(), CancellationToken.None)).ReturnsAsync(mockMetadata);
+            _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>(), CancellationToken.None)).ReturnsAsync(mockData);
+            _cachedDbConnector.Setup(x => x.GetGroupingsCachedAsync(It.IsAny<PxFileRef>(), CancellationToken.None)).ReturnsAsync(groupingsFixture);
         }
 
         #region GetDataAsync Tests
@@ -147,11 +148,11 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(okResult, Is.Not.Null);
             JsonStat2? jsonStat = okResult.Value as JsonStat2;
             Assert.That(jsonStat, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(jsonStat.Version, Is.EqualTo("2.0"));
                 Assert.That(jsonStat.Class, Is.EqualTo("dataset"));
-            });
+            }
         }
 
         [Test]
@@ -178,7 +179,7 @@ namespace PxApi.UnitTests.ControllerTests
             JsonStat2? jsonStat = okResult.Value as JsonStat2;
             Assert.That(jsonStat, Is.Not.Null);
 
-            var series = jsonStat.Value.Select(v => v.UnsafeValue);
+            IEnumerable<double> series = jsonStat.Value.Select(v => v.UnsafeValue);
             Assert.That(series, Is.EquivalentTo(expectedValues));
         }
 
@@ -214,7 +215,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync((PxFileRef?)null);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
 
             // Act
             IActionResult result = await _controller.GetDataAsync(database, table, filters);
@@ -247,11 +248,11 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(okResult, Is.Not.Null);
             JsonStat2? jsonStat = okResult.Value as JsonStat2;
             Assert.That(jsonStat, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(jsonStat.Version, Is.EqualTo("2.0"));
                 Assert.That(jsonStat.Class, Is.EqualTo("dataset"));
-            });
+            }
         }
 
         [Test]
@@ -277,7 +278,7 @@ namespace PxApi.UnitTests.ControllerTests
             JsonStat2? jsonStat = okResult.Value as JsonStat2;
             Assert.That(jsonStat, Is.Not.Null);
 
-            var series = jsonStat.Value.Select(v => v.UnsafeValue);
+            IEnumerable<double> series = jsonStat.Value.Select(v => v.UnsafeValue);
             Assert.That(series, Is.EquivalentTo(expectedValues));
         }
 
@@ -328,7 +329,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync((PxFileRef?)null);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
 
             // Act
             IActionResult result = await _controller.PostDataAsync(database, table, query);
@@ -401,7 +402,7 @@ namespace PxApi.UnitTests.ControllerTests
             PxFileRef? pxFileRef = null;
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
 
             // Accept header not needed since this test expects NotFound before content negotiation
             // Act
@@ -421,11 +422,11 @@ namespace PxApi.UnitTests.ControllerTests
             string errorMessage = "Invalid argument";
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ThrowsAsync(new ArgumentException(errorMessage));
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef, CancellationToken.None)).ThrowsAsync(new ArgumentException(errorMessage));
 
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
@@ -448,7 +449,7 @@ namespace PxApi.UnitTests.ControllerTests
             PxFileRef? pxFileRef = null;
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
 
             // Accept header not needed since this test expects NotFound before content negotiation
             // Act
@@ -468,11 +469,11 @@ namespace PxApi.UnitTests.ControllerTests
             string errorMessage = "Invalid argument";
 
             DataBaseRef dataBaseRef = DataBaseRef.Create(database);
-            PxFileRef pxFileRef = PxFileRef.CreateFromPath(Path.Combine("C:", "foo", $"{table}.px"), dataBaseRef);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
-            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef)).ReturnsAsync(pxFileRef);
-            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef)).ThrowsAsync(new ArgumentException(errorMessage));
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(pxFileRef, CancellationToken.None)).ThrowsAsync(new ArgumentException(errorMessage));
 
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
 
@@ -481,6 +482,75 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
+        }
+
+        [Test]
+        public async Task GetDataAsync_BinaryBlobSynchronizationException_ReturnsServiceUnavailable()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
+            IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
+            BinaryBlobSynchronizationException exception = new(pxFileRef, DateTime.UtcNow);
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>(), CancellationToken.None)).ReturnsAsync(mockMetadata);
+            _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>(), CancellationToken.None)).ThrowsAsync(exception);
+
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
+            // Act
+            IActionResult result = await _controller.GetDataAsync(database, table, filters);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ObjectResult>());
+            ObjectResult? objectResult = result as ObjectResult;
+            Assert.That(objectResult, Is.Not.Null);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status503ServiceUnavailable));
+                Assert.That(objectResult.Value, Is.TypeOf<string>());
+                Assert.That(objectResult.Value, Is.EqualTo("The requested data is temporarily unavailable due to a database update. Please retry shortly."));
+            }
+        }
+
+        [Test]
+        public async Task PostDataAsync_BinaryBlobSynchronizationException_ReturnsServiceUnavailable()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
+            IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
+            BinaryBlobSynchronizationException exception = new(pxFileRef, DateTime.UtcNow);
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>(), CancellationToken.None)).ReturnsAsync(mockMetadata);
+            _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>(), CancellationToken.None)).ThrowsAsync(exception);
+
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
+            // Act
+            IActionResult result = await _controller.PostDataAsync(database, table, query);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<ObjectResult>());
+            ObjectResult? objectResult = result as ObjectResult;
+            Assert.That(objectResult, Is.Not.Null);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status503ServiceUnavailable));
+                Assert.That(objectResult.Value, Is.TypeOf<string>());
+            }
         }
 
         #endregion
@@ -508,11 +578,11 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<ObjectResult>());
             ObjectResult? badRequest = result as ObjectResult;
             Assert.That(badRequest, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(badRequest.Value, Is.TypeOf<string>());
                 Assert.That(badRequest.StatusCode, Is.EqualTo(413)); // 413 Content Too Large
-            });
+            }
             string? errorMessage = badRequest.Value as string;
             Assert.That(errorMessage, Does.Contain($"The request is too large. Please narrow down the query. Maximum size is {limit} cells."));
         }
@@ -538,11 +608,11 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<ObjectResult>());
             ObjectResult? tooLarge = result as ObjectResult;
             Assert.That(tooLarge, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(tooLarge.StatusCode, Is.EqualTo(413)); // 413 Content Too Large
                 Assert.That(tooLarge.Value, Is.TypeOf<string>());
-            });
+            }
             string? errorMessage = tooLarge.Value as string;
             Assert.That(errorMessage, Does.Contain($"The request is too large. Please narrow down the query. Maximum size is {limit} cells."));
         }
@@ -694,12 +764,12 @@ namespace PxApi.UnitTests.ControllerTests
             // Act
             IActionResult result = _controller.OptionsData(database, table);
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 // Assert
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,POST,HEAD,OPTIONS"));
-            });
+            }
         }
 
         [Test]
@@ -729,12 +799,12 @@ namespace PxApi.UnitTests.ControllerTests
             // Act
             IActionResult result = _controller.OptionsData(database, table);
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 // Assert
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,POST,HEAD,OPTIONS"));
-            });
+            }
             _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
         #endregion
@@ -764,12 +834,12 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<ContentResult>());
             ContentResult? contentResult = result as ContentResult;
             Assert.That(contentResult, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(contentResult.ContentType, Is.EqualTo("text/csv"));
                 Assert.That(contentResult.Content, Is.Not.Null.And.Not.Empty);
                 Assert.That(contentResult.Content, Is.EqualTo(expected));
-            });
+            }
         }
 
         [Test]
@@ -795,12 +865,123 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<ContentResult>());
             ContentResult? contentResult = result as ContentResult;
             Assert.That(contentResult, Is.Not.Null);
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(contentResult.ContentType, Is.EqualTo("text/csv"));
                 Assert.That(contentResult.Content, Is.Not.Null.And.Not.Empty);
                 Assert.That(contentResult.Content, Is.EqualTo(expected));
-            });
+            }
+        }
+
+        #endregion
+
+        #region Max Cells Header Tests
+
+        [Test]
+        public async Task GetDataAsync_ValidRequest_ResponseContainsMaxCellsHeader()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+
+            SetupMockDataSourceForValidRequest(database, table);
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
+            // Act
+            await _controller.GetDataAsync(database, table, filters);
+
+            using (Assert.EnterMultipleScope())
+            {
+                // Assert
+                Assert.That(_controller.Response.Headers.ContainsKey("X-Max-Cells"), Is.True);
+                Assert.That(_controller.Response.Headers["X-Max-Cells"].ToString(), Is.Not.Empty);
+            }
+        }
+
+        [Test]
+        public async Task PostDataAsync_ValidRequest_ResponseContainsMaxCellsHeader()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+
+            SetupMockDataSourceForValidRequest(database, table);
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
+            // Act
+            await _controller.PostDataAsync(database, table, query);
+
+            using (Assert.EnterMultipleScope())
+            {
+                // Assert
+                Assert.That(_controller.Response.Headers.ContainsKey("X-Max-Cells"), Is.True);
+                Assert.That(_controller.Response.Headers["X-Max-Cells"].ToString(), Is.Not.Empty);
+            }
+        }
+
+        [Test]
+        public async Task GetDataAsync_RequestExceedsLimit_ResponseContainsMaxCellsHeader()
+        {
+            // Arrange
+            const uint limit = 1;
+            SetupAppSettings(jsonStatMaxCells: limit);
+
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+
+            SetupMockDataSourceForValidRequest(database, table);
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
+            // Act
+            await _controller.GetDataAsync(database, table, filters);
+
+            using (Assert.EnterMultipleScope())
+            {
+                // Assert
+                Assert.That(_controller.Response.Headers.ContainsKey("X-Max-Cells"), Is.True);
+                Assert.That(_controller.Response.Headers["X-Max-Cells"].ToString(), Is.EqualTo(limit.ToString()));
+            }
+        }
+
+        [Test]
+        public async Task HeadDataAsync_ValidRequest_ResponseContainsMaxCellsHeader()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            SetupMockDataSourceForValidRequest(database, table);
+            string lang = "en";
+
+            // Act
+            await _controller.HeadDataAsync(database, table, lang);
+
+            using (Assert.EnterMultipleScope())
+            {
+                // Assert
+                Assert.That(_controller.Response.Headers.ContainsKey("X-Max-Cells"), Is.True);
+                Assert.That(_controller.Response.Headers["X-Max-Cells"].ToString(), Is.Not.Empty);
+            }
+        }
+
+        [Test]
+        public void OptionsData_ResponseContainsMaxCellsHeader()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+
+            // Act
+            _controller.OptionsData(database, table);
+
+            using (Assert.EnterMultipleScope())
+            {
+                // Assert
+                Assert.That(_controller.Response.Headers.ContainsKey("X-Max-Cells"), Is.True);
+                Assert.That(_controller.Response.Headers["X-Max-Cells"].ToString(), Is.Not.Empty);
+            }
         }
 
         #endregion

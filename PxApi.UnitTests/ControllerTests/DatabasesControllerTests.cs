@@ -56,9 +56,9 @@ namespace PxApi.UnitTests.ControllerTests
                 { "fi", "Nimi FI" },
                 { "en", "Name EN" }
             });
-            _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef, string.Empty)).ReturnsAsync(nameMulti);
+            _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef, string.Empty, CancellationToken.None)).ReturnsAsync(nameMulti);
             ImmutableSortedDictionary<string, PxFileRef> files = ImmutableSortedDictionary<string, PxFileRef>.Empty;
-            _mockCachedDataSource.Setup(x => x.GetFileListCachedAsync(dbRef)).ReturnsAsync(files);
+            _mockCachedDataSource.Setup(x => x.GetFileListCachedAsync(dbRef, CancellationToken.None)).ReturnsAsync(files);
 
             // Act
             ActionResult<List<DataBaseListingItem>> result = await _controller.GetDatabases("fi");
@@ -86,11 +86,11 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = _controller.OptionsDatabases();
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,HEAD,OPTIONS"));
-            });
+            };
             _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
@@ -122,9 +122,9 @@ namespace PxApi.UnitTests.ControllerTests
                 { "fi", "Nimi FI" },
                 { "en", "Name EN" }
             });
-            _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef, It.Is<string>(s => s == string.Empty))).ReturnsAsync(nameMulti);
+            _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef, It.Is<string>(s => s == string.Empty), CancellationToken.None)).ReturnsAsync(nameMulti);
             ImmutableSortedDictionary<string, PxFileRef> fileList = ImmutableSortedDictionary<string, PxFileRef>.Empty;
-            _mockCachedDataSource.Setup(x => x.GetFileListCachedAsync(dbRef)).ReturnsAsync(fileList);
+            _mockCachedDataSource.Setup(x => x.GetFileListCachedAsync(dbRef, CancellationToken.None)).ReturnsAsync(fileList);
 
             // Act
             ActionResult<List<DataBaseListingItem>> result = await _controller.GetDatabases(null);
@@ -133,15 +133,15 @@ namespace PxApi.UnitTests.ControllerTests
             OkObjectResult? okResult = result.Result as OkObjectResult;
             Assert.That(okResult, Is.Not.Null);
             List<DataBaseListingItem>? items = okResult!.Value as List<DataBaseListingItem>;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(items, Is.Not.Null);
                 Assert.That(items!, Has.Count.EqualTo(1));
                 Assert.That(items![0].Name, Is.EqualTo("Nimi FI")); // Default language fi
                 Assert.That(items![0].AvailableLanguages, Is.EquivalentTo(new List<string> { "fi", "en" }));
-            });
-            _mockCachedDataSource.Verify(x => x.GetDatabaseNameAsync(dbRef, string.Empty), Times.Once);
-            _mockCachedDataSource.Verify(x => x.GetFileListCachedAsync(dbRef), Times.Once);
+            };
+            _mockCachedDataSource.Verify(x => x.GetDatabaseNameAsync(dbRef, string.Empty, CancellationToken.None), Times.Once);
+            _mockCachedDataSource.Verify(x => x.GetFileListCachedAsync(dbRef, CancellationToken.None), Times.Once);
         }
 
         [Test]
@@ -169,9 +169,9 @@ namespace PxApi.UnitTests.ControllerTests
                 { "sv", "Namn SV" },
                 { "en", "Name EN" }
             });
-            _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef, string.Empty)).ReturnsAsync(nameMulti);
+            _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef, string.Empty, CancellationToken.None)).ReturnsAsync(nameMulti);
             ImmutableSortedDictionary<string, PxFileRef> fileList = ImmutableSortedDictionary<string, PxFileRef>.Empty;
-            _mockCachedDataSource.Setup(x => x.GetFileListCachedAsync(dbRef)).ReturnsAsync(fileList);
+            _mockCachedDataSource.Setup(x => x.GetFileListCachedAsync(dbRef, CancellationToken.None)).ReturnsAsync(fileList);
 
             // Act
             ActionResult<List<DataBaseListingItem>> result = await _controller.GetDatabases(requestedLang);
@@ -180,11 +180,11 @@ namespace PxApi.UnitTests.ControllerTests
             OkObjectResult? okResult = result.Result as OkObjectResult;
             Assert.That(okResult, Is.Not.Null);
             List<DataBaseListingItem>? items = okResult!.Value as List<DataBaseListingItem>;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(items![0].Description, Is.Null);
                 Assert.That(items[0].Name, Is.EqualTo("Namn SV"));
-            });
+            };
         }
 
         [Test]
@@ -220,24 +220,24 @@ namespace PxApi.UnitTests.ControllerTests
                 { "fi", "nimi2" },
                 { "en", "name2" } // Only fi & en
             });
-            _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef1, string.Empty)).ReturnsAsync(nameMulti1);
-            _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef2, string.Empty)).ReturnsAsync(nameMulti2);
+            _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef1, string.Empty, CancellationToken.None)).ReturnsAsync(nameMulti1);
+            _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef2, string.Empty, CancellationToken.None)).ReturnsAsync(nameMulti2);
 
-            PxFileRef px1a = PxFileRef.CreateFromPath(Path.Combine("c:", "test", "t1a.px"), dbRef1);
-            PxFileRef px1b = PxFileRef.CreateFromPath(Path.Combine("c:", "test", "t1b.px"), dbRef1);
+            PxFileRef px1a = PxFileRef.ValidateAndCreate("t1a", dbRef1, ["statisticalProgram"]);
+            PxFileRef px1b = PxFileRef.ValidateAndCreate("t1b", dbRef1, ["statisticalProgram"]);
             ImmutableSortedDictionary<string, PxFileRef> filesDb1 = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxFileRef>
             {
                 { px1a.Id, px1a },
                 { px1b.Id, px1b }
             });
-            _mockCachedDataSource.Setup(x => x.GetFileListCachedAsync(dbRef1)).ReturnsAsync(filesDb1);
+            _mockCachedDataSource.Setup(x => x.GetFileListCachedAsync(dbRef1, CancellationToken.None)).ReturnsAsync(filesDb1);
 
-            PxFileRef px2a = PxFileRef.CreateFromPath(Path.Combine("c:", "test", "t2a.px"), dbRef2);
+            PxFileRef px2a = PxFileRef.ValidateAndCreate("t2a", dbRef2, ["statisticalProgram"]);
             ImmutableSortedDictionary<string, PxFileRef> filesDb2 = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxFileRef>
             {
                 { px2a.Id, px2a }
             });
-            _mockCachedDataSource.Setup(x => x.GetFileListCachedAsync(dbRef2)).ReturnsAsync(filesDb2);
+            _mockCachedDataSource.Setup(x => x.GetFileListCachedAsync(dbRef2, CancellationToken.None)).ReturnsAsync(filesDb2);
 
             // Act
             ActionResult<List<DataBaseListingItem>> result = await _controller.GetDatabases(lang);
@@ -246,7 +246,7 @@ namespace PxApi.UnitTests.ControllerTests
             OkObjectResult? okResult = result.Result as OkObjectResult;
             Assert.That(okResult, Is.Not.Null);
             List<DataBaseListingItem>? items = okResult!.Value as List<DataBaseListingItem>;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(items, Is.Not.Null);
                 Assert.That(items!, Has.Count.EqualTo(2));
@@ -269,11 +269,11 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(item2.AvailableLanguages, Is.EquivalentTo(new List<string> { "fi", "en" }));
                 string expectedHref2 = AppSettings.Active.RootUrl.ToString().TrimEnd('/') + "/tables/db2?lang=en";
                 Assert.That(item2.Links[0].Href, Is.EqualTo(expectedHref2));
-            });
-            _mockCachedDataSource.Verify(x => x.GetDatabaseNameAsync(dbRef1, string.Empty), Times.Once);
-            _mockCachedDataSource.Verify(x => x.GetDatabaseNameAsync(dbRef2, string.Empty), Times.Once);
-            _mockCachedDataSource.Verify(x => x.GetFileListCachedAsync(dbRef1), Times.Once);
-            _mockCachedDataSource.Verify(x => x.GetFileListCachedAsync(dbRef2), Times.Once);
+            };
+            _mockCachedDataSource.Verify(x => x.GetDatabaseNameAsync(dbRef1, string.Empty, CancellationToken.None), Times.Once);
+            _mockCachedDataSource.Verify(x => x.GetDatabaseNameAsync(dbRef2, string.Empty, CancellationToken.None), Times.Once);
+            _mockCachedDataSource.Verify(x => x.GetFileListCachedAsync(dbRef1, CancellationToken.None), Times.Once);
+            _mockCachedDataSource.Verify(x => x.GetFileListCachedAsync(dbRef2, CancellationToken.None), Times.Once);
         }
 
         [Test]
@@ -293,11 +293,11 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = _controller.OptionsDatabases();
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,HEAD,OPTIONS"));
-            });
+            };
         }
     }
 }

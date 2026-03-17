@@ -121,11 +121,11 @@ namespace PxApi.UnitTests.Authentication
             await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(_nextCalled, Is.True);
                 Assert.That(actionContext.Result, Is.Null);
-            });
+            }
         }
 
         [Test]
@@ -146,11 +146,11 @@ namespace PxApi.UnitTests.Authentication
             await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(_nextCalled, Is.True);
                 Assert.That(actionContext.Result, Is.Null);
-            });
+            }
         }
 
         [Test]
@@ -165,7 +165,7 @@ namespace PxApi.UnitTests.Authentication
             await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(_nextCalled, Is.False);
                 Assert.That(actionContext.Result, Is.TypeOf<UnauthorizedObjectResult>());
@@ -173,7 +173,7 @@ namespace PxApi.UnitTests.Authentication
                 UnauthorizedObjectResult result = (UnauthorizedObjectResult)actionContext.Result!;
                 string expectedMessage = $"Missing {headerName} header";
                 Assert.That(result.Value?.ToString(), Does.Contain(expectedMessage));
-            });
+            }
         }
 
         [Test]
@@ -194,14 +194,14 @@ namespace PxApi.UnitTests.Authentication
             await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(_nextCalled, Is.False);
                 Assert.That(actionContext.Result, Is.TypeOf<UnauthorizedObjectResult>());
 
                 UnauthorizedObjectResult result = (UnauthorizedObjectResult)actionContext.Result!;
                 Assert.That(result.Value?.ToString(), Does.Contain("Invalid API key"));
-            });
+            }
         }
 
         [Test]
@@ -222,14 +222,14 @@ namespace PxApi.UnitTests.Authentication
             await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(_nextCalled, Is.False);
                 Assert.That(actionContext.Result, Is.TypeOf<UnauthorizedObjectResult>());
 
                 UnauthorizedObjectResult result = (UnauthorizedObjectResult)actionContext.Result!;
                 Assert.That(result.Value?.ToString(), Does.Contain("Invalid API key"));
-            });
+            }
         }
 
         [Test]
@@ -251,11 +251,11 @@ namespace PxApi.UnitTests.Authentication
             await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(_nextCalled, Is.True);
                 Assert.That(actionContext.Result, Is.Null);
-            });
+            }
         }
 
         [Test]
@@ -277,11 +277,11 @@ namespace PxApi.UnitTests.Authentication
             await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(_nextCalled, Is.True);
                 Assert.That(actionContext.Result, Is.Null);
-            });
+            }
         }
 
         [Test]
@@ -294,11 +294,11 @@ namespace PxApi.UnitTests.Authentication
             await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
 
             // Assert
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(_nextCalled, Is.True);
                 Assert.That(actionContext.Result, Is.Null);
-            });
+            }
         }
 
         private delegate bool TryGetValueDelegate(string key, out StringValues values);

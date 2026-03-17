@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Moq;
 using PxApi.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 
-namespace PxApi.UnitTests.OperationFilters
+namespace PxApi.UnitTests.OpenApi.OperationFilters
 {
     [TestFixture]
     public class OperationIdOperationFilterTests
@@ -15,7 +15,8 @@ namespace PxApi.UnitTests.OperationFilters
             ApiDescription apiDescription = new();
             ISchemaGenerator schemaGenerator = Mock.Of<ISchemaGenerator>();
             SchemaRepository schemaRepository = new();
-            OperationFilterContext context = new(apiDescription, schemaGenerator, schemaRepository, methodInfo);
+            OpenApiDocument document = new();
+            OperationFilterContext context = new(apiDescription, schemaGenerator, schemaRepository, document, methodInfo);
             return context;
         }
 
@@ -78,11 +79,11 @@ namespace PxApi.UnitTests.OperationFilters
         public void OperationIdAttribute_Construct_NullOrWhitespace_Throws()
         {
             // Arrange
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(() => new OperationIdAttribute(""), Throws.ArgumentException);
                 Assert.That(() => new OperationIdAttribute(" \t"), Throws.ArgumentException);
-            });
+            }
         }
     }
 }

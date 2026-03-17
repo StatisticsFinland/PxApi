@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Caching.Memory;
-using Px.Utils.Models.Metadata;
+using Px.Utils.Language;
 using Px.Utils.Models.Metadata.ExtensionMethods;
+using Px.Utils.Models.Metadata;
 using PxApi.Configuration;
 using PxApi.Models;
 using System.Collections.Immutable;
-using Px.Utils.Language;
 
 namespace PxApi.Caching
 {
@@ -58,7 +58,9 @@ namespace PxApi.Caching
                 Priority = CacheItemPriority.High,
                 Size = memoryCacheConfig.DefaultFileListSize
             };
-            _cache.Set(HashCode.Combine(FILE_LIST_SEED, dataBase), files, options);
+            int cacheKey = HashCode.Combine(FILE_LIST_SEED, dataBase);
+            _cache.Set(cacheKey, files, options);
+            AttachEvictionOnFail(files, cacheKey);
         }
 
         /// <summary>
@@ -87,7 +89,9 @@ namespace PxApi.Caching
                 Priority = CacheItemPriority.Normal,
                 Size = memoryCacheConfig.DefaultTableGroupSize
             };
-            _cache.Set(HashCode.Combine(GROUPINGS_SEED, file), groupings, options);
+            int cacheKey = HashCode.Combine(GROUPINGS_SEED, file);
+            _cache.Set(cacheKey, groupings, options);
+            AttachEvictionOnFail(groupings, cacheKey);
         }
 
         /// <summary>
@@ -116,7 +120,9 @@ namespace PxApi.Caching
                 Priority = CacheItemPriority.Normal,
                 Size = memoryCacheConfig.DefaultTableGroupSize
             };
-            _cache.Set(HashCode.Combine(DATABASE_NAME_SEED, dataBase), name, options);
+            int cacheKey = HashCode.Combine(DATABASE_NAME_SEED, dataBase);
+            _cache.Set(cacheKey, name, options);
+            AttachEvictionOnFail(name, cacheKey);
         }
 
         /// <summary>
@@ -147,7 +153,9 @@ namespace PxApi.Caching
                 Size = memoryCacheConfig.DefaultUpdateTaskSize,
                 Priority = CacheItemPriority.Normal,
             };
-            _cache.Set(HashCode.Combine(LAST_UPDATED_SEED, file), lastUpdated, options);
+            int cacheKey = HashCode.Combine(LAST_UPDATED_SEED, file);
+            _cache.Set(cacheKey, lastUpdated, options);
+            AttachEvictionOnFail(lastUpdated, cacheKey);
         }
 
         /// <summary>
@@ -171,8 +179,12 @@ namespace PxApi.Caching
                 SlidingExpiration = config.SlidingExpirationSeconds,
                 AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds
             };
+
+            int cacheKey = HashCode.Combine(META_SEED, file);
             options.RegisterPostEvictionCallback(OnMetaCacheEvicted);
-            _cache.Set(HashCode.Combine(META_SEED, file), metaContainer, options);
+
+            _cache.Set(cacheKey, metaContainer, options);
+            AttachEvictionOnFail(metaContainer, metaContainer.Metadata, cacheKey);
         }
 
         /// <summary>
@@ -253,8 +265,10 @@ namespace PxApi.Caching
 
                 DataCacheContainer<TData> value = new(map, data);
                 options.RegisterPostEvictionCallback(value.EvictionCallback);
-                _cache.Set(HashCode.Combine(DATA_SEED, MapHash(map)), value, options);
+                int cacheKey = HashCode.Combine(DATA_SEED, MapHash(map));
+                _cache.Set(cacheKey, value, options);
                 metaContainer.AddDataContainer(value);
+                AttachEvictionOnFail(value, value.Data, cacheKey);
             }
             else
             {
@@ -268,19 +282,6 @@ namespace PxApi.Caching
         public void ClearFileListCache(DataBaseRef dbRef)
         {
             _cache.Remove(HashCode.Combine(FILE_LIST_SEED, dbRef));
-        }
-
-        /// <summary>
-        /// Clears the metadata cache for the specified files.
-        /// </summary>
-        /// <param name="fileList">List of files for which to clear metadata cache.</param>
-        public void ClearMetadataCache(IEnumerable<PxFileRef> fileList)
-        {
-            foreach (PxFileRef file in fileList)
-            {
-                TryRemoveMeta(file);
-                _cache.Remove(HashCode.Combine(LAST_UPDATED_SEED, file));
-            }
         }
 
         /// <summary>
@@ -300,6 +301,33 @@ namespace PxApi.Caching
         {
             _cache.Remove(HashCode.Combine(DATABASE_NAME_SEED, dbRef));
         }
+
+        private void AttachEvictionOnFail(object cacheItem, Task task, int cacheKey)
+        {
+            task.ContinueWith(
+                t =>
+                {
+                    // Observe the exception to prevent UnobservedTaskException
+                    // The exceptions should be handled by the initial caller of the task, but just to be safe.
+                    _ = t.Exception;
+
+                    // Make sure we remove the right items, since this callback is task and not key based.
+                    if (_cache.TryGetValue(cacheKey, out object? current) &&
+                        ReferenceEquals(current, cacheItem))
+                    {
+                        _cache.Remove(cacheKey);
+                    }
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously |
+                TaskContinuationOptions.NotOnRanToCompletion,
+                TaskScheduler.Default
+            );
+        }
+        
+        private void AttachEvictionOnFail(Task task, int cacheKey) =>
+            AttachEvictionOnFail(task, task, cacheKey);
+
 
         private void OnMetaCacheEvicted(object? key, object? value, EvictionReason reason, object? state)
         {

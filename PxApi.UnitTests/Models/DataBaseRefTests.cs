@@ -51,12 +51,12 @@ namespace PxApi.UnitTests.Models
             DataBaseRef ref2 = DataBaseRef.Create("database2");
             DataBaseRef ref3 = DataBaseRef.Create("a");
             DataBaseRef ref4 = DataBaseRef.Create("b");
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(ref1.GetHashCode(), Is.Not.EqualTo(ref2.GetHashCode()));
                 Assert.That(ref3.GetHashCode(), Is.Not.EqualTo(ref4.GetHashCode()));
                 Assert.That(ref1.GetHashCode(), Is.Not.EqualTo(ref3.GetHashCode()));
-            });
+            };
         }
 
         #endregion
