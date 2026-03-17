@@ -60,8 +60,8 @@ namespace PxApi.Controllers
                         }))
                         {
                             auditLogService.LogAuditEvent();
+                            return NotFound("Database not found.");
                         }
-                        return NotFound("Database not found.");
                     }
 
                     PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
@@ -74,8 +74,8 @@ namespace PxApi.Controllers
                         }))
                         {
                             auditLogService.LogAuditEvent();
+                            return NotFound("Table not found.");
                         }
-                        return NotFound("Table not found.");
                     }
 
                     using (logger.BeginScope(new Dictionary<string, object>
@@ -146,8 +146,8 @@ namespace PxApi.Controllers
                         }))
                         {
                             auditLogService.LogAuditEvent();
+                            return NotFound();
                         }
-                        return NotFound();
                     }
 
                     PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
@@ -160,8 +160,8 @@ namespace PxApi.Controllers
                         }))
                         {
                             auditLogService.LogAuditEvent();
+                            return NotFound();
                         }
-                        return NotFound();
                     }
 
                     using (logger.BeginScope(new Dictionary<string, object>

@@ -194,8 +194,8 @@ namespace PxApi.Controllers
                         }))
                         {
                             auditLogService.LogAuditEvent();
+                            return NotFound();
                         }
-                        return NotFound();
                     }
 
                     PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
@@ -208,8 +208,8 @@ namespace PxApi.Controllers
                         }))
                         {
                             auditLogService.LogAuditEvent();
+                            return NotFound();
                         }
-                        return NotFound();
                     }
 
                     using (logger.BeginScope(new Dictionary<string, object>()
@@ -218,10 +218,10 @@ namespace PxApi.Controllers
                         { LoggerConsts.PX_FILE, fileRef.Value.Id }
                     }))
                     {
+                        auditLogService.LogAuditEvent();
                         IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
                         string actualLang = lang ?? meta.DefaultLanguage;
                         if (!meta.AvailableLanguages.Contains(actualLang)) return BadRequest();
-                        auditLogService.LogAuditEvent();
                         return Ok();
                     }
                 }
@@ -254,10 +254,10 @@ namespace PxApi.Controllers
                 }))
                 {
                     auditLogService.LogAuditEvent();
+                    const string message = "The requested database was not found.";
+                    logger.LogDebug(message);
+                    return NotFound(message);
                 }
-                const string message = "The requested database was not found.";
-                logger.LogDebug(message);
-                return NotFound(message);
             }
             PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
             if (fileRef is null)
@@ -269,10 +269,10 @@ namespace PxApi.Controllers
                 }))
                 {
                     auditLogService.LogAuditEvent();
+                    const string message = "The requested Px table was not found.";
+                    logger.LogDebug(message);
+                    return NotFound(message);
                 }
-                const string message = "The requested Px table was not found.";
-                logger.LogDebug(message);
-                return NotFound(message);
             }
 
             using (logger.BeginScope(new Dictionary<string, object>()

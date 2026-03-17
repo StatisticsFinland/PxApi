@@ -162,8 +162,8 @@ namespace PxApi.Controllers
                 }))
                 {
                     auditLogger.LogAuditEvent();
+                    return NotFound();
                 }
-                return NotFound();
             }
 
             using (logger.BeginScope(new Dictionary<string, object>
