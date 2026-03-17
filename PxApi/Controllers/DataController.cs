@@ -68,9 +68,7 @@ namespace PxApi.Controllers
             using (logger.BeginScope(new Dictionary<string, object>()
             {
                 { LoggerConsts.CONTROLLER, nameof(DataController) },
-                { LoggerConsts.ACTION, nameof(GetDataAsync) },
-                { LoggerConsts.DB_ID, database },
-                { LoggerConsts.PX_FILE, table }
+                { LoggerConsts.ACTION, nameof(GetDataAsync) }
             }))
             {
                 Dictionary<string, Filter> query;
@@ -127,9 +125,7 @@ namespace PxApi.Controllers
             using (logger.BeginScope(new Dictionary<string, object>()
             {
                 { LoggerConsts.CONTROLLER, nameof(DataController) },
-                { LoggerConsts.ACTION, nameof(PostDataAsync) },
-                { LoggerConsts.DB_ID, database },
-                { LoggerConsts.PX_FILE, table }
+                { LoggerConsts.ACTION, nameof(PostDataAsync) }
             }))
             {
                 auditLogService.LogAuditEvent();
@@ -153,9 +149,7 @@ namespace PxApi.Controllers
             using (logger.BeginScope(new Dictionary<string, object>()
             {
                 { LoggerConsts.CONTROLLER, nameof(DataController) },
-                { LoggerConsts.ACTION, nameof(OptionsData) },
-                { LoggerConsts.DB_ID, database },
-                { LoggerConsts.PX_FILE, table }
+                { LoggerConsts.ACTION, nameof(OptionsData) }
             }))
             {
                 Response.Headers.Allow = "GET,POST,HEAD,OPTIONS";
@@ -186,9 +180,7 @@ namespace PxApi.Controllers
             using (logger.BeginScope(new Dictionary<string, object>()
             {
                 { LoggerConsts.CONTROLLER, nameof(DataController) },
-                { LoggerConsts.ACTION, nameof(HeadDataAsync) },
-                { LoggerConsts.DB_ID, database },
-                { LoggerConsts.PX_FILE, table }
+                { LoggerConsts.ACTION, nameof(HeadDataAsync) }
             }))
             {
                 SetMaxCellsHeader();
@@ -196,13 +188,22 @@ namespace PxApi.Controllers
                 {
                     DataBaseRef? dbRef = dataSource.GetDataBaseReference(database);
                     if (dbRef is null) return NotFound();
+
                     PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
                     if (fileRef is null) return NotFound();
-                    IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
-                    string actualLang = lang ?? meta.DefaultLanguage;
-                    if (!meta.AvailableLanguages.Contains(actualLang)) return BadRequest();
-                    auditLogService.LogAuditEvent();
-                    return Ok();
+
+                    using (logger.BeginScope(new Dictionary<string, object>()
+                    {
+                        { LoggerConsts.DB_ID, dbRef.Value.Id },
+                        { LoggerConsts.PX_FILE, fileRef.Value.Id }
+                    }))
+                    {
+                        IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
+                        string actualLang = lang ?? meta.DefaultLanguage;
+                        if (!meta.AvailableLanguages.Contains(actualLang)) return BadRequest();
+                        auditLogService.LogAuditEvent();
+                        return Ok();
+                    }
                 }
                 catch (ArgumentException argEx)
                 {
@@ -238,62 +239,69 @@ namespace PxApi.Controllers
                 return NotFound(message);
             }
 
-            try
+            using (logger.BeginScope(new Dictionary<string, object>()
             {
-                IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
-
-                string actualLang = lang ?? meta.DefaultLanguage;
-                if (!meta.AvailableLanguages.Contains(actualLang))
+                { LoggerConsts.DB_ID, dbRef.Value.Id },
+                { LoggerConsts.PX_FILE, fileRef.Value.Id }
+            }))
+            {
+                try
                 {
-                    const string message = "The content is not available in the requested language.";
-                    logger.LogDebug("The Requested language was not available in the table {Table}.", fileRef.Value.Id);
-                    return BadRequest(message);
+                    IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
+
+                    string actualLang = lang ?? meta.DefaultLanguage;
+                    if (!meta.AvailableLanguages.Contains(actualLang))
+                    {
+                        const string message = "The content is not available in the requested language.";
+                        logger.LogDebug("The Requested language was not available in the table {Table}.", fileRef.Value.Id);
+                        return BadRequest(message);
+                    }
+
+                    MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
+
+                    long size = requestMap.GetSize();
+                    if (size > maxSize)
+                    {
+                        logger.LogInformation("Too large request received. Size: {Size}.", size);
+                        return StatusCode(413, $"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
+                    }
+
+                    DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
+
+                    // Use proper content negotiation with quality values
+                    IList<MediaTypeHeaderValue> acceptHeaderValues = Request.GetTypedHeaders().Accept;
+                    string? bestMatch = ContentNegotiation.GetBestMatch(acceptHeaderValues, SupportedMediaTypes);
+
+                    if (bestMatch == "text/csv")
+                    {
+                        Matrix<DoubleDataValue> requestMatrix = new(meta.GetTransform(requestMap), data);
+                        return Content(CsvBuilder.BuildCsvResponse(requestMatrix, actualLang, meta), "text/csv");
+                    }
+                    if (bestMatch == "application/json")
+                    {
+                        IReadOnlyList<TableGroup> groupings = await dataSource.GetGroupingsCachedAsync(fileRef.Value);
+                        JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), groupings, data, actualLang);
+                        return Ok(jsonStat);
+                    }
+                }
+                catch (BinaryBlobSynchronizationException syncEx)
+                {
+                    logger.LogInformation(syncEx, "Binary blob data is not yet synchronized for table {Table}.", fileRef.Value.Id);
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable, "The requested data is temporarily unavailable due to a database update. Please retry shortly.");
+                }
+                catch (ArgumentException argEx)
+                {
+                    logger.LogDebug(argEx, "Argument exception occurred while processing request: {Message}", argEx.Message);
+                    return BadRequest(HttpConsts.BAD_REQUEST_PARAMS);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Unexpected error occurred while processing data request.");
+                    return StatusCode(500, HttpConsts.INTERNAL_SERVER_ERROR);
                 }
 
-                MatrixMap requestMap = MetaFiltering.ApplyToMatrixMeta(meta, query);
-
-                long size = requestMap.GetSize();
-                if (size > maxSize)
-                {
-                    logger.LogInformation("Too large request received. Size: {Size}.", size);
-                    return StatusCode(413, $"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
-                }
-
-                DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
-
-                // Use proper content negotiation with quality values
-                IList<MediaTypeHeaderValue> acceptHeaderValues = Request.GetTypedHeaders().Accept;
-                string? bestMatch = ContentNegotiation.GetBestMatch(acceptHeaderValues, SupportedMediaTypes);
-
-                if (bestMatch == "text/csv")
-                {
-                    Matrix<DoubleDataValue> requestMatrix = new(meta.GetTransform(requestMap), data);
-                    return Content(CsvBuilder.BuildCsvResponse(requestMatrix, actualLang, meta), "text/csv");
-                }
-                if (bestMatch == "application/json")
-                {
-                    IReadOnlyList<TableGroup> groupings = await dataSource.GetGroupingsCachedAsync(fileRef.Value);
-                    JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), groupings, data, actualLang);
-                    return Ok(jsonStat);
-                }
+                return StatusCode(406);
             }
-            catch (BinaryBlobSynchronizationException syncEx)
-            {
-                logger.LogInformation(syncEx, "Binary blob data is not yet synchronized for table {Table}.", fileRef.Value.Id);
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, "The requested data is temporarily unavailable due to a database update. Please retry shortly.");
-            }
-            catch (ArgumentException argEx)
-            {
-                logger.LogDebug(argEx, "Argument exception occurred while processing request: {Message}", argEx.Message);
-                return BadRequest(HttpConsts.BAD_REQUEST_PARAMS);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Unexpected error occurred while processing data request.");
-                return StatusCode(500, HttpConsts.INTERNAL_SERVER_ERROR);
-            }
-
-            return StatusCode(406);
         }
     }
 }

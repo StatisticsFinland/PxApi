@@ -47,9 +47,7 @@ namespace PxApi.Controllers
             using (_logger.BeginScope(new Dictionary<string, string>
             {
                 { LoggerConsts.CONTROLLER, nameof(CacheController) },
-                { LoggerConsts.FUNCTION, nameof(ClearTableCacheAsync) },
-                { LoggerConsts.DB_ID, database },
-                { LoggerConsts.PX_FILE, id }
+                { LoggerConsts.FUNCTION, nameof(ClearTableCacheAsync) }
             }))
             {
                 DataBaseRef? dbRef = _cachedConnector.GetDataBaseReference(database);
@@ -59,22 +57,35 @@ namespace PxApi.Controllers
                     return NotFound(DB_NOT_FOUND);
                 }
 
-                try
+                using (_logger.BeginScope(new Dictionary<string, string>
                 {
-                    ImmutableSortedDictionary<string, PxFileRef> files = await _cachedConnector.GetFileListCachedAsync(dbRef.Value);
-                    if (!files.TryGetValue(id, out PxFileRef pxFileRef))
+                    { LoggerConsts.DB_ID, dbRef.Value.Id }
+                }))
+                {
+                    try
                     {
-                        _logger.LogWarning("PX file not found in database");
-                        return NotFound("PX file not found in database");
+                        ImmutableSortedDictionary<string, PxFileRef> files = await _cachedConnector.GetFileListCachedAsync(dbRef.Value);
+                        if (!files.TryGetValue(id, out PxFileRef pxFileRef))
+                        {
+                            _logger.LogWarning("PX file not found in database");
+                            return NotFound("PX file not found in database");
+                        }
+
+                        using (_logger.BeginScope(new Dictionary<string, string>
+                        {
+                            { LoggerConsts.PX_FILE, pxFileRef.Id }
+                        }))
+                        {
+                            _cachedConnector.ClearTableCache(pxFileRef);
+                            _logger.LogInformation("Cache for PX file cleared successfully");
+                            return Ok("Cache for PX file cleared successfully");
+                        }
                     }
-                    _cachedConnector.ClearTableCache(pxFileRef);
-                    _logger.LogInformation("Cache for PX file cleared successfully");
-                    return Ok("Cache for PX file cleared successfully");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error clearing cache for PX file: {Message}", ex.Message);
-                    return StatusCode(500, "Error clearing cache for PX file");
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error clearing cache for PX file: {Message}", ex.Message);
+                        return StatusCode(500, "Error clearing cache for PX file");
+                    }
                 }
             }
         }
@@ -98,8 +109,7 @@ namespace PxApi.Controllers
             using (_logger.BeginScope(new Dictionary<string, object>
             {
                 { LoggerConsts.CONTROLLER, nameof(CacheController) },
-                { LoggerConsts.FUNCTION, nameof(ClearAllCacheAsync) },
-                { LoggerConsts.DB_ID, database }
+                { LoggerConsts.FUNCTION, nameof(ClearAllCacheAsync) }
             }))
             {
                 DataBaseRef? dbRef = _cachedConnector.GetDataBaseReference(database);
@@ -109,16 +119,22 @@ namespace PxApi.Controllers
                     return NotFound(DB_NOT_FOUND);
                 }
 
-                try
+                using (_logger.BeginScope(new Dictionary<string, object>
                 {
-                    await _cachedConnector.ClearDatabaseCacheAsync(dbRef.Value);
-                    _logger.LogInformation("All cache entries for database {DatabaseId} cleared successfully", dbRef.Value.Id);
-                    return Ok($"All cache entries for database '{dbRef.Value.Id}' cleared successfully");
-                }
-                catch (Exception ex)
+                    { LoggerConsts.DB_ID, dbRef.Value.Id }
+                }))
                 {
-                    _logger.LogError(ex, "Error clearing all cache entries for database {DatabaseId}: {Message}", dbRef.Value.Id, ex.Message);
-                    return StatusCode(500, $"Error clearing all cache entries for database '{dbRef.Value.Id}'");
+                    try
+                    {
+                        await _cachedConnector.ClearDatabaseCacheAsync(dbRef.Value);
+                        _logger.LogInformation("All cache entries for database {DatabaseId} cleared successfully", dbRef.Value.Id);
+                        return Ok($"All cache entries for database '{dbRef.Value.Id}' cleared successfully");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error clearing all cache entries for database {DatabaseId}: {Message}", dbRef.Value.Id, ex.Message);
+                        return StatusCode(500, $"Error clearing all cache entries for database '{dbRef.Value.Id}'");
+                    }
                 }
             }
         }
