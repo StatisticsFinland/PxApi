@@ -63,7 +63,19 @@ namespace PxApi.Controllers
             try
             {
                 DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
-                if (dataBaseRef is null) return NotFound("Database not found.");
+                if (dataBaseRef is null)
+                {
+                    using (logger.BeginScope(new Dictionary<string, object>
+                    {
+                        { LoggerConsts.CONTROLLER, nameof(TablesController) },
+                        { LoggerConsts.ACTION, nameof(GetTablesAsync) },
+                        { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER }
+                    }))
+                    {
+                        auditLogger.LogAuditEvent();
+                    }
+                    return NotFound("Database not found.");
+                }
 
                 using (logger.BeginScope(new Dictionary<string, object>
                 {
@@ -140,7 +152,19 @@ namespace PxApi.Controllers
         {
             if (page < 1 || pageSize < 1 || pageSize > MAX_PAGE_SIZE) return BadRequest();
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
-            if (dataBaseRef is null) return NotFound();
+            if (dataBaseRef is null)
+            {
+                using (logger.BeginScope(new Dictionary<string, object>
+                {
+                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
+                    { LoggerConsts.ACTION, nameof(HeadTablesAsync) },
+                    { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER }
+                }))
+                {
+                    auditLogger.LogAuditEvent();
+                }
+                return NotFound();
+            }
 
             using (logger.BeginScope(new Dictionary<string, object>
                 {
@@ -172,7 +196,19 @@ namespace PxApi.Controllers
         public IActionResult OptionsTables(string database)
         {
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
-            if (dataBaseRef is null) return NotFound("Database not found.");
+            if (dataBaseRef is null)
+            {
+                using (logger.BeginScope(new Dictionary<string, object>
+                {
+                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
+                    { LoggerConsts.ACTION, nameof(OptionsTables) },
+                    { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER }
+                }))
+                {
+                    auditLogger.LogAuditEvent();
+                }
+                return NotFound("Database not found.");
+            }
 
             using (logger.BeginScope(new Dictionary<string, object>
                 {

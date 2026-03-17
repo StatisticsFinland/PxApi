@@ -206,6 +206,40 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task GetDataAsync_MissingDatabase_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+            string[] filters = ["dim0:code=value1"];
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            IActionResult result = await _controller.GetDataAsync(database, table, filters);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+        }
+
+        [Test]
+        public async Task GetDataAsync_MissingDatabase_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+            string[] filters = ["dim0:code=value1"];
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            await _controller.GetDataAsync(database, table, filters);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
         public async Task GetDataAsync_MissingTable_ReturnsNotFound()
         {
             // Arrange
@@ -222,6 +256,25 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+        }
+
+        [Test]
+        public async Task GetDataAsync_MissingTable_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "nonexistent";
+            string[] filters = ["dim0:code=value1"];
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            await _controller.GetDataAsync(database, table, filters);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         #endregion
@@ -336,6 +389,60 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+        }
+
+        [Test]
+        public async Task PostDataAsync_ValidRequest_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+
+            SetupMockDataSourceForValidRequest(database, table);
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
+            // Act
+            await _controller.PostDataAsync(database, table, query);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
+        public async Task PostDataAsync_MissingDatabase_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            await _controller.PostDataAsync(database, table, query);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
+        public async Task PostDataAsync_MissingTable_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "nonexistent";
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            await _controller.PostDataAsync(database, table, query);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         #endregion
@@ -807,6 +914,92 @@ namespace PxApi.UnitTests.ControllerTests
             }
             _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
+
+        [Test]
+        public async Task HeadDataAsync_DatabaseNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            IActionResult result = await _controller.HeadDataAsync(database, table);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        }
+
+        [Test]
+        public async Task HeadDataAsync_DatabaseNotFound_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            await _controller.HeadDataAsync(database, table);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
+        public async Task HeadDataAsync_TableNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "nonexistent";
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            IActionResult result = await _controller.HeadDataAsync(database, table);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        }
+
+        [Test]
+        public async Task HeadDataAsync_TableNotFound_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "nonexistent";
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            await _controller.HeadDataAsync(database, table);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
+        public async Task HeadDataAsync_InvalidLanguage_ReturnsBadRequest()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string lang = "invalid";
+
+            SetupMockDataSourceForValidRequest(database, table);
+
+            // Act
+            IActionResult result = await _controller.HeadDataAsync(database, table, lang);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<BadRequestResult>());
+        }
+
         #endregion
 
         #region CSV Tests

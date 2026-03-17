@@ -41,6 +41,10 @@ namespace PxApi.Utilities
         /// Used to identify a blob name in logging scopes.
         /// </summary>
         public const string BLOB_NAME = "BlobName";
+        /// <summary>
+        /// Placeholder value used in logging scopes when a requested resource was not found.
+        /// </summary>
+        public const string NOT_FOUND_PLACEHOLDER = "Not found";
 
     }
 }

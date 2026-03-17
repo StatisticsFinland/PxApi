@@ -51,10 +51,32 @@ namespace PxApi.Controllers
                 try
                 {
                     DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
-                    if (dbRef is null) return NotFound("Database not found.");
+                    if (dbRef is null)
+                    {
+                        using (logger.BeginScope(new Dictionary<string, object>
+                        {
+                            { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER },
+                            { LoggerConsts.PX_FILE, LoggerConsts.NOT_FOUND_PLACEHOLDER }
+                        }))
+                        {
+                            auditLogService.LogAuditEvent();
+                        }
+                        return NotFound("Database not found.");
+                    }
 
                     PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
-                    if (fileRef is null) return NotFound("Table not found.");
+                    if (fileRef is null)
+                    {
+                        using (logger.BeginScope(new Dictionary<string, object>
+                        {
+                            { LoggerConsts.DB_ID, dbRef.Value.Id },
+                            { LoggerConsts.PX_FILE, LoggerConsts.NOT_FOUND_PLACEHOLDER }
+                        }))
+                        {
+                            auditLogService.LogAuditEvent();
+                        }
+                        return NotFound("Table not found.");
+                    }
 
                     using (logger.BeginScope(new Dictionary<string, object>
                         {
@@ -62,6 +84,7 @@ namespace PxApi.Controllers
                             { LoggerConsts.PX_FILE, fileRef.Value.Id }
                         }))
                     {
+                        auditLogService.LogAuditEvent();
                         IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
 
                         string resolvedLang = lang ?? meta.DefaultLanguage;
@@ -72,7 +95,6 @@ namespace PxApi.Controllers
 
                         IReadOnlyList<TableGroup> groupings = await cachedConnector.GetGroupingsCachedAsync(fileRef.Value);
                         JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, groupings, resolvedLang);
-                        auditLogService.LogAuditEvent();
                         return Ok(jsonStat2);
                     }
                 }
@@ -115,10 +137,32 @@ namespace PxApi.Controllers
                 try
                 {
                     DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
-                    if (dbRef is null) return NotFound();
+                    if (dbRef is null)
+                    {
+                        using (logger.BeginScope(new Dictionary<string, object>
+                        {
+                            { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER },
+                            { LoggerConsts.PX_FILE, LoggerConsts.NOT_FOUND_PLACEHOLDER }
+                        }))
+                        {
+                            auditLogService.LogAuditEvent();
+                        }
+                        return NotFound();
+                    }
 
                     PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
-                    if (fileRef is null) return NotFound();
+                    if (fileRef is null)
+                    {
+                        using (logger.BeginScope(new Dictionary<string, object>
+                        {
+                            { LoggerConsts.DB_ID, dbRef.Value.Id },
+                            { LoggerConsts.PX_FILE, LoggerConsts.NOT_FOUND_PLACEHOLDER }
+                        }))
+                        {
+                            auditLogService.LogAuditEvent();
+                        }
+                        return NotFound();
+                    }
 
                     using (logger.BeginScope(new Dictionary<string, object>
                         {
@@ -126,10 +170,10 @@ namespace PxApi.Controllers
                             { LoggerConsts.PX_FILE, fileRef.Value.Id }
                         }))
                     {
+                        auditLogService.LogAuditEvent();
                         IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
                         string resolvedLang = lang ?? meta.DefaultLanguage;
                         if (!meta.AvailableLanguages.Contains(resolvedLang)) return BadRequest();
-                        auditLogService.LogAuditEvent();
                         return Ok();
                     }
                 }
@@ -154,9 +198,16 @@ namespace PxApi.Controllers
         [ProducesResponseType(500)]
         public IActionResult OptionsMetadata(string database, string table)
         {
-            Response.Headers.Allow = "GET,HEAD,OPTIONS";
-            auditLogService.LogAuditEvent();
-            return Ok();
+            using (logger.BeginScope(new Dictionary<string, object>
+            {
+                { LoggerConsts.CONTROLLER, nameof(MetadataController) },
+                { LoggerConsts.ACTION, nameof(OptionsMetadata) }
+            }))
+            {
+                Response.Headers.Allow = "GET,HEAD,OPTIONS";
+                auditLogService.LogAuditEvent();
+                return Ok();
+            }
         }
     }
 }
