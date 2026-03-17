@@ -45,30 +45,36 @@ namespace PxApi.Controllers
             using (logger.BeginScope(new Dictionary<string, object>
                 {
                     { LoggerConsts.CONTROLLER, nameof(MetadataController) },
-                    { LoggerConsts.ACTION, nameof(GetTableMetadataById) },
-                    { LoggerConsts.DB_ID, database },
-                    { LoggerConsts.PX_FILE, table }
+                    { LoggerConsts.ACTION, nameof(GetTableMetadataById) }
                 }))
             {
                 try
                 {
                     DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
                     if (dbRef is null) return NotFound("Database not found.");
+
                     PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
                     if (fileRef is null) return NotFound("Table not found.");
 
-                    IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
-
-                    string resolvedLang = lang ?? meta.DefaultLanguage;
-                    if (!meta.AvailableLanguages.Contains(resolvedLang))
+                    using (logger.BeginScope(new Dictionary<string, object>
+                        {
+                            { LoggerConsts.DB_ID, dbRef.Value.Id },
+                            { LoggerConsts.PX_FILE, fileRef.Value.Id }
+                        }))
                     {
-                        return BadRequest("The content is not available in the requested language.");
-                    }
+                        IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
 
-                    IReadOnlyList<TableGroup> groupings = await cachedConnector.GetGroupingsCachedAsync(fileRef.Value);
-                    JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, groupings, resolvedLang);
-                    auditLogService.LogAuditEvent();
-                    return Ok(jsonStat2);
+                        string resolvedLang = lang ?? meta.DefaultLanguage;
+                        if (!meta.AvailableLanguages.Contains(resolvedLang))
+                        {
+                            return BadRequest("The content is not available in the requested language.");
+                        }
+
+                        IReadOnlyList<TableGroup> groupings = await cachedConnector.GetGroupingsCachedAsync(fileRef.Value);
+                        JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, groupings, resolvedLang);
+                        auditLogService.LogAuditEvent();
+                        return Ok(jsonStat2);
+                    }
                 }
                 catch (FileNotFoundException)
                 {
@@ -100,15 +106,39 @@ namespace PxApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> HeadMetadataAsync(string database, string table, string? lang = null)
         {
-            DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
-            if (dbRef is null) return NotFound();
-            PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
-            if (fileRef is null) return NotFound();
-            IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
-            string resolvedLang = lang ?? meta.DefaultLanguage;
-            if (!meta.AvailableLanguages.Contains(resolvedLang)) return BadRequest();
-            auditLogService.LogAuditEvent();
-            return Ok();
+            using (logger.BeginScope(new Dictionary<string, object>
+                {
+                    { LoggerConsts.CONTROLLER, nameof(MetadataController) },
+                    { LoggerConsts.ACTION, nameof(HeadMetadataAsync) }
+                }))
+            {
+                try
+                {
+                    DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
+                    if (dbRef is null) return NotFound();
+
+                    PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
+                    if (fileRef is null) return NotFound();
+
+                    using (logger.BeginScope(new Dictionary<string, object>
+                        {
+                            { LoggerConsts.DB_ID, dbRef.Value.Id },
+                            { LoggerConsts.PX_FILE, fileRef.Value.Id }
+                        }))
+                    {
+                        IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
+                        string resolvedLang = lang ?? meta.DefaultLanguage;
+                        if (!meta.AvailableLanguages.Contains(resolvedLang)) return BadRequest();
+                        auditLogService.LogAuditEvent();
+                        return Ok();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "An unexpected error occurred while processing the request.");
+                    return StatusCode(500);
+                }
+            }
         }
 
         /// <summary>
