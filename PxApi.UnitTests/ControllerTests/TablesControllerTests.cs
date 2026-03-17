@@ -106,6 +106,24 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task GetTablesAsync_DatabaseNotFound_LogsAuditEvent()
+        {
+            // Arrange
+            string dbId = "nonexistentdb";
+            string lang = "en";
+            int page = 1;
+            int pageSize = 50;
+
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns((DataBaseRef?)null);
+
+            // Act
+            await _controller.GetTablesAsync(dbId, lang, page, pageSize);
+
+            // Assert
+            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
         public async Task GetTablesAsync_TwoTables_ReturnsExpectedMetadata()
         {
             // Arrange
@@ -396,6 +414,23 @@ namespace PxApi.UnitTests.ControllerTests
         #region HeadTablesAsync Tests
 
         [Test]
+        public void HeadTablesAsync_DatabaseNotFound_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "nonexistentdb";
+            int page = 1;
+            int pageSize = 50;
+
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
+
+            // Act
+            _controller.HeadTablesAsync(database, page, pageSize);
+
+            // Assert
+            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
         public void HeadTablesAsync_ValidParameters_ReturnsOk()
         {
             // Arrange
@@ -478,6 +513,22 @@ namespace PxApi.UnitTests.ControllerTests
         #endregion
 
         #region OptionsTables Tests
+
+        [Test]
+        public void OptionsTables_DatabaseNotFound_ReturnsNotFoundAndLogsAudit()
+        {
+            // Arrange
+            string database = "nonexistentdb";
+
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
+
+            // Act
+            IActionResult result = _controller.OptionsTables(database);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
 
         [Test]
         public void OptionsTables_AnyDatabase_ReturnsOkWithAllowHeader()

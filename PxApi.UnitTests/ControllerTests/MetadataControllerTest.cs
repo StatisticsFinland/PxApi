@@ -92,6 +92,39 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task GetTableMetadataById_DatabaseNotFound_LogsAuditEvent()
+        {
+            // Arrange
+            string databaseId = "nonexistentdb";
+            string tableId = "table1";
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(databaseId)).Returns((DataBaseRef?)null);
+
+            // Act
+            await _controller.GetTableMetadataById(databaseId, tableId, null);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
+        public async Task GetTableMetadataById_TableNotFound_LogsAuditEvent()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            string tableId = "nonexistenttable";
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(tableId, database, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            await _controller.GetTableMetadataById(database.Id, tableId, null);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
         public async Task GetMetadataById_FileExists_ReturnsJsonStat2()
         {
             // Arrange
@@ -391,6 +424,59 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
                 Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
             };
+        }
+
+        [Test]
+        public async Task HeadMetadataAsync_DatabaseNotFound_LogsAuditEvent()
+        {
+            // Arrange
+            string databaseId = "nonexistentdb";
+            string tableId = "table1";
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(databaseId)).Returns((DataBaseRef?)null);
+
+            // Act
+            await _controller.HeadMetadataAsync(databaseId, tableId, null);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
+        public async Task HeadMetadataAsync_TableNotFound_LogsAuditEvent()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            string tableId = "nonexistenttable";
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(tableId, database, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            await _controller.HeadMetadataAsync(database.Id, tableId, null);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
+        public async Task HeadMetadataAsync_UnexpectedError_ReturnsInternalServerError()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
+            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ThrowsAsync(new InvalidOperationException("Unexpected error"));
+
+            // Act
+            IActionResult result = await _controller.HeadMetadataAsync(database.Id, file.Id, null);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<StatusCodeResult>());
+            StatusCodeResult? statusResult = result as StatusCodeResult;
+            Assert.That(statusResult?.StatusCode, Is.EqualTo(500));
         }
 
         [Test]
