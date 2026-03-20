@@ -22,7 +22,7 @@ namespace PxApi.Controllers
     /// Supports pagination and optional language-based metadata retrieval. Tables are ordered by their PX file name (ascending). If the requested page exceeds the last page an empty list is returned.
     /// </remarks>
     [ApiKeyAuth]
-    [Route("tables")]
+    [Route("meta/databases")]
     [ApiController]
     public class TablesController(ICachedDataSource cachedConnector, ILogger<TablesController> logger, IAuditLogService auditLogger) : ControllerBase
     {
@@ -40,7 +40,7 @@ namespace PxApi.Controllers
         /// <response code="400">Invalid query parameter was provided (page &lt; 1, pageSize outside 1-100 or unsupported language).</response>
         /// <response code="404">Database not found.</response>
         /// <response code="500">Unexpected server error.</response>
-        [HttpGet("{database}")]
+        [HttpGet("{database}/tables")]
         [OperationId("listTables")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(PagedTableList), 200)]
@@ -110,7 +110,7 @@ namespace PxApi.Controllers
                             IReadOnlyMatrixMetadata tableMeta = await cachedConnector.GetMetadataCachedAsync(table.Value);
 
                             Uri fileUri = settings.RootUrl
-                                .AddRelativePath("meta", database, table.Key)
+                                .AddRelativePath("meta", "databases", database, "tables", table.Key)
                                 .AddQueryParameters(("lang", actualLang));
                             pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, actualLang, tableMeta, fileUri));
 
@@ -142,7 +142,7 @@ namespace PxApi.Controllers
         /// <response code="400">Invalid paging parameters.</response>
         /// <response code="404">Database not found.</response>
         /// <response code="500">Unexpected server error.</response>
-        [HttpHead("{database}")]
+        [HttpHead("{database}/tables")]
         [OperationId("headTables")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
@@ -186,7 +186,7 @@ namespace PxApi.Controllers
         /// <response code="200">Returns allowed methods in the Allow header.</response>
         /// <response code="404">Database not found.</response>
         /// <response code="500">Unexpected server error.</response>
-        [HttpOptions("{database}")]
+        [HttpOptions("{database}/tables")]
         [OperationId("optionsTables")]
         [Produces("application/json")]
         [ProducesResponseType(200)]

@@ -15,7 +15,7 @@ namespace PxApi.Controllers
     /// Provides metadata endpoints for PX tables.
     /// </summary>
     [ApiKeyAuth]
-    [Route("meta")]
+    [Route("meta/databases")]
     [ApiController]
     public class MetadataController(ICachedDataSource cachedConnector, ILogger<MetadataController> logger, IAuditLogService auditLogService) : ControllerBase
     {
@@ -30,7 +30,7 @@ namespace PxApi.Controllers
         /// <response code="400">Requested language not available.</response>
         /// <response code="404">Database or table not found.</response>
         /// <response code="500">Unexpected server error.</response>
-        [HttpGet("{database}/{table}")]
+        [HttpGet("{database}/tables/{table}")]
         [OperationId("getTableMeta")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(JsonStat2), 200)]
@@ -120,7 +120,7 @@ namespace PxApi.Controllers
         /// <response code="400">Requested language not available.</response>
         /// <response code="404">Database or table not found.</response>
         /// <response code="500">Unexpected server error.</response>
-        [HttpHead("{database}/{table}")]
+        [HttpHead("{database}/tables/{table}")]
         [OperationId("headTableMeta")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
@@ -192,7 +192,7 @@ namespace PxApi.Controllers
         /// <param name="table">Identifier of the table.</param>
         /// <response code="200">Returns allowed methods in the Allow header.</response>
         /// <response code="500">Unexpected server error.</response>
-        [HttpOptions("{database}/{table}")]
+        [HttpOptions("{database}/tables/{table}")]
         [OperationId("optionsTableMeta")]
         [ProducesResponseType(200)]
         [ProducesResponseType(500)]

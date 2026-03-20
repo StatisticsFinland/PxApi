@@ -11,7 +11,7 @@ namespace PxApi.OpenApi.Examples
     public static class DatabaseListingExample
     {
         private static string TablesHrefExample => AppSettings.Active.RootUrl
-            .AddRelativePath("tables", "StatFin")
+            .AddRelativePath("meta", "databases", "StatFin", "tables")
             .AddQueryParameters(("lang", "fi"))
             .ToString();
 

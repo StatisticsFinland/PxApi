@@ -12,19 +12,19 @@ using System.Collections.Immutable;
 namespace PxApi.Controllers
 {
     /// <summary>
-    /// Provides REST endpoints for discovering available PX databases. The base route for this controller is /databases.
+    /// Provides REST endpoints for discovering available PX databases. The base route for this controller is /meta/databases.
     /// </summary>
     /// <remarks>
     /// Current endpoints:
     /// <list type="bullet">
-    /// <item>GET /databases Lists all databases including localized name, optional description, table count and a link to list tables in the database.</item>
-    /// <item>HEAD /databases Returns only headers to indicate the database collection resource exists (useful for health checks / pre-flight).</item>
-    /// <item>OPTIONS /databases Returns allowed HTTP methods in the Allow response header.</item>
+    /// <item>GET /meta/databases Lists all databases including localized name, optional description, table count and a link to list tables in the database.</item>
+    /// <item>HEAD /meta/databases Returns only headers to indicate the database collection resource exists (useful for health checks / pre-flight).</item>
+    /// <item>OPTIONS /meta/databases Returns allowed HTTP methods in the Allow response header.</item>
     /// </list>
     /// Content negotiation: Only application/json is produced.
     /// </remarks>
     [ApiKeyAuth]
-    [Route("databases")]
+    [Route("meta/databases")]
     [ApiController]
     public class DatabasesController(ICachedDataSource dataSource, ILogger<DatabasesController> logger, IAuditLogService auditLogger) : ControllerBase
     {
@@ -39,7 +39,7 @@ namespace PxApi.Controllers
         [HttpGet]
         [OperationId("listDatabases")]
         [Produces("application/json")]
-        [ProducesResponseType(typeof(List<DataBaseListingItem>),200, "application/json")]
+        [ProducesResponseType(typeof(List<DataBaseListingItem>), 200, "application/json")]
         [ProducesResponseType(typeof(string), 400)]
         [ProducesResponseType(typeof(string), 500)]
         public async Task<ActionResult<List<DataBaseListingItem>>> GetDatabases([FromQuery] string? lang = null)
@@ -75,7 +75,7 @@ namespace PxApi.Controllers
                     Task<ImmutableSortedDictionary<string, PxFileRef>> filesTask = dataSource.GetFileListCachedAsync(dbRef);
                     ImmutableSortedDictionary<string, PxFileRef> files = await filesTask;
                     int tableCount = files.Count;
-                    Uri tablesUri = settings.RootUrl.AddRelativePath("tables", dbRef.Id).AddQueryParameters(("lang", actualLang));
+                    Uri tablesUri = settings.RootUrl.AddRelativePath("meta", "databases", dbRef.Id, "tables").AddQueryParameters(("lang", actualLang));
 
                     // Determine available languages (intersection between name translations and supported languages)
                     IEnumerable<string> languages = nameMulti.Languages.Intersect(settings.Localization.SupportedLanguages);
