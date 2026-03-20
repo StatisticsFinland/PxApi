@@ -9,12 +9,14 @@ namespace PxApi.UnitTests.OpenApi.Examples
     [TestFixture]
     public class DatabaseListingExampleTests
     {
+        private const string TestDatabaseId = "StatFin";
+
         [SetUp]
         public void Setup()
         {
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
                 TestConfigFactory.Base(),
-                TestConfigFactory.MountedDb(0, "StatFin", "datasource/root/")
+                TestConfigFactory.MountedDb(0, TestDatabaseId, "datasource/root/")
             );
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(configData)
@@ -54,8 +56,8 @@ namespace PxApi.UnitTests.OpenApi.Examples
             // Assert
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(database["id"]?.ToString(), Is.EqualTo("StatFin"));
-                Assert.That(database["name"]?.ToString(), Is.EqualTo("StatFin"));
+                Assert.That(database["id"]?.ToString(), Is.EqualTo(TestDatabaseId));
+                Assert.That(database["name"]?.ToString(), Is.EqualTo(TestDatabaseId));
                 Assert.That(database["description"], Is.Null);
                 Assert.That(database["tableCount"]?.GetValue<int>(), Is.EqualTo(1526));
             }
@@ -112,7 +114,7 @@ namespace PxApi.UnitTests.OpenApi.Examples
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(link["href"]?.ToString(), Does.Contain("https://testurl.fi"));
-                Assert.That(link["href"]?.ToString(), Does.Contain("tables/StatFin"));
+                Assert.That(link["href"]?.ToString(), Does.Contain($"meta/databases/{TestDatabaseId}/tables"));
                 Assert.That(link["href"]?.ToString(), Does.Contain("lang=fi"));
                 Assert.That(link["rel"]?.ToString(), Is.EqualTo("describedby"));
                 Assert.That(link["method"]?.ToString(), Is.EqualTo("GET"));
@@ -126,7 +128,7 @@ namespace PxApi.UnitTests.OpenApi.Examples
             const string customRootUrl = "https://custom.example.com/api";
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
                 TestConfigFactory.Base(),
-                TestConfigFactory.MountedDb(0, "StatFin", "datasource/root/"),
+                TestConfigFactory.MountedDb(0, TestDatabaseId, "datasource/root/"),
                 new Dictionary<string, string?>
                 {
                     ["RootUrl"] = customRootUrl

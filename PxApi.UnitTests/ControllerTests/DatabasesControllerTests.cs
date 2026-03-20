@@ -90,7 +90,7 @@ namespace PxApi.UnitTests.ControllerTests
             {
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,HEAD,OPTIONS"));
-            };
+            }
             _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
@@ -139,7 +139,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(items!, Has.Count.EqualTo(1));
                 Assert.That(items![0].Name, Is.EqualTo("Nimi FI")); // Default language fi
                 Assert.That(items![0].AvailableLanguages, Is.EquivalentTo(new List<string> { "fi", "en" }));
-            };
+            }
             _mockCachedDataSource.Verify(x => x.GetDatabaseNameAsync(dbRef, string.Empty, CancellationToken.None), Times.Once);
             _mockCachedDataSource.Verify(x => x.GetFileListCachedAsync(dbRef, CancellationToken.None), Times.Once);
         }
@@ -184,7 +184,7 @@ namespace PxApi.UnitTests.ControllerTests
             {
                 Assert.That(items![0].Description, Is.Null);
                 Assert.That(items[0].Name, Is.EqualTo("Namn SV"));
-            };
+            }
         }
 
         [Test]
@@ -259,7 +259,7 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(item1.Links, Has.Count.EqualTo(1));
                 Assert.That(item1.Links[0].Rel, Is.EqualTo("describedby"));
                 Assert.That(item1.Links[0].Method, Is.EqualTo("GET"));
-                string expectedHref1 = AppSettings.Active.RootUrl.ToString().TrimEnd('/') + "/tables/db1?lang=en";
+                string expectedHref1 = AppSettings.Active.RootUrl.ToString().TrimEnd('/') + "/meta/databases/db1/tables?lang=en";
                 Assert.That(item1.Links[0].Href, Is.EqualTo(expectedHref1));
                 // db2
                 DataBaseListingItem item2 = items!.First(i => i.ID == "db2");
@@ -267,9 +267,9 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(item2.Description, Is.EqualTo("Description EN2"));
                 Assert.That(item2.TableCount, Is.EqualTo(1));
                 Assert.That(item2.AvailableLanguages, Is.EquivalentTo(new List<string> { "fi", "en" }));
-                string expectedHref2 = AppSettings.Active.RootUrl.ToString().TrimEnd('/') + "/tables/db2?lang=en";
+                string expectedHref2 = AppSettings.Active.RootUrl.ToString().TrimEnd('/') + "/meta/databases/db2/tables?lang=en";
                 Assert.That(item2.Links[0].Href, Is.EqualTo(expectedHref2));
-            };
+            }
             _mockCachedDataSource.Verify(x => x.GetDatabaseNameAsync(dbRef1, string.Empty, CancellationToken.None), Times.Once);
             _mockCachedDataSource.Verify(x => x.GetDatabaseNameAsync(dbRef2, string.Empty, CancellationToken.None), Times.Once);
             _mockCachedDataSource.Verify(x => x.GetFileListCachedAsync(dbRef1, CancellationToken.None), Times.Once);
@@ -297,7 +297,7 @@ namespace PxApi.UnitTests.ControllerTests
             {
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,HEAD,OPTIONS"));
-            };
+            }
         }
     }
 }
