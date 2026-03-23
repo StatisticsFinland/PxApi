@@ -6,7 +6,7 @@ using System.Text.Json.Nodes;
 namespace PxApi.OpenApi.Examples
 {
     /// <summary>
-    /// Provides an example array response for the GET /databases endpoint.
+    /// Provides an example array response for the GET /meta/databases endpoint.
     /// </summary>
     public static class DatabaseListingExample
     {
