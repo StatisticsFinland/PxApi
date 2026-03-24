@@ -43,6 +43,14 @@ namespace PxApi.DataSources
 
         /// <inheritdoc/>
         [ExcludeFromCodeCoverage]
+        public override async Task CheckConnectionAsync(CancellationToken ct = default)
+        {
+            BlobContainerClient containerClient = GetContainerClient();
+            await containerClient.GetPropertiesAsync(cancellationToken: ct);
+        }
+
+        /// <inheritdoc/>
+        [ExcludeFromCodeCoverage]
         public override async Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default)
         {
             using (Logger.BeginScope(

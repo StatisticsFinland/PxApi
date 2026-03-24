@@ -73,11 +73,6 @@ namespace PxApi
 
                 WebApplication app = builder.Build();
 
-                // Validate database connections before starting the application
-                logger.Info("Validating database connections before starting application");
-                await app.ValidateDatabaseConnectionsAsync();
-                logger.Info("All database connections are valid");
-
                 // Configure the HTTP request pipeline.
                 app.UseSwagger(c =>
                 {
