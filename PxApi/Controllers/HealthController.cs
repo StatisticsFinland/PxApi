@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PxApi.Authentication;
 using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Models;
@@ -10,6 +11,7 @@ namespace PxApi.Controllers
     /// Provides a health check endpoint that validates the application is running
     /// and all configured database connections are functional.
     /// </summary>
+    [ApiKeyAuth]
     [ApiController]
     [Route("health")]
     [ApiExplorerSettings(IgnoreApi = true)]
@@ -25,12 +27,12 @@ namespace PxApi.Controllers
         [Produces("application/json")]
         [ProducesResponseType(typeof(HealthResponse), 200)]
         [ProducesResponseType(typeof(HealthResponse), 503)]
-        public async Task<IActionResult> GetHealth(CancellationToken ct)
+        public async Task<IActionResult> GetHealthAsync(CancellationToken ct)
         {
             using (logger.BeginScope(new Dictionary<string, object>
             {
                 { LoggerConsts.CONTROLLER, nameof(HealthController) },
-                { LoggerConsts.ACTION, nameof(GetHealth) }
+                { LoggerConsts.ACTION, nameof(GetHealthAsync) }
             }))
             {
                 List<DatabaseHealthStatus> databaseStatuses = [];
@@ -43,7 +45,7 @@ namespace PxApi.Controllers
                     {
                         using IServiceScope scope = serviceProvider.CreateScope();
                         IDataBaseConnector connector = scope.ServiceProvider.GetRequiredKeyedService<IDataBaseConnector>(dbId);
-                        await connector.GetAllFilesAsync(ct);
+                        await connector.CheckConnectionAsync(ct);
 
                         logger.LogDebug("Database {DatabaseId} health check passed", dbId);
                         databaseStatuses.Add(new DatabaseHealthStatus(dbId, "healthy"));

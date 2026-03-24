@@ -36,15 +36,15 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             Mock<IDataBaseConnector> mockConnector1 = new();
-            mockConnector1.Setup(c => c.GetAllFilesAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);
+            mockConnector1.Setup(c => c.CheckConnectionAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
 
             Mock<IDataBaseConnector> mockConnector2 = new();
-            mockConnector2.Setup(c => c.GetAllFilesAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);
+            mockConnector2.Setup(c => c.CheckConnectionAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
 
-            _services.AddKeyedScoped("db1", (_, _) => mockConnector1.Object);
-            _services.AddKeyedScoped("db2", (_, _) => mockConnector2.Object);
+            _services.AddKeyedScoped<IDataBaseConnector>("db1", (_, _) => mockConnector1.Object);
+            _services.AddKeyedScoped<IDataBaseConnector>("db2", (_, _) => mockConnector2.Object);
             ServiceProvider serviceProvider = _services.BuildServiceProvider();
 
             HealthController controller = new(serviceProvider, _mockLogger.Object)
@@ -53,7 +53,7 @@ namespace PxApi.UnitTests.ControllerTests
             };
 
             // Act
-            IActionResult result = await controller.GetHealth(CancellationToken.None);
+            IActionResult result = await controller.GetHealthAsync(CancellationToken.None);
 
             // Assert
             Assert.That(result, Is.InstanceOf<OkObjectResult>());
@@ -73,15 +73,15 @@ namespace PxApi.UnitTests.ControllerTests
         {
             // Arrange
             Mock<IDataBaseConnector> mockConnector1 = new();
-            mockConnector1.Setup(c => c.GetAllFilesAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);
+            mockConnector1.Setup(c => c.CheckConnectionAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
 
             Mock<IDataBaseConnector> mockConnector2 = new();
-            mockConnector2.Setup(c => c.GetAllFilesAsync(It.IsAny<CancellationToken>()))
+            mockConnector2.Setup(c => c.CheckConnectionAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Connection failed"));
 
-            _services.AddKeyedScoped("db1", (_, _) => mockConnector1.Object);
-            _services.AddKeyedScoped("db2", (_, _) => mockConnector2.Object);
+            _services.AddKeyedScoped<IDataBaseConnector>("db1", (_, _) => mockConnector1.Object);
+            _services.AddKeyedScoped<IDataBaseConnector>("db2", (_, _) => mockConnector2.Object);
             ServiceProvider serviceProvider = _services.BuildServiceProvider();
 
             HealthController controller = new(serviceProvider, _mockLogger.Object)
@@ -90,7 +90,7 @@ namespace PxApi.UnitTests.ControllerTests
             };
 
             // Act
-            IActionResult result = await controller.GetHealth(CancellationToken.None);
+            IActionResult result = await controller.GetHealthAsync(CancellationToken.None);
 
             // Assert
             Assert.That(result, Is.InstanceOf<ObjectResult>());
@@ -119,7 +119,7 @@ namespace PxApi.UnitTests.ControllerTests
             };
 
             // Act
-            IActionResult result = await controller.GetHealth(CancellationToken.None);
+            IActionResult result = await controller.GetHealthAsync(CancellationToken.None);
 
             // Assert
             Assert.That(result, Is.InstanceOf<OkObjectResult>());

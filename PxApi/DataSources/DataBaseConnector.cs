@@ -24,6 +24,16 @@ namespace PxApi.DataSources
         protected abstract ILogger Logger { get; }
 
         /// <inheritdoc/>
+        /// <remarks>
+        /// Default implementation delegates to <see cref="GetAllFilesAsync"/>.
+        /// Subclasses should override with a lighter-weight connectivity check.
+        /// </remarks>
+        public virtual async Task CheckConnectionAsync(CancellationToken ct = default)
+        {
+            await GetAllFilesAsync(ct);
+        }
+
+        /// <inheritdoc/>
         public abstract Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default);
 
         /// <inheritdoc/>

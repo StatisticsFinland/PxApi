@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PxApi.Authentication;
 using PxApi.Models;
 using System.Reflection;
 
@@ -8,6 +9,7 @@ namespace PxApi.Controllers
     /// Provides an info endpoint that returns application metadata
     /// such as the current version, useful for validating connectivity.
     /// </summary>
+    [ApiKeyAuth]
     [ApiController]
     [Route("info")]
     [ApiExplorerSettings(IgnoreApi = true)]
