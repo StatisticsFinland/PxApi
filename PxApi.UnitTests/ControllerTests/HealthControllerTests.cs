@@ -131,5 +131,29 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(response.Databases, Is.Empty);
             }
         }
+
+        [Test]
+        public void GetHealth_CancellationRequested_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            Mock<IDataBaseConnector> mockConnector1 = new();
+            mockConnector1.Setup(c => c.CheckConnectionAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new OperationCanceledException());
+
+            _services.AddKeyedScoped<IDataBaseConnector>("db1", (_, _) => mockConnector1.Object);
+            ServiceProvider serviceProvider = _services.BuildServiceProvider();
+
+            HealthController controller = new(serviceProvider, _mockLogger.Object)
+            {
+                ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+            };
+
+            // Act & Assert
+            Assert.That(async () => await controller.GetHealthAsync(cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
     }
 }

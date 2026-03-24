@@ -50,6 +50,10 @@ namespace PxApi.Controllers
                         logger.LogDebug("Database {DatabaseId} health check passed", dbId);
                         databaseStatuses.Add(new DatabaseHealthStatus(dbId, "healthy"));
                     }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
                     catch (Exception ex)
                     {
                         logger.LogWarning(ex, "Database {DatabaseId} health check failed", dbId);
