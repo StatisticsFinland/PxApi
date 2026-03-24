@@ -29,7 +29,7 @@ namespace PxApi.DataSources
         public override async Task CheckConnectionAsync(CancellationToken ct = default)
         {
             ShareDirectoryClient directoryClient = GetDatabaseDirectoryClient();
-            await directoryClient.ExistsAsync(ct);
+            await directoryClient.GetPropertiesAsync(ct);
         }
 
         /// <inheritdoc/>

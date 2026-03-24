@@ -43,6 +43,7 @@ namespace PxApi.UnitTests.ControllerTests
             IActionResult result = _controller.GetInfo();
 
             // Assert
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
             OkObjectResult okResult = (OkObjectResult)result;
             InfoResponse response = (InfoResponse)okResult.Value!;
             Assert.That(response.Version, Is.Not.EqualTo("unknown"));
