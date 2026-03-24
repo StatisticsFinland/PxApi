@@ -57,7 +57,7 @@ namespace PxApi.OpenApi.DocumentFilters
             IReadOnlyDictionary<string, OpenApiExample> examples = DataRequestBodyExamples.Examples;
             foreach (OpenApiMediaType mediaType in requestBody.Content.Values)
             {
-                mediaType.Examples = new Dictionary<string, IOpenApiExample>(examples.Select(kvp => 
+                mediaType.Examples = new Dictionary<string, IOpenApiExample>(examples.Select(kvp =>
                     new KeyValuePair<string, IOpenApiExample>(kvp.Key, kvp.Value)));
 
                 if (mediaType.Schema is OpenApiSchema schema &&
@@ -70,7 +70,7 @@ namespace PxApi.OpenApi.DocumentFilters
 
         private static bool IsDataControllerPostOperation(string pathKey, OpenApiOperation operation)
         {
-            bool isDataPath = pathKey.Equals("/data/{database}/{table}", StringComparison.OrdinalIgnoreCase);
+            bool isDataPath = pathKey.Equals("/data/databases/{database}/tables/{table}", StringComparison.OrdinalIgnoreCase);
             bool hasRequestBody = operation.RequestBody is OpenApiRequestBody rb && rb.Content?.Any() == true;
             return isDataPath && hasRequestBody;
         }

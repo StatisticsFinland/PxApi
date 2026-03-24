@@ -1,14 +1,14 @@
 # PxApi
 
-PxApi is a .NET 9.0 Web API for accessing PX statistical datasets. It provides table listings, table metadata and data retrieval with flexible dimension filtering and caching across multiple storage backends (local file system, Azure File Share, Azure Blob Storage).
+PxApi is a .NET 10.0 Web API for accessing PX statistical datasets. It provides table listings, table metadata and data retrieval with flexible dimension filtering and caching across multiple storage backends (local file system, Azure File Share, Azure Blob Storage).
 
 ## Implemented Features
 
-- Table listing with paging (`/tables/{database}`)
-- Table metadata in JSON-stat 2.0 (`/meta/{database}/{table}`)
-- Data retrieval with filter semantics (code, range, positional) via GET query parameters or POST body (`/data/{database}/{table}`)
+- Table listing with paging (`/meta/databases/{database}/tables`)
+- Table metadata in JSON-stat 2.0 (`/meta/databases/{database}/tables/{table}`)
+- Data retrieval with filter semantics (code, range, positional) via GET query parameters or POST body (`/data/databases/{database}/tables/{table}`)
 - Content negotiation (JSON-stat 2.0 or CSV) using the `Accept` header
-- Cache management endpoints (database level and single table) (`/cache/{database}` / `/cache/{database}/{id}`)
+- Cache management endpoints (database level and single table) (`/cache/databases/{database}` / `/cache/databases/{database}/tables/{id}`)
 - Global and per-database caching (file lists, metadata, data, last updated timestamps, grouping metadata)
 - Feature flags (Swagger visibility of cache endpoints)
 - Controller-specific API key authentication for all endpoints
@@ -20,7 +20,7 @@ PxApi is a .NET 9.0 Web API for accessing PX statistical datasets. It provides t
 ## Endpoints
 
 ### Databases
-`GET /databases?lang=fi`
+`GET /meta/databases?lang=fi`
 Returns a list of available databases with their metadata.
 
 **Authentication**: Requires valid API key in `X-Databases-API-Key` header when databases authentication is enabled.
@@ -34,11 +34,11 @@ Responses:
 - `401 Unauthorized` missing / invalid API key (when authentication configured)
 
 Additional methods:
-- `HEAD /databases` validates existence of the database collection resource
-- `OPTIONS /databases` returns Allow header (`GET,HEAD,OPTIONS`)
+- `HEAD /meta/databases` validates existence of the database collection resource
+- `OPTIONS /meta/databases` returns Allow header (`GET,HEAD,OPTIONS`)
 
 ### Tables
-`GET /tables/{database}?lang=fi&page=1&pageSize=50`
+`GET /meta/databases/{database}/tables?lang=fi&page=1&pageSize=50`
 Returns a paged list of tables ordered by PX file name.
 
 **Authentication**: Requires valid API key in `X-Tables-API-Key` header when tables authentication is enabled.
@@ -55,11 +55,11 @@ Responses:
 - `404 Not Found` database missing
 
 Additional methods:
-- `HEAD /tables/{database}` validates existence and paging values
-- `OPTIONS /tables/{database}` returns Allow header (`GET,HEAD,OPTIONS`)
+- `HEAD /meta/databases/{database}/tables` validates existence and paging values
+- `OPTIONS /meta/databases/{database}/tables` returns Allow header (`GET,HEAD,OPTIONS`)
 
 ### Metadata
-`GET /meta/{database}/{table}?lang=fi`
+`GET /meta/databases/{database}/tables/{table}?lang=fi`
 Returns JSON-stat 2.0 metadata (structure only, no data filtering).
 
 **Authentication**: Requires valid API key in `X-Metadata-API-Key` header when metadata authentication is enabled.
@@ -75,11 +75,11 @@ Responses:
 - `500 Internal Server Error` unexpected error
 
 Additional methods:
-- `HEAD /meta/{database}/{table}` existence & language validation only
-- `OPTIONS /meta/{database}/{table}` returns Allow header (`GET,HEAD,OPTIONS`)
+- `HEAD /meta/databases/{database}/tables/{table}` existence & language validation only
+- `OPTIONS /meta/databases/{database}/tables/{table}` returns Allow header (`GET,HEAD,OPTIONS`)
 
 ### Data
-`GET /data/{database}/{table}?filters=TIME:from=2020&filters=TIME:to=2024&filters=REGION:code=001,002`
+`GET /data/databases/{database}/tables/{table}?filters=TIME:from=2020&filters=TIME:to=2024&filters=REGION:code=001,002`
 
 Retrieves data values applying filters to dimensions. Content negotiation support for json and csv:
 
@@ -109,7 +109,7 @@ Rules:
 - Wildcard `*` matches zero or more characters in code/from/to values.
 
 POST alternative:
-`POST /data/{database}/{table}` with JSON body mapping dimension codes to filter objects.
+`POST /data/databases/{database}/tables/{table}` with JSON body mapping dimension codes to filter objects.
 Example body:
 ```json
 {
@@ -131,16 +131,16 @@ Responses (GET & POST):
 - `415 Unsupported Media Type` (POST invalid content type)
 
 Additional methods:
-- `HEAD /data/{database}/{table}?lang=fi` existence & language validation only
-- `OPTIONS /data/{database}/{table}` returns Allow header (`GET,POST,HEAD,OPTIONS`)
+- `HEAD /data/databases/{database}/tables/{table}?lang=fi` existence & language validation only
+- `OPTIONS /data/databases/{database}/tables/{table}` returns Allow header (`GET,POST,HEAD,OPTIONS`)
 
 ### Cache
 Requires feature flag `CacheController = true` and valid API key when authentication is enabled.
 
 **Authentication**: Requires valid API key in `X-Cache-API-Key` header when cache authentication is enabled.
 
-- `DELETE /cache/{database}` clears all cache entries (file list, metadata, data, last updated) for a database.
-- `DELETE /cache/{database}/{id}` clears all cache entries for a single table.
+- `DELETE /cache/databases/{database}` clears all cache entries (file list, metadata, data, last updated) for a database.
+- `DELETE /cache/databases/{database}/tables/{id}` clears all cache entries for a single table.
 
 Responses:
 - `200 OK` success message

@@ -19,7 +19,7 @@ namespace PxApi.Controllers
     /// <param name="logger">Logger for logging information, warnings and errors.</param>
     [ApiKeyAuth]
     [FeatureGate(nameof(CacheController))]
-    [Route("cache")]
+    [Route("cache/databases")]
     [ApiController]
     public class CacheController(ICachedDataSource cachedConnector, ILogger<CacheController> logger) : ControllerBase
     {
@@ -36,7 +36,7 @@ namespace PxApi.Controllers
         /// <response code="200">Cache for the specified PX file was successfully cleared.</response>
         /// <response code="404">If the database or PX file was not found.</response>
         /// <response code="500">If an error occurs while clearing the cache.</response>
-        [HttpDelete("{database}/{id}")]
+        [HttpDelete("{database}/tables/{id}")]
         [OperationId("clearTableCache")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(string), 200)]

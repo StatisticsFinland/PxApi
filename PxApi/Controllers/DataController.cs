@@ -26,7 +26,7 @@ namespace PxApi.Controllers
     /// <param name="auditLogService">Audit logging service.</param>
     [ApiKeyAuth]
     [ApiController]
-    [Route("data")]
+    [Route("data/databases")]
     public class DataController(ICachedDataSource dataSource, ILogger<DataController> logger, IAuditLogService auditLogService) : ControllerBase
     {
         private static readonly string[] SupportedMediaTypes = ["application/json", "text/csv"];
@@ -47,7 +47,7 @@ namespace PxApi.Controllers
         /// <response code="415">Unsupported Content-Type header.</response>
         /// <response code="500">Unexpected internal server error.</response>
         /// <response code="503">The request is valid but the data is temporarily unavailable due to a database update.</response>
-        [HttpGet("{database}/{table}")]
+        [HttpGet("{database}/tables/{table}")]
         [OperationId("getData")]
         [Produces("application/json", "text/csv")]
         [ProducesResponseType(typeof(JsonStat2), 200, "application/json")]
@@ -102,7 +102,7 @@ namespace PxApi.Controllers
         /// <response code="415">Unsupported Content-Type for request body.</response>
         /// <response code="500">Unexpected internal server error.</response>
         /// <response code="503">The request is valid but the data is temporarily unavailable due to a database update.</response>
-        [HttpPost("{database}/{table}")]
+        [HttpPost("{database}/tables/{table}")]
         [OperationId("postData")]
         [Consumes("application/json")]
         [Produces("application/json", "text/csv")]
@@ -138,7 +138,7 @@ namespace PxApi.Controllers
         /// <param name="table">PX table identifier.</param>
         /// <response code="200">Returns allowed methods in the Allow response header.</response>
         /// <response code="500">Unexpected internal server error.</response>
-        [HttpOptions("{database}/{table}")]
+        [HttpOptions("{database}/tables/{table}")]
         [OperationId("optionsData")]
         [ProducesResponseType(200)]
         [ProducesResponseType(500)]
@@ -167,7 +167,7 @@ namespace PxApi.Controllers
         /// <response code="400">Invalid language requested.</response>
         /// <response code="404">Database or table not found.</response>
         /// <response code="500">Unexpected internal server error.</response>
-        [HttpHead("{database}/{table}")]
+        [HttpHead("{database}/tables/{table}")]
         [OperationId("headData")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]

@@ -18,6 +18,10 @@ namespace PxApi.UnitTests.ControllerTests
     [TestFixture]
     public class TablesControllerTests
     {
+        private const string NonExistentDb = "nonexistentdb";
+        private const string StatisticalProgram = "statisticalProgram";
+        private const string File1Name = "file1";
+        private const string Table1Name = "table1";
         private Mock<ICachedDataSource> _cachedDbConnector;
         private Mock<ILogger<TablesController>> _mockLogger;
         private Mock<IAuditLogService> _mockAuditLogger; // Added mock for audit service
@@ -109,7 +113,7 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetTablesAsync_DatabaseNotFound_LogsAuditEvent()
         {
             // Arrange
-            string dbId = "nonexistentdb";
+            string dbId = NonExistentDb;
             string lang = "en";
             int page = 1;
             int pageSize = 50;
@@ -131,11 +135,11 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            PxFileRef file1 = PxFileRef.ValidateAndCreate("file1", db, ["statisticalProgram"]);
-            PxFileRef file2 = PxFileRef.ValidateAndCreate("file2", db, ["statisticalProgram"]);
+            PxFileRef file1 = PxFileRef.ValidateAndCreate(File1Name, db, [StatisticalProgram]);
+            PxFileRef file2 = PxFileRef.ValidateAndCreate("file2", db, [StatisticalProgram]);
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxFileRef>
             {
-                { "file1", file1 },
+                { File1Name, file1 },
                 { "file2", file2 }
             });
             MatrixMetadata meta1 = TestMockMetaBuilder.GetMockMetadata();
@@ -160,13 +164,13 @@ namespace PxApi.UnitTests.ControllerTests
             {
                 Assert.That(pagedTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
                 Assert.That(pagedTableList.Tables[0].Title, Is.EqualTo("table-description.en"));
-                Assert.That(pagedTableList.Tables[0].Name, Is.EqualTo("file1"));
+                Assert.That(pagedTableList.Tables[0].Name, Is.EqualTo(File1Name));
                 Assert.That(pagedTableList.Tables[0].LastUpdated, Is.EqualTo(meta1.GetContentDimension().Values.Map(v => v.LastUpdated).Max()));
                 Assert.That(pagedTableList.Tables[0].Links, Has.Count.EqualTo(1));
                 Assert.That(pagedTableList.Tables[0].Links[0].Rel, Is.EqualTo("describedby"));
-                Assert.That(pagedTableList.Tables[0].Links[0].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/file1?lang=en"));
+                Assert.That(pagedTableList.Tables[0].Links[0].Href, Is.EqualTo("https://testurl.fi/meta/databases/exampledb/tables/file1?lang=en"));
                 Assert.That(pagedTableList.Tables[0].Links[0].Method, Is.EqualTo("GET"));
-            };
+            }
         }
 
         [Test]
@@ -195,7 +199,7 @@ namespace PxApi.UnitTests.ControllerTests
             int pageSize = 200;
             DataBaseRef db = DataBaseRef.Create(dbId);
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary<string, PxFileRef>.Empty;
-            
+
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
             _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ReturnsAsync(tableList);
 
@@ -215,11 +219,11 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetTablesAsync_DatabaseNotFound_ReturnsNotFound()
         {
             // Arrange
-            string dbId = "nonexistentdb";
+            string dbId = NonExistentDb;
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            
+
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns((DataBaseRef?)null);
 
             // Act
@@ -238,7 +242,7 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            
+
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
             _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ThrowsAsync(new DirectoryNotFoundException("Directory not found"));
 
@@ -257,24 +261,24 @@ namespace PxApi.UnitTests.ControllerTests
             DataBaseRef db = DataBaseRef.Create(dbId);
             string lang = "en";
             int pageSize = 3;
-            
+
             List<PxFileRef> files =
             [
-                PxFileRef.ValidateAndCreate("file1", db, ["statisticalProgram"]),
-                PxFileRef.ValidateAndCreate("file2", db, ["statisticalProgram"]),
-                PxFileRef.ValidateAndCreate("file3", db, ["statisticalProgram"]),
-                PxFileRef.ValidateAndCreate("file4", db, ["statisticalProgram"]),
-                PxFileRef.ValidateAndCreate("file5", db, ["statisticalProgram"]),
-                PxFileRef.ValidateAndCreate("file6", db, ["statisticalProgram"]),
-                PxFileRef.ValidateAndCreate("file7", db, ["statisticalProgram"]),
+                PxFileRef.ValidateAndCreate(File1Name, db, [StatisticalProgram]),
+                PxFileRef.ValidateAndCreate("file2", db, [StatisticalProgram]),
+                PxFileRef.ValidateAndCreate("file3", db, [StatisticalProgram]),
+                PxFileRef.ValidateAndCreate("file4", db, [StatisticalProgram]),
+                PxFileRef.ValidateAndCreate("file5", db, [StatisticalProgram]),
+                PxFileRef.ValidateAndCreate("file6", db, [StatisticalProgram]),
+                PxFileRef.ValidateAndCreate("file7", db, [StatisticalProgram]),
             ];
-            
+
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
                 files.ToDictionary(f => f.Id));
-            
+
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
             _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ReturnsAsync(tableList);
-            
+
             foreach (PxFileRef file in files)
             {
                 _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(TestMockMetaBuilder.GetMockMetadata());
@@ -292,7 +296,7 @@ namespace PxApi.UnitTests.ControllerTests
                 PagedTableList? pagedTableList = okResult.Value as PagedTableList;
                 Assert.That(pagedTableList, Is.Not.Null);
 
-                if(page == 3) Assert.That(pagedTableList.Tables, Has.Count.EqualTo(1));
+                if (page == 3) Assert.That(pagedTableList.Tables, Has.Count.EqualTo(1));
                 else Assert.That(pagedTableList.Tables, Has.Count.EqualTo(3));
 
                 using (Assert.EnterMultipleScope())
@@ -301,7 +305,7 @@ namespace PxApi.UnitTests.ControllerTests
                     {
                         Assert.That(pagedTableList.Tables[i].Name, Is.EqualTo(files[tableIndex++].Id));
                     }
-                };
+                }
 
                 Assert.That(pagedTableList.PagingInfo.CurrentPage, Is.EqualTo(page));
             }
@@ -318,8 +322,8 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            
-            PxFileRef file = PxFileRef.ValidateAndCreate("table1", db, ["statisticalProgram"]);
+
+            PxFileRef file = PxFileRef.ValidateAndCreate(Table1Name, db, [StatisticalProgram]);
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
                 new Dictionary<string, PxFileRef> { { file.Id, file } });
 
@@ -344,11 +348,11 @@ namespace PxApi.UnitTests.ControllerTests
                 else
                 {
                     Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
-                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table1"));
-                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1"));
+                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo(Table1Name));
+                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo(Table1Name));
                     Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
                 }
-            };
+            }
         }
 
         [Test]
@@ -360,15 +364,15 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            
-            PxFileRef file = PxFileRef.ValidateAndCreate("table1", db, ["statisticalProgram"]);
+
+            PxFileRef file = PxFileRef.ValidateAndCreate(Table1Name, db, [StatisticalProgram]);
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
                 new Dictionary<string, PxFileRef> { { file.Id, file } });
 
             // Create metadata with only non-content dimensions (time dimension and regular dimensions)
             // This will cause TryGetContentDimension to return false
             MatrixMetadata metaWithoutContent = TestMockMetaBuilder.GetMockMetadata([
-                Px.Utils.Models.Metadata.Enums.DimensionType.Ordinal, 
+                Px.Utils.Models.Metadata.Enums.DimensionType.Ordinal,
                 Px.Utils.Models.Metadata.Enums.DimensionType.Nominal
             ]);
 
@@ -404,11 +408,11 @@ namespace PxApi.UnitTests.ControllerTests
                 {
                     Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
                     Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
-                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1"));
+                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo(Table1Name));
                     Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
                     Assert.That(pageTableList.Tables[0].LastUpdated, Is.EqualTo(DateTime.MinValue));
                 }
-            };
+            }
         }
 
         #region HeadTablesAsync Tests
@@ -417,7 +421,7 @@ namespace PxApi.UnitTests.ControllerTests
         public void HeadTablesAsync_DatabaseNotFound_LogsAuditEvent()
         {
             // Arrange
-            string database = "nonexistentdb";
+            string database = NonExistentDb;
             int page = 1;
             int pageSize = 50;
 
@@ -497,7 +501,7 @@ namespace PxApi.UnitTests.ControllerTests
         public void HeadTablesAsync_DatabaseNotFound_ReturnsNotFound()
         {
             // Arrange
-            string database = "nonexistentdb";
+            string database = NonExistentDb;
             int page = 1;
             int pageSize = 50;
 
@@ -518,7 +522,7 @@ namespace PxApi.UnitTests.ControllerTests
         public void OptionsTables_DatabaseNotFound_ReturnsNotFoundAndLogsAudit()
         {
             // Arrange
-            string database = "nonexistentdb";
+            string database = NonExistentDb;
 
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
 
@@ -546,7 +550,7 @@ namespace PxApi.UnitTests.ControllerTests
             {
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow.ToString(), Is.EqualTo("GET,HEAD,OPTIONS"));
-            };
+            }
         }
 
         #endregion
