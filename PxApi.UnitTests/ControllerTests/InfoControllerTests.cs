@@ -29,11 +29,11 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<OkObjectResult>());
             OkObjectResult okResult = (OkObjectResult)result;
             InfoResponse response = (InfoResponse)okResult.Value!;
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(response.Application, Is.EqualTo("PxApi"));
                 Assert.That(response.Version, Is.Not.Null.And.Not.Empty);
-            });
+            }
         }
 
         [Test]
