@@ -115,7 +115,7 @@ namespace PxApi
 
             serviceCollection.AddControllers(options =>
             {
-                options.Filters.Add<OperationCancelledExceptionFilter>();
+                options.Filters.Add<OperationCanceledExceptionFilter>();
                 options.Conventions.Add(new ApiExplorerConventionsFactory());
             })
             .AddJsonOptions(options =>

@@ -115,11 +115,7 @@ namespace PxApi.Controllers
                             pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, actualLang, tableMeta, fileUri));
 
                         }
-                        catch (OperationCanceledException)
-                        {
-                            throw;
-                        }
-                        catch (Exception idReadEx)
+                        catch (Exception idReadEx) when (idReadEx is not OperationCanceledException)
                         {
                             pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, table.Key));
                             logger.LogWarning(idReadEx, "Failed to get metadata for table: {Table}", tableList.ElementAt(i).Key);

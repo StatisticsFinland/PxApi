@@ -8,14 +8,14 @@ namespace PxApi.Filters
     /// <see cref="TaskCanceledException"/>) thrown when a client disconnects during request processing.
     /// Returns HTTP 499 (Client Closed Request) and logs at debug level to avoid polluting error logs.
     /// </summary>
-    public class OperationCancelledExceptionFilter(ILogger<OperationCancelledExceptionFilter> logger) : IExceptionFilter
+    public class OperationCanceledExceptionFilter(ILogger<OperationCanceledExceptionFilter> logger) : IExceptionFilter
     {
         /// <inheritdoc />
         public void OnException(ExceptionContext context)
         {
             if (context.Exception is OperationCanceledException)
             {
-                logger.LogDebug("Request was cancelled for {Path}.", context.HttpContext.Request.Path);
+                logger.LogDebug("Request was cancelled.");
                 context.Result = new StatusCodeResult(499);
                 context.ExceptionHandled = true;
             }

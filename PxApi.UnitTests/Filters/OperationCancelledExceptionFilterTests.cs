@@ -12,14 +12,14 @@ namespace PxApi.UnitTests.Filters
     [TestFixture]
     public class OperationCancelledExceptionFilterTests
     {
-        private Mock<ILogger<OperationCancelledExceptionFilter>> _mockLogger = null!;
-        private OperationCancelledExceptionFilter _filter = null!;
+        private Mock<ILogger<OperationCanceledExceptionFilter>> _mockLogger = null!;
+        private OperationCanceledExceptionFilter _filter = null!;
 
         [SetUp]
         public void SetUp()
         {
-            _mockLogger = new Mock<ILogger<OperationCancelledExceptionFilter>>();
-            _filter = new OperationCancelledExceptionFilter(_mockLogger.Object);
+            _mockLogger = new Mock<ILogger<OperationCanceledExceptionFilter>>();
+            _filter = new OperationCanceledExceptionFilter(_mockLogger.Object);
         }
 
         private static ExceptionContext CreateExceptionContext(Exception exception)
