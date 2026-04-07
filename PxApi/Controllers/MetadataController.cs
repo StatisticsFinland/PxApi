@@ -25,22 +25,22 @@ namespace PxApi.Controllers
         /// <param name="database">Identifier of the database containing the table.</param>
         /// <param name="table">Identifier of the table.</param>
         /// <param name="lang">Optional language code; if omitted the table's default language is used.</param>
+        /// <param name="ct">Cancellation token bound to the client request lifetime.</param>
         /// <returns>JSON-stat 2.0 metadata object for the specified table.</returns>
         /// <response code="200">Metadata returned successfully.</response>
         /// <response code="400">Requested language not available.</response>
         /// <response code="404">Database or table not found.</response>
-        /// <response code="500">Unexpected server error.</response>
         [HttpGet("{database}/tables/{table}")]
         [OperationId("getTableMeta")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(JsonStat2), 200)]
         [ProducesResponseType(typeof(string), 400)]
         [ProducesResponseType(typeof(string), 404)]
-        [ProducesResponseType(typeof(string), 500)]
         public async Task<ActionResult<JsonStat2>> GetTableMetadataById(
             [FromRoute] string database,
             [FromRoute] string table,
-            [FromQuery] string? lang)
+            [FromQuery] string? lang,
+            CancellationToken ct = default)
         {
             using (logger.BeginScope(new Dictionary<string, object>
                 {
@@ -64,7 +64,7 @@ namespace PxApi.Controllers
                         }
                     }
 
-                    PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
+                    PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value, ct);
                     if (fileRef is null)
                     {
                         using (logger.BeginScope(new Dictionary<string, object>
@@ -85,7 +85,7 @@ namespace PxApi.Controllers
                         }))
                     {
                         auditLogService.LogAuditEvent();
-                        IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
+                        IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value, ct);
 
                         string resolvedLang = lang ?? meta.DefaultLanguage;
                         if (!meta.AvailableLanguages.Contains(resolvedLang))
@@ -93,7 +93,7 @@ namespace PxApi.Controllers
                             return BadRequest("The content is not available in the requested language.");
                         }
 
-                        IReadOnlyList<TableGroup> groupings = await cachedConnector.GetGroupingsCachedAsync(fileRef.Value);
+                        IReadOnlyList<TableGroup> groupings = await cachedConnector.GetGroupingsCachedAsync(fileRef.Value, ct);
                         JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, groupings, resolvedLang);
                         return Ok(jsonStat2);
                     }
@@ -101,11 +101,6 @@ namespace PxApi.Controllers
                 catch (FileNotFoundException)
                 {
                     return NotFound("Resource not found.");
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "An unexpected error occurred while processing the request.");
-                    return StatusCode(500, "Unexpected server error.");
                 }
             }
         }
@@ -116,17 +111,16 @@ namespace PxApi.Controllers
         /// <param name="database">Identifier of the database containing the table.</param>
         /// <param name="table">Identifier of the table.</param>
         /// <param name="lang">Optional language code.</param>
+        /// <param name="ct">Cancellation token bound to the client request lifetime.</param>
         /// <response code="200">Resource exists.</response>
         /// <response code="400">Requested language not available.</response>
         /// <response code="404">Database or table not found.</response>
-        /// <response code="500">Unexpected server error.</response>
         [HttpHead("{database}/tables/{table}")]
         [OperationId("headTableMeta")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> HeadMetadataAsync(string database, string table, string? lang = null)
+        public async Task<IActionResult> HeadMetadataAsync(string database, string table, string? lang = null, CancellationToken ct = default)
         {
             using (logger.BeginScope(new Dictionary<string, object>
                 {
@@ -134,53 +128,45 @@ namespace PxApi.Controllers
                     { LoggerConsts.ACTION, nameof(HeadMetadataAsync) }
                 }))
             {
-                try
+                DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
+                if (dbRef is null)
                 {
-                    DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
-                    if (dbRef is null)
-                    {
-                        using (logger.BeginScope(new Dictionary<string, object>
-                        {
-                            { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER },
-                            { LoggerConsts.PX_FILE, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                        }))
-                        {
-                            auditLogService.LogAuditEvent();
-                            return NotFound();
-                        }
-                    }
-
-                    PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value);
-                    if (fileRef is null)
-                    {
-                        using (logger.BeginScope(new Dictionary<string, object>
-                        {
-                            { LoggerConsts.DB_ID, dbRef.Value.Id },
-                            { LoggerConsts.PX_FILE, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                        }))
-                        {
-                            auditLogService.LogAuditEvent();
-                            return NotFound();
-                        }
-                    }
-
                     using (logger.BeginScope(new Dictionary<string, object>
-                        {
-                            { LoggerConsts.DB_ID, dbRef.Value.Id },
-                            { LoggerConsts.PX_FILE, fileRef.Value.Id }
-                        }))
+                    {
+                        { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER },
+                        { LoggerConsts.PX_FILE, LoggerConsts.NOT_FOUND_PLACEHOLDER }
+                    }))
                     {
                         auditLogService.LogAuditEvent();
-                        IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value);
-                        string resolvedLang = lang ?? meta.DefaultLanguage;
-                        if (!meta.AvailableLanguages.Contains(resolvedLang)) return BadRequest();
-                        return Ok();
+                        return NotFound();
                     }
                 }
-                catch (Exception ex)
+
+                PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value, ct);
+                if (fileRef is null)
                 {
-                    logger.LogError(ex, "An unexpected error occurred while processing the request.");
-                    return StatusCode(500);
+                    using (logger.BeginScope(new Dictionary<string, object>
+                    {
+                        { LoggerConsts.DB_ID, dbRef.Value.Id },
+                        { LoggerConsts.PX_FILE, LoggerConsts.NOT_FOUND_PLACEHOLDER }
+                    }))
+                    {
+                        auditLogService.LogAuditEvent();
+                        return NotFound();
+                    }
+                }
+
+                using (logger.BeginScope(new Dictionary<string, object>
+                    {
+                        { LoggerConsts.DB_ID, dbRef.Value.Id },
+                        { LoggerConsts.PX_FILE, fileRef.Value.Id }
+                    }))
+                {
+                    auditLogService.LogAuditEvent();
+                    IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value, ct);
+                    string resolvedLang = lang ?? meta.DefaultLanguage;
+                    if (!meta.AvailableLanguages.Contains(resolvedLang)) return BadRequest();
+                    return Ok();
                 }
             }
         }
@@ -191,11 +177,9 @@ namespace PxApi.Controllers
         /// <param name="database">Identifier of the database containing the table.</param>
         /// <param name="table">Identifier of the table.</param>
         /// <response code="200">Returns allowed methods in the Allow header.</response>
-        /// <response code="500">Unexpected server error.</response>
         [HttpOptions("{database}/tables/{table}")]
         [OperationId("optionsTableMeta")]
         [ProducesResponseType(200)]
-        [ProducesResponseType(500)]
         public IActionResult OptionsMetadata(string database, string table)
         {
             using (logger.BeginScope(new Dictionary<string, object>

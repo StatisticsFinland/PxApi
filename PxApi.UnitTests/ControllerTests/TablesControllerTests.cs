@@ -554,5 +554,27 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         #endregion
+
+        #region Cancellation Tests
+
+        [Test]
+        public void GetTablesAsync_CancellationRequested_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            DataBaseRef db = DataBaseRef.Create("exampledb");
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(db.Id)).Returns(db);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            // Act & Assert
+            Assert.That(async () => await _controller.GetTablesAsync(db.Id, "en", 1, 50, cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        #endregion
     }
 }

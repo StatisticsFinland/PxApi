@@ -38,6 +38,7 @@ namespace PxApi.Controllers
         /// <param name="table">PX table identifier.</param>
         /// <param name="filters">Array of filter specifications 'dimension:filterType=value'. Supported filterType: code, from, to, first, last. One filter per dimension; first/last require positive integers; '*' wildcard matches zero or more characters in code/from/to values; multiple code values separated by commas.</param>
         /// <param name="lang">Optional language code; defaults to table's default language when omitted.</param>
+        /// <param name="ct">Cancellation token bound to the client request lifetime.</param>
         /// <returns>Data in JSON-stat or CSV format depending on Accept header.</returns>
         /// <response code="200">Successful query returning data.</response>
         /// <response code="400">Invalid filters, duplicate dimensions, or invalid language.</response>
@@ -45,7 +46,6 @@ namespace PxApi.Controllers
         /// <response code="406">Requested media type not supported by endpoint.</response>
         /// <response code="413">Request exceeds maximum allowed cell count.</response>
         /// <response code="415">Unsupported Content-Type header.</response>
-        /// <response code="500">Unexpected internal server error.</response>
         /// <response code="503">The request is valid but the data is temporarily unavailable due to a database update.</response>
         [HttpGet("{database}/tables/{table}")]
         [OperationId("getData")]
@@ -57,13 +57,13 @@ namespace PxApi.Controllers
         [ProducesResponseType(typeof(string), 406)]
         [ProducesResponseType(typeof(string), 413)]
         [ProducesResponseType(typeof(string), 415)]
-        [ProducesResponseType(typeof(string), 500)]
         [ProducesResponseType(typeof(string), 503)]
         public async Task<IActionResult> GetDataAsync(
             [FromRoute] string database,
             [FromRoute] string table,
             [FromQuery] string[]? filters = null,
-            [FromQuery] string? lang = null)
+            [FromQuery] string? lang = null,
+            CancellationToken ct = default)
         {
             using (logger.BeginScope(new Dictionary<string, object>()
             {
@@ -82,17 +82,18 @@ namespace PxApi.Controllers
                     return BadRequest(HttpConsts.BAD_REQUEST_PARAMS);
                 }
 
-                return await GenerateResponse(database, table, lang, query);
+                return await GenerateResponse(database, table, lang, query, ct);
             }
         }
 
         /// <summary>
-        /// Retrieves data using a JSON body of filter objects. Content negotiation identical to GET. Body maps dimension codes to filter definitions.
+        /// Retrieves data using a JSON body of filter objects.
         /// </summary>
         /// <param name="database">Database identifier containing the table.</param>
         /// <param name="table">PX table identifier.</param>
         /// <param name="query">Dictionary of filters keyed by dimension code. Each value defines type and associated query data.</param>
         /// <param name="lang">Optional language code; defaults to table's default language when omitted.</param>
+        /// <param name="ct">Cancellation token bound to the client request lifetime.</param>
         /// <returns>Data in JSON-stat or CSV format depending on Accept header.</returns>
         /// <response code="200">Successful query returning data.</response>
         /// <response code="400">Invalid filter body or invalid language.</response>
@@ -100,7 +101,6 @@ namespace PxApi.Controllers
         /// <response code="406">Requested media type not supported by endpoint.</response>
         /// <response code="413">Request exceeds maximum allowed cell count.</response>
         /// <response code="415">Unsupported Content-Type for request body.</response>
-        /// <response code="500">Unexpected internal server error.</response>
         /// <response code="503">The request is valid but the data is temporarily unavailable due to a database update.</response>
         [HttpPost("{database}/tables/{table}")]
         [OperationId("postData")]
@@ -113,13 +113,13 @@ namespace PxApi.Controllers
         [ProducesResponseType(typeof(string), 406)]
         [ProducesResponseType(typeof(string), 413)]
         [ProducesResponseType(typeof(string), 415)]
-        [ProducesResponseType(typeof(string), 500)]
         [ProducesResponseType(typeof(string), 503)]
         public async Task<ActionResult> PostDataAsync(
             [FromRoute] string database,
             [FromRoute] string table,
             [FromBody] Dictionary<string, Filter> query,
-            [FromQuery] string? lang = null)
+            [FromQuery] string? lang = null,
+            CancellationToken ct = default)
         {
             using (logger.BeginScope(new Dictionary<string, object>()
             {
@@ -127,21 +127,19 @@ namespace PxApi.Controllers
                 { LoggerConsts.ACTION, nameof(PostDataAsync) }
             }))
             {
-                return await GenerateResponse(database, table, lang, query);
+                return await GenerateResponse(database, table, lang, query, ct);
             }
         }
 
         /// <summary>
-        /// Returns allowed HTTP methods for the data resource. Useful for CORS pre-flight or client capability discovery.
+        /// Returns allowed HTTP methods for the data resource.
         /// </summary>
         /// <param name="database">Database identifier containing the table.</param>
         /// <param name="table">PX table identifier.</param>
         /// <response code="200">Returns allowed methods in the Allow response header.</response>
-        /// <response code="500">Unexpected internal server error.</response>
         [HttpOptions("{database}/tables/{table}")]
         [OperationId("optionsData")]
         [ProducesResponseType(200)]
-        [ProducesResponseType(500)]
         public IActionResult OptionsData(string database, string table)
         {
             using (logger.BeginScope(new Dictionary<string, object>()
@@ -163,17 +161,16 @@ namespace PxApi.Controllers
         /// <param name="database">Database identifier containing the table.</param>
         /// <param name="table">PX table identifier.</param>
         /// <param name="lang">Optional language code.</param>
+        /// <param name="ct">Cancellation token bound to the client request lifetime.</param>
         /// <response code="200">Resource exists.</response>
         /// <response code="400">Invalid language requested.</response>
         /// <response code="404">Database or table not found.</response>
-        /// <response code="500">Unexpected internal server error.</response>
         [HttpHead("{database}/tables/{table}")]
         [OperationId("headData")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
-        public async Task<IActionResult> HeadDataAsync(string database, string table, string? lang = null)
+        public async Task<IActionResult> HeadDataAsync(string database, string table, string? lang = null, CancellationToken ct = default)
         {
             using (logger.BeginScope(new Dictionary<string, object>()
             {
@@ -198,7 +195,7 @@ namespace PxApi.Controllers
                         }
                     }
 
-                    PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
+                    PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value, ct);
                     if (fileRef is null)
                     {
                         using (logger.BeginScope(new Dictionary<string, object>()
@@ -219,7 +216,7 @@ namespace PxApi.Controllers
                     }))
                     {
                         auditLogService.LogAuditEvent();
-                        IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
+                        IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value, ct);
                         string actualLang = lang ?? meta.DefaultLanguage;
                         if (!meta.AvailableLanguages.Contains(actualLang)) return BadRequest();
                         return Ok();
@@ -239,7 +236,7 @@ namespace PxApi.Controllers
             Response.Headers["X-Max-Cells"] = maxSize.ToString();
         }
 
-        private async Task<ActionResult> GenerateResponse(string database, string table, string? lang, Dictionary<string, Filter> query)
+        private async Task<ActionResult> GenerateResponse(string database, string table, string? lang, Dictionary<string, Filter> query, CancellationToken ct)
         {
             SetMaxCellsHeader();
             long maxSize = AppSettings.Active.QueryLimits.JsonStatMaxCells;
@@ -259,7 +256,7 @@ namespace PxApi.Controllers
                     return NotFound(message);
                 }
             }
-            PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value);
+            PxFileRef? fileRef = await dataSource.GetFileReferenceCachedAsync(table, dbRef.Value, ct);
             if (fileRef is null)
             {
                 using (logger.BeginScope(new Dictionary<string, object>()
@@ -284,7 +281,7 @@ namespace PxApi.Controllers
                 auditLogService.LogAuditEvent();
                 try
                 {
-                    IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value);
+                    IReadOnlyMatrixMetadata meta = await dataSource.GetMetadataCachedAsync(fileRef.Value, ct);
 
                     string actualLang = lang ?? meta.DefaultLanguage;
                     if (!meta.AvailableLanguages.Contains(actualLang))
@@ -303,7 +300,7 @@ namespace PxApi.Controllers
                         return StatusCode(413, $"The request is too large. Please narrow down the query. Maximum size is {maxSize} cells.");
                     }
 
-                    DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap);
+                    DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap, ct);
 
                     // Use proper content negotiation with quality values
                     IList<MediaTypeHeaderValue> acceptHeaderValues = Request.GetTypedHeaders().Accept;
@@ -316,7 +313,7 @@ namespace PxApi.Controllers
                     }
                     if (bestMatch == "application/json")
                     {
-                        IReadOnlyList<TableGroup> groupings = await dataSource.GetGroupingsCachedAsync(fileRef.Value);
+                        IReadOnlyList<TableGroup> groupings = await dataSource.GetGroupingsCachedAsync(fileRef.Value, ct);
                         JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), groupings, data, actualLang);
                         return Ok(jsonStat);
                     }
@@ -330,11 +327,6 @@ namespace PxApi.Controllers
                 {
                     logger.LogDebug(argEx, "Argument exception occurred while processing request: {Message}", argEx.Message);
                     return BadRequest(HttpConsts.BAD_REQUEST_PARAMS);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Unexpected error occurred while processing data request.");
-                    return StatusCode(500, HttpConsts.INTERNAL_SERVER_ERROR);
                 }
 
                 return StatusCode(406);

@@ -299,5 +299,28 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,HEAD,OPTIONS"));
             }
         }
+
+        #region Cancellation Tests
+
+        [Test]
+        public void GetDatabases_CancellationRequested_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            DataBaseRef dbRef = DataBaseRef.Create("db1");
+            List<DataBaseRef> dbRefs = [dbRef];
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            _mockCachedDataSource.Setup(x => x.GetAllDataBaseReferences()).Returns(dbRefs);
+            _mockCachedDataSource.Setup(x => x.GetDatabaseNameAsync(dbRef, string.Empty, cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            // Act & Assert
+            Assert.That(async () => await _controller.GetDatabases("fi", cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        #endregion
     }
 }

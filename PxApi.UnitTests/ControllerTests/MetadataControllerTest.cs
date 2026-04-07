@@ -266,7 +266,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetMetadataById_GroupingsCacheThrowsGeneralException_ReturnsInternalServerError()
+        public void GetMetadataById_GroupingsCacheThrowsGeneralException_PropagatesException()
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
@@ -279,17 +279,9 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
             _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ThrowsAsync(new InvalidOperationException("Cache error"));
 
-            // Act
-            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<ObjectResult>());
-            ObjectResult? objectResult = result.Result as ObjectResult;
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(objectResult?.StatusCode, Is.EqualTo(500));
-                Assert.That(objectResult?.Value, Is.EqualTo("Unexpected server error."));
-            };
+            // Act & Assert
+            Assert.That(async () => await _controller.GetTableMetadataById(database.Id, file.Id, lang),
+                Throws.InstanceOf<InvalidOperationException>());
         }
 
         [Test]
@@ -346,7 +338,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetMetadataById_UnexpectedError_ReturnsInternalServerError()
+        public void GetMetadataById_UnexpectedError_PropagatesException()
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
@@ -356,17 +348,9 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
             _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ThrowsAsync(new InvalidOperationException("Unexpected error"));
 
-            // Act
-            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, null);
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<ObjectResult>());
-            ObjectResult? objectResult = result.Result as ObjectResult;
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(objectResult?.StatusCode, Is.EqualTo(500));
-                Assert.That(objectResult?.Value, Is.EqualTo("Unexpected server error."));
-            };
+            // Act & Assert
+            Assert.That(async () => await _controller.GetTableMetadataById(database.Id, file.Id, null),
+                Throws.InstanceOf<InvalidOperationException>());
         }
 
         [Test]
@@ -460,7 +444,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task HeadMetadataAsync_UnexpectedError_ReturnsInternalServerError()
+        public void HeadMetadataAsync_UnexpectedError_PropagatesException()
         {
             // Arrange
             DataBaseRef database = DataBaseRef.Create("exampledb");
@@ -470,13 +454,9 @@ namespace PxApi.UnitTests.ControllerTests
             _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
             _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ThrowsAsync(new InvalidOperationException("Unexpected error"));
 
-            // Act
-            IActionResult result = await _controller.HeadMetadataAsync(database.Id, file.Id, null);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<StatusCodeResult>());
-            StatusCodeResult? statusResult = result as StatusCodeResult;
-            Assert.That(statusResult?.StatusCode, Is.EqualTo(500));
+            // Act & Assert
+            Assert.That(async () => await _controller.HeadMetadataAsync(database.Id, file.Id, null),
+                Throws.InstanceOf<InvalidOperationException>());
         }
 
         [Test]
@@ -607,5 +587,47 @@ namespace PxApi.UnitTests.ControllerTests
             };
             _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
+
+        #region Cancellation Tests
+
+        [Test]
+        public void GetTableMetadataById_CancellationRequested_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            string tableId = "filename";
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(tableId, database, cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            // Act & Assert
+            Assert.That(async () => await _controller.GetTableMetadataById(database.Id, tableId, "en", cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        [Test]
+        public void HeadMetadataAsync_CancellationRequested_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            DataBaseRef database = DataBaseRef.Create("exampledb");
+            string tableId = "filename";
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
+            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(tableId, database, cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            // Act & Assert
+            Assert.That(async () => await _controller.HeadMetadataAsync(database.Id, tableId, "en", cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        #endregion
     }
 }

@@ -1178,5 +1178,102 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         #endregion
+
+        #region Cancellation Tests
+
+        [Test]
+        public void GetDataAsync_CancellationDuringFileReference_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(table, dataBaseRef, cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            // Act & Assert
+            Assert.That(async () => await _controller.GetDataAsync(database, table, filters, null, cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        [Test]
+        public void PostDataAsync_CancellationDuringFileReference_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(table, dataBaseRef, cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            // Act & Assert
+            Assert.That(async () => await _controller.PostDataAsync(database, table, query, null, cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        [Test]
+        public void GetDataAsync_CancellationDuringGetData_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
+            IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(table, dataBaseRef, cts.Token)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>(), cts.Token)).ReturnsAsync(mockMetadata);
+            _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>(), cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
+            // Act & Assert
+            Assert.That(async () => await _controller.GetDataAsync(database, table, filters, null, cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        [Test]
+        public void HeadDataAsync_CancellationDuringMetadata_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(table, dataBaseRef, cts.Token)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>(), cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            // Act & Assert
+            Assert.That(async () => await _controller.HeadDataAsync(database, table, null, cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        #endregion
     }
 }
