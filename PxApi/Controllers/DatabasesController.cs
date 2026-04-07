@@ -32,17 +32,16 @@ namespace PxApi.Controllers
         /// Retrieves a list of available databases. Each item contains its identifier, localized name, optional localized description, table count and HATEOAS link to the tables listing endpoint.
         /// </summary>
         /// <param name="lang">Optional language code used to resolve name and description (defaults to fi when omitted).</param>
+        /// <param name="ct">Cancellation token bound to the client request lifetime.</param>
         /// <returns>A list of <see cref="DataBaseListingItem"/> objects describing each available database.</returns>
         /// <response code="200">Successful retrieval of database listing.</response>
         /// <response code="400">Requested language not supported.</response>
-        /// <response code="500">Unexpected server error.</response>
         [HttpGet]
         [OperationId("listDatabases")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(List<DataBaseListingItem>), 200, "application/json")]
         [ProducesResponseType(typeof(string), 400)]
-        [ProducesResponseType(typeof(string), 500)]
-        public async Task<ActionResult<List<DataBaseListingItem>>> GetDatabases([FromQuery] string? lang = null)
+        public async Task<ActionResult<List<DataBaseListingItem>>> GetDatabases([FromQuery] string? lang = null, CancellationToken ct = default)
         {
             using (logger.BeginScope(new Dictionary<string, object>()
             {
@@ -65,15 +64,14 @@ namespace PxApi.Controllers
                 foreach (DataBaseRef dbRef in dbRefs)
                 {
                     // Resolve localized name from alias files via cached datasource; fallback to id if missing / error
-                    MultilanguageString nameMulti = await dataSource.GetDatabaseNameAsync(dbRef, string.Empty);
+                    MultilanguageString nameMulti = await dataSource.GetDatabaseNameAsync(dbRef, string.Empty, ct);
 
                     // Description still resolved from configuration custom values (Description.<lang>)
                     DataBaseConfig? config = settings.DataBases.FirstOrDefault(c => c.Id == dbRef.Id);
                     string descKey = $"Description.{actualLang}";
                     string? description = config?.Custom.GetValueOrDefault(descKey);
 
-                    Task<ImmutableSortedDictionary<string, PxFileRef>> filesTask = dataSource.GetFileListCachedAsync(dbRef);
-                    ImmutableSortedDictionary<string, PxFileRef> files = await filesTask;
+                    ImmutableSortedDictionary<string, PxFileRef> files = await dataSource.GetFileListCachedAsync(dbRef, ct);
                     int tableCount = files.Count;
                     Uri tablesUri = settings.RootUrl.AddRelativePath("meta", "databases", dbRef.Id, "tables").AddQueryParameters(("lang", actualLang));
 
@@ -107,11 +105,9 @@ namespace PxApi.Controllers
         /// </summary>
         /// <returns><see cref="OkResult"/> indicating the collection resource exists.</returns>
         /// <response code="200">Resource exists.</response>
-        /// <response code="500">Unexpected server error.</response>
         [HttpHead]
         [OperationId("headDatabases")]
         [ProducesResponseType(200)]
-        [ProducesResponseType(500)]
         public IActionResult HeadDatabases()
         {
             using (logger.BeginScope(new Dictionary<string, object>()
@@ -130,11 +126,9 @@ namespace PxApi.Controllers
         /// </summary>
         /// <returns><see cref="OkResult"/> with Allow header populated.</returns>
         /// <response code="200">Allowed methods returned.</response>
-        /// <response code="500">Unexpected server error.</response>
         [HttpOptions]
         [OperationId("optionsDatabases")]
         [ProducesResponseType(200)]
-        [ProducesResponseType(500)]
         public IActionResult OptionsDatabases()
         {
             using (logger.BeginScope(new Dictionary<string, object>()

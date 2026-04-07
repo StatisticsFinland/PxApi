@@ -8,6 +8,7 @@ using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Exceptions;
+using PxApi.Filters;
 using PxApi.OpenApi;
 using PxApi.OpenApi.DocumentFilters;
 using PxApi.OpenApi.SchemaFilters;
@@ -114,6 +115,7 @@ namespace PxApi
 
             serviceCollection.AddControllers(options =>
             {
+                options.Filters.Add<OperationCanceledExceptionFilter>();
                 options.Conventions.Add(new ApiExplorerConventionsFactory());
             })
             .AddJsonOptions(options =>
@@ -203,6 +205,9 @@ namespace PxApi
 
                 // Global 500 response description for all operations (added via operation filter style hook)
                 c.OperationFilter<UnhandledErrorResponseOperationFilter>();
+
+                // Global 499 response for operations that accept a CancellationToken
+                c.OperationFilter<ClientClosedRequestOperationFilter>();
 
                 // Attribute-based operationId assignment
                 c.OperationFilter<OperationIdOperationFilter>();
