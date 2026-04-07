@@ -8,7 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage(
     "Minor Code Smell",
     "S3267:Loops should be simplified with \"LINQ\" expressions",
-    Justification = "Using Linq is not always more readable, programmer should evaluete the best way to itarate collection in case by case basis.",
+    Justification = "Using LINQ is not always more readable; programmers should evaluate the best way to iterate a collection on a case-by-case basis.",
     Scope = "module"
     )]
 
