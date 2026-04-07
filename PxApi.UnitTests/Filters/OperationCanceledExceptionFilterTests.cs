@@ -10,7 +10,7 @@ using PxApi.Filters;
 namespace PxApi.UnitTests.Filters
 {
     [TestFixture]
-    public class OperationCancelledExceptionFilterTests
+    public class OperationCanceledExceptionFilterTests
     {
         private Mock<ILogger<OperationCanceledExceptionFilter>> _mockLogger = null!;
         private OperationCanceledExceptionFilter _filter = null!;
