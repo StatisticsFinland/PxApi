@@ -29,15 +29,17 @@ namespace PxApi.UnitTests.OpenApi.OperationFilters
         }
 
         // Test helper methods with and without CancellationToken
-        public static Task MethodWithCancellationToken(string _, CancellationToken __) => Task.CompletedTask;
-        public static Task MethodWithoutCancellationToken(string _) => Task.CompletedTask;
+#pragma warning disable S1172 // Remove unused parameter — parameters are required to produce the correct MethodInfo signature
+        private static Task MethodWithCancellationToken(string _, CancellationToken __) => Task.CompletedTask;
+        private static Task MethodWithoutCancellationToken(string _) => Task.CompletedTask;
+#pragma warning restore S1172
 
         [Test]
         public void Apply_WithCancellationTokenParameter_Adds499Response()
         {
             // Arrange
             MethodInfo methodInfo = typeof(ClientClosedRequestOperationFilterTests)
-                .GetMethod(nameof(MethodWithCancellationToken))!;
+                .GetMethod(nameof(MethodWithCancellationToken), BindingFlags.Static | BindingFlags.NonPublic)!;
             OperationFilterContext context = CreateContext(methodInfo);
             OpenApiOperation operation = new() { Responses = [] };
 
@@ -53,7 +55,7 @@ namespace PxApi.UnitTests.OpenApi.OperationFilters
         {
             // Arrange
             MethodInfo methodInfo = typeof(ClientClosedRequestOperationFilterTests)
-                .GetMethod(nameof(MethodWithoutCancellationToken))!;
+                .GetMethod(nameof(MethodWithoutCancellationToken), BindingFlags.Static | BindingFlags.NonPublic)!;
             OperationFilterContext context = CreateContext(methodInfo);
             OpenApiOperation operation = new() { Responses = [] };
 
@@ -69,7 +71,7 @@ namespace PxApi.UnitTests.OpenApi.OperationFilters
         {
             // Arrange
             MethodInfo methodInfo = typeof(ClientClosedRequestOperationFilterTests)
-                .GetMethod(nameof(MethodWithCancellationToken))!;
+                .GetMethod(nameof(MethodWithCancellationToken), BindingFlags.Static | BindingFlags.NonPublic)!;
             OperationFilterContext context = CreateContext(methodInfo);
             OpenApiOperation operation = new() { Responses = [] };
 
@@ -87,7 +89,7 @@ namespace PxApi.UnitTests.OpenApi.OperationFilters
             // Arrange
             const string existingDescription = "Custom 499 description";
             MethodInfo methodInfo = typeof(ClientClosedRequestOperationFilterTests)
-                .GetMethod(nameof(MethodWithCancellationToken))!;
+                .GetMethod(nameof(MethodWithCancellationToken), BindingFlags.Static | BindingFlags.NonPublic)!;
             OperationFilterContext context = CreateContext(methodInfo);
             OpenApiOperation operation = new()
             {
@@ -109,7 +111,7 @@ namespace PxApi.UnitTests.OpenApi.OperationFilters
         {
             // Arrange
             MethodInfo methodInfo = typeof(ClientClosedRequestOperationFilterTests)
-                .GetMethod(nameof(MethodWithCancellationToken))!;
+                .GetMethod(nameof(MethodWithCancellationToken), BindingFlags.Static | BindingFlags.NonPublic)!;
             OperationFilterContext context = CreateContext(methodInfo);
             OpenApiOperation operation = new() { Responses = null! };
 
@@ -122,7 +124,7 @@ namespace PxApi.UnitTests.OpenApi.OperationFilters
         {
             // Arrange
             MethodInfo methodInfo = typeof(ClientClosedRequestOperationFilterTests)
-                .GetMethod(nameof(MethodWithCancellationToken))!;
+                .GetMethod(nameof(MethodWithCancellationToken), BindingFlags.Static | BindingFlags.NonPublic)!;
             OperationFilterContext context = CreateContext(methodInfo);
             OpenApiOperation operation = new()
             {
