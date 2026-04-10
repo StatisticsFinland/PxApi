@@ -29,48 +29,41 @@ namespace PxApi.Controllers
         [ProducesResponseType(typeof(HealthResponse), 503)]
         public async Task<IActionResult> GetHealthAsync(CancellationToken ct)
         {
-            using (logger.BeginScope(new Dictionary<string, object>
+            List<DatabaseHealthStatus> databaseStatuses = [];
+            bool allHealthy = true;
+
+            foreach (DataBaseConfig dbConfig in AppSettings.Active.DataBases)
             {
-                { LoggerConsts.CONTROLLER, nameof(HealthController) },
-                { LoggerConsts.ACTION, nameof(GetHealthAsync) }
-            }))
-            {
-                List<DatabaseHealthStatus> databaseStatuses = [];
-                bool allHealthy = true;
-
-                foreach (DataBaseConfig dbConfig in AppSettings.Active.DataBases)
+                string dbId = dbConfig.Id;
+                try
                 {
-                    string dbId = dbConfig.Id;
-                    try
-                    {
-                        using IServiceScope scope = serviceProvider.CreateScope();
-                        IDataBaseConnector connector = scope.ServiceProvider.GetRequiredKeyedService<IDataBaseConnector>(dbId);
-                        await connector.CheckConnectionAsync(ct);
+                    using IServiceScope scope = serviceProvider.CreateScope();
+                    IDataBaseConnector connector = scope.ServiceProvider.GetRequiredKeyedService<IDataBaseConnector>(dbId);
+                    await connector.CheckConnectionAsync(ct);
 
-                        logger.LogDebug("Database {DatabaseId} health check passed", dbId);
-                        databaseStatuses.Add(new DatabaseHealthStatus(dbId, "healthy"));
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogWarning(ex, "Database {DatabaseId} health check failed", dbId);
-                        databaseStatuses.Add(new DatabaseHealthStatus(dbId, "unhealthy"));
-                        allHealthy = false;
-                    }
+                    logger.LogDebug("Database {DatabaseId} health check passed", dbId);
+                    databaseStatuses.Add(new DatabaseHealthStatus(dbId, "healthy"));
                 }
-
-                HealthResponse response = new(allHealthy ? "healthy" : "unhealthy", databaseStatuses);
-
-                if (allHealthy)
+                catch (OperationCanceledException)
                 {
-                    return Ok(response);
+                    throw;
                 }
-
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, response);
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Database {DatabaseId} health check failed", dbId);
+                    databaseStatuses.Add(new DatabaseHealthStatus(dbId, "unhealthy"));
+                    allHealthy = false;
+                }
             }
+
+            HealthResponse response = new(allHealthy ? "healthy" : "unhealthy", databaseStatuses);
+
+            if (allHealthy)
+            {
+                return Ok(response);
+            }
+
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, response);
         }
     }
 }

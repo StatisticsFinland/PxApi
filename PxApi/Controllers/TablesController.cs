@@ -65,24 +65,14 @@ namespace PxApi.Controllers
                 DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
                 if (dataBaseRef is null)
                 {
-                    using (logger.BeginScope(new Dictionary<string, object>
-                    {
-                        { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                        { LoggerConsts.ACTION, nameof(GetTablesAsync) },
-                        { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                    }))
+                    using (logger.BeginDbNotFoundScope())
                     {
                         auditLogger.LogAuditEvent();
                     }
                     return NotFound("Database not found.");
                 }
 
-                using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(GetTablesAsync) },
-                    { LoggerConsts.DB_ID, dataBaseRef.Value.Id }
-                }))
+                using (logger.BeginDbScope(dataBaseRef.Value.Id))
                 {
                     auditLogger.LogAuditEvent();
 
@@ -152,24 +142,14 @@ namespace PxApi.Controllers
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
             if (dataBaseRef is null)
             {
-                using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(HeadTablesAsync) },
-                    { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                }))
+                using (logger.BeginDbNotFoundScope())
                 {
                     auditLogger.LogAuditEvent();
                     return NotFound();
                 }
             }
 
-            using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(HeadTablesAsync) },
-                    { LoggerConsts.DB_ID, dataBaseRef.Value.Id }
-                }))
+            using (logger.BeginDbScope(dataBaseRef.Value.Id))
             {
                 // Audit successful HEAD validation.
                 auditLogger.LogAuditEvent();
@@ -194,24 +174,14 @@ namespace PxApi.Controllers
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
             if (dataBaseRef is null)
             {
-                using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(OptionsTables) },
-                    { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                }))
+                using (logger.BeginDbNotFoundScope())
                 {
                     auditLogger.LogAuditEvent();
                 }
                 return NotFound("Database not found.");
             }
 
-            using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(OptionsTables) },
-                    { LoggerConsts.DB_ID, dataBaseRef.Value.Id }
-                }))
+            using (logger.BeginDbScope(dataBaseRef.Value.Id))
             {
                 const string methods = "GET,HEAD,OPTIONS";
                 Response.Headers.Allow = methods;

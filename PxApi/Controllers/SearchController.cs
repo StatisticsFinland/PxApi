@@ -59,17 +59,10 @@ namespace PxApi.Controllers
 
             List<SearchResultType> typeList = ParseTypes(types);
 
-            using (logger.BeginScope(new Dictionary<string, object>
-            {
-                { LoggerConsts.CONTROLLER, nameof(SearchController) },
-                { LoggerConsts.ACTION, nameof(SearchAsync) }
-            }))
-            {
-                auditLogger.LogAuditEvent();
+            auditLogger.LogAuditEvent();
 
-                SearchResponse response = await searchService.SearchAsync(q, typeList, actualLang, page, pageSize, ct);
-                return Ok(response);
-            }
+            SearchResponse response = await searchService.SearchAsync(q, typeList, actualLang, page, pageSize, ct);
+            return Ok(response);
         }
 
         /// <summary>
@@ -111,35 +104,22 @@ namespace PxApi.Controllers
 
             List<SearchResultType> typeList = ParseTypes(types);
 
-            using (logger.BeginScope(new Dictionary<string, object>
+            DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
+            if (dbRef is null)
             {
-                { LoggerConsts.CONTROLLER, nameof(SearchController) },
-                { LoggerConsts.ACTION, nameof(SearchDatabaseAsync) }
-            }))
-            {
-                DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
-                if (dbRef is null)
-                {
-                    using (logger.BeginScope(new Dictionary<string, object>
-                    {
-                        { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                    }))
-                    {
-                        auditLogger.LogAuditEvent();
-                        return NotFound("Database not found.");
-                    }
-                }
-
-                using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.DB_ID, dbRef.Value.Id }
-                }))
+                using (logger.BeginDbNotFoundScope())
                 {
                     auditLogger.LogAuditEvent();
-
-                    SearchResponse response = await searchService.SearchDatabaseAsync(dbRef.Value.Id, q, typeList, actualLang, page, pageSize, ct);
-                    return Ok(response);
+                    return NotFound("Database not found.");
                 }
+            }
+
+            using (logger.BeginDbScope(dbRef.Value.Id))
+            {
+                auditLogger.LogAuditEvent();
+
+                SearchResponse response = await searchService.SearchDatabaseAsync(dbRef.Value.Id, q, typeList, actualLang, page, pageSize, ct);
+                return Ok(response);
             }
         }
 
@@ -184,51 +164,32 @@ namespace PxApi.Controllers
 
             List<SearchResultType> typeList = ParseTypes(types);
 
-            using (logger.BeginScope(new Dictionary<string, object>
+            DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
+            if (dbRef is null)
             {
-                { LoggerConsts.CONTROLLER, nameof(SearchController) },
-                { LoggerConsts.ACTION, nameof(SearchTableAsync) }
-            }))
-            {
-                DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
-                if (dbRef is null)
-                {
-                    using (logger.BeginScope(new Dictionary<string, object>
-                    {
-                        { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER },
-                        { LoggerConsts.PX_FILE, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                    }))
-                    {
-                        auditLogger.LogAuditEvent();
-                        return NotFound("Database not found.");
-                    }
-                }
-
-                PxFileRef? fileRef = await cachedDataSource.GetFileReferenceCachedAsync(table, dbRef.Value, ct);
-                if (fileRef is null)
-                {
-                    using (logger.BeginScope(new Dictionary<string, object>
-                    {
-                        { LoggerConsts.DB_ID, dbRef.Value.Id },
-                        { LoggerConsts.PX_FILE, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                    }))
-                    {
-                        auditLogger.LogAuditEvent();
-                        return NotFound("Table not found.");
-                    }
-                }
-
-                using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.DB_ID, dbRef.Value.Id },
-                    { LoggerConsts.PX_FILE, fileRef.Value.Id }
-                }))
+                using (logger.BeginResourceNotFoundScope())
                 {
                     auditLogger.LogAuditEvent();
-
-                    SearchResponse response = await searchService.SearchTableAsync(dbRef.Value.Id, fileRef.Value.Id, q, typeList, actualLang, page, pageSize, ct);
-                    return Ok(response);
+                    return NotFound("Database not found.");
                 }
+            }
+
+            PxFileRef? fileRef = await cachedDataSource.GetFileReferenceCachedAsync(table, dbRef.Value, ct);
+            if (fileRef is null)
+            {
+                using (logger.BeginResourceNotFoundScope(dbRef.Value.Id))
+                {
+                    auditLogger.LogAuditEvent();
+                    return NotFound("Table not found.");
+                }
+            }
+
+            using (logger.BeginResourceScope(dbRef.Value.Id, fileRef.Value.Id))
+            {
+                auditLogger.LogAuditEvent();
+
+                SearchResponse response = await searchService.SearchTableAsync(dbRef.Value.Id, fileRef.Value.Id, q, typeList, actualLang, page, pageSize, ct);
+                return Ok(response);
             }
         }
 
@@ -241,15 +202,8 @@ namespace PxApi.Controllers
         [ProducesResponseType(200)]
         public IActionResult HeadSearch()
         {
-            using (logger.BeginScope(new Dictionary<string, object>
-            {
-                { LoggerConsts.CONTROLLER, nameof(SearchController) },
-                { LoggerConsts.ACTION, nameof(HeadSearch) }
-            }))
-            {
-                auditLogger.LogAuditEvent();
-                return Ok();
-            }
+            auditLogger.LogAuditEvent();
+            return Ok();
         }
 
         /// <summary>
@@ -277,33 +231,20 @@ namespace PxApi.Controllers
         [ProducesResponseType(404)]
         public IActionResult HeadSearchDatabase(string database)
         {
-            using (logger.BeginScope(new Dictionary<string, object>
+            DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
+            if (dbRef is null)
             {
-                { LoggerConsts.CONTROLLER, nameof(SearchController) },
-                { LoggerConsts.ACTION, nameof(HeadSearchDatabase) }
-            }))
-            {
-                DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
-                if (dbRef is null)
-                {
-                    using (logger.BeginScope(new Dictionary<string, object>
-                    {
-                        { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                    }))
-                    {
-                        auditLogger.LogAuditEvent();
-                        return NotFound();
-                    }
-                }
-
-                using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.DB_ID, dbRef.Value.Id }
-                }))
+                using (logger.BeginDbNotFoundScope())
                 {
                     auditLogger.LogAuditEvent();
-                    return Ok();
+                    return NotFound();
                 }
+            }
+
+            using (logger.BeginDbScope(dbRef.Value.Id))
+            {
+                auditLogger.LogAuditEvent();
+                return Ok();
             }
         }
 
@@ -336,49 +277,30 @@ namespace PxApi.Controllers
         [ProducesResponseType(404)]
         public async Task<IActionResult> HeadSearchTable(string database, string table, CancellationToken ct = default)
         {
-            using (logger.BeginScope(new Dictionary<string, object>
+            DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
+            if (dbRef is null)
             {
-                { LoggerConsts.CONTROLLER, nameof(SearchController) },
-                { LoggerConsts.ACTION, nameof(HeadSearchTable) }
-            }))
-            {
-                DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
-                if (dbRef is null)
-                {
-                    using (logger.BeginScope(new Dictionary<string, object>
-                    {
-                        { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER },
-                        { LoggerConsts.PX_FILE, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                    }))
-                    {
-                        auditLogger.LogAuditEvent();
-                        return NotFound();
-                    }
-                }
-
-                PxFileRef? fileRef = await cachedDataSource.GetFileReferenceCachedAsync(table, dbRef.Value, ct);
-                if (fileRef is null)
-                {
-                    using (logger.BeginScope(new Dictionary<string, object>
-                    {
-                        { LoggerConsts.DB_ID, dbRef.Value.Id },
-                        { LoggerConsts.PX_FILE, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                    }))
-                    {
-                        auditLogger.LogAuditEvent();
-                        return NotFound();
-                    }
-                }
-
-                using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.DB_ID, dbRef.Value.Id },
-                    { LoggerConsts.PX_FILE, fileRef.Value.Id }
-                }))
+                using (logger.BeginResourceNotFoundScope())
                 {
                     auditLogger.LogAuditEvent();
-                    return Ok();
+                    return NotFound();
                 }
+            }
+
+            PxFileRef? fileRef = await cachedDataSource.GetFileReferenceCachedAsync(table, dbRef.Value, ct);
+            if (fileRef is null)
+            {
+                using (logger.BeginResourceNotFoundScope(dbRef.Value.Id))
+                {
+                    auditLogger.LogAuditEvent();
+                    return NotFound();
+                }
+            }
+
+            using (logger.BeginResourceScope(dbRef.Value.Id, fileRef.Value.Id))
+            {
+                auditLogger.LogAuditEvent();
+                return Ok();
             }
         }
 

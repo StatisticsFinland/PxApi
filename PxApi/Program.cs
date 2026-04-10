@@ -115,6 +115,7 @@ namespace PxApi
 
             serviceCollection.AddControllers(options =>
             {
+                options.Filters.Add<LoggingScopeActionFilter>();
                 options.Filters.Add<OperationCanceledExceptionFilter>();
                 options.Conventions.Add(new ApiExplorerConventionsFactory());
             })
