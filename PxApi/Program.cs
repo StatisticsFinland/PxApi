@@ -231,6 +231,9 @@ namespace PxApi
             // Register HttpContextAccessor and audit logging service
             serviceCollection.AddHttpContextAccessor();
             serviceCollection.AddScoped<IAuditLogService, AuditLogService>();
+
+            // Register search service (stub for development; replace with real implementation later)
+            serviceCollection.AddScoped<ISearchService, StubSearchService>();
         }
     }
 }

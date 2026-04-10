@@ -14,6 +14,7 @@ PxApi is a .NET 10.0 Web API for accessing PX statistical datasets. It provides 
 - Controller-specific API key authentication for all endpoints
 - Multiple storage types: Mounted (local / network), Azure File Share, Azure Blob Storage
 - Query size limits returning HTTP 413 when exceeded
+- Metadata search across tables, dimensions, and values (`/meta/search`, `/meta/databases/{database}/search`, `/meta/databases/{database}/tables/{table}/search`)
 - Swagger / OpenAPI documentation with custom schema & document filters
 - HEAD and OPTIONS support for discoverability and CORS pre-flight
 
@@ -133,6 +134,43 @@ Responses (GET & POST):
 Additional methods:
 - `HEAD /data/databases/{database}/tables/{table}?lang=fi` existence & language validation only
 - `OPTIONS /data/databases/{database}/tables/{table}` returns Allow header (`GET,POST,HEAD,OPTIONS`)
+
+### Search
+`GET /meta/search?q=population&types=table,dimension,value&lang=fi&page=1&pageSize=20`
+Searches across all databases for tables, dimensions, and values.
+
+Query parameters:
+- `q` (required): Search query string.
+- `types` (optional): Comma-separated result types to include: `table`, `dimension`, `value`. Defaults to all types.
+- `lang` (optional, default configured language): Language code (ISO 639-1).
+- `page` (optional, >=1, default `1`): Page number.
+- `pageSize` (optional, 1-100, default `20`): Items per page.
+
+Responses:
+- `200 OK` JSON object with search results and paging info
+- `400 Bad Request` missing query, invalid paging, or unsupported language
+
+Database-scoped search:
+`GET /meta/databases/{database}/search?q=population&lang=fi`
+Searches within a single database.
+
+Additional responses:
+- `404 Not Found` database not found
+
+Table-scoped search:
+`GET /meta/databases/{database}/tables/{table}/search?q=male&types=dimension,value&lang=fi`
+Searches within a specific table for dimensions and values.
+
+Additional responses:
+- `404 Not Found` database or table not found
+
+Additional methods:
+- `HEAD /meta/search` validates the global search endpoint exists
+- `HEAD /meta/databases/{database}/search` validates the database-scoped search endpoint (returns 404 if database not found)
+- `HEAD /meta/databases/{database}/tables/{table}/search` validates the table-scoped search endpoint (returns 404 if database or table not found)
+- `OPTIONS /meta/search` returns Allow header (`GET,HEAD,OPTIONS`)
+- `OPTIONS /meta/databases/{database}/search` returns Allow header (`GET,HEAD,OPTIONS`)
+- `OPTIONS /meta/databases/{database}/tables/{table}/search` returns Allow header (`GET,HEAD,OPTIONS`)
 
 ### Cache
 Requires feature flag `CacheController = true` and valid API key when authentication is enabled.
