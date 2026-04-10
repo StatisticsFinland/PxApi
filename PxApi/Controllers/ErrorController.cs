@@ -38,38 +38,35 @@ namespace PxApi.Controllers
             }
 
             Exception exception = exceptionHandlerPathFeature.Error;
-            string path = exceptionHandlerPathFeature.Path ?? "unknown";
 
             if (exception is InvalidModelException modelEx)
             {
-                logger.LogInformation(modelEx, "Invalid model in {Path}: {Message}", path, modelEx.Message);
+                logger.LogInformation(modelEx, "Invalid model exception occurred.");
                 return BadRequest(new
                 {
                     error = "Invalid model",
-                    message = "The request model is invalid.",
-                    path
+                    message = "The request model is invalid."
                 });
             }
             else if (exception is JsonException jsonEx)
             {
-                logger.LogInformation(jsonEx, "Malformed JSON in {Path}: {Message}", path, jsonEx.Message);
+                logger.LogInformation(jsonEx, "Malformed JSON exception occurred.");
                 return BadRequest(new
                 {
                     error = "Malformed JSON",
-                    message = "The request contains malformed JSON.",
-                    path
+                    message = "The request contains malformed JSON."
                 });
             }
             // Handle IO errors with critical logging
             else if (exception is IOException)
             {
-                logger.LogCritical(exception, "An IO error occurred in {Path}", path);
-                return StatusCode(500, new { error = "Internal server error", message = "A system error occurred." });
+                logger.LogCritical(exception, "An IO error occurred.");
+                return StatusCode(500, "An error occurred while processing the request.");
             }
 
             // Handle other exceptions
-            logger.LogError(exception, "Error in {Path}", path);
-            return StatusCode(500, new { error = "Internal server error", message = "An unexpected error occurred." });
+            logger.LogError(exception, "An unexpected error occurred.");
+            return StatusCode(500, "An error occurred while processing the request.");
         }
     }
 }
