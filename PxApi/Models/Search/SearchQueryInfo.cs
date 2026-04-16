@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace PxApi.Models.Search
 {
@@ -14,10 +15,10 @@ namespace PxApi.Models.Search
         public required string Q { get; set; }
 
         /// <summary>
-        /// The result types that were searched for.
+        /// The search target that was used.
         /// </summary>
         [Required]
-        public required List<SearchResultType> Types { get; set; }
+        public required SearchTarget Target { get; set; }
 
         /// <summary>
         /// The language code that was used for the search.

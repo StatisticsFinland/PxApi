@@ -12,13 +12,13 @@ namespace PxApi.Services
         /// <inheritdoc />
         public Task<SearchResponse> SearchAsync(
             string query,
-            List<SearchResultType> types,
+            SearchTarget target,
             string lang,
             int page,
             int pageSize,
             CancellationToken ct)
         {
-            SearchResponse response = BuildEmptyResponse(query, types, lang, page, pageSize);
+            SearchResponse response = BuildEmptyResponse(query, target, lang, page, pageSize);
             return Task.FromResult(response);
         }
 
@@ -26,39 +26,24 @@ namespace PxApi.Services
         public Task<SearchResponse> SearchDatabaseAsync(
             string databaseId,
             string query,
-            List<SearchResultType> types,
+            SearchTarget target,
             string lang,
             int page,
             int pageSize,
             CancellationToken ct)
         {
-            SearchResponse response = BuildEmptyResponse(query, types, lang, page, pageSize);
+            SearchResponse response = BuildEmptyResponse(query, target, lang, page, pageSize);
             return Task.FromResult(response);
         }
 
-        /// <inheritdoc />
-        public Task<SearchResponse> SearchTableAsync(
-            string databaseId,
-            string tableId,
-            string query,
-            List<SearchResultType> types,
-            string lang,
-            int page,
-            int pageSize,
-            CancellationToken ct)
-        {
-            SearchResponse response = BuildEmptyResponse(query, types, lang, page, pageSize);
-            return Task.FromResult(response);
-        }
-
-        private static SearchResponse BuildEmptyResponse(string query, List<SearchResultType> types, string lang, int page, int pageSize)
+        private static SearchResponse BuildEmptyResponse(string query, SearchTarget target, string lang, int page, int pageSize)
         {
             return new SearchResponse
             {
                 Query = new SearchQueryInfo
                 {
                     Q = query,
-                    Types = types,
+                    Target = target,
                     Lang = lang
                 },
                 Results = [],

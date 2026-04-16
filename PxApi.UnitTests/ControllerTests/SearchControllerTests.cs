@@ -58,9 +58,9 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task SearchAsync_ValidQuery_ReturnsOkWithSearchResponse()
         {
             // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("population", [SearchResultType.Table, SearchResultType.Dimension, SearchResultType.Value], "fi");
+            SearchResponse expectedResponse = BuildEmptyResponse("population", SearchTarget.Content, "fi");
             _mockSearchService
-                .Setup(x => x.SearchAsync("population", It.IsAny<List<SearchResultType>>(), "fi", 1, 20, It.IsAny<CancellationToken>()))
+                .Setup(x => x.SearchAsync("population", It.IsAny<SearchTarget>(), "fi", 1, 20, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
 
             // Act
@@ -113,9 +113,9 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task SearchAsync_ValidQuery_LogsAuditEvent()
         {
             // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("test", [SearchResultType.Table, SearchResultType.Dimension, SearchResultType.Value], "fi");
+            SearchResponse expectedResponse = BuildEmptyResponse("test", SearchTarget.Content, "fi");
             _mockSearchService
-                .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<List<SearchResultType>>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<SearchTarget>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
 
             // Act
@@ -129,9 +129,9 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task SearchAsync_DefaultLanguage_UsesConfiguredDefault()
         {
             // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("test", [SearchResultType.Table, SearchResultType.Dimension, SearchResultType.Value], "fi");
+            SearchResponse expectedResponse = BuildEmptyResponse("test", SearchTarget.Content, "fi");
             _mockSearchService
-                .Setup(x => x.SearchAsync("test", It.IsAny<List<SearchResultType>>(), "fi", 1, 20, It.IsAny<CancellationToken>()))
+                .Setup(x => x.SearchAsync("test", It.IsAny<SearchTarget>(), "fi", 1, 20, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
 
             // Act
@@ -139,24 +139,24 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
-            _mockSearchService.Verify(x => x.SearchAsync("test", It.IsAny<List<SearchResultType>>(), "fi", It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
+            _mockSearchService.Verify(x => x.SearchAsync("test", It.IsAny<SearchTarget>(), "fi", It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Test]
         public async Task SearchAsync_WithTypesFilter_ParsesCorrectly()
         {
             // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("test", [SearchResultType.Table], "fi");
+            SearchResponse expectedResponse = BuildEmptyResponse("test", SearchTarget.Dimension, "fi");
             _mockSearchService
-                .Setup(x => x.SearchAsync("test", It.Is<List<SearchResultType>>(t => t.Count == 1 && t[0] == SearchResultType.Table), "fi", 1, 20, It.IsAny<CancellationToken>()))
+                .Setup(x => x.SearchAsync("test", SearchTarget.Dimension, "fi", 1, 20, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            ActionResult<SearchResponse> result = await _controller.SearchAsync("test", types: "table");
+            ActionResult<SearchResponse> result = await _controller.SearchAsync("test", types: "dimension");
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
-            _mockSearchService.Verify(x => x.SearchAsync("test", It.Is<List<SearchResultType>>(t => t.Count == 1 && t[0] == SearchResultType.Table), "fi", 1, 20, It.IsAny<CancellationToken>()), Times.Once);
+            _mockSearchService.Verify(x => x.SearchAsync("test", SearchTarget.Dimension, "fi", 1, 20, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         #endregion
@@ -167,9 +167,9 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task SearchDatabaseAsync_ValidQuery_ReturnsOkWithSearchResponse()
         {
             // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("population", [SearchResultType.Table, SearchResultType.Dimension, SearchResultType.Value], "fi");
+            SearchResponse expectedResponse = BuildEmptyResponse("population", SearchTarget.Content, "fi");
             _mockSearchService
-                .Setup(x => x.SearchDatabaseAsync("db1", "population", It.IsAny<List<SearchResultType>>(), "fi", 1, 20, It.IsAny<CancellationToken>()))
+                .Setup(x => x.SearchDatabaseAsync("db1", "population", It.IsAny<SearchTarget>(), "fi", 1, 20, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
 
             // Act
@@ -208,74 +208,13 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task SearchDatabaseAsync_ValidQuery_LogsAuditEvent()
         {
             // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("test", [SearchResultType.Table, SearchResultType.Dimension, SearchResultType.Value], "fi");
+            SearchResponse expectedResponse = BuildEmptyResponse("test", SearchTarget.Content, "fi");
             _mockSearchService
-                .Setup(x => x.SearchDatabaseAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<SearchResultType>>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .Setup(x => x.SearchDatabaseAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchTarget>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
 
             // Act
             await _controller.SearchDatabaseAsync("db1", "test");
-
-            // Assert
-            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
-        }
-
-        #endregion
-
-        #region Table-scoped Search
-
-        [Test]
-        public async Task SearchTableAsync_ValidQuery_ReturnsOkWithSearchResponse()
-        {
-            // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("male", [SearchResultType.Value], "fi");
-            _mockSearchService
-                .Setup(x => x.SearchTableAsync("db1", "table1", "male", It.IsAny<List<SearchResultType>>(), "fi", 1, 20, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
-
-            // Act
-            ActionResult<SearchResponse> result = await _controller.SearchTableAsync("db1", "table1", "male");
-
-            // Assert
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
-                OkObjectResult okResult = (OkObjectResult)result.Result!;
-                Assert.That(okResult.Value, Is.InstanceOf<SearchResponse>());
-            }
-        }
-
-        [Test]
-        public async Task SearchTableAsync_MissingQuery_ReturnsBadRequest()
-        {
-            // Act
-            ActionResult<SearchResponse> result = await _controller.SearchTableAsync("db1", "table1", null);
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
-        }
-
-        [Test]
-        public async Task SearchTableAsync_UnsupportedLanguage_ReturnsBadRequest()
-        {
-            // Act
-            ActionResult<SearchResponse> result = await _controller.SearchTableAsync("db1", "table1", "test", lang: "de");
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
-        }
-
-        [Test]
-        public async Task SearchTableAsync_ValidQuery_LogsAuditEvent()
-        {
-            // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("test", [SearchResultType.Table, SearchResultType.Dimension, SearchResultType.Value], "fi");
-            _mockSearchService
-                .Setup(x => x.SearchTableAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<SearchResultType>>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
-
-            // Act
-            await _controller.SearchTableAsync("db1", "table1", "test");
 
             // Assert
             _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
@@ -335,31 +274,6 @@ namespace PxApi.UnitTests.ControllerTests
             }
         }
 
-        [Test]
-        public async Task HeadSearchTable_ReturnsOk()
-        {
-            // Act
-            IActionResult result = await _controller.HeadSearchTable("db1", "table1");
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<OkResult>());
-            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
-        }
-
-        [Test]
-        public void OptionsSearchTable_ReturnsAllowHeader()
-        {
-            // Act
-            IActionResult result = _controller.OptionsSearchTable("db1", "table1");
-
-            // Assert
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(result, Is.InstanceOf<OkResult>());
-                Assert.That(_controller.Response.Headers.Allow, Is.EqualTo("GET,HEAD,OPTIONS"));
-            }
-        }
-
         #endregion
 
         #region Not-found scenarios
@@ -374,68 +288,18 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
         }
 
-        [Test]
-        public async Task SearchTableAsync_UnknownDatabase_ReturnsNotFound()
-        {
-            // Act
-            ActionResult<SearchResponse> result = await _controller.SearchTableAsync("unknown", "table1", "test");
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
-        }
-
-        [Test]
-        public async Task SearchTableAsync_UnknownTable_ReturnsNotFound()
-        {
-            // Act
-            ActionResult<SearchResponse> result = await _controller.SearchTableAsync("db1", "unknown", "test");
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
-        }
-
-        [Test]
-        public void HeadSearchDatabase_UnknownDatabase_ReturnsNotFound()
-        {
-            // Act
-            IActionResult result = _controller.HeadSearchDatabase("unknown");
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundResult>());
-        }
-
-        [Test]
-        public async Task HeadSearchTable_UnknownDatabase_ReturnsNotFound()
-        {
-            // Act
-            IActionResult result = await _controller.HeadSearchTable("unknown", "table1");
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundResult>());
-        }
-
-        [Test]
-        public async Task HeadSearchTable_UnknownTable_ReturnsNotFound()
-        {
-            // Act
-            IActionResult result = await _controller.HeadSearchTable("db1", "unknown");
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<NotFoundResult>());
-        }
-
         #endregion
 
         #region Helpers
 
-        private static SearchResponse BuildEmptyResponse(string query, List<SearchResultType> types, string lang)
+        private static SearchResponse BuildEmptyResponse(string query, SearchTarget target, string lang)
         {
             return new SearchResponse
             {
                 Query = new SearchQueryInfo
                 {
                     Q = query,
-                    Types = types,
+                    Target = target,
                     Lang = lang
                 },
                 Results = [],
