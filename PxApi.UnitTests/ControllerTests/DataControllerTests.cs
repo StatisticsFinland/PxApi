@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Px.Utils.Language;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Metadata;
@@ -80,31 +79,10 @@ namespace PxApi.UnitTests.ControllerTests
                 new DoubleDataValue(2.0, DataValueType.Exists)
             ];
 
-            // Added TableGroup list fixture
-            List<TableGroup> groupingsFixture = [
-                new TableGroup
-            {
-                Code = "grp1",
-                Name = new MultilanguageString([
-                    new("fi", "group.fi"),
-                    new("sv", "group.sv"),
-                    new("en", "group.en")
-                ]),
-                GroupingCode = "rootGrouping",
-                GroupingName = new MultilanguageString([
-                    new("fi", "groupingname.fi"),
-                    new("sv", "groupingname.sv"),
-                    new("en", "groupingname.en")
-                ]),
-                Links = []
-            }
-            ];
-
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
             _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>(), CancellationToken.None)).ReturnsAsync(mockMetadata);
             _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>(), CancellationToken.None)).ReturnsAsync(mockData);
-            _cachedDbConnector.Setup(x => x.GetGroupingsCachedAsync(It.IsAny<PxFileRef>(), CancellationToken.None)).ReturnsAsync(groupingsFixture);
         }
 
         #region GetDataAsync Tests

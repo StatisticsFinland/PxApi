@@ -26,7 +26,6 @@ namespace PxApi.Caching
         private const string LAST_UPDATED_SEED = "553313ea";
         private const string META_SEED = "c4d8ee8f";
         private const string DATA_SEED = "398baf7d";
-        private const string GROUPINGS_SEED = "c7fe21b1";
         private const string DATABASE_NAME_SEED = "1e4c2a77";
 
         /// <summary>
@@ -64,37 +63,6 @@ namespace PxApi.Caching
         }
 
         /// <summary>
-        /// Attempts to retrieve cached groupings for the specified file.
-        /// </summary>
-        /// <param name="file">The file for which to retrieve groupings.</param>
-        /// <param name="groupings">When this method returns contains the cached grouping list task if found.</param>
-        /// <returns>True if found in cache, otherwise false.</returns>
-        public bool TryGetGroupings(PxFileRef file, out Task<IReadOnlyList<TableGroup>>? groupings)
-        {
-            return _cache.TryGetValue(HashCode.Combine(GROUPINGS_SEED, file), out groupings);
-        }
-
-        /// <summary>
-        /// Adds cached groupings for the specified file.
-        /// </summary>
-        /// <param name="file">The file whose groupings are being cached.</param>
-        /// <param name="groupings">Task producing the groupings list.</param>
-        public void SetGroupings(PxFileRef file, Task<IReadOnlyList<TableGroup>> groupings)
-        {
-            CacheConfig config = cacheConfigs[file.DataBase.Id].Groupings;
-            MemoryCacheEntryOptions options = new()
-            {
-                SlidingExpiration = config.SlidingExpirationSeconds,
-                AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds,
-                Priority = CacheItemPriority.Normal,
-                Size = memoryCacheConfig.DefaultTableGroupSize
-            };
-            int cacheKey = HashCode.Combine(GROUPINGS_SEED, file);
-            _cache.Set(cacheKey, groupings, options);
-            AttachEvictionOnFail(groupings, cacheKey);
-        }
-
-        /// <summary>
         /// Attempts to retrieve a cached multilanguage database name (from Alias_*.txt files) for the specified database.
         /// </summary>
         /// <param name="dataBase">Database reference whose name is requested.</param>
@@ -112,13 +80,13 @@ namespace PxApi.Caching
         /// <param name="name">Task producing the multilanguage database name.</param>
         public void SetDatabaseName(DataBaseRef dataBase, Task<MultilanguageString> name)
         {
-            CacheConfig config = cacheConfigs[dataBase.Id].Groupings; // Reuse grouping cache config (small text files)
+            CacheConfig config = cacheConfigs[dataBase.Id].Meta;
             MemoryCacheEntryOptions options = new()
             {
                 SlidingExpiration = config.SlidingExpirationSeconds,
                 AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds,
                 Priority = CacheItemPriority.Normal,
-                Size = memoryCacheConfig.DefaultTableGroupSize
+                Size = memoryCacheConfig.DefaultMetaSize
             };
             int cacheKey = HashCode.Combine(DATABASE_NAME_SEED, dataBase);
             _cache.Set(cacheKey, name, options);
@@ -331,12 +299,6 @@ namespace PxApi.Caching
 
         private void OnMetaCacheEvicted(object? key, object? value, EvictionReason reason, object? state)
         {
-            // Evict related data and grouping caches when metadata is evicted for any reason.
-            if (key is PxFileRef fileRef)
-            {
-                _cache.Remove(HashCode.Combine(GROUPINGS_SEED, fileRef));
-            }
-
             if (value is MetaCacheContainer metaContainder)
             {
                 metaContainder.GetRelatedMaps().ForEach(map =>

@@ -21,11 +21,6 @@ namespace PxApi.Configuration
         public int DefaultUpdateTaskSize { get; }
 
         /// <summary>
-        /// Default size for table group cache items. Default is 100 bytes.
-        /// </summary>
-        public int DefaultTableGroupSize { get; }
-
-        /// <summary>
         /// Default size for file list cache items. Default is 350000 bytes.
         /// </summary>
         public int DefaultFileListSize { get; }
@@ -46,7 +41,6 @@ namespace PxApi.Configuration
 
             DefaultDataCellSize = section.GetValue<int>(nameof(DefaultDataCellSize), 16);
             DefaultUpdateTaskSize = section.GetValue<int>(nameof(DefaultUpdateTaskSize), 50);
-            DefaultTableGroupSize = section.GetValue<int>(nameof(DefaultTableGroupSize), 100);
             DefaultFileListSize = section.GetValue<int>(nameof(DefaultFileListSize), 350000);
             DefaultMetaSize = section.GetValue<int>(nameof(DefaultMetaSize), 200000);
         }

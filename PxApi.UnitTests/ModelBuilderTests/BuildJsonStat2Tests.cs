@@ -8,7 +8,6 @@ using Px.Utils.Models.Metadata;
 using PxApi.ModelBuilders;
 using PxApi.Models.JsonStat;
 using System.Globalization;
-using PxApi.Models;
 
 namespace PxApi.UnitTests.ModelBuilderTests
 {
@@ -18,26 +17,6 @@ namespace PxApi.UnitTests.ModelBuilderTests
     [TestFixture]
     public static class BuildJsonStat2Tests
     {
-        // Added TableGroup list fixture
-        private static readonly List<TableGroup> GROUPINGS = [
-            new TableGroup
-            {
-                Code = "grp1",
-                Name = new MultilanguageString([
-                    new("fi", "Ryhmä 1"),
-                    new("sv", "Grupp 1"),
-                    new("en", "Group 1")
-                ]),
-                GroupingCode = "rootGrouping",
-                GroupingName = new MultilanguageString([
-                    new("fi", "Pääryhmä"),
-                    new("sv", "Huvudgrupp"),
-                    new("en", "Main Group")
-                ]),
-                Links = []
-            }
-        ];
-
         private static readonly string[] expected = ["content-code", "time-code", "dim0-code", "dim1-code"];
 
         [Test]
@@ -66,7 +45,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data, lang);
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, lang);
 
             // Assert
             DateTime expectedLastUpdated = new(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc);
@@ -118,11 +97,6 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 Assert.That(translations[DataValueType.Empty], Is.EqualTo("......"));
                 Assert.That(translations[DataValueType.Nill], Is.EqualTo("Magnitude nil"));
 
-                Assert.That(result.Extension.ContainsKey("groupings"));
-                List<TableGroupJsonStatExtension>? extensionGroupings = result.Extension["groupings"] as List<TableGroupJsonStatExtension>;
-                Assert.That(extensionGroupings, Is.Not.Null);
-                Assert.That(extensionGroupings![0].Code, Is.EqualTo("grp1"));
-                Assert.That(extensionGroupings[0].Name, Is.EqualTo("Group 1"));
             };
         }
 
@@ -148,7 +122,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data);
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data);
 
             // Assert
             using (Assert.EnterMultipleScope())
@@ -195,7 +169,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data, lang);
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, lang);
 
             // Assert
             using (Assert.EnterMultipleScope())
@@ -228,7 +202,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data, "en");
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, "en");
 
             // Assert
             using (Assert.EnterMultipleScope())
@@ -263,7 +237,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             ];
 
             // Act
-            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data, "en");
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, "en");
 
             // Assert
             using (Assert.EnterMultipleScope())
@@ -288,7 +262,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             string lang = "en";
 
             // Act
-            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data, lang);
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, lang);
 
             // Assert
             using (Assert.EnterMultipleScope())
@@ -335,7 +309,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             // Act & Assert
             ArgumentException ex = Assert.Throws<ArgumentException>(() =>
-                JsonStat2Builder.BuildJsonStat2(meta, GROUPINGS, data, "en"));
+                JsonStat2Builder.BuildJsonStat2(meta, data, "en"));
             Assert.That(ex.Message, Does.Contain("No DESCRIPTION found in table level metadata"));
         }
     }

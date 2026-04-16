@@ -73,15 +73,6 @@ namespace PxApi.Caching
         Task<IReadOnlyMatrixMetadata> GetMetadataCachedAsync(PxFileRef pxFile, CancellationToken ct = default);
 
         /// <summary>
-        /// Retrieves cached groupings for a table. The group membership is currently determined by the folder that contains the PX file.
-        /// Placeholder values are used for translated names and grouping metadata until the actual file-based implementation is added.
-        /// </summary>
-        /// <param name="pxFile">The PX file for which to get the cached groupings.</param>
-        /// <param name="ct">A cancellation token to cancel the operation.</param>
-        /// <returns>A task resolving to a read-only list of <see cref="TableGroup"/> objects the table belongs to.</returns>
-        Task<IReadOnlyList<TableGroup>> GetGroupingsCachedAsync(PxFileRef pxFile, CancellationToken ct = default);
-
-        /// <summary>
         /// Retrieves a cached multilanguage database name composed from Alias_*.txt files in the given database folder.
         /// Builds and caches it if not already cached.
         /// </summary>

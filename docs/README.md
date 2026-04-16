@@ -9,7 +9,7 @@ PxApi is a .NET 10.0 Web API for accessing PX statistical datasets. It provides 
 - Data retrieval with filter semantics (code, range, positional) via GET query parameters or POST body (`/data/databases/{database}/tables/{table}`)
 - Content negotiation (JSON-stat 2.0 or CSV) using the `Accept` header
 - Cache management endpoints (database level and single table) (`/cache/databases/{database}` / `/cache/databases/{database}/tables/{id}`)
-- Global and per-database caching (file lists, metadata, data, last updated timestamps, grouping metadata)
+- Global and per-database caching (file lists, metadata, data, last updated timestamps)
 - Feature flags (Swagger visibility of cache endpoints)
 - Controller-specific API key authentication for all endpoints
 - Multiple storage types: Mounted (local / network), Azure File Share, Azure Blob Storage
@@ -181,7 +181,6 @@ Key sections:
   - `MaxSizeBytes` (default 524288000)
   - `DefaultDataCellSize`
   - `DefaultUpdateTaskSize`
-  - `DefaultTableGroupSize`
   - `DefaultFileListSize`
   - `DefaultMetaSize`
 - `QueryLimits` Request size limits:
@@ -315,7 +314,6 @@ Global cache size limit controlled via `Cache.MaxSizeBytes`. Individual item siz
 - Metadata objects
 - Data arrays
 - Last updated timestamps (per PX file)
-- Groupings (if implemented via `CacheConfig.Groupings`)
 
 ## Storage Backends
 - Mounted (local / network path) direct file access
