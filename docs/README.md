@@ -183,6 +183,7 @@ Key sections:
   - `DefaultUpdateTaskSize`
   - `DefaultFileListSize`
   - `DefaultMetaSize`
+  - `DefaultAliasSize`
 - `QueryLimits` Request size limits:
   - `JsonMaxCells` (used for any future JSON minimal format endpoints)
   - `JsonStatMaxCells` (enforced in current data endpoints; exceeding returns 413)

@@ -86,7 +86,7 @@ namespace PxApi.Caching
                 SlidingExpiration = config.SlidingExpirationSeconds,
                 AbsoluteExpirationRelativeToNow = config.AbsoluteExpirationSeconds,
                 Priority = CacheItemPriority.Normal,
-                Size = memoryCacheConfig.DefaultMetaSize
+                Size = memoryCacheConfig.DefaultAliasSize
             };
             int cacheKey = HashCode.Combine(DATABASE_NAME_SEED, dataBase);
             _cache.Set(cacheKey, name, options);
