@@ -93,8 +93,7 @@ namespace PxApi.Controllers
                             return BadRequest("The content is not available in the requested language.");
                         }
 
-                        IReadOnlyList<TableGroup> groupings = await cachedConnector.GetGroupingsCachedAsync(fileRef.Value, ct);
-                        JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, groupings, resolvedLang);
+                        JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, resolvedLang);
                         return Ok(jsonStat2);
                     }
                 }

@@ -57,11 +57,9 @@ namespace PxApi.UnitTests.ControllerTests
             PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             string lang = "en";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-            List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
             _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
             _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ReturnsAsync(groups);
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
@@ -132,13 +130,11 @@ namespace PxApi.UnitTests.ControllerTests
             PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             string lang = "en";
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-            List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
             string[] expectedId = ["content-code", "time-code", "dim0-code", "dim1-code"];
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
             _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
             _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ReturnsAsync(groups);
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
@@ -157,131 +153,6 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
                 Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
             };
-        }
-
-        [Test]
-        public async Task GetMetadataById_WithMultipleGroupings_ReturnsJsonStat2WithAllGroupings()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
-            string lang = "fi";
-            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-            List<TableGroup> groups = TableGroupTestUtils.CreateTestTableGroups(3);
-            string[] expectedId = ["content-code", "time-code", "dim0-code", "dim1-code"];
-
-            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ReturnsAsync(groups);
-
-            // Act
-            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<JsonStat2>>());
-            OkObjectResult? okResult = result.Result as OkObjectResult;
-            Assert.That(okResult, Is.Not.Null);
-            JsonStat2? resultMeta = okResult.Value as JsonStat2;
-            Assert.That(resultMeta, Is.Not.Null);
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(resultMeta.Id, Is.EqualTo(expectedId));
-                Assert.That(resultMeta.Label, Is.EqualTo("table-description.fi")); // Using default language
-                Assert.That(resultMeta.Source, Is.EqualTo("table-source.fi"));
-                Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
-                Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
-                Assert.That(resultMeta.Extension, Is.Not.Null);
-                Assert.That(resultMeta.Extension!.ContainsKey("groupings"));
-                Assert.That(resultMeta.Extension["groupings"], Is.InstanceOf<List<TableGroupJsonStatExtension>>());
-                Assert.That(resultMeta.Extension["groupings"] as List<TableGroupJsonStatExtension>, Has.Count.EqualTo(3));
-            };
-
-            // Verify that GetGroupingsCachedAsync was called with the correct file
-            _mockDbConnector.Verify(x => x.GetGroupingsCachedAsync(file, CancellationToken.None), Times.Once);
-        }
-
-        [Test]
-        public async Task GetMetadataById_WithEmptyGroupings_ReturnsJsonStat2()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
-            string lang = "sv";
-            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-            List<TableGroup> emptyGroups = []; // Empty groupings list
-            string[] expectedId = ["content-code", "time-code", "dim0-code", "dim1-code"];
-
-            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ReturnsAsync(emptyGroups);
-
-            // Act
-            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
-
-            // Assert
-            Assert.That(result, Is.InstanceOf<ActionResult<JsonStat2>>());
-            OkObjectResult? okResult = result.Result as OkObjectResult;
-            Assert.That(okResult, Is.Not.Null);
-            JsonStat2? resultMeta = okResult.Value as JsonStat2;
-            Assert.That(resultMeta, Is.Not.Null);
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(resultMeta.Id, Is.EqualTo(expectedId));
-                Assert.That(resultMeta.Label, Is.EqualTo("table-description.sv"));
-                Assert.That(resultMeta.Source, Is.EqualTo("table-source.sv"));
-                Assert.That(resultMeta.Dimension, Has.Count.EqualTo(4));
-                Assert.That(resultMeta.Size, Has.Count.EqualTo(4));
-                Assert.That(resultMeta.Extension!.ContainsKey("groupings"));
-                Assert.That(resultMeta.Extension["groupings"], Is.InstanceOf<List<TableGroupJsonStatExtension>>());
-                Assert.That(resultMeta.Extension["groupings"] as List<TableGroupJsonStatExtension>, Has.Count.EqualTo(0));
-            };
-
-            // Verify that GetGroupingsCachedAsync was called even when returning empty list
-            _mockDbConnector.Verify(x => x.GetGroupingsCachedAsync(file, CancellationToken.None), Times.Once);
-        }
-
-        [Test]
-        public async Task GetMetadataById_GroupingsCacheThrowsException_ReturnsNotFound()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
-            string lang = "en";
-            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-
-            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ThrowsAsync(new FileNotFoundException("Grouping file not found"));
-
-            // Act
-            ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, lang);
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
-            NotFoundObjectResult? notFoundResult = result.Result as NotFoundObjectResult;
-            Assert.That(notFoundResult?.Value, Is.EqualTo("Resource not found."));
-        }
-
-        [Test]
-        public void GetMetadataById_GroupingsCacheThrowsGeneralException_PropagatesException()
-        {
-            // Arrange
-            DataBaseRef database = DataBaseRef.Create("exampledb");
-            PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
-            string lang = "en";
-            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-
-            _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
-            _mockDbConnector.Setup(x => x.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
-            _mockDbConnector.Setup(x => x.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ThrowsAsync(new InvalidOperationException("Cache error"));
-
-            // Act & Assert
-            Assert.That(async () => await _controller.GetTableMetadataById(database.Id, file.Id, lang),
-                Throws.InstanceOf<InvalidOperationException>());
         }
 
         [Test]
@@ -382,14 +253,12 @@ namespace PxApi.UnitTests.ControllerTests
             DataBaseRef database = DataBaseRef.Create("exampledb");
             PxFileRef file = PxFileRef.ValidateAndCreate("filename", database, ["statisticalProgram"]);
             MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
-            List<TableGroup> groups = [TableGroupTestUtils.CreateTestTableGroup()];
             string[] expectedId = ["content-code", "time-code", "dim0-code", "dim1-code"];
 
 
             _mockDbConnector.Setup(x => x.GetDataBaseReference(database.Id)).Returns(database);
             _mockDbConnector.Setup(ds => ds.GetFileReferenceCachedAsync(file.Id, database, CancellationToken.None)).ReturnsAsync(file);
             _mockDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(meta);
-            _mockDbConnector.Setup(x => x.GetGroupingsCachedAsync(file, CancellationToken.None)).ReturnsAsync(groups);
 
             // Act
             ActionResult<JsonStat2> result = await _controller.GetTableMetadataById(database.Id, file.Id, null);

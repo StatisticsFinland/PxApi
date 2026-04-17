@@ -23,7 +23,6 @@ namespace PxApi.UnitTests.ConfigurationTests
                     ["Cache:MaxSizeBytes"] = expectedCacheSize.ToString(),
                     ["Cache:DefaultDataCellSize"] = "32",
                     ["Cache:DefaultUpdateTaskSize"] = "100",
-                    ["Cache:DefaultTableGroupSize"] = "200",
                     ["Cache:DefaultFileListSize"] = "500000",
                     ["Cache:DefaultMetaSize"] = "300000"
                 }
