@@ -5,6 +5,7 @@ using Moq;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.Controllers;
+using PxApi.Exceptions;
 using PxApi.Models;
 using PxApi.Models.Search;
 using PxApi.Services;
@@ -286,6 +287,79 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
+        }
+
+        #endregion
+
+        #region Error handling
+
+        [Test]
+        public async Task SearchAsync_SearchUnavailable_Returns503WithGenericMessage()
+        {
+            // Arrange
+            _mockSearchService
+                .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<SearchTarget>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new SearchUnavailableException("Connection refused"));
+
+            // Act
+            ActionResult<SearchResponse> result = await _controller.SearchAsync("test");
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result.Result, Is.InstanceOf<ObjectResult>());
+                ObjectResult objectResult = (ObjectResult)result.Result!;
+                Assert.That(objectResult.StatusCode, Is.EqualTo(503));
+                Assert.That(objectResult.Value?.ToString(), Does.Not.Contain("Connection refused"));
+                Assert.That(objectResult.Value?.ToString(), Is.EqualTo("Search is temporarily unavailable."));
+            }
+        }
+
+        [Test]
+        public async Task SearchDatabaseAsync_SearchUnavailable_Returns503WithGenericMessage()
+        {
+            // Arrange
+            _mockSearchService
+                .Setup(x => x.SearchDatabaseAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchTarget>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new SearchUnavailableException("Internal error details"));
+
+            // Act
+            ActionResult<SearchResponse> result = await _controller.SearchDatabaseAsync("db1", "test");
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result.Result, Is.InstanceOf<ObjectResult>());
+                ObjectResult objectResult = (ObjectResult)result.Result!;
+                Assert.That(objectResult.StatusCode, Is.EqualTo(503));
+                Assert.That(objectResult.Value?.ToString(), Does.Not.Contain("Internal error details"));
+            }
+        }
+
+        [Test]
+        public async Task SearchAsync_QueryTooLong_ReturnsBadRequest()
+        {
+            // Arrange
+            string longQuery = new('a', 401);
+
+            // Act
+            ActionResult<SearchResponse> result = await _controller.SearchAsync(longQuery);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+        }
+
+        [Test]
+        public async Task SearchDatabaseAsync_QueryTooLong_ReturnsBadRequest()
+        {
+            // Arrange
+            string longQuery = new('a', 401);
+
+            // Act
+            ActionResult<SearchResponse> result = await _controller.SearchDatabaseAsync("db1", longQuery);
+
+            // Assert
+            Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
         }
 
         #endregion

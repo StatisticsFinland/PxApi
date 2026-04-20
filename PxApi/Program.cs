@@ -13,7 +13,10 @@ using PxApi.OpenApi;
 using PxApi.OpenApi.DocumentFilters;
 using PxApi.OpenApi.SchemaFilters;
 using PxApi.Services;
+using PxApi.Services.Search;
 using PxApi.Utilities;
+using Elastic.Clients.Elasticsearch;
+using Elastic.Transport;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
@@ -125,7 +128,7 @@ namespace PxApi
                 options.JsonSerializerOptions.PropertyNameCaseInsensitive = GlobalJsonConverterOptions.Default.PropertyNameCaseInsensitive;
                 options.JsonSerializerOptions.AllowTrailingCommas = GlobalJsonConverterOptions.Default.AllowTrailingCommas;
                 options.JsonSerializerOptions.Encoder = GlobalJsonConverterOptions.Default.Encoder;
-                
+
                 // Copy all converters from the global options
                 foreach (JsonConverter converter in GlobalJsonConverterOptions.Default.Converters)
                 {
@@ -173,19 +176,19 @@ namespace PxApi
 
                 // Add the custom schema filter for DoubleDataValue to ensure it appears as number type in OpenAPI
                 c.SchemaFilter<DoubleDataValueSchemaFilter>();
-                
+
                 // Add document filter to remove DataValueType and DoubleDataValue component schemas
                 c.DocumentFilter<DataValueDocumentFilter>();
 
                 // Add document filter to remove Filter subclass component schemas
                 c.DocumentFilter<FilterSubclassDocumentFilter>();
-                
+
                 // Add schema filter for Filter types to document the custom JSON structure
                 c.SchemaFilter<FilterSchemaFilter>();
-                
+
                 // Add document filter to enhance DataController POST endpoint documentation with request body examples
                 c.DocumentFilter<DataControllerPostEndpointDocumentFilter>();
-                
+
                 // Add document filter to enhance DataController GET endpoint documentation with query parameter examples
                 c.DocumentFilter<DataControllerGetEndpointDocumentFilter>();
 
@@ -213,13 +216,13 @@ namespace PxApi
                 // Attribute-based operationId assignment
                 c.OperationFilter<OperationIdOperationFilter>();
             });
-            
+
             // Configure MemoryCache with global cache size limit
             serviceCollection.AddMemoryCache(options =>
             {
                 options.SizeLimit = AppSettings.Active.Cache.MaxSizeBytes;
             });
-            
+
             // Register database connectors as keyed services
             serviceCollection.AddDataBaseConnectors();
 
@@ -233,8 +236,15 @@ namespace PxApi
             serviceCollection.AddHttpContextAccessor();
             serviceCollection.AddScoped<IAuditLogService, AuditLogService>();
 
-            // Register search service (stub for development; replace with real implementation later)
-            serviceCollection.AddScoped<ISearchService, StubSearchService>();
+            // Register search service: only when SearchController feature flag is enabled
+            SearchConfig searchConfig = AppSettings.Active.Search;
+            if (searchConfig.IsEnabled)
+            {
+                ElasticsearchClient esClient = new(new ElasticsearchClientSettings(searchConfig.CloudId, new ApiKey(searchConfig.ApiKey)));
+                serviceCollection.AddSingleton(esClient);
+                serviceCollection.AddSingleton(searchConfig);
+                serviceCollection.AddScoped<ISearchService, ElasticSearchService>();
+            }
         }
     }
 }

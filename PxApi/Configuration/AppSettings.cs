@@ -60,10 +60,15 @@ namespace PxApi.Configuration
         public ApplicationInsightsConfig ApplicationInsights { get; }
 
         /// <summary>
+        /// Elasticsearch search backend configuration.
+        /// </summary>
+        public SearchConfig Search { get; }
+
+        /// <summary>
         /// The currently active configuration for the application.
         /// </summary>
         public static AppSettings Active
-        { 
+        {
             get
             {
                 if (_active is null)
@@ -84,7 +89,7 @@ namespace PxApi.Configuration
         /// <exception cref="InvalidOperationException">Thrown if required configuration values are missing.</exception>
         private AppSettings(IConfiguration configuration)
         {
-            string rootUrlString = configuration.GetValue<string>(nameof(RootUrl)) 
+            string rootUrlString = configuration.GetValue<string>(nameof(RootUrl))
                 ?? throw new InvalidOperationException($"Missing required configuration value: {nameof(RootUrl)}");
             RootUrl = new Uri(rootUrlString, UriKind.Absolute);
 
@@ -105,6 +110,7 @@ namespace PxApi.Configuration
             Localization = new LocalizationConfig(configuration.GetSection(nameof(Localization)));
             ApplicationInsights = new ApplicationInsightsConfig(configuration.GetSection(nameof(ApplicationInsights)));
             BlobReadMode = new BlobReadModeConfig(configuration.GetSection(nameof(BlobReadMode)));
+            Search = new SearchConfig(configuration.GetSection(nameof(Search)));
         }
 
         /// <summary>

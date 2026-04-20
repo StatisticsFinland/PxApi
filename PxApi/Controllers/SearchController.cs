@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.FeatureManagement.Mvc;
 using PxApi.Authentication;
 using PxApi.Caching;
 using PxApi.Configuration;
+using PxApi.Exceptions;
 using PxApi.Models;
 using PxApi.Models.Search;
 using PxApi.OpenApi;
@@ -16,13 +18,25 @@ namespace PxApi.Controllers
     /// </summary>
     /// <remarks>
     /// Supports hierarchical scoping: global, database-level, and table-level search.
+    /// Gated by the <c>SearchController</c> feature flag; returns 404 when disabled.
     /// </remarks>
     [ApiKeyAuth]
+    [FeatureGate(nameof(SearchController))]
     [Route("meta")]
     [ApiController]
     public class SearchController(ISearchService searchService, ICachedDataSource cachedDataSource, ILogger<SearchController> logger, IAuditLogService auditLogger) : ControllerBase
     {
         private const int MAX_PAGE_SIZE = 100;
+
+        /// <summary>
+        /// Maximum allowed length for the user-provided search query.
+        /// </summary>
+        /// <remarks>
+        /// This limit bounds untrusted input to keep request validation and downstream search processing predictable.
+        /// The value of <c>400</c> allows typical multi-term search phrases while preventing excessively large query strings
+        /// from increasing processing overhead or altering API behavior in unexpected ways.
+        /// </remarks>
+        private const int MAX_QUERY_LENGTH = 400;
 
         /// <summary>
         /// Searches across all databases for tables, dimensions, and values.
@@ -41,6 +55,7 @@ namespace PxApi.Controllers
         [Produces("application/json")]
         [ProducesResponseType(typeof(SearchResponse), 200)]
         [ProducesResponseType(typeof(string), 400)]
+        [ProducesResponseType(typeof(string), 503)]
         public async Task<ActionResult<SearchResponse>> SearchAsync(
             [FromQuery] string? q,
             [FromQuery] string? types = null,
@@ -50,6 +65,7 @@ namespace PxApi.Controllers
             CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(q)) return BadRequest("The query parameter 'q' is required.");
+            if (q.Length > MAX_QUERY_LENGTH) return BadRequest("Query too long.");
             if (page < 1 || pageSize < 1) return BadRequest("Invalid paging values.");
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
 
@@ -61,8 +77,18 @@ namespace PxApi.Controllers
 
             auditLogger.LogAuditEvent();
 
-            SearchResponse response = await searchService.SearchAsync(q, target, actualLang, page, pageSize, ct);
-            return Ok(response);
+            try
+            {
+                // Elasticsearch multi_match treats the query as literal text (no query DSL parsing),
+                // so user input is safe from injection. Length is validated above.
+                SearchResponse response = await searchService.SearchAsync(q, target, actualLang, page, pageSize, ct);
+                return Ok(response);
+            }
+            catch (SearchUnavailableException ex)
+            {
+                logger.LogError(ex, "Search backend unavailable for query {Query}", InputSanitizer.SanitizeForLog(q));
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, "Search is temporarily unavailable.");
+            }
         }
 
         /// <summary>
@@ -85,6 +111,7 @@ namespace PxApi.Controllers
         [ProducesResponseType(typeof(SearchResponse), 200)]
         [ProducesResponseType(typeof(string), 400)]
         [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(string), 503)]
         public async Task<ActionResult<SearchResponse>> SearchDatabaseAsync(
             [FromRoute] string database,
             [FromQuery] string? q,
@@ -95,6 +122,7 @@ namespace PxApi.Controllers
             CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(q)) return BadRequest("The query parameter 'q' is required.");
+            if (q.Length > MAX_QUERY_LENGTH) return BadRequest("Query too long.");
             if (page < 1 || pageSize < 1) return BadRequest("Invalid paging values.");
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
 
@@ -118,8 +146,18 @@ namespace PxApi.Controllers
             {
                 auditLogger.LogAuditEvent();
 
-                SearchResponse response = await searchService.SearchDatabaseAsync(dbRef.Value.Id, q, target, actualLang, page, pageSize, ct);
-                return Ok(response);
+                try
+                {
+                    // Elasticsearch multi_match treats the query as literal text (no query DSL parsing),
+                    // so user input is safe from injection. Length is validated above.
+                    SearchResponse response = await searchService.SearchDatabaseAsync(dbRef.Value.Id, q, target, actualLang, page, pageSize, ct);
+                    return Ok(response);
+                }
+                catch (SearchUnavailableException ex)
+                {
+                    logger.LogError(ex, "Search backend unavailable for query {Query}", InputSanitizer.SanitizeForLog(q));
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable, "Search is temporarily unavailable.");
+                }
             }
         }
 
