@@ -3,13 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PxApi.Caching;
-using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.Exceptions;
 using PxApi.Models;
 using PxApi.Models.Search;
 using PxApi.Services;
+using PxApi.UnitTests.ModelBuilderTests;
 using PxApi.UnitTests.Utils;
+using PxApi.Utilities;
 
 namespace PxApi.UnitTests.ControllerTests
 {
@@ -21,6 +22,8 @@ namespace PxApi.UnitTests.ControllerTests
         private Mock<ILogger<SearchController>> _mockLogger = null!;
         private Mock<IAuditLogService> _mockAuditLogger = null!;
         private SearchController _controller = null!;
+        private DataBaseRef _db1Ref;
+        private PxFileRef _table1Ref;
 
         [SetUp]
         public void SetUp()
@@ -30,13 +33,14 @@ namespace PxApi.UnitTests.ControllerTests
             _mockLogger = new Mock<ILogger<SearchController>>();
             _mockAuditLogger = new Mock<IAuditLogService>();
 
-            DataBaseRef db1Ref = DataBaseRef.Create("db1");
+            _db1Ref = DataBaseRef.Create("db1");
+            _table1Ref = PxFileRef.ValidateAndCreate("table1", _db1Ref);
             _mockCachedDataSource
                 .Setup(x => x.GetDataBaseReference("db1"))
-                .Returns(db1Ref);
+                .Returns(_db1Ref);
             _mockCachedDataSource
-                .Setup(x => x.GetFileReferenceCachedAsync("table1", db1Ref, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(PxFileRef.ValidateAndCreate("table1", db1Ref));
+                .Setup(x => x.GetFileReferenceCachedAsync("table1", _db1Ref, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(_table1Ref);
 
             _controller = new SearchController(_mockSearchService.Object, _mockCachedDataSource.Object, _mockLogger.Object, _mockAuditLogger.Object)
             {
@@ -59,7 +63,7 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task SearchAsync_ValidQuery_ReturnsOkWithSearchResponse()
         {
             // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("population", SearchTarget.Content, "fi");
+            SearchHitResponse expectedResponse = BuildEmptyResponse("population", SearchTarget.Content, "fi");
             _mockSearchService
                 .Setup(x => x.SearchAsync("population", It.IsAny<SearchTarget>(), "fi", 1, 20, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
@@ -114,7 +118,7 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task SearchAsync_ValidQuery_LogsAuditEvent()
         {
             // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("test", SearchTarget.Content, "fi");
+            SearchHitResponse expectedResponse = BuildEmptyResponse("test", SearchTarget.Content, "fi");
             _mockSearchService
                 .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<SearchTarget>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
@@ -127,10 +131,28 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task SearchAsync_ValidQuery_BeginsSearchScopeWithSanitizedQuery()
+        {
+            // Arrange
+            SearchHitResponse expectedResponse = BuildEmptyResponse("populationscript", SearchTarget.Content, "fi");
+            _mockSearchService
+                .Setup(x => x.SearchAsync("populationscript", It.IsAny<SearchTarget>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expectedResponse);
+
+            // Act
+            await _controller.SearchAsync("population\n<script>");
+
+            // Assert
+            _mockSearchService.Verify(x => x.SearchAsync("populationscript", It.IsAny<SearchTarget>(), "fi", 1, 20, It.IsAny<CancellationToken>()), Times.Once);
+            _mockLogger.Verify(x => x.BeginScope(It.Is<It.IsAnyType>((state, _) =>
+                MatchesSearchScope(state, "populationscript"))), Times.Once);
+        }
+
+        [Test]
         public async Task SearchAsync_DefaultLanguage_UsesConfiguredDefault()
         {
             // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("test", SearchTarget.Content, "fi");
+            SearchHitResponse expectedResponse = BuildEmptyResponse("test", SearchTarget.Content, "fi");
             _mockSearchService
                 .Setup(x => x.SearchAsync("test", It.IsAny<SearchTarget>(), "fi", 1, 20, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
@@ -147,7 +169,7 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task SearchAsync_WithTypesFilter_ParsesCorrectly()
         {
             // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("test", SearchTarget.Dimension, "fi");
+            SearchHitResponse expectedResponse = BuildEmptyResponse("test", SearchTarget.Dimension, "fi");
             _mockSearchService
                 .Setup(x => x.SearchAsync("test", SearchTarget.Dimension, "fi", 1, 20, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
@@ -168,7 +190,7 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task SearchDatabaseAsync_ValidQuery_ReturnsOkWithSearchResponse()
         {
             // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("population", SearchTarget.Content, "fi");
+            SearchHitResponse expectedResponse = BuildEmptyResponse("population", SearchTarget.Content, "fi");
             _mockSearchService
                 .Setup(x => x.SearchDatabaseAsync("db1", "population", It.IsAny<SearchTarget>(), "fi", 1, 20, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
@@ -209,7 +231,7 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task SearchDatabaseAsync_ValidQuery_LogsAuditEvent()
         {
             // Arrange
-            SearchResponse expectedResponse = BuildEmptyResponse("test", SearchTarget.Content, "fi");
+            SearchHitResponse expectedResponse = BuildEmptyResponse("test", SearchTarget.Content, "fi");
             _mockSearchService
                 .Setup(x => x.SearchDatabaseAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchTarget>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
@@ -219,6 +241,97 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
+        public async Task SearchDatabaseAsync_ValidQuery_BeginsSearchScopeWithSanitizedQueryAndDatabase()
+        {
+            // Arrange
+            SearchHitResponse expectedResponse = BuildEmptyResponse("populationscript", SearchTarget.Content, "fi");
+            _mockSearchService
+                .Setup(x => x.SearchDatabaseAsync("db1", "populationscript", It.IsAny<SearchTarget>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expectedResponse);
+
+            // Act
+            await _controller.SearchDatabaseAsync("db1", "population\n<script>");
+
+            // Assert
+            _mockSearchService.Verify(x => x.SearchDatabaseAsync("db1", "populationscript", It.IsAny<SearchTarget>(), "fi", 1, 20, It.IsAny<CancellationToken>()), Times.Once);
+            _mockLogger.Verify(x => x.BeginScope(It.Is<It.IsAnyType>((state, _) =>
+                MatchesSearchScope(state, "populationscript", "db1"))), Times.Once);
+        }
+
+        [Test]
+        public async Task SearchAsync_SearchHit_ReturnsEnrichedSummary()
+        {
+            // Arrange
+            SearchHitResponse expectedResponse = BuildHitResponse("population", SearchTarget.Content, "fi",
+            [
+                new SearchHit
+                {
+                    Database = new SearchDatabaseRef { Id = "db1", Name = "db1" },
+                    TableId = "table1"
+                }
+            ]);
+
+            _mockSearchService
+                .Setup(x => x.SearchAsync("population", It.IsAny<SearchTarget>(), "fi", 1, 20, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expectedResponse);
+            _mockCachedDataSource
+                .Setup(x => x.GetMetadataCachedAsync(_table1Ref, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(TestMockMetaBuilder.GetMockMetadata());
+
+            // Act
+            ActionResult<SearchResponse> result = await _controller.SearchAsync("population");
+
+            // Assert
+            OkObjectResult? okResult = result.Result as OkObjectResult;
+            Assert.That(okResult, Is.Not.Null);
+            SearchResponse? response = okResult!.Value as SearchResponse;
+            Assert.That(response, Is.Not.Null);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(response!.Results, Has.Count.EqualTo(1));
+                Assert.That(response.Results[0].Table.Code, Is.EqualTo("table-tableid"));
+                Assert.That(response.Results[0].Table.Name, Is.EqualTo("table-description.fi"));
+                Assert.That(response.Results[0].Table.ContentValues, Has.Count.EqualTo(2));
+                Assert.That(response.Results[0].Table.TimeRange.From, Is.EqualTo("time-value0-name.fi"));
+                Assert.That(response.Results[0].Table.Dimensions, Has.Count.EqualTo(2));
+                Assert.That(response.Results[0].Links, Has.Count.EqualTo(2));
+            }
+        }
+
+        [Test]
+        public async Task SearchAsync_MetadataLoadingFails_ReturnsInternalServerError()
+        {
+            // Arrange
+            SearchHitResponse expectedResponse = BuildHitResponse("population", SearchTarget.Content, "fi",
+            [
+                new SearchHit
+                {
+                    Database = new SearchDatabaseRef { Id = "db1", Name = "db1" },
+                    TableId = "table1"
+                }
+            ]);
+
+            _mockSearchService
+                .Setup(x => x.SearchAsync("population", It.IsAny<SearchTarget>(), "fi", 1, 20, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expectedResponse);
+            _mockCachedDataSource
+                .Setup(x => x.GetMetadataCachedAsync(_table1Ref, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Broken metadata"));
+
+            // Act
+            ActionResult<SearchResponse> result = await _controller.SearchAsync("population");
+
+            // Assert
+            ObjectResult? objectResult = result.Result as ObjectResult;
+            Assert.That(objectResult, Is.Not.Null);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(objectResult!.StatusCode, Is.EqualTo(StatusCodes.Status500InternalServerError));
+                Assert.That(objectResult.Value, Is.EqualTo("A matched table could not be loaded."));
+            }
         }
 
         #endregion
@@ -366,9 +479,14 @@ namespace PxApi.UnitTests.ControllerTests
 
         #region Helpers
 
-        private static SearchResponse BuildEmptyResponse(string query, SearchTarget target, string lang)
+        private static SearchHitResponse BuildEmptyResponse(string query, SearchTarget target, string lang)
         {
-            return new SearchResponse
+            return BuildHitResponse(query, target, lang, []);
+        }
+
+        private static SearchHitResponse BuildHitResponse(string query, SearchTarget target, string lang, List<SearchHit> results)
+        {
+            return new SearchHitResponse
             {
                 Query = new SearchQueryInfo
                 {
@@ -376,7 +494,7 @@ namespace PxApi.UnitTests.ControllerTests
                     Target = target,
                     Lang = lang
                 },
-                Results = [],
+                Results = results,
                 PagingInfo = new PagingInfo
                 {
                     CurrentPage = 1,
@@ -384,6 +502,26 @@ namespace PxApi.UnitTests.ControllerTests
                     TotalItems = 0
                 }
             };
+        }
+
+        private static bool MatchesSearchScope(object state, string expectedQuery, string? expectedDbId = null)
+        {
+            if (state is not Dictionary<string, object> scopeValues)
+            {
+                return false;
+            }
+
+            if (!scopeValues.TryGetValue(LoggerConsts.SEARCH_QUERY, out object? queryValue) || queryValue is not string actualQuery || actualQuery != expectedQuery)
+            {
+                return false;
+            }
+
+            if (expectedDbId is null)
+            {
+                return !scopeValues.ContainsKey(LoggerConsts.DB_ID);
+            }
+
+            return scopeValues.TryGetValue(LoggerConsts.DB_ID, out object? dbValue) && dbValue is string actualDbId && actualDbId == expectedDbId;
         }
 
         #endregion

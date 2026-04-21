@@ -162,10 +162,20 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(pagedTableList.Tables, Has.Count.EqualTo(2));
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(pagedTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
-                Assert.That(pagedTableList.Tables[0].Title, Is.EqualTo("table-description.en"));
-                Assert.That(pagedTableList.Tables[0].Name, Is.EqualTo(File1Name));
-                Assert.That(pagedTableList.Tables[0].LastUpdated, Is.EqualTo(meta1.GetContentDimension().Values.Map(v => v.LastUpdated).Max()));
+                Assert.That(pagedTableList.Tables[0].Table.Code, Is.EqualTo("table-tableid"));
+                Assert.That(pagedTableList.Tables[0].Table.Name, Is.EqualTo("table-description.en"));
+                Assert.That(pagedTableList.Tables[0].Table.LastUpdated, Is.EqualTo(meta1.GetContentDimension().Values.Map(v => v.LastUpdated).Max()));
+                Assert.That(pagedTableList.Tables[0].Table.ContentValues, Is.Not.Null);
+                Assert.That(pagedTableList.Tables[0].Table.ContentValues, Has.Count.EqualTo(2));
+                Assert.That(pagedTableList.Tables[0].Table.ContentValues[0].Name, Is.EqualTo("content-value0-name.en"));
+                Assert.That(pagedTableList.Tables[0].Table.ContentValues[0].Unit, Is.EqualTo("content-value0-unit.en"));
+                Assert.That(pagedTableList.Tables[0].Table.TimeRange, Is.Not.Null);
+                Assert.That(pagedTableList.Tables[0].Table.TimeRange!.From, Is.EqualTo("time-value0-name.en"));
+                Assert.That(pagedTableList.Tables[0].Table.TimeRange!.To, Is.EqualTo("time-value1-name.en"));
+                Assert.That(pagedTableList.Tables[0].Table.Dimensions, Is.Not.Null);
+                Assert.That(pagedTableList.Tables[0].Table.Dimensions, Has.Count.EqualTo(2));
+                Assert.That(pagedTableList.Tables[0].Table.Dimensions[0].Name, Is.EqualTo("dim0-name.en"));
+                Assert.That(pagedTableList.Tables[0].Table.Dimensions[0].Size, Is.EqualTo(2));
                 Assert.That(pagedTableList.Tables[0].Links, Has.Count.EqualTo(1));
                 Assert.That(pagedTableList.Tables[0].Links[0].Rel, Is.EqualTo("describedby"));
                 Assert.That(pagedTableList.Tables[0].Links[0].Href, Is.EqualTo("https://testurl.fi/meta/databases/exampledb/tables/file1?lang=en"));
@@ -303,7 +313,7 @@ namespace PxApi.UnitTests.ControllerTests
                 {
                     for (int i = 0; i < (page == 3 ? 1 : pageSize); i++)
                     {
-                        Assert.That(pagedTableList.Tables[i].Name, Is.EqualTo(files[tableIndex++].Id));
+                        Assert.That(pagedTableList.Tables[i].Table.Code, Is.EqualTo(files[tableIndex++].Id));
                     }
                 }
 
@@ -314,7 +324,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task GetTablesAsync_BuildingMetadataIsNotPossible_TableNotReadable_ReturnsTableObjectWithErrorState_TableIdIsName()
+        public async Task GetTablesAsync_BuildingMetadataIsNotPossible_ReturnsInternalServerError()
         {
             // Arrange
             string dbId = "exampledb";
@@ -336,27 +346,17 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
-            OkObjectResult? objectResult = result.Result as OkObjectResult;
+            ObjectResult? objectResult = result.Result as ObjectResult;
             Assert.That(objectResult, Is.Not.Null);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
-                if (objectResult.Value is not PagedTableList pageTableList)
-                {
-                    Assert.Fail("PagedTableList is null");
-                }
-                else
-                {
-                    Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
-                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo(Table1Name));
-                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo(Table1Name));
-                    Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
-                }
+                Assert.That(objectResult!.StatusCode, Is.EqualTo(StatusCodes.Status500InternalServerError));
+                Assert.That(objectResult.Value, Is.EqualTo("A table on the requested page could not be loaded."));
             }
         }
 
         [Test]
-        public async Task GetTablesAsync_MetadataWithoutContentDimension_ReturnsTableWithErrorStatusAndNullLastUpdated()
+        public async Task GetTablesAsync_MetadataWithoutContentDimension_ReturnsInternalServerError()
         {
             // Arrange
             string dbId = "exampledb";
@@ -395,23 +395,12 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
-            OkObjectResult? objectResult = result.Result as OkObjectResult;
+            ObjectResult? objectResult = result.Result as ObjectResult;
             Assert.That(objectResult, Is.Not.Null);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
-                if (objectResult.Value is not PagedTableList pageTableList)
-                {
-                    Assert.Fail("PagedTableList is null");
-                }
-                else
-                {
-                    Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
-                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
-                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo(Table1Name));
-                    Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
-                    Assert.That(pageTableList.Tables[0].LastUpdated, Is.EqualTo(DateTime.MinValue));
-                }
+                Assert.That(objectResult!.StatusCode, Is.EqualTo(StatusCodes.Status500InternalServerError));
+                Assert.That(objectResult.Value, Is.EqualTo("A table on the requested page could not be loaded."));
             }
         }
 

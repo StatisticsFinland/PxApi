@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.FeatureManagement.Mvc;
+using Px.Utils.Models.Metadata;
 using PxApi.Authentication;
 using PxApi.Caching;
 using PxApi.Configuration;
@@ -50,11 +51,13 @@ namespace PxApi.Controllers
         /// <returns>Search results with paging information.</returns>
         /// <response code="200">Returns matching search results.</response>
         /// <response code="400">Invalid or missing query parameters.</response>
+        /// <response code="500">A matched table contains broken metadata.</response>
         [HttpGet("search")]
         [OperationId("searchGlobal")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(SearchResponse), 200)]
         [ProducesResponseType(typeof(string), 400)]
+        [ProducesResponseType(typeof(string), 500)]
         [ProducesResponseType(typeof(string), 503)]
         public async Task<ActionResult<SearchResponse>> SearchAsync(
             [FromQuery] string? q,
@@ -65,7 +68,7 @@ namespace PxApi.Controllers
             CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(q)) return BadRequest("The query parameter 'q' is required.");
-            if (q.Length > MAX_QUERY_LENGTH) return BadRequest("Query too long.");
+            if (q.Length > MAX_QUERY_LENGTH) return BadRequest($"Query too long. Maximum length is {MAX_QUERY_LENGTH} characters.");
             if (page < 1 || pageSize < 1) return BadRequest("Invalid paging values.");
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
 
@@ -74,20 +77,31 @@ namespace PxApi.Controllers
             if (!settings.Localization.SupportedLanguages.Contains(actualLang)) return BadRequest("The requested language is not supported.");
 
             SearchTarget target = ParseTypes(types);
+            string sanitizedQuery = InputSanitizer.SanitizeInput(q);
 
-            auditLogger.LogAuditEvent();
+            using (logger.BeginSearchScope(sanitizedQuery))
+            {
+                auditLogger.LogAuditEvent();
 
-            try
-            {
-                // Elasticsearch multi_match treats the query as literal text (no query DSL parsing),
-                // so user input is safe from injection. Length is validated above.
-                SearchResponse response = await searchService.SearchAsync(q, target, actualLang, page, pageSize, ct);
-                return Ok(response);
-            }
-            catch (SearchUnavailableException ex)
-            {
-                logger.LogError(ex, "Search backend unavailable for query {Query}", InputSanitizer.SanitizeForLog(q));
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, "Search is temporarily unavailable.");
+                try
+                {
+                    // Elasticsearch multi_match treats the query as literal text (no query DSL parsing),
+                    // so user input is safe from injection. Length is validated above.
+                    SearchHitResponse response = await searchService.SearchAsync(sanitizedQuery, target, actualLang, page, pageSize, ct);
+                    SearchResponse enrichedResponse = await BuildSearchResponseAsync(response, actualLang, ct);
+                    logger.LogInformation("Search completed with {NumOfResults} results.", response.PagingInfo.TotalItems);
+                    return Ok(enrichedResponse);
+                }
+                catch (SearchUnavailableException ex)
+                {
+                    logger.LogError(ex, "Search backend unavailable.");
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable, "Search is temporarily unavailable.");
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogError(ex, "Failed to enrich search results.");
+                    return StatusCode(StatusCodes.Status500InternalServerError, "A matched table could not be loaded.");
+                }
             }
         }
 
@@ -105,12 +119,14 @@ namespace PxApi.Controllers
         /// <response code="200">Returns matching search results.</response>
         /// <response code="400">Invalid or missing query parameters.</response>
         /// <response code="404">Database not found.</response>
+        /// <response code="500">A matched table contains broken metadata.</response>
         [HttpGet("databases/{database}/search")]
         [OperationId("searchDatabase")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(SearchResponse), 200)]
         [ProducesResponseType(typeof(string), 400)]
         [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(string), 500)]
         [ProducesResponseType(typeof(string), 503)]
         public async Task<ActionResult<SearchResponse>> SearchDatabaseAsync(
             [FromRoute] string database,
@@ -122,7 +138,7 @@ namespace PxApi.Controllers
             CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(q)) return BadRequest("The query parameter 'q' is required.");
-            if (q.Length > MAX_QUERY_LENGTH) return BadRequest("Query too long.");
+            if (q.Length > MAX_QUERY_LENGTH) return BadRequest($"Query too long. Maximum length is {MAX_QUERY_LENGTH} characters.");
             if (page < 1 || pageSize < 1) return BadRequest("Invalid paging values.");
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
 
@@ -131,6 +147,7 @@ namespace PxApi.Controllers
             if (!settings.Localization.SupportedLanguages.Contains(actualLang)) return BadRequest("The requested language is not supported.");
 
             SearchTarget target = ParseTypes(types);
+            string sanitizedQuery = InputSanitizer.SanitizeInput(q);
 
             DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
             if (dbRef is null)
@@ -142,7 +159,7 @@ namespace PxApi.Controllers
                 }
             }
 
-            using (logger.BeginDbScope(dbRef.Value.Id))
+            using (logger.BeginSearchScope(sanitizedQuery, dbRef.Value.Id))
             {
                 auditLogger.LogAuditEvent();
 
@@ -150,13 +167,20 @@ namespace PxApi.Controllers
                 {
                     // Elasticsearch multi_match treats the query as literal text (no query DSL parsing),
                     // so user input is safe from injection. Length is validated above.
-                    SearchResponse response = await searchService.SearchDatabaseAsync(dbRef.Value.Id, q, target, actualLang, page, pageSize, ct);
-                    return Ok(response);
+                    SearchHitResponse response = await searchService.SearchDatabaseAsync(dbRef.Value.Id, sanitizedQuery, target, actualLang, page, pageSize, ct);
+                    SearchResponse enrichedResponse = await BuildSearchResponseAsync(response, actualLang, ct);
+                    logger.LogInformation("Search completed with {NumOfResults} results.", response.PagingInfo.TotalItems);
+                    return Ok(enrichedResponse);
                 }
                 catch (SearchUnavailableException ex)
                 {
-                    logger.LogError(ex, "Search backend unavailable for query {Query}", InputSanitizer.SanitizeForLog(q));
+                    logger.LogError(ex, "Search backend unavailable.");
                     return StatusCode(StatusCodes.Status503ServiceUnavailable, "Search is temporarily unavailable.");
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogError(ex, "Failed to enrich search results.");
+                    return StatusCode(StatusCodes.Status500InternalServerError, "A matched table could not be loaded.");
                 }
             }
         }
@@ -241,6 +265,59 @@ namespace PxApi.Controllers
             }
 
             return SearchTarget.Content;
+        }
+
+        private async Task<SearchResponse> BuildSearchResponseAsync(SearchHitResponse hitResponse, string lang, CancellationToken ct)
+        {
+            SearchResultItem[] searchResults = await Task.WhenAll(hitResponse.Results.Select(hit => BuildSearchResultItemAsync(hit, lang, ct)));
+            return new SearchResponse
+            {
+                Query = hitResponse.Query,
+                Results = [.. searchResults],
+                PagingInfo = hitResponse.PagingInfo
+            };
+        }
+
+        private async Task<SearchResultItem> BuildSearchResultItemAsync(SearchHit hit, string lang, CancellationToken ct)
+        {
+            DataBaseRef? dataBaseRef = cachedDataSource.GetDataBaseReference(hit.Database.Id);
+            if (dataBaseRef is null)
+            {
+                throw new InvalidOperationException($"Database '{hit.Database.Id}' was not found while enriching search results.");
+            }
+
+            PxFileRef? fileReference = await cachedDataSource.GetFileReferenceCachedAsync(hit.TableId, dataBaseRef.Value, ct);
+            if (fileReference is not PxFileRef resolvedFileReference)
+            {
+                throw new InvalidOperationException($"Table '{hit.TableId}' was not found while enriching search results.");
+            }
+
+            IReadOnlyMatrixMetadata metadata = await cachedDataSource.GetMetadataCachedAsync(resolvedFileReference, ct);
+            TableSummary summary = TableSummaryBuilder.Build(metadata, resolvedFileReference.Id, lang);
+            string rootUrl = AppSettings.Active.RootUrl.ToString().TrimEnd('/');
+
+            return new SearchResultItem
+            {
+                Score = hit.Score,
+                Database = hit.Database,
+                Table = summary,
+                Matches = hit.Matches,
+                Links =
+                [
+                    new Link
+                    {
+                        Rel = "metadata",
+                        Href = $"{rootUrl}/meta/databases/{hit.Database.Id}/tables/{resolvedFileReference.Id}",
+                        Method = "GET"
+                    },
+                    new Link
+                    {
+                        Rel = "data",
+                        Href = $"{rootUrl}/data/databases/{hit.Database.Id}/tables/{resolvedFileReference.Id}",
+                        Method = "GET"
+                    }
+                ]
+            };
         }
     }
 }

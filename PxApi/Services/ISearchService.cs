@@ -17,8 +17,8 @@ namespace PxApi.Services
         /// <param name="page">1-based page number.</param>
         /// <param name="pageSize">Number of results per page.</param>
         /// <param name="ct">Cancellation token.</param>
-        /// <returns>A <see cref="SearchResponse"/> containing matching results and paging information.</returns>
-        Task<SearchResponse> SearchAsync(
+        /// <returns>A <see cref="SearchHitResponse"/> containing matching hits and paging information.</returns>
+        Task<SearchHitResponse> SearchAsync(
             string query,
             SearchTarget target,
             string lang,
@@ -36,8 +36,8 @@ namespace PxApi.Services
         /// <param name="page">1-based page number.</param>
         /// <param name="pageSize">Number of results per page.</param>
         /// <param name="ct">Cancellation token.</param>
-        /// <returns>A <see cref="SearchResponse"/> containing matching results and paging information.</returns>
-        Task<SearchResponse> SearchDatabaseAsync(
+        /// <returns>A <see cref="SearchHitResponse"/> containing matching hits and paging information.</returns>
+        Task<SearchHitResponse> SearchDatabaseAsync(
             string databaseId,
             string query,
             SearchTarget target,

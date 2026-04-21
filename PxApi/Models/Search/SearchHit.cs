@@ -4,9 +4,9 @@ using System.Text.Json.Serialization;
 namespace PxApi.Models.Search
 {
     /// <summary>
-    /// A single search result representing a table. Each table appears at most once.
+    /// Represents a lightweight search hit before metadata enrichment.
     /// </summary>
-    public class SearchResultItem
+    public class SearchHit
     {
         /// <summary>
         /// Optional numeric relevance score used for ordering results.
@@ -15,27 +15,21 @@ namespace PxApi.Models.Search
         public double? Score { get; set; }
 
         /// <summary>
-        /// Reference to the database this result belongs to. Always present.
+        /// Reference to the database this hit belongs to.
         /// </summary>
         [Required]
         public required SearchDatabaseRef Database { get; set; }
 
         /// <summary>
-        /// Essential information about the matched table.
+        /// PX file identifier of the matched table.
         /// </summary>
         [Required]
-        public required TableSummary Table { get; set; }
+        public required string TableId { get; set; }
 
         /// <summary>
         /// Describes where and how the search hit occurred.
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<MatchInfo>? Matches { get; set; }
-
-        /// <summary>
-        /// HATEOAS-style links to related resources.
-        /// </summary>
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public List<Link>? Links { get; set; }
     }
 }

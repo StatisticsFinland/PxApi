@@ -118,5 +118,41 @@ namespace PxApi.UnitTests.Utilities
                 (string)d[LoggerConsts.PX_FILE] == LoggerConsts.NOT_FOUND_PLACEHOLDER)),
                 Times.Once);
         }
+
+        [Test]
+        public void BeginSearchScope_QueryOnly_PushesQueryIntoScope()
+        {
+            // Arrange
+            const string query = "population\n<script>";
+
+            // Act
+            _mockLogger.Object.BeginSearchScope(query);
+
+            // Assert
+            _mockLogger.Verify(x => x.BeginScope(It.Is<Dictionary<string, object>>(d =>
+                d.ContainsKey(LoggerConsts.SEARCH_QUERY) &&
+                (string)d[LoggerConsts.SEARCH_QUERY] == query &&
+                !d.ContainsKey(LoggerConsts.DB_ID))),
+                Times.Once);
+        }
+
+        [Test]
+        public void BeginSearchScope_QueryAndDbId_PushesQueryAndDbIdIntoScope()
+        {
+            // Arrange
+            const string query = "population\n<script>";
+            const string dbId = "db1";
+
+            // Act
+            _mockLogger.Object.BeginSearchScope(query, dbId);
+
+            // Assert
+            _mockLogger.Verify(x => x.BeginScope(It.Is<Dictionary<string, object>>(d =>
+                d.ContainsKey(LoggerConsts.SEARCH_QUERY) &&
+                (string)d[LoggerConsts.SEARCH_QUERY] == query &&
+                d.ContainsKey(LoggerConsts.DB_ID) &&
+                (string)d[LoggerConsts.DB_ID] == dbId)),
+                Times.Once);
+        }
     }
 }

@@ -72,5 +72,27 @@ namespace PxApi.Utilities
                 dbId ?? LoggerConsts.NOT_FOUND_PLACEHOLDER,
                 LoggerConsts.NOT_FOUND_PLACEHOLDER);
         }
+
+        /// <summary>
+        /// Begins a logging scope containing a search query and, optionally, a database identifier.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        /// <param name="query">The search query to include in the scope.</param>
+        /// <param name="dbId">Optional database identifier to include in the scope.</param>
+        /// <returns>A disposable scope token.</returns>
+        public static IDisposable? BeginSearchScope(this ILogger logger, string? query, string? dbId = null)
+        {
+            Dictionary<string, object> scopeValues = new()
+            {
+                { LoggerConsts.SEARCH_QUERY, query ?? string.Empty }
+            };
+
+            if (!string.IsNullOrWhiteSpace(dbId))
+            {
+                scopeValues[LoggerConsts.DB_ID] = dbId;
+            }
+
+            return logger.BeginScope(scopeValues);
+        }
     }
 }

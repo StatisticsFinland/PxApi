@@ -19,13 +19,8 @@ namespace PxApi.UnitTests.Models.Search
             SearchResultItem item = new()
             {
                 Score = 0.98,
-                Database = new SearchEntityRef { Id = "StatFin", Name = "StatFin" },
-                Table = new SearchEntityRef
-                {
-                    Id = "statfin_vaerak_pxt_11ra",
-                    Name = "Population according to age and sex",
-                    Note = "Population at year-end"
-                },
+                Database = new SearchDatabaseRef { Id = "StatFin", Name = "StatFin" },
+                Table = CreateSummary("statfin_vaerak_pxt_11ra", "Population according to age and sex"),
                 Matches =
                 [
                     new MatchInfo
@@ -45,7 +40,8 @@ namespace PxApi.UnitTests.Models.Search
             {
                 Assert.That(root.GetProperty("score").GetDouble(), Is.EqualTo(0.98));
                 Assert.That(root.GetProperty("database").GetProperty("id").GetString(), Is.EqualTo("StatFin"));
-                Assert.That(root.GetProperty("table").GetProperty("note").GetString(), Is.EqualTo("Population at year-end"));
+                Assert.That(root.GetProperty("table").GetProperty("code").GetString(), Is.EqualTo("statfin_vaerak_pxt_11ra"));
+                Assert.That(root.GetProperty("table").GetProperty("name").GetString(), Is.EqualTo("Population according to age and sex"));
                 Assert.That(root.GetProperty("matches").GetArrayLength(), Is.EqualTo(1));
             }
         }
@@ -55,8 +51,8 @@ namespace PxApi.UnitTests.Models.Search
         {
             SearchResultItem original = new()
             {
-                Database = new SearchEntityRef { Id = "db1", Name = "DB One" },
-                Table = new SearchEntityRef { Id = "t1", Name = "Table One" }
+                Database = new SearchDatabaseRef { Id = "db1", Name = "DB One" },
+                Table = CreateSummary("t1", "Table One")
             };
 
             string json = JsonSerializer.Serialize(original, _jsonOptions);
@@ -66,7 +62,8 @@ namespace PxApi.UnitTests.Models.Search
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(deserialized!.Database.Id, Is.EqualTo("db1"));
-                Assert.That(deserialized.Table.Id, Is.EqualTo("t1"));
+                Assert.That(deserialized.Table.Code, Is.EqualTo("t1"));
+                Assert.That(deserialized.Table.Name, Is.EqualTo("Table One"));
                 Assert.That(deserialized.Score, Is.Null);
                 Assert.That(deserialized.Matches, Is.Null);
                 Assert.That(deserialized.Links, Is.Null);
@@ -82,8 +79,8 @@ namespace PxApi.UnitTests.Models.Search
         {
             SearchResultItem item = new()
             {
-                Database = new SearchEntityRef { Id = "StatFin", Name = "StatFin" },
-                Table = new SearchEntityRef { Id = "t1", Name = "Table" },
+                Database = new SearchDatabaseRef { Id = "StatFin", Name = "StatFin" },
+                Table = CreateSummary("t1", "Table"),
                 Links =
                 [
                     new Link
@@ -116,8 +113,8 @@ namespace PxApi.UnitTests.Models.Search
         {
             SearchResultItem item = new()
             {
-                Database = new SearchEntityRef { Id = "db", Name = "DB" },
-                Table = new SearchEntityRef { Id = "t", Name = "T" }
+                Database = new SearchDatabaseRef { Id = "db", Name = "DB" },
+                Table = CreateSummary("t", "T")
             };
 
             string json = JsonSerializer.Serialize(item, _jsonOptions);
@@ -181,5 +178,36 @@ namespace PxApi.UnitTests.Models.Search
         }
 
         #endregion
+
+        private static TableSummary CreateSummary(string code, string name)
+        {
+            return new TableSummary
+            {
+                Code = code,
+                Name = name,
+                ContentValues =
+                [
+                    new ContentValueInfo
+                    {
+                        Name = "value",
+                        Unit = "unit"
+                    }
+                ],
+                TimeRange = new TimeRange
+                {
+                    From = "2020",
+                    To = "2024"
+                },
+                Dimensions =
+                [
+                    new DimensionInfo
+                    {
+                        Name = "dim",
+                        Size = 1
+                    }
+                ],
+                LastUpdated = new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)
+            };
+        }
     }
 }

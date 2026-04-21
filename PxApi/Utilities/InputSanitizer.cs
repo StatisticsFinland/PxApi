@@ -8,18 +8,18 @@ namespace PxApi.Utilities
     internal static partial class InputSanitizer
     {
         /// <summary>
-        /// Replaces control characters and trims the input to <paramref name="maxLength"/>
-        /// so that user-supplied text is safe for structured logging (prevents log injection).
+        /// Removes characters that are not considered normal human-readable text and trims the
+        /// input to <paramref name="maxLength"/> using a whitelist-based approach.
         /// </summary>
-        internal static string SanitizeForLog(string? input, int maxLength = 200)
+        internal static string SanitizeInput(string? input, int maxLength = 200)
         {
             if (string.IsNullOrEmpty(input)) return string.Empty;
 
             string trimmed = input.Length > maxLength ? input[..maxLength] : input;
-            return ControlCharPattern().Replace(trimmed, " ");
+            return DisallowedCharPattern().Replace(trimmed, string.Empty);
         }
 
-        [GeneratedRegex(@"[\p{C}]")]
-        private static partial Regex ControlCharPattern();
+        [GeneratedRegex(@"[^\p{L}\p{N} .,:!?'_-]")]
+        private static partial Regex DisallowedCharPattern();
     }
 }

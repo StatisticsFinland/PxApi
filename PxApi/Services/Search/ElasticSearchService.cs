@@ -1,6 +1,5 @@
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Core.Search;
-using Elastic.Clients.Elasticsearch.QueryDsl;
 using PxApi.Configuration;
 using PxApi.Exceptions;
 using PxApi.Models;
@@ -12,7 +11,7 @@ namespace PxApi.Services.Search
     /// <summary>
     /// Elasticsearch-backed implementation of <see cref="ISearchService"/>.
     /// Translates <see cref="SearchTarget"/> into ES multi_match field sets
-    /// and maps hits back to <see cref="SearchResultItem"/> instances.
+    /// and maps hits back to raw search hits for controller-level enrichment.
     /// </summary>
     public class ElasticSearchService(ElasticsearchClient client, SearchConfig searchConfig, ILogger<ElasticSearchService> logger) : ISearchService
     {
@@ -24,7 +23,7 @@ namespace PxApi.Services.Search
         private static readonly string[] SourceFields = ["database", "title", "note"];
 
         /// <inheritdoc />
-        public async Task<SearchResponse> SearchAsync(
+        public async Task<SearchHitResponse> SearchAsync(
             string query,
             SearchTarget target,
             string lang,
@@ -53,7 +52,7 @@ namespace PxApi.Services.Search
         }
 
         /// <inheritdoc />
-        public async Task<SearchResponse> SearchDatabaseAsync(
+        public async Task<SearchHitResponse> SearchDatabaseAsync(
             string databaseId,
             string query,
             SearchTarget target,
@@ -81,7 +80,7 @@ namespace PxApi.Services.Search
                         )
                         .Filter(filter => filter
                             .Term(t => t
-                                .Field("database")
+                                .Field(new Field("database"))
                                 .Value(databaseId)
                             )
                         )
@@ -92,7 +91,7 @@ namespace PxApi.Services.Search
             return await ExecuteSearchAsync(descriptor, query, target, lang, page, pageSize, ct);
         }
 
-        private async Task<SearchResponse> ExecuteSearchAsync(
+        private async Task<SearchHitResponse> ExecuteSearchAsync(
             SearchRequestDescriptor<ElasticsearchDocument> descriptor,
             string query,
             SearchTarget target,
@@ -101,7 +100,7 @@ namespace PxApi.Services.Search
             int pageSize,
             CancellationToken ct)
         {
-            Elastic.Clients.Elasticsearch.SearchResponse<ElasticsearchDocument> esResponse;
+            SearchResponse<ElasticsearchDocument> esResponse;
             try
             {
                 esResponse = await client.SearchAsync(descriptor, ct);
@@ -121,9 +120,7 @@ namespace PxApi.Services.Search
             long totalItems = esResponse.HitsMetadata?.Total?.Match(
                 totalHits => totalHits.Value,
                 value => value) ?? 0;
-            string rootUrl = AppSettings.Active.RootUrl.ToString().TrimEnd('/');
-
-            List<SearchResultItem> results = [];
+            List<SearchHit> results = [];
             foreach (Hit<ElasticsearchDocument> hit in esResponse.Hits)
             {
                 if (hit.Source is null) continue;
@@ -132,35 +129,19 @@ namespace PxApi.Services.Search
                 string tableId = hit.Id ?? string.Empty;
 
                 List<MatchInfo>? matches = MapHighlights(hit.Highlight);
-                List<Link> links =
-                [
-                    new Link
-                    {
-                        Rel = "metadata",
-                        Href = $"{rootUrl}/meta/databases/{doc.Database}/tables/{tableId}",
-                        Method = "GET"
-                    },
-                    new Link
-                    {
-                        Rel = "data",
-                        Href = $"{rootUrl}/data/databases/{doc.Database}/tables/{tableId}",
-                        Method = "GET"
-                    }
-                ];
 
-                SearchResultItem item = new()
+                SearchHit item = new()
                 {
                     Score = hit.Score,
-                    Database = new SearchEntityRef { Id = doc.Database, Name = doc.Database },
-                    Table = new SearchEntityRef { Id = tableId, Name = doc.Title, Note = doc.Note },
-                    Matches = matches,
-                    Links = links
+                    Database = new SearchDatabaseRef { Id = doc.Database, Name = doc.Database },
+                    TableId = tableId,
+                    Matches = matches
                 };
 
                 results.Add(item);
             }
 
-            return new SearchResponse
+            return new SearchHitResponse
             {
                 Query = new SearchQueryInfo
                 {
