@@ -17,9 +17,9 @@ namespace PxApi.Configuration
         public string ApiKey { get; } = Environment.GetEnvironmentVariable("SEARCH_API_KEY") ?? string.Empty;
 
         /// <summary>
-        /// Index name prefix. The language code is appended as a suffix (e.g. <c>px-api-full-meta-v2-fi</c>).
+        /// Index name prefix. The language code is appended as a suffix (e.g. <c>my-index-fi</c>).
         /// </summary>
-        public string IndexPrefix { get; } = configuration.GetValue<string>(nameof(IndexPrefix)) ?? "px-api-full-meta-v2";
+        public string IndexPrefix { get; } = configuration.GetValue<string>(nameof(IndexPrefix)) ?? string.Empty;
 
         /// <summary>
         /// Returns true when both <see cref="CloudId"/> and <see cref="ApiKey"/> are configured.

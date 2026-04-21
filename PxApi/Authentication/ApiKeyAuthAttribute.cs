@@ -91,6 +91,7 @@ namespace PxApi.Authentication
                 nameof(MetadataController) => authConfig.Metadata,
                 nameof(DataController) => authConfig.Data,
                 nameof(CacheController) => authConfig.Cache,
+                nameof(SearchController) => authConfig.Search,
                 _ => null
             };
         }

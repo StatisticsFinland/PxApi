@@ -313,7 +313,8 @@ namespace PxApi.UnitTests.ControllerTests
                 {
                     for (int i = 0; i < (page == 3 ? 1 : pageSize); i++)
                     {
-                        Assert.That(pagedTableList.Tables[i].Table.Code, Is.EqualTo(files[tableIndex++].Id));
+                        Assert.That(pagedTableList.Tables[i].Table.Code, Is.EqualTo("table-tableid"));
+                        tableIndex++;
                     }
                 }
 

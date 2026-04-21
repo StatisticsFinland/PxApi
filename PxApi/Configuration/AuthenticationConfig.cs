@@ -31,9 +31,14 @@ namespace PxApi.Configuration
         public DataApiKeyConfig Data { get; }
 
         /// <summary>
+        /// Configuration for search controller API key authentication.
+        /// </summary>
+        public SearchApiKeyConfig Search { get; }
+
+        /// <summary>
         /// Gets a value indicating whether any authentication method is enabled.
         /// </summary>
-        public bool IsEnabled => Cache.IsEnabled || Databases.IsEnabled || Tables.IsEnabled || Metadata.IsEnabled || Data.IsEnabled;
+        public bool IsEnabled => Cache.IsEnabled || Databases.IsEnabled || Tables.IsEnabled || Metadata.IsEnabled || Data.IsEnabled || Search.IsEnabled;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AuthenticationConfig"/> class.
@@ -46,6 +51,7 @@ namespace PxApi.Configuration
             Tables = new TablesApiKeyConfig(configuration.GetSection(nameof(Tables)));
             Metadata = new MetadataApiKeyConfig(configuration.GetSection(nameof(Metadata)));
             Data = new DataApiKeyConfig(configuration.GetSection(nameof(Data)));
+            Search = new SearchApiKeyConfig(configuration.GetSection(nameof(Search)));
         }
     }
 
@@ -176,6 +182,27 @@ namespace PxApi.Configuration
         /// </summary>
         /// <param name="configuration">The configuration section containing data API key settings.</param>
         public DataApiKeyConfig(IConfigurationSection configuration) : base(configuration)
+        {
+            Key = configuration.GetValue<string>(nameof(Key));
+            HeaderName = configuration.GetValue<string>(nameof(HeaderName)) ?? DEFAULT_HEADER_NAME;
+        }
+    }
+
+    /// <summary>
+    /// Configuration for search controller API key authentication.
+    /// </summary>
+    public class SearchApiKeyConfig : ApiKeyConfig
+    {
+        /// <summary>
+        /// Gets the default header name for search controller authentication.
+        /// </summary>
+        private const string DEFAULT_HEADER_NAME = "X-Search-API-Key";
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SearchApiKeyConfig"/> class.
+        /// </summary>
+        /// <param name="configuration">The configuration section containing search API key settings.</param>
+        public SearchApiKeyConfig(IConfigurationSection configuration) : base(configuration)
         {
             Key = configuration.GetValue<string>(nameof(Key));
             HeaderName = configuration.GetValue<string>(nameof(HeaderName)) ?? DEFAULT_HEADER_NAME;

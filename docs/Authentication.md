@@ -1,40 +1,46 @@
 # API Key Authentication for PxApi
 
-This document describes how to configure and use API Key authentication for the PxApi cache management endpoints.
+This document describes how to configure and use API Key authentication for PxApi endpoints.
 
 ## Overview
 
-API Key authentication provides a simple way to protect sensitive endpoints. The authentication system:
+API Key authentication provides a simple way to protect endpoints. The authentication system:
 
-- Uses SHA256 hashing with salt for secure key storage
-- Is completely optional - if not configured, endpoints remain publicly accessible
-- Supports custom header names for flexible future development
-- Is designed to support multiple different API key configurations for different controllers in the future
+- Uses direct API key comparison for each controller
+- Is completely optional — if no key is configured for a controller, that controller's endpoints remain publicly accessible
+- Supports custom header names per controller
+- Supports independent configuration for six controllers: Cache, Databases, Tables, Metadata, Data, and Search
 
 ## Configuration
 
-### Environment Variables
-
-The recommended approach for production deployments is to use environment variables:
-
-```bash
-# Enable API key authentication for cache endpoints
-Authentication__Cache__Hash=your-base64-encoded-hash-here
-Authentication__Cache__Salt=your-base64-encoded-salt-here
-Authentication__Cache__HeaderName=X-Cache-API-Key # Optional, defaults to X-Cache-API-Key
-```
-
 ### appsettings.json
-
-For development or when environment variables are not preferred:
 
 ```json
 {
   "Authentication": {
     "Cache": {
-      "Hash": "your-base64-encoded-hash-here",
-      "Salt": "your-base64-encoded-salt-here",
+      "Key": "your-cache-api-key",
       "HeaderName": "X-Cache-API-Key"
+    },
+    "Databases": {
+      "Key": "your-databases-api-key",
+      "HeaderName": "X-Databases-API-Key"
+    },
+    "Tables": {
+      "Key": "your-tables-api-key",
+      "HeaderName": "X-Tables-API-Key"
+    },
+    "Metadata": {
+      "Key": "your-metadata-api-key",
+      "HeaderName": "X-Metadata-API-Key"
+    },
+    "Data": {
+      "Key": "your-data-api-key",
+      "HeaderName": "X-Data-API-Key"
+    },
+    "Search": {
+      "Key": "your-search-api-key",
+      "HeaderName": "X-Search-API-Key"
     }
   }
 }
@@ -42,77 +48,84 @@ For development or when environment variables are not preferred:
 
 ### Configuration Properties
 
-For cache endpoints:
-- **Authentication.Cache.Hash** (required): Base64-encoded SHA256 hash of your API key combined with the salt
-- **Authentication.Cache.Salt** (required): Base64-encoded random salt used for hashing
-- **Authentication.Cache.HeaderName** (optional): Name of the HTTP header containing the API key. Defaults to "X-Cache-API-Key"
+Each controller section supports:
+- **Key** (optional): The API key value that clients must provide. If not set, authentication is disabled for that controller.
+- **HeaderName** (optional): Name of the HTTP header containing the API key. Defaults to the controller-specific default shown below.
 
-### Future Extensions
+### Controller Default Headers
 
-The configuration structure is designed to support multiple API key configurations for different controllers:
+| Controller | Default Header Name |
+|---|---|
+| Cache | `X-Cache-API-Key` |
+| Databases | `X-Databases-API-Key` |
+| Tables | `X-Tables-API-Key` |
+| Metadata | `X-Metadata-API-Key` |
+| Data | `X-Data-API-Key` |
+| Search | `X-Search-API-Key` |
 
-```json
-{
-  "Authentication": {
-    "Cache": {
-      "Hash": "cache-hash-here",
-      "Salt": "cache-salt-here",
-      "HeaderName": "X-Cache-API-Key"
-    },
-    "Admin": {
-      "Hash": "admin-hash-here",
-      "Salt": "admin-salt-here",
-      "HeaderName": "X-Admin-API-Key"
-    }
-  }
-}
-```
+### Environment Variables
 
-## Generating API Key Hash and Salt
+The recommended approach for production deployments is to use environment variables following the .NET configuration pattern `Authentication__<Controller>__<Property>`:
 
-### Using PowerShell
+```bash
+# Configure Cache controller authentication
+Authentication__Cache__Key=your-cache-api-key
+Authentication__Cache__HeaderName=X-Cache-API-Key  # Optional, uses default if omitted
 
-```powershell
-# Generate a random salt
-$saltBytes = New-Object byte[] 32
-[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($saltBytes)
-$salt = [Convert]::ToBase64String($saltBytes)
+# Configure Data controller authentication
+Authentication__Data__Key=your-data-api-key
 
-# Your plain text API key
-$apiKey = "your-secret-api-key"
+# Configure Databases controller authentication
+Authentication__Databases__Key=your-databases-api-key
 
-# Generate hash
-$sha256 = [System.Security.Cryptography.SHA256]::Create()
-$hashBytes = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($apiKey + $salt))
-$hash = [Convert]::ToBase64String($hashBytes)
+# Configure Tables controller authentication
+Authentication__Tables__Key=your-tables-api-key
 
-Write-Host "Salt: $salt"
-Write-Host "Hash: $hash"
+# Configure Metadata controller authentication
+Authentication__Metadata__Key=your-metadata-api-key
+
+# Configure Search controller authentication
+Authentication__Search__Key=your-search-api-key
 ```
 
 ## Using the API
 
 ### Making Authenticated Requests
 
-Include your API key in the configured header (default is `X-Cache-API-Key`):
+Include the API key in the controller-specific header:
 
 ```bash
-# Clear cache for a specific table
-curl -X DELETE "https://yourapi.com/cache/StatFin/table123" \
-  -H "X-Cache-API-Key: your-secret-api-key"
+# Cache: Clear cache for a specific table
+curl -X DELETE "https://yourapi.com/cache/databases/StatFin/tables/table123" \
+  -H "X-Cache-API-Key: your-cache-api-key"
 
-# Clear all cache for a database
-curl -X DELETE "https://yourapi.com/cache/StatFin" \
-  -H "X-Cache-API-Key: your-secret-api-key"
+# Data: Retrieve data from a table
+curl "https://yourapi.com/data/databases/StatFin/tables/table123" \
+  -H "X-Data-API-Key: your-data-api-key"
+
+# Databases: List databases
+curl "https://yourapi.com/meta/databases" \
+  -H "X-Databases-API-Key: your-databases-api-key"
 ```
 
 ### Response Codes
 
 - **200 OK**: Operation completed successfully
-- **401 Unauthorized**: Invalid or missing API key
+- **401 Unauthorized**: Missing or invalid API key
 
-Rest of the response codes as per standard API behavior
+Rest of the response codes as per standard API behavior.
 
 ## Disabling Authentication
 
-To disable authentication entirely, simply remove or don't configure the Hash and Salt values in the Cache section. The system will automatically allow all requests to proceed without authentication.
+To disable authentication for a controller, simply omit or remove the `Key` value from its configuration section. The system will automatically allow all requests to that controller to proceed without authentication.
+
+To disable authentication entirely, remove or leave empty all `Key` values across all controller sections.
+
+## Security Notes
+
+- Store API keys securely and never commit them to version control
+- Use environment variables or secure configuration management for production deployments
+- Rotate API keys periodically
+- Use HTTPS in production to protect API keys in transit
+- Consider using different API keys for different controllers based on access requirements
+- Ensure API keys are sufficiently long and randomly generated for security
