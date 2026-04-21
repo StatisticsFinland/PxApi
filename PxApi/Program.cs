@@ -237,9 +237,9 @@ namespace PxApi
             serviceCollection.AddScoped<IAuditLogService, AuditLogService>();
 
             // Register search service: only when SearchController feature flag is enabled
-            SearchConfig searchConfig = AppSettings.Active.Search;
-            if (searchConfig.IsEnabled)
+            if (AppSettings.Active.Features.SearchController)
             {
+                SearchConfig searchConfig = AppSettings.Active.Search;
                 ElasticsearchClient esClient = new(new ElasticsearchClientSettings(searchConfig.CloudId, new ApiKey(searchConfig.ApiKey)));
                 serviceCollection.AddSingleton(esClient);
                 serviceCollection.AddSingleton(searchConfig);

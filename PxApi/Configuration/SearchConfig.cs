@@ -20,10 +20,5 @@ namespace PxApi.Configuration
         /// Index name prefix. The language code is appended as a suffix (e.g. <c>my-index-fi</c>).
         /// </summary>
         public string IndexPrefix { get; } = configuration.GetValue<string>(nameof(IndexPrefix)) ?? string.Empty;
-
-        /// <summary>
-        /// Returns true when both <see cref="CloudId"/> and <see cref="ApiKey"/> are configured.
-        /// </summary>
-        public bool IsEnabled => !string.IsNullOrWhiteSpace(CloudId) && !string.IsNullOrWhiteSpace(ApiKey);
     }
 }

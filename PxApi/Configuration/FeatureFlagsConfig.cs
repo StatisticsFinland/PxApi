@@ -16,5 +16,12 @@ namespace PxApi.Configuration
         /// Defaults to false since cache endpoints are for internal use only.
         /// </summary>
         public bool CacheController { get; } = configuration.GetValue<bool>(nameof(CacheController), defaultValue: false);
+
+        /// <summary>
+        /// Determines whether the search controller endpoints are enabled.
+        /// When false, all search endpoints will return 404 Not Found and search services will not be registered.
+        /// Defaults to false.
+        /// </summary>
+        public bool SearchController { get; } = configuration.GetValue<bool>(nameof(SearchController), defaultValue: false);
     }
 }

@@ -198,7 +198,11 @@ Key sections:
   - `Type` One of `Mounted`, `FileShare`, `BlobStorage`, `BinaryBlobStorage`
   - `Id` Unique id
   - `CacheConfig` Per-database cache sizing overrides
-  - `Custom` Backend-specific connection settings
+  - `Custom` Backend-specific connection settings:
+    - `Mounted`: `RootPath` — absolute path to the local or network directory containing PX files
+    - `FileShare`: `StoragePath` — Azure File Share service URL, `ShareName` — name of the file share
+    - `BlobStorage`: `StoragePath` — Azure Blob Storage service URL, `ContainerName` — name of the blob container
+    - `BinaryBlobStorage`: `StoragePath` — Azure Blob Storage service URL, `ContainerName` — name of the blob container
 - `Cache` Global memory cache sizing (applies to `MemoryCache`):
   - `MaxSizeBytes` (default 524288000)
   - `DefaultDataCellSize`
