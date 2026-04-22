@@ -39,11 +39,14 @@ namespace PxApi.Controllers
         /// </remarks>
         private const int MAX_QUERY_LENGTH = 400;
 
+        private static readonly string AcceptedScopeMessage =
+            $"Invalid 'scope' value. Accepted values are: {string.Join(", ", Enum.GetNames<SearchTarget>().Select(n => n.ToLowerInvariant()))}";
+
         /// <summary>
         /// Searches across all databases for tables, dimensions, and values.
         /// </summary>
         /// <param name="q">Search query string.</param>
-        /// <param name="types">Optional search scope: dimension, value, geo, or all. When omitted, searches default content fields (title, source, note, content variable, used-for), not all fields.</param>
+        /// <param name="scope">Optional search scope (case-insensitive). Accepted values: content (default, searches title/source/note/content variable/used-for), dimension (classificatory variable names), value (classificatory variable values), geo (geographic variable values), all (all fields combined). Returns 400 if the value is provided but not recognized.</param>
         /// <param name="lang">Optional language code (ISO 639-1). Defaults to the configured default language.</param>
         /// <param name="page">Optional 1-based page number, default value is 1.</param>
         /// <param name="pageSize">Optional number of items per page (1-100), default value is 20.</param>
@@ -61,7 +64,7 @@ namespace PxApi.Controllers
         [ProducesResponseType(typeof(string), 503)]
         public async Task<ActionResult<SearchResponse>> SearchAsync(
             [FromQuery] string? q,
-            [FromQuery] string? types = null,
+            [FromQuery] string? scope = null,
             [FromQuery] string? lang = null,
             [FromQuery][Range(1, int.MaxValue)] int page = 1,
             [FromQuery][Range(1, 100)] int pageSize = 20,
@@ -76,8 +79,10 @@ namespace PxApi.Controllers
             string actualLang = lang ?? settings.Localization.DefaultLanguage;
             if (!settings.Localization.SupportedLanguages.Contains(actualLang)) return BadRequest("The requested language is not supported.");
 
-            SearchTarget target = ParseTypes(types);
-            string sanitizedQuery = InputSanitizer.SanitizeInput(q);
+            SearchTarget? parsedTarget = ParseScope(scope);
+            if (parsedTarget is null) return BadRequest(AcceptedScopeMessage);
+            SearchTarget target = parsedTarget.Value;
+            string sanitizedQuery = InputSanitizer.SanitizeInput(q, MAX_QUERY_LENGTH);
 
             using (logger.BeginSearchScope(sanitizedQuery))
             {
@@ -110,7 +115,7 @@ namespace PxApi.Controllers
         /// </summary>
         /// <param name="database">Unique identifier of the database.</param>
         /// <param name="q">Search query string.</param>
-        /// <param name="types">Optional search scope: dimension, value, geo, or all. When omitted, searches default content fields (title, source, note, content variable, used-for), not all fields.</param>
+        /// <param name="scope">Optional search scope (case-insensitive). Accepted values: content (default, searches title/source/note/content variable/used-for), dimension (classificatory variable names), value (classificatory variable values), geo (geographic variable values), all (all fields combined). Returns 400 if the value is provided but not recognized.</param>
         /// <param name="lang">Optional language code (ISO 639-1). Defaults to the configured default language.</param>
         /// <param name="page">Optional 1-based page number, default value is 1.</param>
         /// <param name="pageSize">Optional number of items per page (1-100), default value is 20.</param>
@@ -131,7 +136,7 @@ namespace PxApi.Controllers
         public async Task<ActionResult<SearchResponse>> SearchDatabaseAsync(
             [FromRoute] string database,
             [FromQuery] string? q,
-            [FromQuery] string? types = null,
+            [FromQuery] string? scope = null,
             [FromQuery] string? lang = null,
             [FromQuery][Range(1, int.MaxValue)] int page = 1,
             [FromQuery][Range(1, 100)] int pageSize = 20,
@@ -146,8 +151,10 @@ namespace PxApi.Controllers
             string actualLang = lang ?? settings.Localization.DefaultLanguage;
             if (!settings.Localization.SupportedLanguages.Contains(actualLang)) return BadRequest("The requested language is not supported.");
 
-            SearchTarget target = ParseTypes(types);
-            string sanitizedQuery = InputSanitizer.SanitizeInput(q);
+            SearchTarget? parsedTarget = ParseScope(scope);
+            if (parsedTarget is null) return BadRequest(AcceptedScopeMessage);
+            SearchTarget target = parsedTarget.Value;
+            string sanitizedQuery = InputSanitizer.SanitizeInput(q, MAX_QUERY_LENGTH);
 
             DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
             if (dbRef is null)
@@ -255,16 +262,16 @@ namespace PxApi.Controllers
             return Ok();
         }
 
-        private static SearchTarget ParseTypes(string? types)
+        private static SearchTarget? ParseScope(string? scope)
         {
-            if (string.IsNullOrWhiteSpace(types)) return SearchTarget.Content;
+            if (string.IsNullOrWhiteSpace(scope)) return SearchTarget.Content;
 
-            if (Enum.TryParse(types.Trim(), ignoreCase: true, out SearchTarget result) && Enum.IsDefined(result))
+            if (Enum.TryParse(scope.Trim(), ignoreCase: true, out SearchTarget result) && Enum.IsDefined(result))
             {
                 return result;
             }
 
-            return SearchTarget.Content;
+            return null;
         }
 
         private async Task<SearchResponse> BuildSearchResponseAsync(SearchHitResponse hitResponse, string lang, CancellationToken ct)
@@ -307,13 +314,13 @@ namespace PxApi.Controllers
                     new Link
                     {
                         Rel = "metadata",
-                        Href = $"{rootUrl}/meta/databases/{hit.Database.Id}/tables/{resolvedFileReference.Id}",
+                        Href = $"{rootUrl}/meta/databases/{hit.Database.Id}/tables/{resolvedFileReference.Id}?lang={lang}",
                         Method = "GET"
                     },
                     new Link
                     {
                         Rel = "data",
-                        Href = $"{rootUrl}/data/databases/{hit.Database.Id}/tables/{resolvedFileReference.Id}",
+                        Href = $"{rootUrl}/data/databases/{hit.Database.Id}/tables/{resolvedFileReference.Id}?lang={lang}",
                         Method = "GET"
                     }
                 ]

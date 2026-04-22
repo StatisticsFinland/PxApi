@@ -244,6 +244,17 @@ namespace PxApi
             if (AppSettings.Active.Features.SearchController)
             {
                 SearchConfig searchConfig = AppSettings.Active.Search;
+
+                if (string.IsNullOrWhiteSpace(searchConfig.CloudId) || string.IsNullOrWhiteSpace(searchConfig.IndexPrefix))
+                {
+                    throw new InvalidOperationException("CloudId and IndexPrefix must be configured when the SearchController feature is enabled.");
+                }
+
+                if (string.IsNullOrWhiteSpace(searchConfig.ApiKey))
+                {
+                    throw new InvalidOperationException("The SEARCH_API_KEY environment variable must be set when the SearchController feature is enabled.");
+                }
+
                 ElasticsearchClient esClient = new(new ElasticsearchClientSettings(searchConfig.CloudId, new ApiKey(searchConfig.ApiKey)));
                 serviceCollection.AddSingleton(esClient);
                 serviceCollection.AddSingleton(searchConfig);

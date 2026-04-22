@@ -22,7 +22,7 @@ Abstracts full-text search over Elasticsearch:
 - Maps hits into internal `SearchHit` / `SearchResultItem` models
 - Controllers then enrich hits with table summaries and HATEOAS links
 
-Registered conditionally in DI — only when `SearchConfig` has a valid `CloudId`.
+Registered conditionally in DI — when the `FeatureManagement:SearchController` flag is enabled, the real `ElasticSearchService` is registered together with its `ElasticsearchClient` and `SearchConfig`; otherwise a `DisabledSearchService` stub is registered so the controller can still be resolved (the `FeatureGate` filter will return 404 before any action method runs).
 
 ## MVC Filters
 

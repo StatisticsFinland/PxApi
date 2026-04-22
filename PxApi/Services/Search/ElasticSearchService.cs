@@ -165,8 +165,8 @@ namespace PxApi.Services.Search
         {
             return new Highlight
             {
-                Fields = fields.ToDictionary<string, Field, HighlightField>(
-                    f => f!,
+                Fields = fields.ToDictionary(
+                    f => new Field(f),
                     _ => new HighlightField())
             };
         }

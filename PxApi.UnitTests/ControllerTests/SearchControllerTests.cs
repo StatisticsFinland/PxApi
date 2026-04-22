@@ -80,7 +80,7 @@ namespace PxApi.UnitTests.ControllerTests
                 SearchResponse response = (SearchResponse)okResult.Value!;
                 Assert.That(response.Query.Q, Is.EqualTo("population"));
                 Assert.That(response.Results, Has.Count.EqualTo(0));
-                Assert.That(response.PagingInfo.TotalItems, Is.EqualTo(0));
+                Assert.That(response.PagingInfo.TotalItems, Is.Zero);
             }
         }
 
