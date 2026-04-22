@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using PxApi.Controllers;
 using PxApi.Exceptions;
-using System.Reflection;
 using System.Text.Json;
 
 namespace PxApi.UnitTests.ControllerTests
@@ -40,12 +39,6 @@ namespace PxApi.UnitTests.ControllerTests
             _controller.HttpContext.Features.Set(_mockExceptionFeature.Object);
         }
 
-        private static string GetPropertyValue(object obj, string propertyName)
-        {
-            PropertyInfo? property = obj.GetType().GetProperty(propertyName);
-            return property?.GetValue(obj)?.ToString() ?? string.Empty;
-        }
-
         #region InvalidModelException Tests
 
         [Test]
@@ -65,14 +58,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
             BadRequestObjectResult? badRequest = result as BadRequestObjectResult;
             Assert.That(badRequest, Is.Not.Null);
-
-            object? responseValue = badRequest.Value;
-            Assert.That(responseValue, Is.Not.Null);
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(GetPropertyValue(responseValue, "error"), Is.EqualTo("Invalid model"));
-                Assert.That(GetPropertyValue(responseValue, "message"), Is.EqualTo("The request model is invalid."));
-            };
+            Assert.That(badRequest.Value, Is.EqualTo("The request model is invalid."));
 
             // Verify logging
             _mockLogger.Verify(
@@ -165,14 +151,7 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
             BadRequestObjectResult? badRequest = result as BadRequestObjectResult;
             Assert.That(badRequest, Is.Not.Null);
-
-            object? responseValue = badRequest.Value;
-            Assert.That(responseValue, Is.Not.Null);
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(GetPropertyValue(responseValue, "error"), Is.EqualTo("Malformed JSON"));
-                Assert.That(GetPropertyValue(responseValue, "message"), Is.EqualTo("The request contains malformed JSON."));
-            };
+            Assert.That(badRequest.Value, Is.EqualTo("The request contains malformed JSON."));
 
             // Verify logging
             _mockLogger.Verify(

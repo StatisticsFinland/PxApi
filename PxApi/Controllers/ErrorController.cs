@@ -42,20 +42,12 @@ namespace PxApi.Controllers
             if (exception is InvalidModelException modelEx)
             {
                 logger.LogInformation(modelEx, "Invalid model exception occurred.");
-                return BadRequest(new
-                {
-                    error = "Invalid model",
-                    message = "The request model is invalid."
-                });
+                return BadRequest("The request model is invalid.");
             }
             else if (exception is JsonException jsonEx)
             {
                 logger.LogInformation(jsonEx, "Malformed JSON exception occurred.");
-                return BadRequest(new
-                {
-                    error = "Malformed JSON",
-                    message = "The request contains malformed JSON."
-                });
+                return BadRequest("The request contains malformed JSON.");
             }
             // Handle IO errors with critical logging
             else if (exception is IOException)
