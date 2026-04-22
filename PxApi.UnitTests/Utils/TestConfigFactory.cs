@@ -20,7 +20,6 @@ namespace PxApi.UnitTests.Utils
                 ["Cache:MaxSizeBytes"] = "524288000",
                 ["Cache:DefaultDataCellSize"] = "16",
                 ["Cache:DefaultUpdateTaskSize"] = "50",
-                ["Cache:DefaultTableGroupSize"] = "100",
                 ["Cache:DefaultFileListSize"] = "350000",
                 ["Cache:DefaultMetaSize"] = "200000",
                 ["FeatureManagement:CacheController"] = "true",
@@ -117,8 +116,6 @@ namespace PxApi.UnitTests.Utils
                 [$"DataBases:{index}:CacheConfig:TableList:AbsoluteExpirationSeconds"] = "900",
                 [$"DataBases:{index}:CacheConfig:Meta:SlidingExpirationSeconds"] = "900",
                 [$"DataBases:{index}:CacheConfig:Meta:AbsoluteExpirationSeconds"] = "900",
-                [$"DataBases:{index}:CacheConfig:Groupings:SlidingExpirationSeconds"] = "900",
-                [$"DataBases:{index}:CacheConfig:Groupings:AbsoluteExpirationSeconds"] = "900",
                 [$"DataBases:{index}:CacheConfig:Data:SlidingExpirationSeconds"] = "600",
                 [$"DataBases:{index}:CacheConfig:Data:AbsoluteExpirationSeconds"] = "600"
             };

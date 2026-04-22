@@ -261,8 +261,7 @@ namespace PxApi.Controllers
                     }
                     if (bestMatch == "application/json")
                     {
-                        IReadOnlyList<TableGroup> groupings = await dataSource.GetGroupingsCachedAsync(fileRef.Value, ct);
-                        JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), groupings, data, actualLang);
+                        JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
                         return Ok(jsonStat);
                     }
                 }

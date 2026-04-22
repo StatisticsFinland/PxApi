@@ -295,8 +295,6 @@ namespace PxApi.UnitTests.UtilitiesTests
                     ["DataBases:0:CacheConfig:TableList:AbsoluteExpirationSeconds"] = "900",
                     ["DataBases:0:CacheConfig:Meta:SlidingExpirationSeconds"] = "900",
                     ["DataBases:0:CacheConfig:Meta:AbsoluteExpirationSeconds"] = "900",
-                    ["DataBases:0:CacheConfig:Groupings:SlidingExpirationSeconds"] = "900",
-                    ["DataBases:0:CacheConfig:Groupings:AbsoluteExpirationSeconds"] = "900",
                     ["DataBases:0:CacheConfig:Data:SlidingExpirationSeconds"] = "600",
                     ["DataBases:0:CacheConfig:Data:AbsoluteExpirationSeconds"] = "600"
                 }
