@@ -18,7 +18,7 @@ namespace PxApi.Controllers
     /// Provides metadata search endpoints for discovering tables, dimensions, and values.
     /// </summary>
     /// <remarks>
-    /// Supports hierarchical scoping: global, database-level, and table-level search.
+    /// Supports hierarchical scoping: global and database-level search.
     /// Gated by the <c>SearchController</c> feature flag; returns 404 when disabled.
     /// </remarks>
     [ApiKeyAuth]
