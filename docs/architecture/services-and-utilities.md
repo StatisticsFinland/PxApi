@@ -85,9 +85,11 @@ Decides whether a binary blob request should use sequential streaming or windowe
 **File**: `PxApi/Utilities/LoggerScopeExtensions.cs`
 
 Extension methods for creating standardized structured logging scopes:
-- `BeginDatabaseScope(dbId)` — Adds database context
+- `BeginDbScope(dbId)` — Adds database context
+- `BeginDbNotFoundScope()` — Marks database-not-found scenarios (delegates to `BeginDbScope` with a placeholder)
 - `BeginFileScope(fileId)` — Adds file context
-- `BeginResourceNotFoundScope()` — Marks 404 scenarios
+- `BeginResourceScope(dbId, fileId)` — Adds both database and file context
+- `BeginResourceNotFoundScope(dbId?)` — Marks resource-not-found 404 scenarios
 - `BeginSearchScope(query, dbId?)` — Adds search query context with sanitized query
 
 ### LoggerConsts
