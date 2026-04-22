@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using PxApi.Models.Search;
 
 namespace PxApi.Services.Search
@@ -7,6 +8,7 @@ namespace PxApi.Services.Search
     /// feature flag is disabled. This allows the controller to be activated by the DI container
     /// so that the <c>FeatureGate</c> action filter can return 404 as intended.
     /// </summary>
+    [ExcludeFromCodeCoverage(Justification = "No logic to test.")]
     public class DisabledSearchService : ISearchService
     {
         /// <inheritdoc />
