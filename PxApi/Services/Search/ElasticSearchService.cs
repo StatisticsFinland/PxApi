@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Core.Search;
 using PxApi.Configuration;
@@ -13,6 +14,7 @@ namespace PxApi.Services.Search
     /// Translates <see cref="SearchTarget"/> into ES multi_match field sets
     /// and maps hits back to raw search hits for controller-level enrichment.
     /// </summary>
+    [ExcludeFromCodeCoverage(Justification = "Wraps 3rd party Elasticsearch SDK; no meaningful logic to unit test.")]
     public class ElasticSearchService(ElasticsearchClient client, SearchConfig searchConfig, ILogger<ElasticSearchService> logger) : ISearchService
     {
         private static readonly string[] ContentFields = ["title", "source", "note", "content_variable", "used_for"];
