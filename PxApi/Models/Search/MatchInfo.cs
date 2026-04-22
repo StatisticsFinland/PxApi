@@ -13,11 +13,11 @@ namespace PxApi.Models.Search
         /// <summary>
         /// Describes how the query matched the target text.
         /// </summary>
-        public MatchType MatchType { get; set; }
+        public required MatchType MatchType { get; set; }
 
         /// <summary>
         /// The text that matched the search query.
         /// </summary>
-        public string? MatchedText { get; set; }
+        public required string MatchedText { get; set; }
     }
 }
