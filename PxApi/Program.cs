@@ -238,7 +238,9 @@ namespace PxApi
             serviceCollection.AddHttpContextAccessor();
             serviceCollection.AddScoped<IAuditLogService, AuditLogService>();
 
-            // Register search service: only when SearchController feature flag is enabled
+            // Register search service: use Elasticsearch when the feature is enabled,
+            // otherwise register a disabled stub so the controller can still be activated
+            // (the FeatureGate filter will return 404 before any action method runs).
             if (AppSettings.Active.Features.SearchController)
             {
                 SearchConfig searchConfig = AppSettings.Active.Search;
@@ -246,6 +248,10 @@ namespace PxApi
                 serviceCollection.AddSingleton(esClient);
                 serviceCollection.AddSingleton(searchConfig);
                 serviceCollection.AddScoped<ISearchService, ElasticSearchService>();
+            }
+            else
+            {
+                serviceCollection.AddSingleton<ISearchService, DisabledSearchService>();
             }
         }
     }
