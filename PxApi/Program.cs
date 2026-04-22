@@ -97,6 +97,8 @@ namespace PxApi
 
                 app.MapControllers();
 
+                logger.Info("Now listening on: {RootUrl}", AppSettings.Active.RootUrl);
+
                 await app.RunAsync();
             }
             catch (Exception ex)
