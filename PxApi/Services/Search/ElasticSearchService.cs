@@ -25,6 +25,25 @@ namespace PxApi.Services.Search
         private static readonly string[] SourceFields = ["database", "title", "note"];
 
         /// <inheritdoc />
+        public async Task CheckHealthAsync(CancellationToken ct)
+        {
+            // A zero-result search is used instead of client.PingAsync() because Ping
+            // hits the cluster-level endpoint which requires monitor privileges that
+            // the search API key does not have (returns 403). A size-0 match_all query
+            // only needs the read/search index privilege the key already has.
+            string index = GetIndexName(AppSettings.Active.Localization.DefaultLanguage);
+            SearchResponse<ElasticsearchDocument> response = await client.SearchAsync<ElasticsearchDocument>(s => s
+                .Index(index)
+                .Size(0)
+                .Query(q => q.MatchAll(_ => { })),
+                ct);
+            if (!response.IsValidResponse)
+            {
+                throw new SearchUnavailableException("Search backend health check failed.");
+            }
+        }
+
+        /// <inheritdoc />
         public async Task<SearchHitResponse> SearchAsync(
             string query,
             SearchTarget target,

@@ -27,6 +27,13 @@ namespace PxApi.Services
             CancellationToken ct);
 
         /// <summary>
+        /// Verifies that the search backend is reachable and operational.
+        /// </summary>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>A task that completes successfully when the backend is healthy.</returns>
+        Task CheckHealthAsync(CancellationToken ct);
+
+        /// <summary>
         /// Searches within a single database for tables, dimensions, and values.
         /// </summary>
         /// <param name="databaseId">Identifier of the database to search within.</param>

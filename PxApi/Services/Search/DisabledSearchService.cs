@@ -12,6 +12,12 @@ namespace PxApi.Services.Search
     public class DisabledSearchService : ISearchService
     {
         /// <inheritdoc />
+        public Task CheckHealthAsync(CancellationToken ct)
+        {
+            throw new NotSupportedException("Search is disabled.");
+        }
+
+        /// <inheritdoc />
         public Task<SearchHitResponse> SearchAsync(
             string query,
             SearchTarget target,
