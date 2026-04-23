@@ -175,7 +175,7 @@ namespace PxApi.UnitTests.ControllerTests
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            ActionResult<SearchResponse> result = await _controller.SearchAsync("test", types: "dimension");
+            ActionResult<SearchResponse> result = await _controller.SearchAsync("test", scope: "dimension");
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());

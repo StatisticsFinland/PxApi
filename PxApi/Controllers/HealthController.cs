@@ -3,7 +3,6 @@ using PxApi.Authentication;
 using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Models;
-using PxApi.Utilities;
 
 namespace PxApi.Controllers
 {

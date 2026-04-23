@@ -36,9 +36,14 @@ namespace PxApi.Configuration
         public SearchApiKeyConfig Search { get; }
 
         /// <summary>
+        /// Configuration for health controller API key authentication.
+        /// </summary>
+        public HealthApiKeyConfig Health { get; }
+
+        /// <summary>
         /// Gets a value indicating whether any authentication method is enabled.
         /// </summary>
-        public bool IsEnabled => Cache.IsEnabled || Databases.IsEnabled || Tables.IsEnabled || Metadata.IsEnabled || Data.IsEnabled || Search.IsEnabled;
+        public bool IsEnabled => Cache.IsEnabled || Databases.IsEnabled || Tables.IsEnabled || Metadata.IsEnabled || Data.IsEnabled || Search.IsEnabled || Health.IsEnabled;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AuthenticationConfig"/> class.
@@ -52,6 +57,7 @@ namespace PxApi.Configuration
             Metadata = new MetadataApiKeyConfig(configuration.GetSection(nameof(Metadata)));
             Data = new DataApiKeyConfig(configuration.GetSection(nameof(Data)));
             Search = new SearchApiKeyConfig(configuration.GetSection(nameof(Search)));
+            Health = new HealthApiKeyConfig(configuration.GetSection(nameof(Health)));
         }
     }
 
@@ -203,6 +209,27 @@ namespace PxApi.Configuration
         /// </summary>
         /// <param name="configuration">The configuration section containing search API key settings.</param>
         public SearchApiKeyConfig(IConfigurationSection configuration) : base(configuration)
+        {
+            Key = configuration.GetValue<string>(nameof(Key));
+            HeaderName = configuration.GetValue<string>(nameof(HeaderName)) ?? DEFAULT_HEADER_NAME;
+        }
+    }
+
+    /// <summary>
+    /// Configuration for health controller API key authentication.
+    /// </summary>
+    public class HealthApiKeyConfig : ApiKeyConfig
+    {
+        /// <summary>
+        /// Gets the default header name for health controller authentication.
+        /// </summary>
+        private const string DEFAULT_HEADER_NAME = "X-Health-API-Key";
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="HealthApiKeyConfig"/> class.
+        /// </summary>
+        /// <param name="configuration">The configuration section containing health API key settings.</param>
+        public HealthApiKeyConfig(IConfigurationSection configuration) : base(configuration)
         {
             Key = configuration.GetValue<string>(nameof(Key));
             HeaderName = configuration.GetValue<string>(nameof(HeaderName)) ?? DEFAULT_HEADER_NAME;

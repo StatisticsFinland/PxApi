@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using PxApi.Configuration;
 using PxApi.Controllers;
 using PxApi.Utilities;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace PxApi.Authentication
 {
@@ -61,8 +63,10 @@ namespace PxApi.Authentication
                     return;
                 }
 
-                // Compare provided key directly with configured key
-                if (!string.Equals(providedKey, apiKeyConfig.Key, StringComparison.Ordinal))
+                // Compare provided key using constant-time comparison to prevent timing attacks
+                byte[] providedBytes = Encoding.UTF8.GetBytes(providedKey);
+                byte[] expectedBytes = Encoding.UTF8.GetBytes(apiKeyConfig.Key!);
+                if (!CryptographicOperations.FixedTimeEquals(providedBytes, expectedBytes))
                 {
                     logger.LogWarning("API key authentication failed: Invalid API key provided");
                     context.Result = new UnauthorizedObjectResult(new { message = "Invalid API key" });
@@ -92,6 +96,7 @@ namespace PxApi.Authentication
                 nameof(DataController) => authConfig.Data,
                 nameof(CacheController) => authConfig.Cache,
                 nameof(SearchController) => authConfig.Search,
+                nameof(HealthController) => authConfig.Health,
                 _ => null
             };
         }
