@@ -305,7 +305,7 @@ namespace PxApi.Controllers
 
             IReadOnlyMatrixMetadata metadata = await cachedDataSource.GetMetadataCachedAsync(resolvedFileReference, ct);
             TableSummary summary = TableSummaryBuilder.Build(metadata, resolvedFileReference.Id, lang);
-            string rootUrl = AppSettings.Active.RootUrl.ToString().TrimEnd('/');
+            Uri rootUrl = AppSettings.Active.RootUrl;
 
             return new SearchResultItem
             {
@@ -318,13 +318,19 @@ namespace PxApi.Controllers
                     new Link
                     {
                         Rel = "metadata",
-                        Href = $"{rootUrl}/meta/databases/{hit.Database.Id}/tables/{resolvedFileReference.Id}?lang={lang}",
+                        Href = rootUrl
+                            .AddRelativePath("meta", "databases", hit.Database.Id, "tables", resolvedFileReference.Id)
+                            .AddQueryParameters(("lang", lang))
+                            .ToString(),
                         Method = "GET"
                     },
                     new Link
                     {
                         Rel = "data",
-                        Href = $"{rootUrl}/data/databases/{hit.Database.Id}/tables/{resolvedFileReference.Id}?lang={lang}",
+                        Href = rootUrl
+                            .AddRelativePath("data", "databases", hit.Database.Id, "tables", resolvedFileReference.Id)
+                            .AddQueryParameters(("lang", lang))
+                            .ToString(),
                         Method = "GET"
                     }
                 ]
