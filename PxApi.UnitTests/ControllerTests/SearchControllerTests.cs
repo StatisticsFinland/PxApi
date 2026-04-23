@@ -105,6 +105,20 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task SearchAsync_SanitizedBlankQuery_ReturnsBadRequest()
+        {
+            // Act
+            ActionResult<SearchResponse> result = await _controller.SearchAsync("<>");
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+                _mockSearchService.Verify(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<SearchTarget>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            }
+        }
+
+        [Test]
         public async Task SearchAsync_UnsupportedLanguage_ReturnsBadRequest()
         {
             // Act
@@ -215,6 +229,20 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+        }
+
+        [Test]
+        public async Task SearchDatabaseAsync_SanitizedBlankQuery_ReturnsBadRequest()
+        {
+            // Act
+            ActionResult<SearchResponse> result = await _controller.SearchDatabaseAsync("db1", "<>");
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+                _mockSearchService.Verify(x => x.SearchDatabaseAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchTarget>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            }
         }
 
         [Test]

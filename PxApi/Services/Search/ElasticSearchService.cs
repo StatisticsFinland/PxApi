@@ -122,26 +122,7 @@ namespace PxApi.Services.Search
             long totalItems = esResponse.HitsMetadata?.Total?.Match(
                 totalHits => totalHits.Value,
                 value => value) ?? 0;
-            List<SearchHit> results = [];
-            foreach (Hit<ElasticsearchDocument> hit in esResponse.Hits)
-            {
-                if (hit.Source is null) continue;
-
-                ElasticsearchDocument doc = hit.Source;
-                string tableId = hit.Id ?? string.Empty;
-
-                List<MatchInfo>? matches = MapHighlights(hit.Highlight);
-
-                SearchHit item = new()
-                {
-                    Score = hit.Score,
-                    Database = new SearchDatabaseRef { Id = doc.Database, Name = doc.Database },
-                    TableId = tableId,
-                    Matches = matches
-                };
-
-                results.Add(item);
-            }
+            List<SearchHit> results = MapHits(esResponse.Hits);
 
             return new SearchHitResponse
             {
@@ -159,6 +140,30 @@ namespace PxApi.Services.Search
                     TotalItems = (int)totalItems
                 }
             };
+        }
+
+        internal static List<SearchHit> MapHits(IReadOnlyCollection<Hit<ElasticsearchDocument>> hits)
+        {
+            List<SearchHit> results = [];
+            foreach (Hit<ElasticsearchDocument> hit in hits)
+            {
+                if (hit.Source is null || string.IsNullOrWhiteSpace(hit.Id)) continue;
+
+                ElasticsearchDocument doc = hit.Source;
+                List<MatchInfo>? matches = MapHighlights(hit.Highlight);
+
+                SearchHit item = new()
+                {
+                    Score = hit.Score,
+                    Database = new SearchDatabaseRef { Id = doc.Database, Name = doc.Database },
+                    TableId = hit.Id,
+                    Matches = matches
+                };
+
+                results.Add(item);
+            }
+
+            return results;
         }
 
         private static Highlight BuildHighlight(string[] fields)

@@ -39,6 +39,8 @@ namespace PxApi.Controllers
         /// </remarks>
         private const int MAX_QUERY_LENGTH = 400;
 
+        private const string BlankSanitizedQueryMessage = "The query parameter 'q' must contain searchable characters.";
+
         private static readonly string AcceptedScopeMessage =
             $"Invalid 'scope' value. Accepted values are: {string.Join(", ", Enum.GetNames<SearchTarget>().Select(n => n.ToLowerInvariant()))}";
 
@@ -83,6 +85,7 @@ namespace PxApi.Controllers
             if (parsedTarget is null) return BadRequest(AcceptedScopeMessage);
             SearchTarget target = parsedTarget.Value;
             string sanitizedQuery = InputSanitizer.SanitizeInput(q, MAX_QUERY_LENGTH);
+            if (string.IsNullOrWhiteSpace(sanitizedQuery)) return BadRequest(BlankSanitizedQueryMessage);
 
             using (logger.BeginSearchScope(sanitizedQuery))
             {
@@ -155,6 +158,7 @@ namespace PxApi.Controllers
             if (parsedTarget is null) return BadRequest(AcceptedScopeMessage);
             SearchTarget target = parsedTarget.Value;
             string sanitizedQuery = InputSanitizer.SanitizeInput(q, MAX_QUERY_LENGTH);
+            if (string.IsNullOrWhiteSpace(sanitizedQuery)) return BadRequest(BlankSanitizedQueryMessage);
 
             DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
             if (dbRef is null)

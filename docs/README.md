@@ -128,14 +128,14 @@ Additional methods:
 - `OPTIONS /data/databases/{database}/tables/{table}` returns Allow header (`GET,POST,HEAD,OPTIONS`)
 
 ### Search
-`GET /meta/search?q=population&types=content&lang=fi&page=1&pageSize=20`
+`GET /meta/search?q=population&scope=content&lang=fi&page=1&pageSize=20`
 Searches across all databases for tables, dimensions, and values.
 
 Requires feature flag `SearchController = true` in `FeatureManagement`. When disabled, all search endpoints return 404.
 
 Query parameters:
 - `q` (required): Search query string (max 400 characters).
-- `types` (optional): Search scope — one of `content`, `dimension`, `value`, `geo`, `all`. When omitted, defaults to `content` (searches title, source, note, content variable, used-for description).
+- `scope` (optional): Search scope — one of `content`, `dimension`, `value`, `geo`, `all`. When omitted, defaults to `content` (searches title, source, note, content variable, used-for description).
 - `lang` (optional, default configured language): Language code (ISO 639-1).
 - `page` (optional, >=1, default `1`): Page number.
 - `pageSize` (optional, 1-100, default `20`): Items per page.
