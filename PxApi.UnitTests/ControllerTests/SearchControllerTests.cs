@@ -320,8 +320,8 @@ namespace PxApi.UnitTests.ControllerTests
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(response!.Results, Has.Count.EqualTo(1));
-                Assert.That(response.Results[0].Table.Code, Is.EqualTo("table-tableid"));
-                Assert.That(response.Results[0].Table.Name, Is.EqualTo("table-description.fi"));
+                Assert.That(response.Results[0].Table.TableId, Is.EqualTo("table-tableid"));
+                Assert.That(response.Results[0].Table.Title, Is.EqualTo("table-description.fi"));
                 Assert.That(response.Results[0].Table.ContentValues, Has.Count.EqualTo(2));
                 Assert.That(response.Results[0].Table.TimeRange.From, Is.EqualTo("time-value0-name.fi"));
                 Assert.That(response.Results[0].Table.Dimensions, Has.Count.EqualTo(2));

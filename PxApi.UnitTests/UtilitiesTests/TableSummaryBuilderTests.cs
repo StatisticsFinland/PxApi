@@ -21,8 +21,8 @@ namespace PxApi.UnitTests.UtilitiesTests
             // Assert
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(summary.Code, Is.EqualTo("table-tableid"));
-                Assert.That(summary.Name, Is.EqualTo("table-description.en"));
+                Assert.That(summary.TableId, Is.EqualTo("table-tableid"));
+                Assert.That(summary.Title, Is.EqualTo("table-description.en"));
                 Assert.That(summary.ContentValues, Has.Count.EqualTo(2));
                 Assert.That(summary.TimeRange.From, Is.EqualTo("time-value0-name.en"));
                 Assert.That(summary.TimeRange.To, Is.EqualTo("time-value1-name.en"));

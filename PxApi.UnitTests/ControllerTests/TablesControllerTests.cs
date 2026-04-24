@@ -162,8 +162,8 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(pagedTableList.Tables, Has.Count.EqualTo(2));
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(pagedTableList.Tables[0].Table.Code, Is.EqualTo("table-tableid"));
-                Assert.That(pagedTableList.Tables[0].Table.Name, Is.EqualTo("table-description.en"));
+                Assert.That(pagedTableList.Tables[0].Table.TableId, Is.EqualTo("table-tableid"));
+                Assert.That(pagedTableList.Tables[0].Table.Title, Is.EqualTo("table-description.en"));
                 Assert.That(pagedTableList.Tables[0].Table.LastUpdated, Is.EqualTo(meta1.GetContentDimension().Values.Map(v => v.LastUpdated).Max()));
                 Assert.That(pagedTableList.Tables[0].Table.ContentValues, Is.Not.Null);
                 Assert.That(pagedTableList.Tables[0].Table.ContentValues, Has.Count.EqualTo(2));
@@ -313,7 +313,7 @@ namespace PxApi.UnitTests.ControllerTests
                 {
                     for (int i = 0; i < (page == 3 ? 1 : pageSize); i++)
                     {
-                        Assert.That(pagedTableList.Tables[i].Table.Code, Is.EqualTo("table-tableid"));
+                        Assert.That(pagedTableList.Tables[i].Table.TableId, Is.EqualTo("table-tableid"));
                         tableIndex++;
                     }
                 }

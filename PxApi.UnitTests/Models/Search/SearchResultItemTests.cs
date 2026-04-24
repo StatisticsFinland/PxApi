@@ -40,8 +40,8 @@ namespace PxApi.UnitTests.Models.Search
             {
                 Assert.That(root.GetProperty("score").GetDouble(), Is.EqualTo(0.98));
                 Assert.That(root.GetProperty("database").GetProperty("id").GetString(), Is.EqualTo("StatFin"));
-                Assert.That(root.GetProperty("table").GetProperty("code").GetString(), Is.EqualTo("statfin_vaerak_pxt_11ra"));
-                Assert.That(root.GetProperty("table").GetProperty("name").GetString(), Is.EqualTo("Population according to age and sex"));
+                Assert.That(root.GetProperty("table").GetProperty("tableId").GetString(), Is.EqualTo("statfin_vaerak_pxt_11ra"));
+                Assert.That(root.GetProperty("table").GetProperty("title").GetString(), Is.EqualTo("Population according to age and sex"));
                 Assert.That(root.GetProperty("matches").GetArrayLength(), Is.EqualTo(1));
             }
         }
@@ -62,8 +62,8 @@ namespace PxApi.UnitTests.Models.Search
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(deserialized!.Database.Id, Is.EqualTo("db1"));
-                Assert.That(deserialized.Table.Code, Is.EqualTo("t1"));
-                Assert.That(deserialized.Table.Name, Is.EqualTo("Table One"));
+                Assert.That(deserialized.Table.TableId, Is.EqualTo("t1"));
+                Assert.That(deserialized.Table.Title, Is.EqualTo("Table One"));
                 Assert.That(deserialized.Score, Is.Null);
                 Assert.That(deserialized.Matches, Is.Null);
                 Assert.That(deserialized.Links, Is.Null);
@@ -183,8 +183,8 @@ namespace PxApi.UnitTests.Models.Search
         {
             return new TableSummary
             {
-                Code = code,
-                Name = name,
+                TableId = code,
+                Title = name,
                 ContentValues =
                 [
                     new ContentValueInfo

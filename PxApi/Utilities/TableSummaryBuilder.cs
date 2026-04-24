@@ -47,8 +47,8 @@ namespace PxApi.Utilities
 
             return new TableSummary
             {
-                Code = code,
-                Name = name,
+                TableId = code,
+                Title = name,
                 ContentValues = contentValues,
                 TimeRange = timeRange,
                 Dimensions = dimensions,

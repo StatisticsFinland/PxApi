@@ -9,16 +9,16 @@ namespace PxApi.Models
     public class TableSummary
     {
         /// <summary>
-        /// Unique code identifying the table (e.g., TABLEID from PX metadata).
+        /// Unique identifier for the table (e.g., TABLEID from PX metadata).
         /// </summary>
         [Required]
-        public required string Code { get; set; }
+        public required string TableId { get; set; }
 
         /// <summary>
-        /// Localized display name or title of the table.
+        /// Localized display title of the table.
         /// </summary>
         [Required]
-        public required string Name { get; set; }
+        public required string Title { get; set; }
 
         /// <summary>
         /// Content dimension value names and their units of measurement.
