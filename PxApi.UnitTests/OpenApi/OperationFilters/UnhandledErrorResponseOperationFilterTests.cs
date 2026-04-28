@@ -117,7 +117,7 @@ namespace PxApi.UnitTests.OpenApi.OperationFilters
         }
 
         [Test]
-        public void Apply_ShouldReferenceProblemDetailsSchema_In500Response()
+        public void Apply_ShouldUseStringSchema_In500Response()
         {
             // Arrange
             OpenApiOperation operation = new()
@@ -133,9 +133,8 @@ namespace PxApi.UnitTests.OpenApi.OperationFilters
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(mediaType, Is.Not.Null);
-                Assert.That(mediaType.Schema, Is.InstanceOf<OpenApiSchemaReference>());
-                OpenApiSchemaReference schemaRef = (OpenApiSchemaReference)mediaType.Schema!;
-                Assert.That(schemaRef!.Reference.Id, Is.EqualTo("ProblemDetails"));
+                Assert.That(mediaType.Schema, Is.InstanceOf<OpenApiSchema>());
+                Assert.That(mediaType.Schema!.Type, Is.EqualTo(JsonSchemaType.String));
             }
         }
 

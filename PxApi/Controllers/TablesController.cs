@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Px.Utils.Models.Metadata.Dimensions;
-using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
 using PxApi.Caching;
 using PxApi.Configuration;
-using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Collections.Immutable;
@@ -40,12 +37,14 @@ namespace PxApi.Controllers
         /// <response code="200">Returns the table listing.</response>
         /// <response code="400">Invalid query parameter was provided (page &lt; 1, pageSize outside 1-100 or unsupported language).</response>
         /// <response code="404">Database not found.</response>
+        /// <response code="500">A table on the requested page contains broken metadata.</response>
         [HttpGet("{database}/tables")]
         [OperationId("listTables")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(PagedTableList), 200)]
         [ProducesResponseType(typeof(string), 400)]
         [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(string), 500)]
         public async Task<ActionResult<PagedTableList>> GetTablesAsync(
             [FromRoute] string database,
             [FromQuery] string? lang = null,
@@ -65,24 +64,14 @@ namespace PxApi.Controllers
                 DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
                 if (dataBaseRef is null)
                 {
-                    using (logger.BeginScope(new Dictionary<string, object>
-                    {
-                        { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                        { LoggerConsts.ACTION, nameof(GetTablesAsync) },
-                        { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                    }))
+                    using (logger.BeginDbNotFoundScope())
                     {
                         auditLogger.LogAuditEvent();
                     }
                     return NotFound("Database not found.");
                 }
 
-                using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(GetTablesAsync) },
-                    { LoggerConsts.DB_ID, dataBaseRef.Value.Id }
-                }))
+                using (logger.BeginDbScope(dataBaseRef.Value.Id))
                 {
                     auditLogger.LogAuditEvent();
 
@@ -108,17 +97,18 @@ namespace PxApi.Controllers
                         try
                         {
                             IReadOnlyMatrixMetadata tableMeta = await cachedConnector.GetMetadataCachedAsync(table.Value, ct);
+                            TableSummary summary = TableSummaryBuilder.Build(tableMeta, table.Key, actualLang);
 
                             Uri fileUri = settings.RootUrl
                                 .AddRelativePath("meta", "databases", dataBaseRef.Value.Id, "tables", table.Key)
                                 .AddQueryParameters(("lang", actualLang));
-                            pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, actualLang, tableMeta, fileUri));
+                            pagedTableList.Tables.Add(BuildTableListingItem(summary, fileUri));
 
                         }
                         catch (Exception idReadEx) when (idReadEx is not OperationCanceledException)
                         {
-                            pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, table.Key));
-                            logger.LogWarning(idReadEx, "Failed to get metadata for table: {Table}", tableList.ElementAt(i).Key);
+                            logger.LogError(idReadEx, "Failed to build listing summary for table {Table}", table.Key);
+                            return StatusCode(StatusCodes.Status500InternalServerError, "A table on the requested page could not be loaded.");
                         }
                     }
 
@@ -152,24 +142,14 @@ namespace PxApi.Controllers
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
             if (dataBaseRef is null)
             {
-                using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(HeadTablesAsync) },
-                    { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                }))
+                using (logger.BeginDbNotFoundScope())
                 {
                     auditLogger.LogAuditEvent();
                     return NotFound();
                 }
             }
 
-            using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(HeadTablesAsync) },
-                    { LoggerConsts.DB_ID, dataBaseRef.Value.Id }
-                }))
+            using (logger.BeginDbScope(dataBaseRef.Value.Id))
             {
                 // Audit successful HEAD validation.
                 auditLogger.LogAuditEvent();
@@ -194,24 +174,14 @@ namespace PxApi.Controllers
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
             if (dataBaseRef is null)
             {
-                using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(OptionsTables) },
-                    { LoggerConsts.DB_ID, LoggerConsts.NOT_FOUND_PLACEHOLDER }
-                }))
+                using (logger.BeginDbNotFoundScope())
                 {
                     auditLogger.LogAuditEvent();
                 }
                 return NotFound("Database not found.");
             }
 
-            using (logger.BeginScope(new Dictionary<string, object>
-                {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(OptionsTables) },
-                    { LoggerConsts.DB_ID, dataBaseRef.Value.Id }
-                }))
+            using (logger.BeginDbScope(dataBaseRef.Value.Id))
             {
                 const string methods = "GET,HEAD,OPTIONS";
                 Response.Headers.Allow = methods;
@@ -220,27 +190,11 @@ namespace PxApi.Controllers
             }
         }
 
-        private static TableListingItem BuildTableListingItemFromMeta(string tableName, string lang, IReadOnlyMatrixMetadata meta, Uri uri)
+        private static TableListingItem BuildTableListingItem(TableSummary summary, Uri uri)
         {
-            TableStatus status = TableStatus.Current;
-            string id = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang) ?? tableName;
-            DateTime lastUpdated = DateTime.MinValue;
-            if (meta.TryGetContentDimension(out ContentDimension? contDim))
-            {
-                lastUpdated = contDim.Values.Map(v => v.LastUpdated).Max();
-            }
-            else
-            {
-                status = TableStatus.Error;
-            }
-
             return new TableListingItem
             {
-                ID = id,
-                Name = tableName,
-                Status = status,
-                Title = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang) ?? null,
-                LastUpdated = lastUpdated,
+                Table = summary,
                 Links =
                 [
                     new Link
@@ -250,19 +204,6 @@ namespace PxApi.Controllers
                         Method = "GET"
                     }
                 ]
-            };
-        }
-
-        private static TableListingItem BuildErrorTableListingItem(string tableName, string id)
-        {
-            return new TableListingItem
-            {
-                ID = id,
-                Name = tableName,
-                Status = TableStatus.Error,
-                Title = null,
-                LastUpdated = null,
-                Links = []
             };
         }
     }

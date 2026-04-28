@@ -3,7 +3,7 @@ using PxApi.Authentication;
 using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Models;
-using PxApi.Utilities;
+using PxApi.Services;
 
 namespace PxApi.Controllers
 {
@@ -18,58 +18,86 @@ namespace PxApi.Controllers
     public class HealthController(IServiceProvider serviceProvider, ILogger<HealthController> logger) : ControllerBase
     {
         /// <summary>
-        /// Returns 200 OK if the application is alive and all database connections are healthy.
-        /// Returns 503 Service Unavailable if any database connection fails.
+        /// Returns 200 OK if the application is alive and all database connections and enabled services are healthy.
+        /// Returns 503 Service Unavailable if any database connection or enabled service is unhealthy.
         /// </summary>
         /// <param name="ct">Cancellation token.</param>
-        /// <returns>Health status with details about each database connection.</returns>
+        /// <returns>Health status with details about each database connection and enabled services.</returns>
         [HttpGet]
         [Produces("application/json")]
         [ProducesResponseType(typeof(HealthResponse), 200)]
         [ProducesResponseType(typeof(HealthResponse), 503)]
         public async Task<IActionResult> GetHealthAsync(CancellationToken ct)
         {
-            using (logger.BeginScope(new Dictionary<string, object>
+            List<DatabaseHealthStatus> databaseStatuses = [];
+            bool allHealthy = true;
+
+            foreach (DataBaseConfig dbConfig in AppSettings.Active.DataBases)
             {
-                { LoggerConsts.CONTROLLER, nameof(HealthController) },
-                { LoggerConsts.ACTION, nameof(GetHealthAsync) }
-            }))
+                string dbId = dbConfig.Id;
+                try
+                {
+                    using IServiceScope scope = serviceProvider.CreateScope();
+                    IDataBaseConnector connector = scope.ServiceProvider.GetRequiredKeyedService<IDataBaseConnector>(dbId);
+                    await connector.CheckConnectionAsync(ct);
+
+                    logger.LogDebug("Database {DatabaseId} health check passed", dbId);
+                    databaseStatuses.Add(new DatabaseHealthStatus(dbId, HealthStatus.Healthy));
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Database {DatabaseId} health check failed", dbId);
+                    databaseStatuses.Add(new DatabaseHealthStatus(dbId, HealthStatus.Unhealthy));
+                    allHealthy = false;
+                }
+            }
+
+            HealthResponse response = new(allHealthy ? HealthStatus.Healthy : HealthStatus.Unhealthy, databaseStatuses);
+
+            if (AppSettings.Active.Features.SearchController)
             {
-                List<DatabaseHealthStatus> databaseStatuses = [];
-                bool allHealthy = true;
-
-                foreach (DataBaseConfig dbConfig in AppSettings.Active.DataBases)
+                SearchHealthStatus searchStatus = await CheckSearchHealthAsync(ct);
+                if (searchStatus.Status != HealthStatus.Healthy)
                 {
-                    string dbId = dbConfig.Id;
-                    try
-                    {
-                        using IServiceScope scope = serviceProvider.CreateScope();
-                        IDataBaseConnector connector = scope.ServiceProvider.GetRequiredKeyedService<IDataBaseConnector>(dbId);
-                        await connector.CheckConnectionAsync(ct);
-
-                        logger.LogDebug("Database {DatabaseId} health check passed", dbId);
-                        databaseStatuses.Add(new DatabaseHealthStatus(dbId, "healthy"));
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogWarning(ex, "Database {DatabaseId} health check failed", dbId);
-                        databaseStatuses.Add(new DatabaseHealthStatus(dbId, "unhealthy"));
-                        allHealthy = false;
-                    }
+                    allHealthy = false;
                 }
-
-                HealthResponse response = new(allHealthy ? "healthy" : "unhealthy", databaseStatuses);
-
-                if (allHealthy)
+                response = response with
                 {
-                    return Ok(response);
-                }
+                    Status = allHealthy ? HealthStatus.Healthy : HealthStatus.Unhealthy,
+                    Search = searchStatus
+                };
+            }
 
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, response);
+            if (allHealthy)
+            {
+                return Ok(response);
+            }
+
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, response);
+        }
+
+        private async Task<SearchHealthStatus> CheckSearchHealthAsync(CancellationToken ct)
+        {
+            try
+            {
+                using IServiceScope scope = serviceProvider.CreateScope();
+                ISearchService searchService = scope.ServiceProvider.GetRequiredService<ISearchService>();
+                await searchService.CheckHealthAsync(ct);
+                logger.LogDebug("Search backend health check passed");
+                return new SearchHealthStatus(HealthStatus.Healthy);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Search backend health check failed");
+                return new SearchHealthStatus(HealthStatus.Unhealthy);
             }
         }
     }

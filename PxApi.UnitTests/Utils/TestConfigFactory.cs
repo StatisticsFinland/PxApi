@@ -23,6 +23,7 @@ namespace PxApi.UnitTests.Utils
                 ["Cache:DefaultFileListSize"] = "350000",
                 ["Cache:DefaultMetaSize"] = "200000",
                 ["FeatureManagement:CacheController"] = "true",
+                ["FeatureManagement:SearchController"] = "true",
                 ["QueryLimits:JsonMaxCells"] = "100000",
                 ["QueryLimits:JsonStatMaxCells"] = "50000",
                 ["Localization:DefaultLanguage"] = "fi",

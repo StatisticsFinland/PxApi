@@ -1,17 +1,18 @@
-﻿using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using PxApi.Configuration;
 using PxApi.Controllers;
 
 namespace PxApi.OpenApi
 {
     /// <summary>
-    /// Class for setting visibility of API controllers in Swagger. 
-    /// CacheController is always hidden from OpenAPI documentation since it's for internal use only.
+    /// Convention that controls API explorer visibility for internal and search endpoints.
+    /// Cache controller actions are always hidden from OpenAPI documentation,
+    /// and search controller actions are hidden when the search feature flag is disabled.
     /// </summary>
     public class ApiExplorerConventionsFactory : IActionModelConvention
     {
         /// <summary>
         /// Applies the convention to hide controller actions from API explorer.
-        /// CacheController is always hidden from OpenAPI documentation regardless of feature flag status.
         /// </summary>
         /// <param name="action">The action model to apply the convention to.</param>
         public void Apply(ActionModel action)
@@ -24,10 +25,15 @@ namespace PxApi.OpenApi
                 return;
             }
 
-            bool isCacheController = action.Controller.ControllerType == typeof(CacheController);
-            if (isCacheController)
+            if (action.Controller.ControllerType == typeof(CacheController))
             {
-                // Always hide CacheController from OpenAPI documentation since it's for internal use only
+                action.ApiExplorer.IsVisible = false;
+                return;
+            }
+
+            if (action.Controller.ControllerType == typeof(SearchController)
+                && !AppSettings.Active.Features.SearchController)
+            {
                 action.ApiExplorer.IsVisible = false;
             }
         }
