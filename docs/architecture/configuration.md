@@ -83,11 +83,11 @@ Per-database TTL settings:
 
 **File**: `PxApi/Configuration/AuthenticationConfig.cs`
 
-Per-controller API key configuration. Each controller type (`Cache`, `Databases`, `Tables`, `Metadata`, `Data`) can have its own:
+Per-controller API key configuration. Each controller type (`Cache`, `Databases`, `Tables`, `Metadata`, `Data`, `Search`, `Health`) can have its own:
 - `Key` / `Hash` + `Salt` — API key value or hashed key
 - `HeaderName` — Custom HTTP header name (defaults like `X-Data-API-Key`)
 
-Authentication is entirely optional. If no key is configured for a controller, that controller is public.
+Authentication is entirely optional. If no key is configured for a controller, that controller is public. The hidden `InfoController` endpoint does not currently have a dedicated authentication configuration section.
 
 ## Search
 

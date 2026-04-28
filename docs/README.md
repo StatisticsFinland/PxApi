@@ -11,14 +11,32 @@ PxApi is a .NET 10.0 Web API for accessing PX statistical datasets. It provides 
 - Cache management endpoints (database level and single table) (`/cache/databases/{database}` / `/cache/databases/{database}/tables/{id}`)
 - Global and per-database caching (file lists, metadata, data, last updated timestamps)
 - Feature flags (cache and search endpoint visibility, and search OpenAPI documentation visibility)
-- Controller-specific API key authentication for all endpoints
+- Controller-specific API key authentication for supported controllers
 - Multiple storage types: Mounted (local / network), Azure File Share, Azure Blob Storage, Azure Binary Blob Storage
 - Query size limits returning HTTP 413 when exceeded
 - Metadata search across tables, dimensions, and values (`/meta/search`, `/meta/databases/{database}/search`)
+- Health check endpoint for database and search backend readiness (`/health`)
+- Info endpoint for application name and version (`/info`)
 - Swagger / OpenAPI documentation with custom schema & document filters
 - HEAD and OPTIONS support for discoverability and CORS pre-flight
 
 ## Endpoints
+
+### Info
+`GET /info`
+Returns basic application information including the application name and current version. This endpoint is hidden from OpenAPI documentation.
+
+Responses:
+- `200 OK` JSON object containing application information
+
+### Health
+`GET /health`
+Returns overall application health, including configured database connections and the search backend when the Search feature is enabled. This endpoint is hidden from OpenAPI documentation.
+
+Responses:
+- `200 OK` all configured dependencies are healthy
+- `401 Unauthorized` missing / invalid API key (when `Authentication:Health` is configured)
+- `503 Service Unavailable` one or more configured dependencies are unhealthy
 
 ### Databases
 `GET /meta/databases?lang=fi`
@@ -143,6 +161,7 @@ Query parameters:
 Responses:
 - `200 OK` JSON object with search results and paging info
 - `400 Bad Request` missing query, invalid paging, or unsupported language
+- `401 Unauthorized` missing / invalid API key (when `Authentication:Search` is configured)
 - `503 Service Unavailable` search backend unavailable
 
 Database-scoped search:
@@ -271,7 +290,9 @@ Logging__ApplicationInsights__LogLevel__Default=Debug
 
 ## Authentication
 
-PxApi supports optional controller-specific API key authentication. Each controller (Cache, Databases, Tables, Metadata, Data, Search) can be independently configured. When no key is configured for a controller, its endpoints remain publicly accessible.
+PxApi supports optional controller-specific API key authentication. Dedicated configuration is available for Cache, Databases, Tables, Metadata, Data, Search, and Health controllers. When no key is configured for a controller, its endpoints remain publicly accessible.
+
+The hidden `InfoController` endpoint does not currently have a dedicated authentication section and therefore remains public.
 
 See [Authentication](Authentication.md) for full configuration details, environment variable setup, and security notes.
 

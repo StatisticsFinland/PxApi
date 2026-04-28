@@ -6,10 +6,11 @@ This document describes how to configure and use API Key authentication for PxAp
 
 API Key authentication provides a simple way to protect endpoints. The authentication system:
 
-- Uses direct API key comparison for each controller
+- Uses direct API key comparison for each controller that has dedicated authentication configuration
 - Is completely optional — if no key is configured for a controller, that controller's endpoints remain publicly accessible
 - Supports custom header names per controller
-- Supports independent configuration for six controllers: Cache, Databases, Tables, Metadata, Data, and Search
+- Supports independent configuration for seven controllers: Cache, Databases, Tables, Metadata, Data, Search, and Health
+- Includes hidden operational endpoints: `HealthController` can be protected with its own API key configuration, while `InfoController` has no dedicated authentication section and remains publicly accessible
 
 ## Configuration
 
@@ -41,6 +42,10 @@ API Key authentication provides a simple way to protect endpoints. The authentic
     "Search": {
       "Key": "your-search-api-key",
       "HeaderName": "X-Search-API-Key"
+    },
+    "Health": {
+      "Key": "your-health-api-key",
+      "HeaderName": "X-Health-API-Key"
     }
   }
 }
@@ -62,6 +67,9 @@ Each controller section supports:
 | Metadata | `X-Metadata-API-Key` |
 | Data | `X-Data-API-Key` |
 | Search | `X-Search-API-Key` |
+| Health | `X-Health-API-Key` |
+
+`InfoController` does not currently have a dedicated `Authentication:Info` configuration section.
 
 ### Environment Variables
 
@@ -86,6 +94,9 @@ Authentication__Metadata__Key=your-metadata-api-key
 
 # Configure Search controller authentication
 Authentication__Search__Key=your-search-api-key
+
+# Configure Health controller authentication
+Authentication__Health__Key=your-health-api-key
 ```
 
 ## Using the API
@@ -106,6 +117,10 @@ curl "https://yourapi.com/data/databases/StatFin/tables/table123" \
 # Databases: List databases
 curl "https://yourapi.com/meta/databases" \
   -H "X-Databases-API-Key: your-databases-api-key"
+
+# Health: Check application and dependency health
+curl "https://yourapi.com/health" \
+  -H "X-Health-API-Key: your-health-api-key"
 ```
 
 ### Response Codes

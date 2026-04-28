@@ -22,6 +22,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{02EA
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{9FD4A85B-517A-4CB4-B363-F9ABEFDCD5A0}"
 	ProjectSection(SolutionItems) = preProject
+		docs\Authentication.md = docs\Authentication.md
 		docs\LICENSE.md = docs\LICENSE.md
 		docs\README.md = docs\README.md
 	EndProjectSection
@@ -35,6 +36,18 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{11A8C8BB-BE45-4CF4-BBA9-80E0B0E862EC}"
 	ProjectSection(SolutionItems) = preProject
 		.github\scripts\check_version_changes.sh = .github\scripts\check_version_changes.sh
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "architecture", "architecture", "{CF3F59CE-56DD-4D2E-9C26-143A2407B7AB}"
+	ProjectSection(SolutionItems) = preProject
+		docs\architecture\caching.md = docs\architecture\caching.md
+		docs\architecture\configuration.md = docs\architecture\configuration.md
+		docs\architecture\controllers.md = docs\architecture\controllers.md
+		docs\architecture\data-access.md = docs\architecture\data-access.md
+		docs\architecture\models-and-builders.md = docs\architecture\models-and-builders.md
+		docs\architecture\overview.md = docs\architecture\overview.md
+		docs\architecture\services-and-utilities.md = docs\architecture\services-and-utilities.md
+		docs\architecture\testing.md = docs\architecture\testing.md
 	EndProjectSection
 EndProject
 Global
@@ -58,6 +71,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{5C6E13B8-2410-44BA-98F5-8830DA756959} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{11A8C8BB-BE45-4CF4-BBA9-80E0B0E862EC} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{CF3F59CE-56DD-4D2E-9C26-143A2407B7AB} = {9FD4A85B-517A-4CB4-B363-F9ABEFDCD5A0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5B90BE07-D6C0-4E62-9F2B-7CCDF785ACFB}
