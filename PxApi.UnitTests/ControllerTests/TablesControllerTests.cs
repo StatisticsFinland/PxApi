@@ -285,16 +285,17 @@ namespace PxApi.UnitTests.ControllerTests
 
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
                 files.ToDictionary(f => f.Id));
+            List<string> expectedTableIds = [.. files.Select((file, index) => $"table-tableid-{index + 1}")];
 
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
             _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ReturnsAsync(tableList);
 
-            foreach (PxFileRef file in files)
+            for (int i = 0; i < files.Count; i++)
             {
-                _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(TestMockMetaBuilder.GetMockMetadata());
+                PxFileRef file = files[i];
+                string tableId = expectedTableIds[i];
+                _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(TestMockMetaBuilder.GetMockMetadata(tableId: tableId));
             }
-
-            int tableIndex = 0;
 
             // Act & Assert
             for (int page = 1; page <= 3; page++)
@@ -305,23 +306,24 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(okResult, Is.Not.Null);
                 PagedTableList? pagedTableList = okResult.Value as PagedTableList;
                 Assert.That(pagedTableList, Is.Not.Null);
+                int expectedStartIndex = (page - 1) * pageSize;
+                int expectedCount = Math.Min(pageSize, files.Count - expectedStartIndex);
 
-                if (page == 3) Assert.That(pagedTableList.Tables, Has.Count.EqualTo(1));
-                else Assert.That(pagedTableList.Tables, Has.Count.EqualTo(3));
+                Assert.That(pagedTableList.Tables, Has.Count.EqualTo(expectedCount));
 
                 using (Assert.EnterMultipleScope())
                 {
-                    for (int i = 0; i < (page == 3 ? 1 : pageSize); i++)
+                    for (int i = 0; i < expectedCount; i++)
                     {
-                        Assert.That(pagedTableList.Tables[i].Table.TableId, Is.EqualTo("table-tableid"));
-                        tableIndex++;
+                        int expectedIndex = expectedStartIndex + i;
+                        PxFileRef expectedFile = files[expectedIndex];
+                        Assert.That(pagedTableList.Tables[i].Table.TableId, Is.EqualTo(expectedTableIds[expectedIndex]));
+                        Assert.That(pagedTableList.Tables[i].Links[0].Href, Is.EqualTo($"https://testurl.fi/meta/databases/exampledb/tables/{expectedFile.Id}?lang=en"));
                     }
                 }
 
                 Assert.That(pagedTableList.PagingInfo.CurrentPage, Is.EqualTo(page));
             }
-
-            Assert.That(tableIndex, Is.EqualTo(files.Count));
         }
 
         [Test]

@@ -57,6 +57,7 @@ namespace PxApi.Controllers
         /// <response code="200">Returns matching search results.</response>
         /// <response code="400">Invalid or missing query parameters.</response>
         /// <response code="500">A matched table contains broken metadata.</response>
+        /// <response code="503">Search backend is unavailable.</response>
         [HttpGet("search")]
         [OperationId("searchGlobal")]
         [Produces("application/json")]
