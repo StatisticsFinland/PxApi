@@ -10,7 +10,7 @@ PxApi is a .NET 10.0 Web API for accessing PX statistical datasets. It provides 
 - Content negotiation (JSON-stat 2.0 or CSV) using the `Accept` header
 - Cache management endpoints (database level and single table) (`/cache/databases/{database}` / `/cache/databases/{database}/tables/{id}`)
 - Global and per-database caching (file lists, metadata, data, last updated timestamps)
-- Feature flags (cache and search endpoint visibility)
+- Feature flags (cache and search endpoint visibility, and search OpenAPI documentation visibility)
 - Controller-specific API key authentication for all endpoints
 - Multiple storage types: Mounted (local / network), Azure File Share, Azure Blob Storage, Azure Binary Blob Storage
 - Query size limits returning HTTP 413 when exceeded
@@ -131,7 +131,7 @@ Additional methods:
 `GET /meta/search?q=population&scope=content&lang=fi&page=1&pageSize=20`
 Searches across all databases for tables, dimensions, and values.
 
-Requires feature flag `SearchController = true` in `FeatureManagement`. When disabled, all search endpoints return 404.
+Requires feature flag `SearchController = true` in `FeatureManagement`. When disabled, all search endpoints return 404 and are hidden from OpenAPI documentation.
 
 Query parameters:
 - `q` (required): Search query string (max 400 characters).
@@ -159,7 +159,7 @@ Additional methods:
 - `OPTIONS /meta/databases/{database}/search` returns Allow header (`GET,HEAD,OPTIONS`)
 
 ### Cache
-Requires feature flag `CacheController = true` and valid API key when authentication is enabled.
+Requires feature flag `CacheController = true` and valid API key when authentication is enabled. Cache endpoints are always hidden from OpenAPI documentation.
 
 - `DELETE /cache/databases/{database}` clears all cache entries (file list, metadata, data, last updated) for a database.
 - `DELETE /cache/databases/{database}/tables/{id}` clears all cache entries for a single table.
@@ -214,8 +214,8 @@ Key sections:
   - `JsonMaxCells` (used for any future JSON minimal format endpoints)
   - `JsonStatMaxCells` (enforced in current data endpoints; exceeding returns 413)
 - `FeatureManagement` Feature flags:
-  - `CacheController` Enables cache management endpoints (default `false`)
-  - `SearchController` Enables search endpoints (default `false`)
+  - `CacheController` Enables cache management endpoints (default `false`). Cache endpoints remain hidden from OpenAPI documentation.
+  - `SearchController` Enables search endpoints and their OpenAPI documentation (default `false`)
 - `Authentication` Controller-specific API key settings — see [Authentication](Authentication.md)
 - `Search` Elasticsearch search backend configuration:
   - `CloudId` Elastic Cloud deployment identifier

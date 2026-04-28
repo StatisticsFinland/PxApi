@@ -19,7 +19,8 @@ namespace PxApi.Configuration
 
         /// <summary>
         /// Determines whether the search controller endpoints are enabled.
-        /// When false, all search endpoints will return 404 Not Found and search services will not be registered.
+        /// When false, all search endpoints will return 404 Not Found,
+        /// search services will not be registered, and search endpoints will be hidden from OpenAPI documentation.
         /// Defaults to false.
         /// </summary>
         public bool SearchController { get; } = configuration.GetValue<bool>(nameof(SearchController), defaultValue: false);
