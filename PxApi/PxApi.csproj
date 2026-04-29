@@ -20,7 +20,7 @@
    <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
    <PackageReference Include="Azure.Storage.Files.Shares" Version="12.25.0" />
    <PackageReference Include="Elastic.Clients.Elasticsearch" Version="8.17.3" />
-   <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="3.0.0" />
+   <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="3.1.0" />
    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.4" />
    <PackageReference Include="Microsoft.Extensions.Azure" Version="1.13.1" />
    <PackageReference Include="Microsoft.Extensions.Logging.ApplicationInsights" Version="2.23.0" />
@@ -32,6 +32,6 @@
    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.1.5" />
    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.5" />
    <PackageReference Include="Ude.NetStandard" Version="1.2.0" />
+   <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
  </ItemGroup>
-
 </Project>
