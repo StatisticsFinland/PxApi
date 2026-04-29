@@ -23,11 +23,11 @@ namespace PxApi.UnitTests.OpenApi.OperationFilters
         private sealed class TestController
         {
             [OperationId("MyOp")]
-#pragma warning disable CA1822 // Mark members as static - needs to be instance method for testing
+#pragma warning disable CA1822, S1186 // Mark members as static - needs to be instance method for testing
             public void DecoratedAction() { }
 
             public void UndecoratedAction() { }
-#pragma warning restore CA1822
+#pragma warning restore CA1822, S1186
         }
 
         [Test]

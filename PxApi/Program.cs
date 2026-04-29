@@ -8,11 +8,15 @@ using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Exceptions;
+using PxApi.Filters;
 using PxApi.OpenApi;
 using PxApi.OpenApi.DocumentFilters;
 using PxApi.OpenApi.SchemaFilters;
 using PxApi.Services;
+using PxApi.Services.Search;
 using PxApi.Utilities;
+using Elastic.Clients.Elasticsearch;
+using Elastic.Transport;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
@@ -73,11 +77,6 @@ namespace PxApi
 
                 WebApplication app = builder.Build();
 
-                // Validate database connections before starting the application
-                logger.Info("Validating database connections before starting application");
-                await app.ValidateDatabaseConnectionsAsync();
-                logger.Info("All database connections are valid");
-
                 // Configure the HTTP request pipeline.
                 app.UseSwagger(c =>
                 {
@@ -97,6 +96,8 @@ namespace PxApi
                 app.UseAuthorization();
 
                 app.MapControllers();
+
+                logger.Info("Now listening on: {RootUrl}", AppSettings.Active.RootUrl);
 
                 await app.RunAsync();
             }
@@ -119,6 +120,8 @@ namespace PxApi
 
             serviceCollection.AddControllers(options =>
             {
+                options.Filters.Add<LoggingScopeActionFilter>();
+                options.Filters.Add<OperationCanceledExceptionFilter>();
                 options.Conventions.Add(new ApiExplorerConventionsFactory());
             })
             .AddJsonOptions(options =>
@@ -127,7 +130,7 @@ namespace PxApi
                 options.JsonSerializerOptions.PropertyNameCaseInsensitive = GlobalJsonConverterOptions.Default.PropertyNameCaseInsensitive;
                 options.JsonSerializerOptions.AllowTrailingCommas = GlobalJsonConverterOptions.Default.AllowTrailingCommas;
                 options.JsonSerializerOptions.Encoder = GlobalJsonConverterOptions.Default.Encoder;
-                
+
                 // Copy all converters from the global options
                 foreach (JsonConverter converter in GlobalJsonConverterOptions.Default.Converters)
                 {
@@ -175,19 +178,19 @@ namespace PxApi
 
                 // Add the custom schema filter for DoubleDataValue to ensure it appears as number type in OpenAPI
                 c.SchemaFilter<DoubleDataValueSchemaFilter>();
-                
+
                 // Add document filter to remove DataValueType and DoubleDataValue component schemas
                 c.DocumentFilter<DataValueDocumentFilter>();
 
                 // Add document filter to remove Filter subclass component schemas
                 c.DocumentFilter<FilterSubclassDocumentFilter>();
-                
+
                 // Add schema filter for Filter types to document the custom JSON structure
                 c.SchemaFilter<FilterSchemaFilter>();
-                
+
                 // Add document filter to enhance DataController POST endpoint documentation with request body examples
                 c.DocumentFilter<DataControllerPostEndpointDocumentFilter>();
-                
+
                 // Add document filter to enhance DataController GET endpoint documentation with query parameter examples
                 c.DocumentFilter<DataControllerGetEndpointDocumentFilter>();
 
@@ -209,16 +212,19 @@ namespace PxApi
                 // Global 500 response description for all operations (added via operation filter style hook)
                 c.OperationFilter<UnhandledErrorResponseOperationFilter>();
 
+                // Global 499 response for operations that accept a CancellationToken
+                c.OperationFilter<ClientClosedRequestOperationFilter>();
+
                 // Attribute-based operationId assignment
                 c.OperationFilter<OperationIdOperationFilter>();
             });
-            
+
             // Configure MemoryCache with global cache size limit
             serviceCollection.AddMemoryCache(options =>
             {
                 options.SizeLimit = AppSettings.Active.Cache.MaxSizeBytes;
             });
-            
+
             // Register database connectors as keyed services
             serviceCollection.AddDataBaseConnectors();
 
@@ -231,6 +237,33 @@ namespace PxApi
             // Register HttpContextAccessor and audit logging service
             serviceCollection.AddHttpContextAccessor();
             serviceCollection.AddScoped<IAuditLogService, AuditLogService>();
+
+            // Register search service: use Elasticsearch when the feature is enabled,
+            // otherwise register a disabled stub so the controller can still be activated
+            // (the FeatureGate filter will return 404 before any action method runs).
+            if (AppSettings.Active.Features.SearchController)
+            {
+                SearchConfig searchConfig = AppSettings.Active.Search;
+
+                if (string.IsNullOrWhiteSpace(searchConfig.CloudId) || string.IsNullOrWhiteSpace(searchConfig.IndexPrefix))
+                {
+                    throw new InvalidOperationException("CloudId and IndexPrefix must be configured when the SearchController feature is enabled.");
+                }
+
+                if (string.IsNullOrWhiteSpace(searchConfig.ApiKey))
+                {
+                    throw new InvalidOperationException("The SEARCH_API_KEY environment variable must be set when the SearchController feature is enabled.");
+                }
+
+                ElasticsearchClient esClient = new(new ElasticsearchClientSettings(searchConfig.CloudId, new ApiKey(searchConfig.ApiKey)));
+                serviceCollection.AddSingleton(esClient);
+                serviceCollection.AddSingleton(searchConfig);
+                serviceCollection.AddScoped<ISearchService, ElasticSearchService>();
+            }
+            else
+            {
+                serviceCollection.AddSingleton<ISearchService, DisabledSearchService>();
+            }
         }
     }
 }

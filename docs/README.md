@@ -1,29 +1,46 @@
 # PxApi
 
-PxApi is a .NET 9.0 Web API for accessing PX statistical datasets. It provides table listings, table metadata and data retrieval with flexible dimension filtering and caching across multiple storage backends (local file system, Azure File Share, Azure Blob Storage).
+PxApi is a .NET 10.0 Web API for accessing PX statistical datasets. It provides table listings, table metadata and data retrieval with flexible dimension filtering and caching across multiple storage backends (local file system, Azure File Share, Azure Blob Storage).
 
 ## Implemented Features
 
-- Table listing with paging (`/tables/{database}`)
-- Table metadata in JSON-stat 2.0 (`/meta/{database}/{table}`)
-- Data retrieval with filter semantics (code, range, positional) via GET query parameters or POST body (`/data/{database}/{table}`)
+- Table listing with paging (`/meta/databases/{database}/tables`)
+- Table metadata in JSON-stat 2.0 (`/meta/databases/{database}/tables/{table}`)
+- Data retrieval with filter semantics (code, range, positional) via GET query parameters or POST body (`/data/databases/{database}/tables/{table}`)
 - Content negotiation (JSON-stat 2.0 or CSV) using the `Accept` header
-- Cache management endpoints (database level and single table) (`/cache/{database}` / `/cache/{database}/{id}`)
-- Global and per-database caching (file lists, metadata, data, last updated timestamps, grouping metadata)
-- Feature flags (Swagger visibility of cache endpoints)
-- Controller-specific API key authentication for all endpoints
-- Multiple storage types: Mounted (local / network), Azure File Share, Azure Blob Storage
+- Cache management endpoints (database level and single table) (`/cache/databases/{database}` / `/cache/databases/{database}/tables/{id}`)
+- Global and per-database caching (file lists, metadata, data, last updated timestamps)
+- Feature flags (cache and search endpoint visibility, and search OpenAPI documentation visibility)
+- Controller-specific API key authentication for supported controllers
+- Multiple storage types: Mounted (local / network), Azure File Share, Azure Blob Storage, Azure Binary Blob Storage
 - Query size limits returning HTTP 413 when exceeded
+- Metadata search across tables, dimensions, and values (`/meta/search`, `/meta/databases/{database}/search`)
+- Health check endpoint for database and search backend readiness (`/health`)
+- Info endpoint for application name and version (`/info`)
 - Swagger / OpenAPI documentation with custom schema & document filters
 - HEAD and OPTIONS support for discoverability and CORS pre-flight
 
 ## Endpoints
 
-### Databases
-`GET /databases?lang=fi`
-Returns a list of available databases with their metadata.
+### Info
+`GET /info`
+Returns basic application information including the application name and current version. This endpoint is hidden from OpenAPI documentation.
 
-**Authentication**: Requires valid API key in `X-Databases-API-Key` header when databases authentication is enabled.
+Responses:
+- `200 OK` JSON object containing application information
+
+### Health
+`GET /health`
+Returns overall application health, including configured database connections and the search backend when the Search feature is enabled. This endpoint is hidden from OpenAPI documentation.
+
+Responses:
+- `200 OK` all configured dependencies are healthy
+- `401 Unauthorized` missing / invalid API key (when `Authentication:Health` is configured)
+- `503 Service Unavailable` one or more configured dependencies are unhealthy
+
+### Databases
+`GET /meta/databases?lang=fi`
+Returns a list of available databases with their metadata.
 
 Query parameters:
 - `lang` (optional, default `fi`): Language used for name and description resolution.
@@ -34,14 +51,12 @@ Responses:
 - `401 Unauthorized` missing / invalid API key (when authentication configured)
 
 Additional methods:
-- `HEAD /databases` validates existence of the database collection resource
-- `OPTIONS /databases` returns Allow header (`GET,HEAD,OPTIONS`)
+- `HEAD /meta/databases` validates existence of the database collection resource
+- `OPTIONS /meta/databases` returns Allow header (`GET,HEAD,OPTIONS`)
 
 ### Tables
-`GET /tables/{database}?lang=fi&page=1&pageSize=50`
+`GET /meta/databases/{database}/tables?lang=fi&page=1&pageSize=50`
 Returns a paged list of tables ordered by PX file name.
-
-**Authentication**: Requires valid API key in `X-Tables-API-Key` header when tables authentication is enabled.
 
 Query parameters:
 - `lang` (optional, default `fi`): Language used for metadata resolution.
@@ -55,14 +70,12 @@ Responses:
 - `404 Not Found` database missing
 
 Additional methods:
-- `HEAD /tables/{database}` validates existence and paging values
-- `OPTIONS /tables/{database}` returns Allow header (`GET,HEAD,OPTIONS`)
+- `HEAD /meta/databases/{database}/tables` validates existence and paging values
+- `OPTIONS /meta/databases/{database}/tables` returns Allow header (`GET,HEAD,OPTIONS`)
 
 ### Metadata
-`GET /meta/{database}/{table}?lang=fi`
+`GET /meta/databases/{database}/tables/{table}?lang=fi`
 Returns JSON-stat 2.0 metadata (structure only, no data filtering).
-
-**Authentication**: Requires valid API key in `X-Metadata-API-Key` header when metadata authentication is enabled.
 
 Query parameters:
 - `lang` (optional): If omitted uses table default language
@@ -75,15 +88,13 @@ Responses:
 - `500 Internal Server Error` unexpected error
 
 Additional methods:
-- `HEAD /meta/{database}/{table}` existence & language validation only
-- `OPTIONS /meta/{database}/{table}` returns Allow header (`GET,HEAD,OPTIONS`)
+- `HEAD /meta/databases/{database}/tables/{table}` existence & language validation only
+- `OPTIONS /meta/databases/{database}/tables/{table}` returns Allow header (`GET,HEAD,OPTIONS`)
 
 ### Data
-`GET /data/{database}/{table}?filters=TIME:from=2020&filters=TIME:to=2024&filters=REGION:code=001,002`
+`GET /data/databases/{database}/tables/{table}?filters=TIME:from=2020&filters=TIME:to=2024&filters=REGION:code=001,002`
 
 Retrieves data values applying filters to dimensions. Content negotiation support for json and csv:
-
-**Authentication**: Requires valid API key in `X-Data-API-Key` header when data authentication is enabled.
 
 - `Accept: application/json` or `*/*` -> JSON-stat 2.0
 - `Accept: text/csv` -> CSV format with containing table description, selected value names and data.
@@ -109,7 +120,7 @@ Rules:
 - Wildcard `*` matches zero or more characters in code/from/to values.
 
 POST alternative:
-`POST /data/{database}/{table}` with JSON body mapping dimension codes to filter objects.
+`POST /data/databases/{database}/tables/{table}` with JSON body mapping dimension codes to filter objects.
 Example body:
 ```json
 {
@@ -131,16 +142,46 @@ Responses (GET & POST):
 - `415 Unsupported Media Type` (POST invalid content type)
 
 Additional methods:
-- `HEAD /data/{database}/{table}?lang=fi` existence & language validation only
-- `OPTIONS /data/{database}/{table}` returns Allow header (`GET,POST,HEAD,OPTIONS`)
+- `HEAD /data/databases/{database}/tables/{table}?lang=fi` existence & language validation only
+- `OPTIONS /data/databases/{database}/tables/{table}` returns Allow header (`GET,POST,HEAD,OPTIONS`)
+
+### Search
+`GET /meta/search?q=population&scope=content&lang=fi&page=1&pageSize=20`
+Searches across all databases for tables, dimensions, and values.
+
+Requires feature flag `SearchController = true` in `FeatureManagement`. When disabled, all search endpoints return 404 and are hidden from OpenAPI documentation.
+
+Query parameters:
+- `q` (required): Search query string (max 400 characters).
+- `scope` (optional): Search scope — one of `content`, `dimension`, `value`, `geo`, `all`. When omitted, defaults to `content` (searches title, source, note, content variable, used-for description).
+- `lang` (optional, default configured language): Language code (ISO 639-1).
+- `page` (optional, >=1, default `1`): Page number.
+- `pageSize` (optional, 1-100, default `20`): Items per page.
+
+Responses:
+- `200 OK` JSON object with search results and paging info
+- `400 Bad Request` missing query, invalid paging, or unsupported language
+- `401 Unauthorized` missing / invalid API key (when `Authentication:Search` is configured)
+- `503 Service Unavailable` search backend unavailable
+
+Database-scoped search:
+`GET /meta/databases/{database}/search?q=population&lang=fi`
+Searches within a single database.
+
+Additional responses:
+- `404 Not Found` database not found
+
+Additional methods:
+- `HEAD /meta/search` validates the global search endpoint exists
+- `HEAD /meta/databases/{database}/search` validates the database-scoped search endpoint (returns 404 if database not found)
+- `OPTIONS /meta/search` returns Allow header (`GET,HEAD,OPTIONS`)
+- `OPTIONS /meta/databases/{database}/search` returns Allow header (`GET,HEAD,OPTIONS`)
 
 ### Cache
-Requires feature flag `CacheController = true` and valid API key when authentication is enabled.
+Requires feature flag `CacheController = true` and valid API key when authentication is enabled. Cache endpoints are always hidden from OpenAPI documentation.
 
-**Authentication**: Requires valid API key in `X-Cache-API-Key` header when cache authentication is enabled.
-
-- `DELETE /cache/{database}` clears all cache entries (file list, metadata, data, last updated) for a database.
-- `DELETE /cache/{database}/{id}` clears all cache entries for a single table.
+- `DELETE /cache/databases/{database}` clears all cache entries (file list, metadata, data, last updated) for a database.
+- `DELETE /cache/databases/{database}/tables/{id}` clears all cache entries for a single table.
 
 Responses:
 - `200 OK` success message
@@ -173,22 +214,32 @@ Key sections:
 - `Logging` Standard .NET logging configuration for Application Insights log level filtering:
   - `ApplicationInsights:LogLevel:Default` Minimum log level to send to Application Insights (Debug, Information, Warning, Error, Critical). Defaults to Information.
 - `DataBases` Array of database definitions:
-  - `Type` One of `Mounted`, `FileShare`, `BlobStorage`
+  - `Type` One of `Mounted`, `FileShare`, `BlobStorage`, `BinaryBlobStorage`
   - `Id` Unique id
   - `CacheConfig` Per-database cache sizing overrides
-  - `Custom` Backend-specific connection settings
+  - `Custom` Backend-specific connection settings:
+    - `Mounted`: `RootPath` — absolute path to the local or network directory containing PX files
+    - `FileShare`: `StoragePath` — Azure File Share service URL, `ShareName` — name of the file share
+    - `BlobStorage`: `StoragePath` — Azure Blob Storage service URL, `ContainerName` — name of the blob container
+    - `BinaryBlobStorage`: `StoragePath` — Azure Blob Storage service URL, `ContainerName` — name of the blob container
 - `Cache` Global memory cache sizing (applies to `MemoryCache`):
   - `MaxSizeBytes` (default 524288000)
   - `DefaultDataCellSize`
   - `DefaultUpdateTaskSize`
-  - `DefaultTableGroupSize`
   - `DefaultFileListSize`
   - `DefaultMetaSize`
+  - `DefaultAliasSize`
 - `QueryLimits` Request size limits:
   - `JsonMaxCells` (used for any future JSON minimal format endpoints)
   - `JsonStatMaxCells` (enforced in current data endpoints; exceeding returns 413)
-- `FeatureManagement` Feature flags (e.g. `CacheController`)
-- `Authentication` Controller-specific API key settings - see Authentication section below
+- `FeatureManagement` Feature flags:
+  - `CacheController` Enables cache management endpoints (default `false`). Cache endpoints remain hidden from OpenAPI documentation.
+  - `SearchController` Enables search endpoints and their OpenAPI documentation (default `false`)
+- `Authentication` Controller-specific API key settings — see [Authentication](Authentication.md)
+- `Search` Elasticsearch search backend configuration:
+  - `CloudId` Elastic Cloud deployment identifier
+  - `IndexPrefix` Index name prefix (language code is appended as suffix, e.g. `my-index-fi`)
+  - The API key is sourced from the `SEARCH_API_KEY` environment variable (not from appsettings)
 - `OpenApi` Metadata (contact, license) for Swagger document
 - `LogOptions` NLog file logging configuration:
   - `Folder` Directory for log files (empty disables file logging)
@@ -239,75 +290,20 @@ Logging__ApplicationInsights__LogLevel__Default=Debug
 
 ## Authentication
 
-PxApi supports controller-specific API key authentication. Each controller can be independently configured with its own API key and header name. Authentication is optional and disabled by default.
+PxApi supports optional controller-specific API key authentication. Dedicated configuration is available for Cache, Databases, Tables, Metadata, Data, Search, and Health controllers. When no key is configured for a controller, its endpoints remain publicly accessible.
 
-### Configuration Structure
+The hidden `InfoController` endpoint does not currently have a dedicated authentication section and therefore remains public.
 
-```json
-{
-  "Authentication": {
-    "Cache": {
-      "Key": "your-cache-api-key",
-      "HeaderName": "X-Cache-API-Key"
-    },
-    "Databases": {
-      "Key": "your-databases-api-key",
-      "HeaderName": "X-Databases-API-Key"
-    },
- "Tables": {
-      "Key": "your-tables-api-key",
-      "HeaderName": "X-Tables-API-Key"
-    },
-    "Metadata": {
-      "Key": "your-metadata-api-key",
-      "HeaderName": "X-Metadata-API-Key"
-    },
-    "Data": {
-      "Key": "your-data-api-key",
-      "HeaderName": "X-Data-API-Key"
-    }
-  }
-}
-```
+See [Authentication](Authentication.md) for full configuration details, environment variable setup, and security notes.
 
-### Authentication Rules
+## Environment Variables
 
-- Authentication is **optional** - if no key is provided for a controller, that controller's endpoints will not require authentication
-- Each controller can be independently configured
-- When configured, clients must provide the correct API key in the specified header
-- API keys are compared directly with the configured values
-- Custom header names can be configured for each controller (defaults shown above)
-- Environment variables can override configuration values using the pattern: `Authentication__<Controller>__<Property>` (e.g., `Authentication__Data__Key`)
+Key environment variables used by the application:
 
-### Controller Default Headers
-
-- **Cache**: `X-Cache-API-Key`
-- **Databases**: `X-Databases-API-Key`
-- **Tables**: `X-Tables-API-Key`
-- **Metadata**: `X-Metadata-API-Key`
-- **Data**: `X-Data-API-Key`
-
-### Environment Variable Configuration
-
-You can configure authentication via environment variables:
-
-```
-# Example: Configure Data controller authentication
-Authentication__Data__Key=your-data-api-key
-Authentication__Data__HeaderName=X-Custom-Data-Key
-
-# Example: Configure Databases controller authentication
-Authentication__Databases__Key=your-databases-api-key
-```
-
-### Security Notes
-
-- Store API keys securely and never commit them to version control
-- Use environment variables or secure configuration management for production deployments
-- Rotate API keys periodically
-- Use HTTPS in production to protect API keys in transit
-- Consider using different API keys for different controllers based on access requirements
-- Ensure API keys are sufficiently long and randomly generated for security
+| Variable | Description |
+|---|---|
+| `SEARCH_API_KEY` | API key for authenticating with the Elasticsearch cluster (required for search) |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Application Insights connection string (optional, overrides appsettings value) |
 
 ## Caching
 Global cache size limit controlled via `Cache.MaxSizeBytes`. Individual item sizes use defaults above or per-database overrides. Cached entities:
@@ -315,12 +311,12 @@ Global cache size limit controlled via `Cache.MaxSizeBytes`. Individual item siz
 - Metadata objects
 - Data arrays
 - Last updated timestamps (per PX file)
-- Groupings (if implemented via `CacheConfig.Groupings`)
 
 ## Storage Backends
 - Mounted (local / network path) direct file access
 - Azure File Share via Azure Storage SDK
 - Azure Blob Storage via Azure Storage SDK
+- Azure Binary Blob Storage via Azure Storage SDK (binary-optimized blob access)
 
 ## Content Negotiation
 Specify desired format with `Accept` header:

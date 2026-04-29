@@ -6,7 +6,6 @@ using PxApi.Configuration;
 using PxApi.DataSources;
 using PxApi.Models;
 using System.Collections.Immutable;
-using System.Text.Json;
 using System.Text;
 
 namespace PxApi.Caching
@@ -14,7 +13,6 @@ namespace PxApi.Caching
     /// <inheritdoc/>
     public class CachedDataSource(IDataBaseConnectorFactory dbConnectorFactory, DatabaseCache cache, ILogger<CachedDataSource> logger) : ICachedDataSource
     {
-        private const string GROUPINGS_FILE = "groupings.json"; // Root level file listing groupings meta
         private const string GROUP_ALIAS_PREFIX = "Alias_"; // Files like Alias_fi.txt inside group folder
         private const string GROUP_ALIAS_SUFFIX = ".txt";
         private readonly Dictionary<string, DatabaseCacheConfig> cacheConfigs = 
@@ -22,8 +20,6 @@ namespace PxApi.Caching
                 db => db.Id,
                 db => db.CacheConfig
             );
-
-        private sealed record GroupingFileModel(string Code, Dictionary<string, string> Name);
 
         /// <inheritdoc/>
         public DataBaseRef? GetDataBaseReference(string dbId)
@@ -81,22 +77,6 @@ namespace PxApi.Caching
         {
             MetaCacheContainer container = await GetMetaContainer(pxFile, ct);
             return await container.Metadata;
-        }
-
-        /// <inheritdoc/>
-        public async Task<IReadOnlyList<TableGroup>> GetGroupingsCachedAsync(PxFileRef pxFile, CancellationToken ct = default)
-        {
-            if (cache.TryGetGroupings(pxFile, out Task<IReadOnlyList<TableGroup>>? cachedTask))
-            {
-                logger.LogDebug("Groupings cache hit.");
-                return await cachedTask!;
-            }
-
-            logger.LogDebug("Groupings cache miss. Reading from database.");
-            IDataBaseConnector connector = dbConnectorFactory.GetConnector(pxFile.DataBase);
-            Task<IReadOnlyList<TableGroup>> buildTask = BuildGroupingsAsync(pxFile, connector, ct);
-            cache.SetGroupings(pxFile, buildTask);
-            return await buildTask;
         }
 
         /// <inheritdoc/>
@@ -211,38 +191,6 @@ namespace PxApi.Caching
             Task<DateTime> lastModified = dbConnector.GetLastWriteTimeAsync(file, ct);
             cache.SetLastUpdated(file, lastModified);
             return cachedUtc > await lastModified;
-        }
-
-        private static async Task<IReadOnlyList<TableGroup>> BuildGroupingsAsync(PxFileRef pxFile, IDataBaseConnector connector, CancellationToken ct = default)
-        {
-            if (pxFile.Hierarchy is null || pxFile.Hierarchy.Length == 0) return [];
-
-            try
-            {
-                using Stream groupingStream = await connector.TryReadAuxiliaryFileAsync(GROUPINGS_FILE, [], ct);
-                JsonSerializerOptions converterOptions = GlobalJsonConverterOptions.Default;
-                GroupingFileModel? groupingModel = await JsonSerializer.DeserializeAsync<GroupingFileModel>(groupingStream, converterOptions, ct)
-                    ?? throw new InvalidDataException($"Grouping file {GROUPINGS_FILE} is empty or malformed.");
-
-                // Reuse alias reading logic
-                MultilanguageString groupNameAliases = await ReadAliasNameAsync(pxFile.GetHierarchyLevels(), connector, ct);
-
-                TableGroup group = new()
-                {
-                    Code = pxFile.Hierarchy,
-                    Name = groupNameAliases,
-                    GroupingCode = groupingModel.Code,
-                    GroupingName = new(groupingModel.Name),
-                    Links = []
-                };
-
-                List<TableGroup> groups = [group];
-                return groups;
-            }
-            catch (FileNotFoundException)
-            {
-                return [];
-            }
         }
 
         // Reads alias files (Alias_{lang}.txt) from a folder and builds a MultilanguageString from the first line of each file.

@@ -40,7 +40,7 @@ namespace PxApi.OpenApi.DocumentFilters
 
         private static bool IsDataControllerGetOperation(string pathKey, OpenApiOperation operation)
         {
-            bool isDataPath = pathKey.Equals("/data/{database}/{table}", StringComparison.OrdinalIgnoreCase);
+            bool isDataPath = pathKey.Equals("/data/databases/{database}/tables/{table}", StringComparison.OrdinalIgnoreCase);
             bool hasFiltersParam = operation.Parameters?.Any(p => p.Name == "filters") == true;
             return isDataPath && hasFiltersParam;
         }

@@ -26,6 +26,13 @@ namespace PxApi.DataSources
         protected override ILogger Logger => logger;
 
         /// <inheritdoc/>
+        public override async Task CheckConnectionAsync(CancellationToken ct = default)
+        {
+            ShareDirectoryClient directoryClient = GetDatabaseDirectoryClient();
+            await directoryClient.GetPropertiesAsync(ct);
+        }
+
+        /// <inheritdoc/>
         public override async Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default)
         {
             using (Logger.BeginScope(

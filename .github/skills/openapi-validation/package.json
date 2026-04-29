@@ -1,0 +1,12 @@
+{
+  "name": "openapi-validation-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate-openapi": "node validate-openapi.mjs"
+  },
+  "dependencies": {
+    "@apidevtools/swagger-parser": "^10.1.1"
+  }
+}

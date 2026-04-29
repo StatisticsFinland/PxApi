@@ -26,7 +26,7 @@ namespace PxApi.Utilities
         /// </summary>
         public const string PX_FILE = "PxFile";
         /// <summary>
-        /// Used to identify an auxiliary file path (e.g. groupings.json, Alias_{lang}.txt) in logging scopes.
+        /// Used to identify an auxiliary file path (e.g. Alias_{lang}.txt) in logging scopes.
         /// </summary>
         public const string AUXILIARY_PATH = "AuxPath";
         /// <summary>
@@ -41,6 +41,14 @@ namespace PxApi.Utilities
         /// Used to identify a blob name in logging scopes.
         /// </summary>
         public const string BLOB_NAME = "BlobName";
+        /// <summary>
+        /// Used to identify a sanitized search query in logging scopes.
+        /// </summary>
+        public const string SEARCH_QUERY = "SearchQuery";
+        /// <summary>
+        /// Placeholder value used in logging scopes when a requested resource was not found.
+        /// </summary>
+        public const string NOT_FOUND_PLACEHOLDER = "Not found";
 
     }
 }

@@ -14,6 +14,7 @@ namespace PxApi.UnitTests.Authentication
     public class TablesController : ControllerBase { }
     public class MetadataController : ControllerBase { }
     public class DataController : ControllerBase { }
+    public class HealthController : ControllerBase { }
 
     [TestFixture]
     public class ApiKeyAuthAttributeTests
@@ -281,6 +282,60 @@ namespace PxApi.UnitTests.Authentication
             {
                 Assert.That(_nextCalled, Is.True);
                 Assert.That(actionContext.Result, Is.Null);
+            }
+        }
+
+        [Test]
+        public async Task OnActionExecutionAsync_WhenHealthControllerApiKeyValid_ShouldProceed()
+        {
+            // Arrange
+            const string headerName = "X-Health-API-Key";
+            const string validApiKey = "test-api-key";
+            SetupAppSettingsWithApiKeyAuthEnabled("Health", headerName);
+            ActionExecutingContext actionContext = CreateActionContext(new HealthController());
+            _mockRequest.Setup(r => r.Headers.TryGetValue(headerName, out It.Ref<StringValues>.IsAny))
+                .Returns(new TryGetValueDelegate((string key, out StringValues values) =>
+                {
+                    values = new StringValues(validApiKey);
+                    return true;
+                }));
+
+            // Act
+            await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(_nextCalled, Is.True);
+                Assert.That(actionContext.Result, Is.Null);
+            }
+        }
+
+        [Test]
+        public async Task OnActionExecutionAsync_WhenHealthControllerApiKeyInvalid_ShouldReturnUnauthorized()
+        {
+            // Arrange
+            const string headerName = "X-Health-API-Key";
+            SetupAppSettingsWithApiKeyAuthEnabled("Health", headerName);
+            ActionExecutingContext actionContext = CreateActionContext(new HealthController());
+            _mockRequest.Setup(r => r.Headers.TryGetValue(headerName, out It.Ref<StringValues>.IsAny))
+                .Returns(new TryGetValueDelegate((string key, out StringValues values) =>
+                {
+                    values = new StringValues("wrong-key");
+                    return true;
+                }));
+
+            // Act
+            await _attribute.OnActionExecutionAsync(actionContext, NextDelegate);
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(_nextCalled, Is.False);
+                Assert.That(actionContext.Result, Is.TypeOf<UnauthorizedObjectResult>());
+
+                UnauthorizedObjectResult result = (UnauthorizedObjectResult)actionContext.Result!;
+                Assert.That(result.Value?.ToString(), Does.Contain("Invalid API key"));
             }
         }
 

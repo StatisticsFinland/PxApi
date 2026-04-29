@@ -59,7 +59,6 @@ namespace PxApi.UnitTests.ConfigurationTests
             {
                 Assert.That(cacheSettings.DefaultDataCellSize, Is.EqualTo(16));
                 Assert.That(cacheSettings.DefaultUpdateTaskSize, Is.EqualTo(50));
-                Assert.That(cacheSettings.DefaultTableGroupSize, Is.EqualTo(100));
                 Assert.That(cacheSettings.DefaultFileListSize, Is.EqualTo(350000));
                 Assert.That(cacheSettings.DefaultMetaSize, Is.EqualTo(200000));
             };
@@ -73,7 +72,6 @@ namespace PxApi.UnitTests.ConfigurationTests
             {
                 ["Cache:DefaultDataCellSize"] = "32",
                 ["Cache:DefaultUpdateTaskSize"] = "100",
-                ["Cache:DefaultTableGroupSize"] = "200",
                 ["Cache:DefaultFileListSize"] = "500000",
                 ["Cache:DefaultMetaSize"] = "300000"
             };
@@ -89,7 +87,6 @@ namespace PxApi.UnitTests.ConfigurationTests
             {
                 Assert.That(cacheSettings.DefaultDataCellSize, Is.EqualTo(32));
                 Assert.That(cacheSettings.DefaultUpdateTaskSize, Is.EqualTo(100));
-                Assert.That(cacheSettings.DefaultTableGroupSize, Is.EqualTo(200));
                 Assert.That(cacheSettings.DefaultFileListSize, Is.EqualTo(500000));
                 Assert.That(cacheSettings.DefaultMetaSize, Is.EqualTo(300000));
             };

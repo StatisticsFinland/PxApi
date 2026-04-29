@@ -9,6 +9,9 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
     [TestFixture]
     public class DataControllerGetEndpointDocumentFilterTests
     {
+        private const string ApplicationJson = "application/json";
+        private const string TextCsv = "text/csv";
+
         private static DocumentFilterContext CreateEmptyContext()
         {
             ISchemaGenerator schemaGenerator = Mock.Of<ISchemaGenerator>();
@@ -34,32 +37,32 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
                     {
                         Content = new Dictionary<string, OpenApiMediaType>
                         {
-                            ["application/json"] = new OpenApiMediaType(),
-                            ["text/csv"] = new OpenApiMediaType { Schema = new OpenApiSchema() }
+                            [ApplicationJson] = new OpenApiMediaType(),
+                            [TextCsv] = new OpenApiMediaType { Schema = new OpenApiSchema() }
                         }
                     },
                     ["400"] = new OpenApiResponse
                     {
                         Content = new Dictionary<string, OpenApiMediaType>
                         {
-                            ["application/json"] = new OpenApiMediaType(),
-                            ["text/csv"] = new OpenApiMediaType()
+                            [ApplicationJson] = new OpenApiMediaType(),
+                            [TextCsv] = new OpenApiMediaType()
                         }
                     },
                     ["406"] = new OpenApiResponse
                     {
                         Content = new Dictionary<string, OpenApiMediaType>
                         {
-                            ["application/json"] = new OpenApiMediaType(),
-                            ["text/csv"] = new OpenApiMediaType()
+                            [ApplicationJson] = new OpenApiMediaType(),
+                            [TextCsv] = new OpenApiMediaType()
                         }
                     },
                     ["500"] = new OpenApiResponse
                     {
                         Content = new Dictionary<string, OpenApiMediaType>
                         {
-                            ["application/json"] = new OpenApiMediaType(),
-                            ["text/csv"] = new OpenApiMediaType()
+                            [ApplicationJson] = new OpenApiMediaType(),
+                            [TextCsv] = new OpenApiMediaType()
                         }
                     }
                 }
@@ -77,7 +80,7 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
             {
                 Paths = new OpenApiPaths
                 {
-                    ["/data/{database}/{table}"] = pathItem
+                    ["/data/databases/{database}/tables/{table}"] = pathItem
                 }
             };
 
@@ -103,7 +106,7 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
 
             Assert.That(operation.Responses.ContainsKey("200"), Is.True);
             OpenApiResponse response200 = (OpenApiResponse)operation.Responses["200"];
-            OpenApiMediaType jsonMediaType = response200.Content!["application/json"];
+            OpenApiMediaType jsonMediaType = response200.Content![ApplicationJson];
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(jsonMediaType.Schema, Is.Not.Null);
@@ -114,7 +117,7 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
                 Assert.That(response200.Description, Does.Contain("JSON-stat"));
             }
 
-            OpenApiMediaType csvMediaType = response200.Content["text/csv"];
+            OpenApiMediaType csvMediaType = response200.Content[TextCsv];
             OpenApiSchema csvSchema = (OpenApiSchema)csvMediaType.Schema!;
             Assert.That(csvSchema!.Description, Does.Contain("CSV dataset"));
 
@@ -122,7 +125,7 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(response400.Content!.ContainsKey("text/csv"), Is.False);
-                Assert.That(response400.Content["application/json"], Is.Not.Null);
+                Assert.That(response400.Content[ApplicationJson], Is.Not.Null);
             }
 
             OpenApiResponse response406 = (OpenApiResponse)operation.Responses["406"];
@@ -132,7 +135,7 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(response500.Content!.ContainsKey("text/csv"), Is.False);
-                Assert.That(response500.Content["application/json"], Is.Not.Null);
+                Assert.That(response500.Content[ApplicationJson], Is.Not.Null);
             }
         }
 
@@ -142,14 +145,14 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
             // Arrange
             OpenApiOperation operation = new()
             {
-                Parameters = [ new OpenApiParameter { Name = "filters" } ],
+                Parameters = [new OpenApiParameter { Name = "filters" }],
                 Responses = new OpenApiResponses
                 {
                     ["200"] = new OpenApiResponse
                     {
                         Content = new Dictionary<string, OpenApiMediaType>
                         {
-                            ["application/json"] = new OpenApiMediaType()
+                            [ApplicationJson] = new OpenApiMediaType()
                         }
                     }
                 }
@@ -178,7 +181,7 @@ namespace PxApi.UnitTests.OpenApi.DocumentFilters
             filter.Apply(document, context);
 
             // Assert (unchanged: description still null, example not set because logic not run)
-            OpenApiMediaType jsonMediaType = operation.Responses["200"].Content!["application/json"];
+            OpenApiMediaType jsonMediaType = operation.Responses["200"].Content![ApplicationJson];
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(operation.Description, Is.Null);

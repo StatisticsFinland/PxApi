@@ -17,6 +17,18 @@ namespace PxApi.DataSources
         protected override ILogger Logger => logger;
 
         /// <inheritdoc/>
+        public override Task CheckConnectionAsync(CancellationToken ct = default)
+        {
+            string fullPath = Path.GetFullPath(Path.Combine(_normalizedRootPath, DataBase.Id));
+            if (!Directory.Exists(fullPath))
+            {
+                throw new DirectoryNotFoundException($"Database directory not found: {fullPath}");
+            }
+
+            return Task.CompletedTask;
+        }
+
+        /// <inheritdoc/>
         public override Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default)
         {
             using (Logger.BeginScope(

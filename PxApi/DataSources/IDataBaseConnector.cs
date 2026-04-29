@@ -15,6 +15,14 @@ namespace PxApi.DataSources
         public DataBaseRef DataBase { get; }
 
         /// <summary>
+        /// Performs a lightweight connectivity check to verify that the underlying data source is reachable.
+        /// Throws if the connection cannot be established.
+        /// </summary>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>A task representing the asynchronous check operation.</returns>
+        public Task CheckConnectionAsync(CancellationToken ct = default);
+
+        /// <summary>
         /// Get references to all Px files available in the database.
         /// </summary>
         /// <returns>Task that resolves to an array of <see cref="PxFileRef"/> references.</returns>

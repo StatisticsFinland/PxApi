@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Px.Utils.Models.Metadata.Dimensions;
-using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
 using PxApi.Caching;
 using PxApi.Configuration;
-using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Collections.Immutable;
@@ -22,7 +19,7 @@ namespace PxApi.Controllers
     /// Supports pagination and optional language-based metadata retrieval. Tables are ordered by their PX file name (ascending). If the requested page exceeds the last page an empty list is returned.
     /// </remarks>
     [ApiKeyAuth]
-    [Route("tables")]
+    [Route("meta/databases")]
     [ApiController]
     public class TablesController(ICachedDataSource cachedConnector, ILogger<TablesController> logger, IAuditLogService auditLogger) : ControllerBase
     {
@@ -35,12 +32,13 @@ namespace PxApi.Controllers
         /// <param name="lang">Optional language used to get the metadata. If not provided, the default language is used.</param>
         /// <param name="page">Optional 1-based page number to retrieve, default value is 1.</param>
         /// <param name="pageSize">Optional number of items per page (1-100), default value is 50.</param>
+        /// <param name="ct">Cancellation token bound to the client request lifetime.</param>
         /// <returns>Paged list containing table listing items and paging information.</returns>
         /// <response code="200">Returns the table listing.</response>
         /// <response code="400">Invalid query parameter was provided (page &lt; 1, pageSize outside 1-100 or unsupported language).</response>
         /// <response code="404">Database not found.</response>
-        /// <response code="500">Unexpected server error.</response>
-        [HttpGet("{database}")]
+        /// <response code="500">A table on the requested page contains broken metadata.</response>
+        [HttpGet("{database}/tables")]
         [OperationId("listTables")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(PagedTableList), 200)]
@@ -51,7 +49,8 @@ namespace PxApi.Controllers
             [FromRoute] string database,
             [FromQuery] string? lang = null,
             [FromQuery][Range(1, int.MaxValue)] int page = 1,
-            [FromQuery][Range(1, 100)] int pageSize = 50)
+            [FromQuery][Range(1, 100)] int pageSize = 50,
+            CancellationToken ct = default)
         {
             if (page < 1 || pageSize < 1) return BadRequest("Invalid paging values.");
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
@@ -63,18 +62,20 @@ namespace PxApi.Controllers
             try
             {
                 DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
-                if (dataBaseRef is null) return NotFound("Database not found.");
-
-                using (logger.BeginScope(new Dictionary<string, object>
+                if (dataBaseRef is null)
                 {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(GetTablesAsync) },
-                    { LoggerConsts.DB_ID, dataBaseRef.Value.Id }
-                }))
+                    using (logger.BeginDbNotFoundScope())
+                    {
+                        auditLogger.LogAuditEvent();
+                    }
+                    return NotFound("Database not found.");
+                }
+
+                using (logger.BeginDbScope(dataBaseRef.Value.Id))
                 {
                     auditLogger.LogAuditEvent();
 
-                    ImmutableSortedDictionary<string, PxFileRef> tableList = await cachedConnector.GetFileListCachedAsync(dataBaseRef.Value);
+                    ImmutableSortedDictionary<string, PxFileRef> tableList = await cachedConnector.GetFileListCachedAsync(dataBaseRef.Value, ct);
                     PagedTableList pagedTableList = new()
                     {
                         Tables = [],
@@ -95,18 +96,19 @@ namespace PxApi.Controllers
 
                         try
                         {
-                            IReadOnlyMatrixMetadata tableMeta = await cachedConnector.GetMetadataCachedAsync(table.Value);
+                            IReadOnlyMatrixMetadata tableMeta = await cachedConnector.GetMetadataCachedAsync(table.Value, ct);
+                            TableSummary summary = TableSummaryBuilder.Build(tableMeta, table.Key, actualLang);
 
                             Uri fileUri = settings.RootUrl
-                                .AddRelativePath("meta", database, table.Key)
+                                .AddRelativePath("meta", "databases", dataBaseRef.Value.Id, "tables", table.Key)
                                 .AddQueryParameters(("lang", actualLang));
-                            pagedTableList.Tables.Add(BuildTableListingItemFromMeta(table.Key, actualLang, tableMeta, fileUri));
+                            pagedTableList.Tables.Add(BuildTableListingItem(summary, fileUri));
 
                         }
-                        catch (Exception idReadEx)
+                        catch (Exception idReadEx) when (idReadEx is not OperationCanceledException)
                         {
-                            pagedTableList.Tables.Add(BuildErrorTableListingItem(table.Key, table.Key));
-                            logger.LogWarning(idReadEx, "Failed to get metadata for table: {Table}", tableList.ElementAt(i).Key);
+                            logger.LogError(idReadEx, "Failed to build listing summary for table {Table}", table.Key);
+                            return StatusCode(StatusCodes.Status500InternalServerError, "A table on the requested page could not be loaded.");
                         }
                     }
 
@@ -129,25 +131,25 @@ namespace PxApi.Controllers
         /// <response code="200">Resource exists.</response>
         /// <response code="400">Invalid paging parameters.</response>
         /// <response code="404">Database not found.</response>
-        /// <response code="500">Unexpected server error.</response>
-        [HttpHead("{database}")]
+        [HttpHead("{database}/tables")]
         [OperationId("headTables")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        [ProducesResponseType(500)]
         public IActionResult HeadTablesAsync(string database, int page = 1, int pageSize = 50)
         {
             if (page < 1 || pageSize < 1 || pageSize > MAX_PAGE_SIZE) return BadRequest();
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
-            if (dataBaseRef is null) return NotFound();
-
-            using (logger.BeginScope(new Dictionary<string, object>
+            if (dataBaseRef is null)
+            {
+                using (logger.BeginDbNotFoundScope())
                 {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(HeadTablesAsync) },
-                    { LoggerConsts.DB_ID, dataBaseRef.Value.Id }
-                }))
+                    auditLogger.LogAuditEvent();
+                    return NotFound();
+                }
+            }
+
+            using (logger.BeginDbScope(dataBaseRef.Value.Id))
             {
                 // Audit successful HEAD validation.
                 auditLogger.LogAuditEvent();
@@ -161,25 +163,25 @@ namespace PxApi.Controllers
         /// <param name="database">Unique identifier of the database.</param>
         /// <response code="200">Returns allowed methods in the Allow header.</response>
         /// <response code="404">Database not found.</response>
-        /// <response code="500">Unexpected server error.</response>
-        [HttpOptions("{database}")]
+        [HttpOptions("{database}/tables")]
         [OperationId("optionsTables")]
         [Produces("application/json")]
         [ProducesResponseType(200)]
         [ProducesResponseType(typeof(string), 404)]
-        [ProducesResponseType(typeof(string), 500)]
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Needs to match route signature.")]
         public IActionResult OptionsTables(string database)
         {
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
-            if (dataBaseRef is null) return NotFound("Database not found.");
-
-            using (logger.BeginScope(new Dictionary<string, object>
+            if (dataBaseRef is null)
+            {
+                using (logger.BeginDbNotFoundScope())
                 {
-                    { LoggerConsts.CONTROLLER, nameof(TablesController) },
-                    { LoggerConsts.ACTION, nameof(OptionsTables) },
-                    { LoggerConsts.DB_ID, dataBaseRef.Value.Id }
-                }))
+                    auditLogger.LogAuditEvent();
+                }
+                return NotFound("Database not found.");
+            }
+
+            using (logger.BeginDbScope(dataBaseRef.Value.Id))
             {
                 const string methods = "GET,HEAD,OPTIONS";
                 Response.Headers.Allow = methods;
@@ -188,27 +190,11 @@ namespace PxApi.Controllers
             }
         }
 
-        private static TableListingItem BuildTableListingItemFromMeta(string tableName, string lang, IReadOnlyMatrixMetadata meta, Uri uri)
+        private static TableListingItem BuildTableListingItem(TableSummary summary, Uri uri)
         {
-            TableStatus status = TableStatus.Current;
-            string id = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang) ?? tableName;
-            DateTime lastUpdated = DateTime.MinValue;
-            if (meta.TryGetContentDimension(out ContentDimension? contDim))
-            {
-                lastUpdated = contDim.Values.Map(v => v.LastUpdated).Max();
-            }
-            else
-            {
-                status = TableStatus.Error;
-            }
-
             return new TableListingItem
             {
-                ID = id,
-                Name = tableName,
-                Status = status,
-                Title = meta.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang) ?? null,
-                LastUpdated = lastUpdated,
+                Table = summary,
                 Links =
                 [
                     new Link
@@ -218,19 +204,6 @@ namespace PxApi.Controllers
                         Method = "GET"
                     }
                 ]
-            };
-        }
-
-        private static TableListingItem BuildErrorTableListingItem(string tableName, string id)
-        {
-            return new TableListingItem
-            {
-                ID = id,
-                Name = tableName,
-                Status = TableStatus.Error,
-                Title = null,
-                LastUpdated = null,
-                Links = []
             };
         }
     }
