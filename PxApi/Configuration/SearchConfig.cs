@@ -20,5 +20,11 @@ namespace PxApi.Configuration
         /// Index name prefix. The language code is appended as a suffix (e.g. <c>my-index-fi</c>).
         /// </summary>
         public string IndexPrefix { get; } = configuration.GetValue<string>(nameof(IndexPrefix)) ?? string.Empty;
+
+        /// <summary>
+        /// Optional HTTP proxy address for connecting to the Elasticsearch cluster (e.g. <c>http://proxy.example.com:8080</c>).
+        /// When omitted or empty, no proxy is used.
+        /// </summary>
+        public string? ProxyAddress { get; } = configuration.GetValue<string>(nameof(ProxyAddress));
     }
 }

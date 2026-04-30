@@ -255,7 +255,14 @@ namespace PxApi
                     throw new InvalidOperationException("The SEARCH_API_KEY environment variable must be set when the SearchController feature is enabled.");
                 }
 
-                ElasticsearchClient esClient = new(new ElasticsearchClientSettings(searchConfig.CloudId, new ApiKey(searchConfig.ApiKey)));
+                ElasticsearchClientSettings esSettings = new(searchConfig.CloudId, new ApiKey(searchConfig.ApiKey));
+
+                if (!string.IsNullOrWhiteSpace(searchConfig.ProxyAddress))
+                {
+                    esSettings = esSettings.Proxy(new Uri(searchConfig.ProxyAddress));
+                }
+
+                ElasticsearchClient esClient = new(esSettings);
                 serviceCollection.AddSingleton(esClient);
                 serviceCollection.AddSingleton(searchConfig);
                 serviceCollection.AddScoped<ISearchService, ElasticSearchService>();
