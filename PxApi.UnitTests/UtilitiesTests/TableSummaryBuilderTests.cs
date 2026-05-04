@@ -23,10 +23,10 @@ namespace PxApi.UnitTests.UtilitiesTests
             {
                 Assert.That(summary.TableId, Is.EqualTo("table-tableid"));
                 Assert.That(summary.Title, Is.EqualTo("table-description.en"));
-                Assert.That(summary.ContentValues, Has.Count.EqualTo(2));
+                Assert.That(summary.Measures, Has.Count.EqualTo(2));
                 Assert.That(summary.TimeRange.From, Is.EqualTo("time-value0-name.en"));
                 Assert.That(summary.TimeRange.To, Is.EqualTo("time-value1-name.en"));
-                Assert.That(summary.Dimensions, Has.Count.EqualTo(2));
+                Assert.That(summary.Classifications, Has.Count.EqualTo(2));
                 Assert.That(summary.LastUpdated, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
             }
         }

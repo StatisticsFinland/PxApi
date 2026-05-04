@@ -28,7 +28,7 @@ namespace PxApi.Utilities
 
             string code = metadata.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang) ?? tableName;
             string name = metadata.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang) ?? tableName;
-            List<ContentValueInfo> contentValues = contentDimension.Values.Map(value => new ContentValueInfo
+            List<MeasureInfo> measures = contentDimension.Values.Map(value => new MeasureInfo
             {
                 Name = value.Name[lang],
                 Unit = value.Unit[lang]
@@ -36,9 +36,9 @@ namespace PxApi.Utilities
 
             DateTime lastUpdated = contentDimension.Values.Map(value => value.LastUpdated).Max();
             TimeRange timeRange = BuildTimeRange(metadata, lang);
-            List<DimensionInfo> dimensions = metadata.Dimensions
+            List<ClassificationInfo> classifications = metadata.Dimensions
                 .Where(dimension => dimension is not ContentDimension && dimension is not TimeDimension)
-                .Select(dimension => new DimensionInfo
+                .Select(dimension => new ClassificationInfo
                 {
                     Name = dimension.Name[lang],
                     Size = dimension.Values.Count
@@ -49,9 +49,9 @@ namespace PxApi.Utilities
             {
                 TableId = code,
                 Title = name,
-                ContentValues = contentValues,
+                Measures = measures,
                 TimeRange = timeRange,
-                Dimensions = dimensions,
+                Classifications = classifications,
                 LastUpdated = lastUpdated
             };
         }

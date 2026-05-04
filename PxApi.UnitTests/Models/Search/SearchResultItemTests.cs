@@ -185,9 +185,9 @@ namespace PxApi.UnitTests.Models.Search
             {
                 TableId = code,
                 Title = name,
-                ContentValues =
+                Measures =
                 [
-                    new ContentValueInfo
+                    new MeasureInfo
                     {
                         Name = "value",
                         Unit = "unit"
@@ -198,9 +198,9 @@ namespace PxApi.UnitTests.Models.Search
                     From = "2020",
                     To = "2024"
                 },
-                Dimensions =
+                Classifications =
                 [
-                    new DimensionInfo
+                    new ClassificationInfo
                     {
                         Name = "dim",
                         Size = 1
