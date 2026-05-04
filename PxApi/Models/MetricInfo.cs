@@ -3,12 +3,12 @@ using System.ComponentModel.DataAnnotations;
 namespace PxApi.Models
 {
     /// <summary>
-    /// Represents a measure with its name and unit of measurement.
+    /// Represents a metric with its name and unit of measurement.
     /// </summary>
-    public class MeasureInfo
+    public class MetricInfo
     {
         /// <summary>
-        /// Localized name of the measure (e.g., "Population", "GDP").
+        /// Localized name of the metric (e.g., "Population", "GDP").
         /// </summary>
         [Required]
         public required string Name { get; set; }
