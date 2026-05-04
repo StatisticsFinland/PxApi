@@ -165,10 +165,10 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(pagedTableList.Tables[0].Table.TableId, Is.EqualTo("table-tableid"));
                 Assert.That(pagedTableList.Tables[0].Table.Title, Is.EqualTo("table-description.en"));
                 Assert.That(pagedTableList.Tables[0].Table.LastUpdated, Is.EqualTo(meta1.GetContentDimension().Values.Map(v => v.LastUpdated).Max()));
-                Assert.That(pagedTableList.Tables[0].Table.ContentValues, Is.Not.Null);
-                Assert.That(pagedTableList.Tables[0].Table.ContentValues, Has.Count.EqualTo(2));
-                Assert.That(pagedTableList.Tables[0].Table.ContentValues[0].Name, Is.EqualTo("content-value0-name.en"));
-                Assert.That(pagedTableList.Tables[0].Table.ContentValues[0].Unit, Is.EqualTo("content-value0-unit.en"));
+                Assert.That(pagedTableList.Tables[0].Table.Metrics, Is.Not.Null);
+                Assert.That(pagedTableList.Tables[0].Table.Metrics, Has.Count.EqualTo(2));
+                Assert.That(pagedTableList.Tables[0].Table.Metrics[0].Name, Is.EqualTo("content-value0-name.en"));
+                Assert.That(pagedTableList.Tables[0].Table.Metrics[0].Unit, Is.EqualTo("content-value0-unit.en"));
                 Assert.That(pagedTableList.Tables[0].Table.TimeRange, Is.Not.Null);
                 Assert.That(pagedTableList.Tables[0].Table.TimeRange!.From, Is.EqualTo("time-value0-name.en"));
                 Assert.That(pagedTableList.Tables[0].Table.TimeRange!.To, Is.EqualTo("time-value1-name.en"));

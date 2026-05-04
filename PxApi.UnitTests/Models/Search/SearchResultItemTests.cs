@@ -185,9 +185,9 @@ namespace PxApi.UnitTests.Models.Search
             {
                 TableId = code,
                 Title = name,
-                ContentValues =
+                Metrics =
                 [
-                    new ContentValueInfo
+                    new MetricInfo
                     {
                         Name = "value",
                         Unit = "unit"
