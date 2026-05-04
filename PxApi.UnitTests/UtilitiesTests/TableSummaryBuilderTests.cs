@@ -23,7 +23,7 @@ namespace PxApi.UnitTests.UtilitiesTests
             {
                 Assert.That(summary.TableId, Is.EqualTo("table-tableid"));
                 Assert.That(summary.Title, Is.EqualTo("table-description.en"));
-                Assert.That(summary.ContentValues, Has.Count.EqualTo(2));
+                Assert.That(summary.Metrics, Has.Count.EqualTo(2));
                 Assert.That(summary.TimeRange.From, Is.EqualTo("time-value0-name.en"));
                 Assert.That(summary.TimeRange.To, Is.EqualTo("time-value1-name.en"));
                 Assert.That(summary.Dimensions, Has.Count.EqualTo(2));
