@@ -75,6 +75,21 @@ namespace PxApi
                 // Add services to the container.
                 AddServices(builder.Services);
 
+                // Configure CORS if allowed origins are specified
+                CorsConfig corsConfig = AppSettings.Active.Cors;
+                if (corsConfig.HasAllowedOrigins)
+                {
+                    builder.Services.AddCors(options =>
+                    {
+                        options.AddDefaultPolicy(policy =>
+                        {
+                            policy.WithOrigins([.. corsConfig.AllowedOrigins])
+                                  .AllowAnyHeader()
+                                  .AllowAnyMethod();
+                        });
+                    });
+                }
+
                 WebApplication app = builder.Build();
 
                 // Configure the HTTP request pipeline.
@@ -90,6 +105,11 @@ namespace PxApi
                 });
 
                 app.UseExceptionHandler("/error");
+
+                if (corsConfig.HasAllowedOrigins)
+                {
+                    app.UseCors();
+                }
 
                 app.UseHttpsRedirection();
 
