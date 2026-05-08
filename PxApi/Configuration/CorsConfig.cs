@@ -20,9 +20,28 @@ namespace PxApi.Configuration
         /// Initializes a new instance of the <see cref="CorsConfig"/> class from configuration.
         /// </summary>
         /// <param name="section">The configuration section representing the CORS settings.</param>
+        /// <exception cref="InvalidOperationException">Thrown when an origin value is not a valid absolute http or https URI.</exception>
         internal CorsConfig(IConfigurationSection section)
         {
-            AllowedOrigins = section.GetSection(nameof(AllowedOrigins)).Get<string[]>() ?? [];
+            string[] rawOrigins = section.GetSection(nameof(AllowedOrigins)).Get<string[]>() ?? [];
+
+            List<string> validatedOrigins = rawOrigins
+                .Where(o => !string.IsNullOrWhiteSpace(o))
+                .Select(o => o.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (string origin in validatedOrigins)
+            {
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out Uri? uri) ||
+                    (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                {
+                    throw new InvalidOperationException(
+                        $"Invalid CORS origin '{origin}' in configuration. Each origin must be an absolute http or https URI (e.g., 'https://example.com').");
+                }
+            }
+
+            AllowedOrigins = validatedOrigins;
         }
     }
 }

@@ -106,12 +106,12 @@ namespace PxApi
 
                 app.UseExceptionHandler("/error");
 
+                app.UseHttpsRedirection();
+
                 if (corsConfig.HasAllowedOrigins)
                 {
                     app.UseCors();
                 }
-
-                app.UseHttpsRedirection();
 
                 app.UseAuthorization();
 
