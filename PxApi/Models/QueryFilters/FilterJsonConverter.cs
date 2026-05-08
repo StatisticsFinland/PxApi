@@ -130,16 +130,16 @@ namespace PxApi.Models.QueryFilters
         {
             if (input.Length > 50)
             {
-                throw new ArgumentException("Filter string exceeds maximum length of 50 characters");
+                throw new JsonException("Filter string exceeds maximum length of 50 characters");
             }
 
-            char[] allowedSpecialChars = ['*', '_', '-'];
+            char[] allowedSpecialChars = ['*', '_', '-', '.'];
 
             foreach (char c in input)
             {
                 if (!char.IsLetterOrDigit(c) && !allowedSpecialChars.Contains(c))
                 {
-                    throw new ArgumentException("Input string contains characters other than letters, numbers, '*', '_' and '-'");
+                    throw new JsonException("Input string contains characters other than letters, numbers, '*', '_', '-' and '.'");
                 }
             }
         }

@@ -81,10 +81,20 @@ namespace PxApi.UnitTests.Models.QueryFilters
         }
 
         [Test]
+        public void Deserialize_CodeFilter_WithAllAllowedSpecialChars_Succeeds()
+        {
+            const string json = "{\"type\":\"Code\",\"query\":[\"A*B_C-D.E\"]}";
+            Filter? filter = JsonSerializer.Deserialize<Filter>(json, _options);
+            Assert.That(filter, Is.TypeOf<CodeFilter>());
+            CodeFilter codeFilter = (CodeFilter)filter!;
+            Assert.That(codeFilter.FilterStrings[0], Is.EqualTo("A*B_C-D.E"));
+        }
+
+        [Test]
         public void Deserialize_CodeFilter_WithInvalidCharacter_Throws()
         {
             const string json = "{\"type\":\"Code\",\"query\":[\"Valid\",\"In!valid\"]}"; // '!' not allowed
-            Assert.That(() => JsonSerializer.Deserialize<Filter>(json, _options), Throws.ArgumentException);
+            Assert.That(() => JsonSerializer.Deserialize<Filter>(json, _options), Throws.InstanceOf<JsonException>());
         }
 
         [Test]
@@ -92,7 +102,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
         {
             string longString = new('a', 51);
             string json = $"{{\"type\":\"Code\",\"query\":[\"{longString}\"]}}";
-            Assert.That(() => JsonSerializer.Deserialize<Filter>(json, _options), Throws.ArgumentException);
+            Assert.That(() => JsonSerializer.Deserialize<Filter>(json, _options), Throws.InstanceOf<JsonException>());
         }
 
         private static bool JsonEquals(string a, string b)
