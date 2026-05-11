@@ -24,6 +24,9 @@ namespace PxApi.Services.Search
         private static readonly string[] AllFields = [.. ContentFields, .. DimensionFields, .. ValueFields, .. GeoFields];
         private static readonly string[] SourceFields = ["database", "title", "note"];
 
+        private static readonly string[] ContentQueryFields = ["title^3", "source", "note", "content_variable^3", "used_for^5"];
+        private static readonly string[] AllQueryFields = [.. ContentQueryFields, .. DimensionFields, .. ValueFields, .. GeoFields];
+
         /// <inheritdoc />
         public async Task CheckHealthAsync(CancellationToken ct)
         {
@@ -53,6 +56,7 @@ namespace PxApi.Services.Search
             CancellationToken ct)
         {
             string[] fields = GetFields(target);
+            string[] queryFields = GetQueryFields(target);
             string index = GetIndexName(lang);
 
             SearchRequestDescriptor<ElasticsearchDocument> descriptor = new();
@@ -64,7 +68,7 @@ namespace PxApi.Services.Search
                 .Query(q => q
                     .MultiMatch(mm => mm
                         .Query(query)
-                        .Fields(fields)
+                        .Fields(queryFields)
                     )
                 )
                 .Highlight(BuildHighlight(fields));
@@ -83,6 +87,7 @@ namespace PxApi.Services.Search
             CancellationToken ct)
         {
             string[] fields = GetFields(target);
+            string[] queryFields = GetQueryFields(target);
             string index = GetIndexName(lang);
 
             SearchRequestDescriptor<ElasticsearchDocument> descriptor = new();
@@ -96,7 +101,7 @@ namespace PxApi.Services.Search
                         .Must(must => must
                             .MultiMatch(mm => mm
                                 .Query(query)
-                                .Fields(fields)
+                                .Fields(queryFields)
                             )
                         )
                         .Filter(filter => filter
@@ -226,6 +231,19 @@ namespace PxApi.Services.Search
                 SearchTarget.Geo => GeoFields,
                 SearchTarget.All => AllFields,
                 _ => ContentFields
+            };
+        }
+
+        internal static string[] GetQueryFields(SearchTarget target)
+        {
+            return target switch
+            {
+                SearchTarget.Content => ContentQueryFields,
+                SearchTarget.Dimension => DimensionFields,
+                SearchTarget.Value => ValueFields,
+                SearchTarget.Geo => GeoFields,
+                SearchTarget.All => AllQueryFields,
+                _ => ContentQueryFields
             };
         }
 
