@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -88,6 +90,7 @@ namespace PxApi.Models.QueryFilters
         }
 
         /// <inheritdoc/>
+        [ExcludeFromCodeCoverage(Justification = "Default case is unreachable: JsonStringEnumConverter throws JsonException for unknown FilterType values before the switch is evaluated.")]
         public override Filter Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             FilterJsonModel? filterWrapper = JsonSerializer.Deserialize<FilterJsonModel>(ref reader, options);
@@ -122,7 +125,7 @@ namespace PxApi.Models.QueryFilters
                         int lastCount = filterWrapper.Query.Deserialize<int>(options);
                         return new LastFilter(lastCount);
                     }
-                default: throw new JsonException("Unknown filter type: " + filterWrapper.Type);
+                default: throw new UnreachableException("Unknown filter type: " + filterWrapper.Type);
             }
         }
 
