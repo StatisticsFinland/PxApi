@@ -105,6 +105,13 @@ namespace PxApi.UnitTests.Models.QueryFilters
             Assert.That(() => JsonSerializer.Deserialize<Filter>(json, _options), Throws.InstanceOf<JsonException>());
         }
 
+        [Test]
+        public void Deserialize_UnknownTypeFilter_Throws()
+        {
+            const string json = "{\"type\":\"Unknown\",\"query\":\"test\"}";
+            Assert.That(() => JsonSerializer.Deserialize<Filter>(json, _options), Throws.InstanceOf<JsonException>());
+        }
+
         private static bool JsonEquals(string a, string b)
         {
             using JsonDocument ja = JsonDocument.Parse(a);

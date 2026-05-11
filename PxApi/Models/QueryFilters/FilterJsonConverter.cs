@@ -122,7 +122,7 @@ namespace PxApi.Models.QueryFilters
                         int lastCount = filterWrapper.Query.Deserialize<int>(options);
                         return new LastFilter(lastCount);
                     }
-                default: throw new InvalidOperationException("Unknown filter type: " + filterWrapper.Type);
+                default: throw new JsonException("Unknown filter type: " + filterWrapper.Type);
             }
         }
 
