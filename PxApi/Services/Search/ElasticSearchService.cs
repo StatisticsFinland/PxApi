@@ -27,7 +27,7 @@ namespace PxApi.Services.Search
     /// Translates <see cref="SearchTarget"/> into ES multi_match field sets
     /// and maps hits back to raw search hits for controller-level enrichment.
     /// </summary>
-    [ExcludeFromCodeCoverage(Justification = "Wraps 3rd party Elasticsearch SDK; no meaningful logic to unit test.")]
+    [ExcludeFromCodeCoverage(Justification = "SDK-dependent members are tested indirectly; pure helpers are covered by unit tests.")]
     public class ElasticSearchService(ElasticsearchClient client, SearchConfig searchConfig, ILogger<ElasticSearchService> logger) : ISearchService
     {
         private const string FieldTitle = "title";
@@ -262,7 +262,7 @@ namespace PxApi.Services.Search
             return GetBoostedFields(target).Select(f => f.ToQueryField()).ToArray();
         }
 
-        internal static BoostedField[] GetBoostedFields(SearchTarget target)
+        private static BoostedField[] GetBoostedFields(SearchTarget target)
         {
             return target switch
             {

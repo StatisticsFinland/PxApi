@@ -7,6 +7,8 @@ namespace PxApi.UnitTests.Services
     [TestFixture]
     public class ElasticSearchServiceTests
     {
+        private static readonly string[] AllFieldGroupSample = ["title", "classificatory_variable_names", "classificatory_variable_values", "geo_variable_values"];
+
         [TestCase(SearchTarget.Content, new[] { "title", "source", "note", "content_variable", "used_for" })]
         [TestCase(SearchTarget.Dimension, new[] { "classificatory_variable_names" })]
         [TestCase(SearchTarget.Value, new[] { "classificatory_variable_values" })]
@@ -21,7 +23,7 @@ namespace PxApi.UnitTests.Services
         public void GetFields_All_ContainsAllFieldGroups()
         {
             string[] result = ElasticSearchService.GetFields(SearchTarget.All);
-            Assert.That(result, Is.SupersetOf(new[] { "title", "classificatory_variable_names", "classificatory_variable_values", "geo_variable_values" }));
+            Assert.That(result, Is.SupersetOf(AllFieldGroupSample));
         }
 
         [Test]
