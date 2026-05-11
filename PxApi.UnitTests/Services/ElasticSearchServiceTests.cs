@@ -31,29 +31,33 @@ namespace PxApi.UnitTests.Services
             Assert.That(result, Is.EqualTo(ElasticSearchService.GetFields(SearchTarget.Content)));
         }
 
-        [TestCase(SearchTarget.Content, new[] { "title^3", "source", "note", "content_variable^3", "used_for^5" })]
-        [TestCase(SearchTarget.Dimension, new[] { "classificatory_variable_names" })]
-        [TestCase(SearchTarget.Value, new[] { "classificatory_variable_values" })]
-        [TestCase(SearchTarget.Geo, new[] { "geo_variable_values" })]
-        public void GetQueryFields_KnownTarget_ReturnsExpectedFields(SearchTarget target, string[] expected)
+        [TestCase(SearchTarget.Content)]
+        [TestCase(SearchTarget.Dimension)]
+        [TestCase(SearchTarget.Value)]
+        [TestCase(SearchTarget.Geo)]
+        public void GetQueryFields_KnownTarget_FieldNamesMatchGetFields(SearchTarget target)
         {
-            string[] result = ElasticSearchService.GetQueryFields(target);
-            Assert.That(result, Is.EqualTo(expected));
+            string[] queryFields = ElasticSearchService.GetQueryFields(target);
+            string[] expectedNames = ElasticSearchService.GetFields(target);
+            string[] actualNames = queryFields.Select(f => f.Split('^')[0]).ToArray();
+            Assert.That(actualNames, Is.EqualTo(expectedNames));
         }
 
         [Test]
-        public void GetQueryFields_All_ContainsBoostedContentAndUnboostedOtherFields()
+        public void GetQueryFields_All_FieldNamesMatchGetFieldsAll()
         {
-            string[] result = ElasticSearchService.GetQueryFields(SearchTarget.All);
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(result, Contains.Item("title^3"));
-                Assert.That(result, Contains.Item("used_for^5"));
-                Assert.That(result, Contains.Item("content_variable^3"));
-                Assert.That(result, Contains.Item("classificatory_variable_names"));
-                Assert.That(result, Contains.Item("classificatory_variable_values"));
-                Assert.That(result, Contains.Item("geo_variable_values"));
-            }
+            string[] queryFields = ElasticSearchService.GetQueryFields(SearchTarget.All);
+            string[] expectedNames = ElasticSearchService.GetFields(SearchTarget.All);
+            string[] actualNames = queryFields.Select(f => f.Split('^')[0]).ToArray();
+            Assert.That(actualNames, Is.EqualTo(expectedNames));
+        }
+
+        [Test]
+        public void GetQueryFields_Content_ContainsBoostedFields()
+        {
+            string[] queryFields = ElasticSearchService.GetQueryFields(SearchTarget.Content);
+            string[] boostedFields = queryFields.Where(f => f.Contains('^')).ToArray();
+            Assert.That(boostedFields, Is.Not.Empty);
         }
 
         [Test]

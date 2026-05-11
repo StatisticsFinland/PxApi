@@ -10,6 +10,19 @@ using MatchType = PxApi.Models.Search.MatchType;
 namespace PxApi.Services.Search
 {
     /// <summary>
+    /// Represents an Elasticsearch field with an optional boost weight for query-time relevance tuning.
+    /// </summary>
+    /// <param name="Name">The Elasticsearch field name.</param>
+    /// <param name="Boost">Optional boost multiplier. When null, no boost is applied.</param>
+    internal record BoostedField(string Name, int? Boost = null)
+    {
+        /// <summary>
+        /// Returns the field name with boost notation (e.g. "title^3") if a boost is set, otherwise just the field name.
+        /// </summary>
+        public string ToQueryField() => Boost.HasValue ? $"{Name}^{Boost.Value}" : Name;
+    }
+
+    /// <summary>
     /// Elasticsearch-backed implementation of <see cref="ISearchService"/>.
     /// Translates <see cref="SearchTarget"/> into ES multi_match field sets
     /// and maps hits back to raw search hits for controller-level enrichment.
@@ -17,15 +30,33 @@ namespace PxApi.Services.Search
     [ExcludeFromCodeCoverage(Justification = "Wraps 3rd party Elasticsearch SDK; no meaningful logic to unit test.")]
     public class ElasticSearchService(ElasticsearchClient client, SearchConfig searchConfig, ILogger<ElasticSearchService> logger) : ISearchService
     {
-        private static readonly string[] ContentFields = ["title", "source", "note", "content_variable", "used_for"];
-        private static readonly string[] DimensionFields = ["classificatory_variable_names"];
-        private static readonly string[] ValueFields = ["classificatory_variable_values"];
-        private static readonly string[] GeoFields = ["geo_variable_values"];
-        private static readonly string[] AllFields = [.. ContentFields, .. DimensionFields, .. ValueFields, .. GeoFields];
-        private static readonly string[] SourceFields = ["database", "title", "note"];
+        private const string FieldTitle = "title";
+        private const string FieldSource = "source";
+        private const string FieldNote = "note";
+        private const string FieldContentVariable = "content_variable";
+        private const string FieldUsedFor = "used_for";
+        private const string FieldClassificatoryVariableNames = "classificatory_variable_names";
+        private const string FieldClassificatoryVariableValues = "classificatory_variable_values";
+        private const string FieldGeoVariableValues = "geo_variable_values";
+        private const string FieldDatabase = "database";
 
-        private static readonly string[] ContentQueryFields = ["title^3", "source", "note", "content_variable^3", "used_for^5"];
-        private static readonly string[] AllQueryFields = [.. ContentQueryFields, .. DimensionFields, .. ValueFields, .. GeoFields];
+        private static readonly BoostedField[] ContentBoostedFields =
+        [
+            new(FieldTitle),
+            new(FieldSource),
+            new(FieldNote),
+            new(FieldContentVariable, Boost: 2),
+            new(FieldUsedFor, Boost: 10)
+        ];
+
+        private static readonly BoostedField[] DimensionBoostedFields = [new(FieldClassificatoryVariableNames)];
+        private static readonly BoostedField[] ValueBoostedFields = [new(FieldClassificatoryVariableValues)];
+        private static readonly BoostedField[] GeoBoostedFields = [new(FieldGeoVariableValues)];
+        private static readonly BoostedField[] AllBoostedFields = [.. ContentBoostedFields, .. DimensionBoostedFields, .. ValueBoostedFields, .. GeoBoostedFields];
+
+        private static readonly string[] SourceFields = [FieldDatabase, FieldTitle, FieldNote];
+
+
 
         /// <inheritdoc />
         public async Task CheckHealthAsync(CancellationToken ct)
@@ -106,7 +137,7 @@ namespace PxApi.Services.Search
                         )
                         .Filter(filter => filter
                             .Term(t => t
-                                .Field(new Field("database"))
+                                .Field(new Field(FieldDatabase))
                                 .Value(databaseId)
                             )
                         )
@@ -223,27 +254,24 @@ namespace PxApi.Services.Search
 
         internal static string[] GetFields(SearchTarget target)
         {
-            return target switch
-            {
-                SearchTarget.Content => ContentFields,
-                SearchTarget.Dimension => DimensionFields,
-                SearchTarget.Value => ValueFields,
-                SearchTarget.Geo => GeoFields,
-                SearchTarget.All => AllFields,
-                _ => ContentFields
-            };
+            return GetBoostedFields(target).Select(f => f.Name).ToArray();
         }
 
         internal static string[] GetQueryFields(SearchTarget target)
         {
+            return GetBoostedFields(target).Select(f => f.ToQueryField()).ToArray();
+        }
+
+        internal static BoostedField[] GetBoostedFields(SearchTarget target)
+        {
             return target switch
             {
-                SearchTarget.Content => ContentQueryFields,
-                SearchTarget.Dimension => DimensionFields,
-                SearchTarget.Value => ValueFields,
-                SearchTarget.Geo => GeoFields,
-                SearchTarget.All => AllQueryFields,
-                _ => ContentQueryFields
+                SearchTarget.Content => ContentBoostedFields,
+                SearchTarget.Dimension => DimensionBoostedFields,
+                SearchTarget.Value => ValueBoostedFields,
+                SearchTarget.Geo => GeoBoostedFields,
+                SearchTarget.All => AllBoostedFields,
+                _ => ContentBoostedFields
             };
         }
 
