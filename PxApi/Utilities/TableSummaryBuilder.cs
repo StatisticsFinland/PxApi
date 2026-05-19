@@ -37,15 +37,16 @@ namespace PxApi.Utilities
 
             DateTime lastUpdated = contentDimension.Values.Map(value => value.LastUpdated).Max();
             TimeRange timeRange = BuildTimeRange(metadata, lang);
+            IReadOnlyDimension? geoDimension = metadata.Dimensions.FirstOrDefault(dim => dim.Type == DimensionType.Geographical);
+            string? geo = geoDimension?.Name[lang];
             List<DimensionInfo> dimensions = metadata.Dimensions
-                .Where(dimension => dimension is not ContentDimension && dimension is not TimeDimension)
+                .Where(dimension => dimension is not ContentDimension && dimension is not TimeDimension && dimension != geoDimension)
                 .Select(dimension => new DimensionInfo
                 {
                     Name = dimension.Name[lang],
                     Size = dimension.Values.Count
                 })
                 .ToList();
-            string? geo = metadata.Dimensions.Where(dim => dim.Type == DimensionType.Geographical).Select(dim => dim.Name[lang]).FirstOrDefault();
 
             return new TableSummary
             {
