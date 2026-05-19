@@ -35,7 +35,7 @@ namespace PxApi.Models
         public required TimeRange TimeRange { get; set; }
 
         /// <summary>
-        /// Names and sizes of all dimensions, excluding the metric and time dimensions.
+        /// Names and sizes of all dimensions, excluding the metric, time, and geographical dimensions.
         /// </summary>
         [Required]
         public required List<DimensionInfo> Dimensions { get; set; }
