@@ -1,5 +1,6 @@
 using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.Dimensions;
+using Px.Utils.Models.Metadata.Enums;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using PxApi.ModelBuilders;
 using PxApi.Models;
@@ -44,6 +45,7 @@ namespace PxApi.Utilities
                     Size = dimension.Values.Count
                 })
                 .ToList();
+            string? geo = metadata.Dimensions.Where(dim => dim.Type == DimensionType.Geographical).Select(dim => dim.Name[lang]).FirstOrDefault();
 
             return new TableSummary
             {
@@ -52,7 +54,8 @@ namespace PxApi.Utilities
                 Metrics = metrics,
                 TimeRange = timeRange,
                 Dimensions = dimensions,
-                LastUpdated = lastUpdated
+                LastUpdated = lastUpdated,
+                Geo = geo
             };
         }
 

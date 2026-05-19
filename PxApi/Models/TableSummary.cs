@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace PxApi.Models
 {
@@ -44,5 +45,11 @@ namespace PxApi.Models
         /// </summary>
         [Required]
         public required DateTime LastUpdated { get; set; }
+
+        /// <summary>
+        /// Name of the geographical dimension if it exists, otherwise null.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Geo { get; set; } = null;
     }
 }
