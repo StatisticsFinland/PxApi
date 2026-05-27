@@ -52,7 +52,7 @@ Part of the composition root. Registers one keyed `IDataBaseConnector` per confi
 
 **File**: `PxApi/Utilities/TableSummaryBuilder.cs`
 
-Builds compact `TableSummary` DTOs from parsed PX metadata. Used by `TablesController` and `SearchController` to produce consistent table summary representations. Populates the `Geo` property with the localized name of the geographical dimension when one is present, otherwise leaves it `null`.
+Builds compact `TableSummary` DTOs from parsed PX metadata. Used by `TablesController` and `SearchController` to produce consistent table summary representations.
 
 ### QueryFilterUtils
 
