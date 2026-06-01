@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace PxApi.Models
 {
@@ -34,7 +35,7 @@ namespace PxApi.Models
         public required TimeRange TimeRange { get; set; }
 
         /// <summary>
-        /// Names and sizes of all dimensions, excluding the metric and time dimensions.
+        /// Names and sizes of all dimensions, excluding the metric, time, and geographical dimensions.
         /// </summary>
         [Required]
         public required List<DimensionInfo> Dimensions { get; set; }
@@ -44,5 +45,11 @@ namespace PxApi.Models
         /// </summary>
         [Required]
         public required DateTime LastUpdated { get; set; }
+
+        /// <summary>
+        /// Name of the geographical dimension if it exists, otherwise null.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Geo { get; set; } = null;
     }
 }
