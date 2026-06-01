@@ -47,9 +47,9 @@ namespace PxApi.Models
         public required DateTime LastUpdated { get; set; }
 
         /// <summary>
-        /// Name of the geographical dimension if it exists, otherwise null.
+        /// Geographical dimension information if it exists, otherwise null.
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Geo { get; set; } = null;
+        public DimensionInfo? Geo { get; set; } = null;
     }
 }

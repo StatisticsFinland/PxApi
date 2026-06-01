@@ -54,8 +54,8 @@ namespace PxApi.UnitTests.UtilitiesTests
                 Assert.That(summaryEn.Dimensions, Has.Count.EqualTo(2));
                 Assert.That(summaryEn.LastUpdated, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
                 Assert.That(summaryEn.Geo, Is.Not.Null);
-                Assert.That(summaryEn.Geo, Is.EqualTo("dim2-name.en"));
-
+                Assert.That(summaryEn.Geo?.Name, Is.EqualTo("dim2-name.en"));
+                Assert.That(summaryEn.Geo?.Size, Is.EqualTo(2));
 
                 Assert.That(summaryFi.TableId, Is.EqualTo("table-tableid"));
                 Assert.That(summaryFi.Title, Is.EqualTo("table-description.fi"));
@@ -65,7 +65,8 @@ namespace PxApi.UnitTests.UtilitiesTests
                 Assert.That(summaryFi.Dimensions, Has.Count.EqualTo(2));
                 Assert.That(summaryFi.LastUpdated, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
                 Assert.That(summaryFi.Geo, Is.Not.Null);
-                Assert.That(summaryFi.Geo, Is.EqualTo("dim2-name.fi"));
+                Assert.That(summaryFi.Geo?.Name, Is.EqualTo("dim2-name.fi"));
+                Assert.That(summaryFi.Geo?.Size, Is.EqualTo(2));
             }
         }
 
