@@ -29,12 +29,11 @@ namespace PxApi.UnitTests.UtilitiesTests
                 Assert.That(summary.TimeRange.To, Is.EqualTo("time-value1-name.en"));
                 Assert.That(summary.Dimensions, Has.Count.EqualTo(2));
                 Assert.That(summary.LastUpdated, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
-                Assert.That(summary.Geo, Is.Null);
             }
         }
 
         [Test]
-        public void Build_ValidMetadataWithGeoDimension_ReturnsSummary()
+        public void Build_ValidMetadataWithGeoDimension_GeoIncludedInDimensions()
         {
             // Arrange
             MatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata([DimensionType.Geographical]);
@@ -51,10 +50,9 @@ namespace PxApi.UnitTests.UtilitiesTests
                 Assert.That(summaryEn.Metrics, Has.Count.EqualTo(2));
                 Assert.That(summaryEn.TimeRange.From, Is.EqualTo("time-value0-name.en"));
                 Assert.That(summaryEn.TimeRange.To, Is.EqualTo("time-value1-name.en"));
-                Assert.That(summaryEn.Dimensions, Has.Count.EqualTo(2));
+                Assert.That(summaryEn.Dimensions, Has.Count.EqualTo(3));
+                Assert.That(summaryEn.Dimensions.Any(d => d.Name == "dim2-name.en"), Is.True);
                 Assert.That(summaryEn.LastUpdated, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
-                Assert.That(summaryEn.Geo, Is.Not.Null);
-                Assert.That(summaryEn.Geo, Is.EqualTo("dim2-name.en"));
 
 
                 Assert.That(summaryFi.TableId, Is.EqualTo("table-tableid"));
@@ -62,10 +60,9 @@ namespace PxApi.UnitTests.UtilitiesTests
                 Assert.That(summaryFi.Metrics, Has.Count.EqualTo(2));
                 Assert.That(summaryFi.TimeRange.From, Is.EqualTo("time-value0-name.fi"));
                 Assert.That(summaryFi.TimeRange.To, Is.EqualTo("time-value1-name.fi"));
-                Assert.That(summaryFi.Dimensions, Has.Count.EqualTo(2));
+                Assert.That(summaryFi.Dimensions, Has.Count.EqualTo(3));
+                Assert.That(summaryFi.Dimensions.Any(d => d.Name == "dim2-name.fi"), Is.True);
                 Assert.That(summaryFi.LastUpdated, Is.EqualTo(new DateTime(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc)));
-                Assert.That(summaryFi.Geo, Is.Not.Null);
-                Assert.That(summaryFi.Geo, Is.EqualTo("dim2-name.fi"));
             }
         }
 

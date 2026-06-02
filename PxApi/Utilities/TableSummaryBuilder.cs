@@ -1,6 +1,5 @@
 using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.Dimensions;
-using Px.Utils.Models.Metadata.Enums;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 using PxApi.ModelBuilders;
 using PxApi.Models;
@@ -37,10 +36,8 @@ namespace PxApi.Utilities
 
             DateTime lastUpdated = contentDimension.Values.Map(value => value.LastUpdated).Max();
             TimeRange timeRange = BuildTimeRange(metadata, lang);
-            IReadOnlyDimension? geoDimension = metadata.Dimensions.FirstOrDefault(dim => dim.Type == DimensionType.Geographical);
-            string? geo = geoDimension?.Name[lang];
             List<DimensionInfo> dimensions = metadata.Dimensions
-                .Where(dimension => dimension is not ContentDimension && dimension is not TimeDimension && dimension != geoDimension)
+                .Where(dimension => dimension is not ContentDimension && dimension is not TimeDimension)
                 .Select(dimension => new DimensionInfo
                 {
                     Name = dimension.Name[lang],
@@ -55,8 +52,7 @@ namespace PxApi.Utilities
                 Metrics = metrics,
                 TimeRange = timeRange,
                 Dimensions = dimensions,
-                LastUpdated = lastUpdated,
-                Geo = geo
+                LastUpdated = lastUpdated
             };
         }
 
