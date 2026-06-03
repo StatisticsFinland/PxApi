@@ -27,7 +27,7 @@ namespace PxApi.UnitTests.ControllerTests
             _mockCachedDataSource = new Mock<ICachedDataSource>();
             _mockAuditLogger = new Mock<IAuditLogService>();
             _mockLogger = new Mock<ILogger<DatabasesController>>();
-            _controller = new DatabasesController(_mockCachedDataSource.Object, _mockAuditLogger.Object, _mockLogger.Object)
+            _controller = new DatabasesController(_mockCachedDataSource.Object, _mockLogger.Object, _mockAuditLogger.Object)
             {
                 ControllerContext = new ControllerContext
                 {
