@@ -257,11 +257,13 @@ namespace PxApi.Controllers
                     if (bestMatch == "text/csv")
                     {
                         Matrix<DoubleDataValue> requestMatrix = new(meta.GetTransform(requestMap), data);
+                        logger.LogInformation("Data query returned. Returned cell count: {ReturnedCellCount}. Format: {Format}.", data.LongLength, "text/csv");
                         return Content(CsvBuilder.BuildCsvResponse(requestMatrix, actualLang, meta), "text/csv");
                     }
                     if (bestMatch == "application/json")
                     {
                         JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
+                        logger.LogInformation("Data query returned. Returned cell count: {ReturnedCellCount}. Format: {Format}.", data.LongLength, "application/json");
                         return Ok(jsonStat);
                     }
                 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Px.Utils.Language;
 using PxApi.Caching;
@@ -17,6 +18,7 @@ namespace PxApi.UnitTests.ControllerTests
     {
         private Mock<ICachedDataSource> _mockCachedDataSource = null!;
         private Mock<IAuditLogService> _mockAuditLogger = null!; // Added
+        private Mock<ILogger<DatabasesController>> _mockLogger = null!;
         private DatabasesController _controller = null!;
 
         [SetUp]
@@ -24,7 +26,8 @@ namespace PxApi.UnitTests.ControllerTests
         {
             _mockCachedDataSource = new Mock<ICachedDataSource>();
             _mockAuditLogger = new Mock<IAuditLogService>();
-            _controller = new DatabasesController(_mockCachedDataSource.Object, _mockAuditLogger.Object)
+            _mockLogger = new Mock<ILogger<DatabasesController>>();
+            _controller = new DatabasesController(_mockCachedDataSource.Object, _mockAuditLogger.Object, _mockLogger.Object)
             {
                 ControllerContext = new ControllerContext
                 {
