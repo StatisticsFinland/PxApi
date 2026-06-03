@@ -116,12 +116,6 @@ URL construction helpers for building HATEOAS links from `RootUrl` configuration
 
 Helper functions for extracting language information from PX metadata matrices.
 
-### MetaCodeTools
-
-**File**: `PxApi/Utilities/MetaCodeTools.cs`
-
-Safe conversion utilities for PX metadata codes and identifiers.
-
 ## OpenAPI Customization
 
 All OpenAPI filters are in `PxApi/OpenApi/`. See [controllers.md](controllers.md) for the full list.
