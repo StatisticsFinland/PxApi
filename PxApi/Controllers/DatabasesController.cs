@@ -26,7 +26,7 @@ namespace PxApi.Controllers
     [ApiKeyAuth]
     [Route("meta/databases")]
     [ApiController]
-    public class DatabasesController(ICachedDataSource dataSource, IAuditLogService auditLogger, ILogger<DatabasesController> logger) : ControllerBase
+    public class DatabasesController(ICachedDataSource dataSource, ILogger<DatabasesController> logger, IAuditLogService auditLogger) : ControllerBase
     {
         /// <summary>
         /// Retrieves a list of available databases. Each item contains its identifier, localized name, optional localized description, table count and HATEOAS link to the tables listing endpoint.
