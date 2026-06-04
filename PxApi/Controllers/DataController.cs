@@ -29,7 +29,10 @@ namespace PxApi.Controllers
     [Route("data/databases")]
     public class DataController(ICachedDataSource dataSource, ILogger<DataController> logger, IAuditLogService auditLogService) : ControllerBase
     {
-        private static readonly string[] SupportedMediaTypes = ["application/json", "text/csv"];
+        private const string APPLICATION_JSON = "application/json";
+        private const string TEXT_CSV = "text/csv";
+
+        private static readonly string[] SupportedMediaTypes = [APPLICATION_JSON, TEXT_CSV];
 
         /// <summary>
         /// Retrieves data using query string filters. Content negotiation based on the Accept header (application/json for JSON-stat, text/csv for CSV; */* treated as JSON).
@@ -49,9 +52,9 @@ namespace PxApi.Controllers
         /// <response code="503">The request is valid but the data is temporarily unavailable due to a database update.</response>
         [HttpGet("{database}/tables/{table}")]
         [OperationId("getData")]
-        [Produces("application/json", "text/csv")]
-        [ProducesResponseType(typeof(JsonStat2), 200, "application/json")]
-        [ProducesResponseType(typeof(string), 200, "text/csv")]
+        [Produces(APPLICATION_JSON, TEXT_CSV)]
+        [ProducesResponseType(typeof(JsonStat2), 200, APPLICATION_JSON)]
+        [ProducesResponseType(typeof(string), 200, TEXT_CSV)]
         [ProducesResponseType(typeof(string), 400)]
         [ProducesResponseType(typeof(string), 404)]
         [ProducesResponseType(typeof(string), 406)]
@@ -97,10 +100,10 @@ namespace PxApi.Controllers
         /// <response code="503">The request is valid but the data is temporarily unavailable due to a database update.</response>
         [HttpPost("{database}/tables/{table}")]
         [OperationId("postData")]
-        [Consumes("application/json")]
-        [Produces("application/json", "text/csv")]
-        [ProducesResponseType(typeof(JsonStat2), 200, "application/json")]
-        [ProducesResponseType(typeof(string), 200, "text/csv")]
+        [Consumes(APPLICATION_JSON)]
+        [Produces(APPLICATION_JSON, TEXT_CSV)]
+        [ProducesResponseType(typeof(JsonStat2), 200, APPLICATION_JSON)]
+        [ProducesResponseType(typeof(string), 200, TEXT_CSV)]
         [ProducesResponseType(typeof(string), 400)]
         [ProducesResponseType(typeof(string), 404)]
         [ProducesResponseType(typeof(string), 406)]
@@ -254,14 +257,16 @@ namespace PxApi.Controllers
                     IList<MediaTypeHeaderValue> acceptHeaderValues = Request.GetTypedHeaders().Accept;
                     string? bestMatch = ContentNegotiation.GetBestMatch(acceptHeaderValues, SupportedMediaTypes);
 
-                    if (bestMatch == "text/csv")
+                    if (bestMatch == TEXT_CSV)
                     {
                         Matrix<DoubleDataValue> requestMatrix = new(meta.GetTransform(requestMap), data);
-                        return Content(CsvBuilder.BuildCsvResponse(requestMatrix, actualLang, meta), "text/csv");
+                        logger.LogInformation("Data query returned. Returned cell count: {ReturnedCellCount}. Format: {Format}.", data.LongLength, TEXT_CSV);
+                        return Content(CsvBuilder.BuildCsvResponse(requestMatrix, actualLang, meta), TEXT_CSV);
                     }
-                    if (bestMatch == "application/json")
+                    if (bestMatch == APPLICATION_JSON)
                     {
                         JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
+                        logger.LogInformation("Data query returned. Returned cell count: {ReturnedCellCount}. Format: {Format}.", data.LongLength, APPLICATION_JSON);
                         return Ok(jsonStat);
                     }
                 }
