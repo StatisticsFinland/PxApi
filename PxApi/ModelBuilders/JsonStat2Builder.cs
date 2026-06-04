@@ -7,7 +7,6 @@ using Px.Utils.Models.Metadata;
 using PxApi.Models.JsonStat;
 using PxApi.Utilities;
 using System.Globalization;
-using PxApi.Models;
 
 namespace PxApi.ModelBuilders
 {
@@ -56,7 +55,7 @@ namespace PxApi.ModelBuilders
 
             return new JsonStat2
             {
-                Id = [.. meta.Dimensions.Select(d => d.Code.Convert())],
+                Id = [.. meta.Dimensions.Select(d => d.Code)],
                 Label = tableLabel,
                 Source = GetSourceByLang(meta, actualLang),
                 Note = GetNotesByLang(meta, actualLang),
@@ -137,7 +136,7 @@ namespace PxApi.ModelBuilders
                     }
                 }
 
-                dimensions[dimension.Code.Convert()] = jsonDimension;
+                dimensions[dimension.Code] = jsonDimension;
             }
 
             return dimensions;
@@ -152,11 +151,11 @@ namespace PxApi.ModelBuilders
         {
             Dictionary<string, List<string>> roles = new()
             {
-                { "time", [meta.GetTimeDimension().Code.Convert()] },
-                { "metric", [meta.GetContentDimension().Code.Convert()] }
+                { "time", [meta.GetTimeDimension().Code] },
+                { "metric", [meta.GetContentDimension().Code] }
             };
 
-            List<string> geoDimensions = [.. meta.Dimensions.Where(d => d.Type == DimensionType.Geographical).Select(d => d.Code.Convert())];
+            List<string> geoDimensions = [.. meta.Dimensions.Where(d => d.Type == DimensionType.Geographical).Select(d => d.Code)];
             if (geoDimensions.Count > 0)
             {
                 roles["geo"] = geoDimensions;
