@@ -16,7 +16,7 @@ These types are used throughout routing, connectors, and caching for type-safe, 
 - **`DataBaseListingItem`** (`DataBaseListingItem.cs`): Database metadata for the `/meta/databases` response (name, description, language list, table count, links).
 - **`PagedTableList`** (`PagedTableList.cs`): Paginated table listing wrapper with paging metadata.
 - **`TableListingItem`** (`TableListingItem.cs`): Minimal table info for listing responses.
-- **`TableSummary`** (`TableSummary.cs`): Rich table metadata summary including dimensions, content values, time ranges, and links. Built by `TableSummaryBuilder`.
+- **`TableSummary`** (`TableSummary.cs`): Rich table metadata summary including dimensions (including any geographical dimensions), content values, time ranges, and links. Built by `TableSummaryBuilder`.
 - **`ContentValueInfo`** (`ContentValueInfo.cs`): Information about a content/measure value in a table.
 - **`DimensionInfo`** (`DimensionInfo.cs`): Dimension metadata (code, name, type, value count).
 - **`TimeRange`** (`TimeRange.cs`): Start/end time period for a time dimension.

@@ -4,7 +4,7 @@ namespace PxApi.Models
 {
     /// <summary>
     /// Contains essential summary information about a statistical table, including
-    /// its identification, content variables, time range, dimension structure, and update timestamp.
+    /// its identification, metrics, time range, dimensions, and update timestamp.
     /// </summary>
     public class TableSummary
     {
@@ -21,10 +21,10 @@ namespace PxApi.Models
         public required string Title { get; set; }
 
         /// <summary>
-        /// Content dimension value names and their units of measurement.
+        /// Metric names and their units of measurement.
         /// </summary>
         [Required]
-        public required List<ContentValueInfo> ContentValues { get; set; }
+        public required List<MetricInfo> Metrics { get; set; }
 
         /// <summary>
         /// Time range covered by the table's time dimension.
@@ -34,13 +34,13 @@ namespace PxApi.Models
         public required TimeRange TimeRange { get; set; }
 
         /// <summary>
-        /// Names and sizes of the remaining dimensions (excluding content and time).
+        /// Names and sizes of all dimensions, excluding the metric and time dimensions.
         /// </summary>
         [Required]
         public required List<DimensionInfo> Dimensions { get; set; }
 
         /// <summary>
-        /// Last update timestamp (UTC) derived from the content dimension values.
+        /// Last update timestamp (UTC) derived from the metric values.
         /// </summary>
         [Required]
         public required DateTime LastUpdated { get; set; }

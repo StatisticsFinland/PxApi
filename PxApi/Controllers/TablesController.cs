@@ -112,6 +112,7 @@ namespace PxApi.Controllers
                         }
                     }
 
+                    logger.LogInformation("Tables listing returned {ReturnedTables} table summaries.", pagedTableList.Tables.Count);
                     return Ok(pagedTableList);
                 }
             }

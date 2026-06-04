@@ -5,7 +5,6 @@ using Px.Utils.Models.Metadata.MetaProperties;
 using Px.Utils.Models.Metadata;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using PxApi.Utilities;
 using Px.Utils.Models.Metadata.ExtensionMethods;
 
 namespace PxApi.Models.QueryFilters
@@ -27,10 +26,9 @@ namespace PxApi.Models.QueryFilters
             Dictionary<string, Filter> filtersCopy = new(filters, StringComparer.OrdinalIgnoreCase);
             MatrixMap map = new([.. meta.Dimensions.Select(dim =>
             {
-                string dimCode = dim.Code.Convert();
-                if (filtersCopy.TryGetValue(dimCode, out Filter? filter))
+                if (filtersCopy.TryGetValue(dim.Code, out Filter? filter))
                 {
-                    filtersCopy.Remove(dimCode);
+                    filtersCopy.Remove(dim.Code);
                     return filter.Apply(dim);
                 }
                 else
@@ -66,7 +64,7 @@ namespace PxApi.Models.QueryFilters
                 if (i > 0) sb.Append('&');
                 
                 (Filter filter, string value) = SelectFilterForDimension(dimension);
-                sb.Append($"filters={dimension.Code.Convert()}:{filter.ParamName}={value}");
+                sb.Append($"filters={Uri.EscapeDataString(dimension.Code)}:{filter.ParamName}={Uri.EscapeDataString(value)}");
             }
             return sb.ToString();
         }

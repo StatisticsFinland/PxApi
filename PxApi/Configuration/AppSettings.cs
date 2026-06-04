@@ -65,6 +65,11 @@ namespace PxApi.Configuration
         public SearchConfig Search { get; }
 
         /// <summary>
+        /// CORS configuration for controlling allowed origins.
+        /// </summary>
+        public CorsConfig Cors { get; }
+
+        /// <summary>
         /// The currently active configuration for the application.
         /// </summary>
         public static AppSettings Active
@@ -111,6 +116,7 @@ namespace PxApi.Configuration
             ApplicationInsights = new ApplicationInsightsConfig(configuration.GetSection(nameof(ApplicationInsights)));
             BlobReadMode = new BlobReadModeConfig(configuration.GetSection(nameof(BlobReadMode)));
             Search = new SearchConfig(configuration.GetSection(nameof(Search)));
+            Cors = new CorsConfig(configuration.GetSection(nameof(Cors)));
         }
 
         /// <summary>

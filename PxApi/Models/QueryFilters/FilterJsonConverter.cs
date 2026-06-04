@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -88,6 +90,7 @@ namespace PxApi.Models.QueryFilters
         }
 
         /// <inheritdoc/>
+        [ExcludeFromCodeCoverage(Justification = "Default case is unreachable: JsonStringEnumConverter throws JsonException for unknown FilterType values before the switch is evaluated.")]
         public override Filter Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             FilterJsonModel? filterWrapper = JsonSerializer.Deserialize<FilterJsonModel>(ref reader, options);
@@ -122,7 +125,7 @@ namespace PxApi.Models.QueryFilters
                         int lastCount = filterWrapper.Query.Deserialize<int>(options);
                         return new LastFilter(lastCount);
                     }
-                default: throw new InvalidOperationException("Unknown filter type: " + filterWrapper.Type);
+                default: throw new UnreachableException("Unknown filter type: " + filterWrapper.Type);
             }
         }
 
@@ -130,16 +133,16 @@ namespace PxApi.Models.QueryFilters
         {
             if (input.Length > 50)
             {
-                throw new ArgumentException("Filter string exceeds maximum length of 50 characters");
+                throw new JsonException("Filter string exceeds maximum length of 50 characters");
             }
 
-            char[] allowedSpecialChars = ['*', '_', '-'];
+            char[] allowedSpecialChars = ['*', '_', '-', '.'];
 
             foreach (char c in input)
             {
                 if (!char.IsLetterOrDigit(c) && !allowedSpecialChars.Contains(c))
                 {
-                    throw new ArgumentException("Input string contains characters other than letters, numbers, '*', '_' and '-'");
+                    throw new JsonException("Input string contains characters other than letters, numbers, '*', '_', '-' and '.'");
                 }
             }
         }

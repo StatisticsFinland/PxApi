@@ -75,6 +75,21 @@ namespace PxApi
                 // Add services to the container.
                 AddServices(builder.Services);
 
+                // Configure CORS if allowed origins are specified
+                CorsConfig corsConfig = AppSettings.Active.Cors;
+                if (corsConfig.HasAllowedOrigins)
+                {
+                    builder.Services.AddCors(options =>
+                    {
+                        options.AddDefaultPolicy(policy =>
+                        {
+                            policy.WithOrigins([.. corsConfig.AllowedOrigins])
+                                  .AllowAnyHeader()
+                                  .AllowAnyMethod();
+                        });
+                    });
+                }
+
                 WebApplication app = builder.Build();
 
                 // Configure the HTTP request pipeline.
@@ -92,6 +107,11 @@ namespace PxApi
                 app.UseExceptionHandler("/error");
 
                 app.UseHttpsRedirection();
+
+                if (corsConfig.HasAllowedOrigins)
+                {
+                    app.UseCors();
+                }
 
                 app.UseAuthorization();
 
@@ -255,7 +275,14 @@ namespace PxApi
                     throw new InvalidOperationException("The SEARCH_API_KEY environment variable must be set when the SearchController feature is enabled.");
                 }
 
-                ElasticsearchClient esClient = new(new ElasticsearchClientSettings(searchConfig.CloudId, new ApiKey(searchConfig.ApiKey)));
+                ElasticsearchClientSettings esSettings = new(searchConfig.CloudId, new ApiKey(searchConfig.ApiKey));
+
+                if (!string.IsNullOrWhiteSpace(searchConfig.ProxyAddress))
+                {
+                    esSettings = esSettings.Proxy(new Uri(searchConfig.ProxyAddress));
+                }
+
+                ElasticsearchClient esClient = new(esSettings);
                 serviceCollection.AddSingleton(esClient);
                 serviceCollection.AddSingleton(searchConfig);
                 serviceCollection.AddScoped<ISearchService, ElasticSearchService>();

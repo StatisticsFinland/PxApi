@@ -76,6 +76,7 @@ namespace PxApi.Controllers
                     }
 
                     JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, resolvedLang);
+                    logger.LogInformation("Metadata response returned.");
                     return Ok(jsonStat2);
                 }
             }

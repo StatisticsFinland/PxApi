@@ -28,7 +28,7 @@ namespace PxApi.Utilities
 
             string code = metadata.AdditionalProperties.GetValueByLanguage(PxFileConstants.TABLEID, lang) ?? tableName;
             string name = metadata.AdditionalProperties.GetValueByLanguage(PxFileConstants.DESCRIPTION, lang) ?? tableName;
-            List<ContentValueInfo> contentValues = contentDimension.Values.Map(value => new ContentValueInfo
+            List<MetricInfo> metrics = contentDimension.Values.Map(value => new MetricInfo
             {
                 Name = value.Name[lang],
                 Unit = value.Unit[lang]
@@ -49,7 +49,7 @@ namespace PxApi.Utilities
             {
                 TableId = code,
                 Title = name,
-                ContentValues = contentValues,
+                Metrics = metrics,
                 TimeRange = timeRange,
                 Dimensions = dimensions,
                 LastUpdated = lastUpdated

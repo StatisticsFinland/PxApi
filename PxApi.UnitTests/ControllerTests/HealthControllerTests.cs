@@ -28,6 +28,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             Dictionary<string, string?> configData = TestConfigFactory.Merge(
                 TestConfigFactory.Base(),
+                new Dictionary<string, string?> { ["FeatureManagement:SearchController"] = "true" },
                 TestConfigFactory.MountedDb(0, "db1", "datasource/root1/"),
                 TestConfigFactory.MountedDb(1, "db2", "datasource/root2/")
             );
@@ -118,7 +119,10 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetHealth_NoDatabases_ReturnsOkWithHealthyStatus()
         {
             // Arrange - config with no databases
-            Dictionary<string, string?> configData = TestConfigFactory.Base();
+            Dictionary<string, string?> configData = TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                new Dictionary<string, string?> { ["FeatureManagement:SearchController"] = "true" }
+            );
             TestConfigFactory.BuildAndLoad(configData);
 
             _services.AddScoped<ISearchService>(_ => _mockSearchService.Object);
