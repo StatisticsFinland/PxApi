@@ -13,7 +13,6 @@ The main cache API used by controllers. Wraps raw `IDataBaseConnector` calls and
 - Metadata objects (parsed PX metadata per table)
 - Data arrays (parsed PX data values per table)
 - Last-updated timestamps (per PX file)
-- Grouping metadata
 - Database names
 
 **Superset optimization**: `GetDataCachedAsync` supports superset cache hits. If a cached matrix contains a superset of the requested dimensions, it uses `DataIndexer` to slice the requested subset from the cached data without re-reading the source. This avoids redundant storage reads for overlapping queries.
@@ -55,7 +54,6 @@ Cache TTLs are configured per-database via `DatabaseCacheConfig`:
 - `TableList` — How long file listings are cached
 - `Meta` — How long parsed metadata is cached
 - `Data` — How long data arrays are cached
-- `Groupings` — How long grouping metadata is cached
 - `RevalidationIntervalMs` — Optional background revalidation interval
 
 Global cache capacity is set via `MemoryCacheConfig.MaxSizeBytes`.

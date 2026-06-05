@@ -52,7 +52,7 @@ BinaryBlobStorage  — Azure Blob Storage (pre-processed binary format)
 Controls the global `IMemoryCache` instance:
 - `MaxSizeBytes` — Total cache capacity (default: 524288000 = 500 MB)
 - `DefaultDataCellSize` — Heuristic size per data cell for cache accounting
-- `DefaultUpdateTaskSize`, `DefaultTableGroupSize`, `DefaultFileListSize`, `DefaultMetaSize` — Heuristic sizes for other cached entity types
+- `DefaultUpdateTaskSize`, `DefaultFileListSize`, `DefaultMetaSize`, `DefaultAliasSize` — Heuristic sizes for other cached entity types
 
 ### Per-Database: DatabaseCacheConfig
 
@@ -62,7 +62,6 @@ Per-database TTL settings:
 - `TableList` — TTL for file list cache
 - `Meta` — TTL for metadata cache
 - `Data` — TTL for data cache
-- `Groupings` — TTL for grouping metadata
 - `RevalidationIntervalMs` — Optional interval for background cache revalidation
 
 ## Query Limits
