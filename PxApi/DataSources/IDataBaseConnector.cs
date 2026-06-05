@@ -56,7 +56,7 @@ namespace PxApi.DataSources
 
         /// <summary>
         /// Opens an auxiliary (non PX) file located in the database root or a sub directory.
-        /// Used for reading grouping metadata (e.g. groupings.json and Alias_{lang}.txt files).
+        /// Used for reading alias files.
         /// Throws <see cref="FileNotFoundException"/> if the file does not exist and <see cref="UnauthorizedAccessException"/> if the resolved path escapes the database root.
         /// </summary>
         /// <param name="fileName">The name of the auxiliary file to read.</param>

@@ -13,7 +13,7 @@ The core abstraction exposing:
 - Metadata reads (PX metadata parsing)
 - Data reads (PX data value arrays)
 - Connectivity checks (for health endpoint)
-- Auxiliary file reads (grouping metadata, etc.)
+- Auxiliary file reads (alias files)
 
 ## Base Class: DataBaseConnector
 
