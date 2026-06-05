@@ -21,7 +21,6 @@ These types are used throughout routing, connectors, and caching for type-safe, 
 - **`DimensionInfo`** (`DimensionInfo.cs`): Dimension metadata (code, name, type, value count).
 - **`TimeRange`** (`TimeRange.cs`): Start/end time period for a time dimension.
 - **`Link`** (`Link.cs`): HATEOAS link with rel/href.
-- **`TableGroup`** (`TableGroup.cs`): Grouping metadata for organizing tables.
 
 ### Operational DTOs
 
@@ -35,7 +34,7 @@ Located in `PxApi/Models/JsonStat/`:
 - **`JsonStat2`** (`JsonStat2.cs`): Root JSON-stat 2.0 response object with class, version, label, source, updated, id, size, role, dimension, value, status, note, and extension properties.
 - **`Dimension`** (`Dimension.cs`): Dimension with label and category.
 - **`Category`** (`Category.cs`): Category with index, label, unit, and note mappings.
-- Unit and grouping extension types for the `extension` property.
+- Unit extension type for the `extension` property.
 
 ### Search Models
 
@@ -69,7 +68,6 @@ Builds JSON-stat 2.0 responses from parsed PX metadata and data. Handles:
 - Dimension roles (time, metric, geo)
 - Units and contact information
 - Notes at dataset and dimension levels
-- Localized groupings
 - Missing value status dictionary (maps indices to missing-value codes)
 - Metadata-only responses (for the metadata endpoint)
 
