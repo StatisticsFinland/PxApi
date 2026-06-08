@@ -20,9 +20,9 @@ namespace PxApi.UnitTests.ConfigurationTests
                     ["Cache:MaxSizeBytes"] = expectedCacheSize.ToString(),
                     ["Cache:DefaultDataCellSize"] = "32",
                     ["Cache:DefaultUpdateTaskSize"] = "100",
-                    ["Cache:DefaultTableGroupSize"] = "200",
                     ["Cache:DefaultFileListSize"] = "500000",
-                    ["Cache:DefaultMetaSize"] = "300000"
+                    ["Cache:DefaultMetaSize"] = "300000",
+                    ["Cache:DefaultAliasSize"] = "128"
                 }
             );
             IConfiguration configuration = new ConfigurationBuilder()
@@ -38,9 +38,9 @@ namespace PxApi.UnitTests.ConfigurationTests
                 Assert.That(AppSettings.Active.Cache.MaxSizeBytes, Is.EqualTo(expectedCacheSize));
                 Assert.That(AppSettings.Active.Cache.DefaultDataCellSize, Is.EqualTo(32));
                 Assert.That(AppSettings.Active.Cache.DefaultUpdateTaskSize, Is.EqualTo(100));
-                Assert.That(AppSettings.Active.Cache.DefaultTableGroupSize, Is.EqualTo(200));
                 Assert.That(AppSettings.Active.Cache.DefaultFileListSize, Is.EqualTo(500000));
                 Assert.That(AppSettings.Active.Cache.DefaultMetaSize, Is.EqualTo(300000));
+                Assert.That(AppSettings.Active.Cache.DefaultAliasSize, Is.EqualTo(128));
             }
         }
 
@@ -65,9 +65,9 @@ namespace PxApi.UnitTests.ConfigurationTests
                 Assert.That(AppSettings.Active.Cache.MaxSizeBytes, Is.EqualTo(524288000)); // 512 MB default
                 Assert.That(AppSettings.Active.Cache.DefaultDataCellSize, Is.EqualTo(16));
                 Assert.That(AppSettings.Active.Cache.DefaultUpdateTaskSize, Is.EqualTo(50));
-                Assert.That(AppSettings.Active.Cache.DefaultTableGroupSize, Is.EqualTo(100));
                 Assert.That(AppSettings.Active.Cache.DefaultFileListSize, Is.EqualTo(350000));
                 Assert.That(AppSettings.Active.Cache.DefaultMetaSize, Is.EqualTo(200000));
+                Assert.That(AppSettings.Active.Cache.DefaultAliasSize, Is.EqualTo(256));
             }
         }
     }

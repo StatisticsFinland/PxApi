@@ -1,6 +1,7 @@
 ﻿using Px.Utils.Language;
 using Px.Utils.Models.Metadata;
 using Px.Utils.Models.Metadata.Dimensions;
+using Px.Utils.Models.Metadata.Enums;
 using Px.Utils.Models.Metadata.MetaProperties;
 using PxApi.Models.QueryFilters;
 using PxApi.UnitTests.Utils;
@@ -171,8 +172,8 @@ namespace PxApi.UnitTests.Models.QueryFilters
             string result = MetaFiltering.GetDefaultFilteringUrlParameters(meta);
 
             // Assert
-            // Expected: Content dimension uses first=1, Time dimension uses code=*, Other dimension uses first=1
-            string expected = "?filters=dim0:first=1&filters=dim1:code=*&filters=dim2:first=1";
+            // Expected: Content dimension uses first=1, Time dimension uses code=%2A (encoded *), Other dimension uses first=1
+            string expected = "?filters=dim0:first=1&filters=dim1:code=%2A&filters=dim2:first=1";
             Assert.That(result, Is.EqualTo(expected));
         }
 
@@ -203,6 +204,59 @@ namespace PxApi.UnitTests.Models.QueryFilters
             // Assert
             // Expected: Dimension with multilanguage elimination uses the elimination value
             string expected = "?filters=dim0:code=dim0-val2";
+            Assert.That(result, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void GetDefaultFilteringUrlParameters_WithNonAsciiDimensionCode_ReturnsEncodedDimensionCode()
+        {
+            // Arrange
+            string dimCode = "alue\u00e4";
+            Dimension dimension = new(
+                dimCode,
+                MatrixMetadataUtils.CreateMultilanguageString(dimCode, ["fi", "en"]),
+                [],
+                MatrixMetadataUtils.CreateDimensionValues(dimCode, 2, ["fi", "en"]),
+                DimensionType.Other
+            );
+            MatrixMetadata meta = new("fi", ["fi", "en"], [dimension], []);
+
+            // Act
+            string result = MetaFiltering.GetDefaultFilteringUrlParameters(meta);
+
+            // Assert
+            string expected = $"?filters={Uri.EscapeDataString(dimCode)}:first=1";
+            Assert.That(result, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void GetDefaultFilteringUrlParameters_WithNonAsciiEliminationCode_ReturnsEncodedValue()
+        {
+            // Arrange
+            string dimCode = "dim0";
+            string elimCode = "arvo\u00e4";
+            DimensionValue elimValue = new(
+                elimCode,
+                MatrixMetadataUtils.CreateMultilanguageString(elimCode, ["fi", "en"])
+            );
+            Dictionary<string, MetaProperty> additionalProps = new()
+            {
+                { "ELIMINATION", new StringProperty(elimCode) }
+            };
+            Dimension dimension = new(
+                dimCode,
+                MatrixMetadataUtils.CreateMultilanguageString(dimCode, ["fi", "en"]),
+                additionalProps,
+                new ValueList([elimValue]),
+                DimensionType.Other
+            );
+            MatrixMetadata meta = new("fi", ["fi", "en"], [dimension], []);
+
+            // Act
+            string result = MetaFiltering.GetDefaultFilteringUrlParameters(meta);
+
+            // Assert
+            string expected = $"?filters={dimCode}:code={Uri.EscapeDataString(elimCode)}";
             Assert.That(result, Is.EqualTo(expected));
         }
 

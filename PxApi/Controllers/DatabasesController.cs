@@ -12,19 +12,19 @@ using System.Collections.Immutable;
 namespace PxApi.Controllers
 {
     /// <summary>
-    /// Provides REST endpoints for discovering available PX databases. The base route for this controller is /databases.
+    /// Provides REST endpoints for discovering available PX databases. The base route for this controller is /meta/databases.
     /// </summary>
     /// <remarks>
     /// Current endpoints:
     /// <list type="bullet">
-    /// <item>GET /databases Lists all databases including localized name, optional description, table count and a link to list tables in the database.</item>
-    /// <item>HEAD /databases Returns only headers to indicate the database collection resource exists (useful for health checks / pre-flight).</item>
-    /// <item>OPTIONS /databases Returns allowed HTTP methods in the Allow response header.</item>
+    /// <item>GET /meta/databases Lists all databases including localized name, optional description, table count and a link to list tables in the database.</item>
+    /// <item>HEAD /meta/databases Returns only headers to indicate the database collection resource exists (useful for health checks / pre-flight).</item>
+    /// <item>OPTIONS /meta/databases Returns allowed HTTP methods in the Allow response header.</item>
     /// </list>
     /// Content negotiation: Only application/json is produced.
     /// </remarks>
     [ApiKeyAuth]
-    [Route("databases")]
+    [Route("meta/databases")]
     [ApiController]
     public class DatabasesController(ICachedDataSource dataSource, ILogger<DatabasesController> logger, IAuditLogService auditLogger) : ControllerBase
     {
@@ -32,74 +32,67 @@ namespace PxApi.Controllers
         /// Retrieves a list of available databases. Each item contains its identifier, localized name, optional localized description, table count and HATEOAS link to the tables listing endpoint.
         /// </summary>
         /// <param name="lang">Optional language code used to resolve name and description (defaults to fi when omitted).</param>
+        /// <param name="ct">Cancellation token bound to the client request lifetime.</param>
         /// <returns>A list of <see cref="DataBaseListingItem"/> objects describing each available database.</returns>
         /// <response code="200">Successful retrieval of database listing.</response>
         /// <response code="400">Requested language not supported.</response>
-        /// <response code="500">Unexpected server error.</response>
         [HttpGet]
         [OperationId("listDatabases")]
         [Produces("application/json")]
-        [ProducesResponseType(typeof(List<DataBaseListingItem>),200, "application/json")]
+        [ProducesResponseType(typeof(List<DataBaseListingItem>), 200, "application/json")]
         [ProducesResponseType(typeof(string), 400)]
-        [ProducesResponseType(typeof(string), 500)]
-        public async Task<ActionResult<List<DataBaseListingItem>>> GetDatabases([FromQuery] string? lang = null)
+        public async Task<ActionResult<List<DataBaseListingItem>>> GetDatabases([FromQuery] string? lang = null, CancellationToken ct = default)
         {
-            using (logger.BeginScope(new Dictionary<string, object>()
+            AppSettings settings = AppSettings.Active;
+            string actualLang = lang ?? settings.Localization.DefaultLanguage;
+            if (!settings.Localization.SupportedLanguages.Contains(actualLang))
             {
-                { LoggerConsts.CONTROLLER, nameof(DatabasesController) },
-                { LoggerConsts.ACTION, nameof(GetDatabases) },
-            }))
+                return BadRequest("The requested language is not supported.");
+            }
+
+            // Audit only successful listing requests after input validation.
+            auditLogger.LogAuditEvent();
+
+            IReadOnlyCollection<DataBaseRef> dbRefs = dataSource.GetAllDataBaseReferences();
+            List<DataBaseListingItem> result = [];
+            foreach (DataBaseRef dbRef in dbRefs)
             {
-                AppSettings settings = AppSettings.Active;
-                string actualLang = lang ?? settings.Localization.DefaultLanguage;
-                if (!settings.Localization.SupportedLanguages.Contains(actualLang))
+                // Resolve localized name from alias files via cached datasource; fallback to id if missing / error
+                MultilanguageString nameMulti = await dataSource.GetDatabaseNameAsync(dbRef, string.Empty, ct);
+
+                // Description still resolved from configuration custom values (Description.<lang>)
+                DataBaseConfig? config = settings.DataBases.FirstOrDefault(c => c.Id == dbRef.Id);
+                string descKey = $"Description.{actualLang}";
+                string? description = config?.Custom.GetValueOrDefault(descKey);
+
+                ImmutableSortedDictionary<string, PxFileRef> files = await dataSource.GetFileListCachedAsync(dbRef, ct);
+                int tableCount = files.Count;
+                Uri tablesUri = settings.RootUrl.AddRelativePath("meta", "databases", dbRef.Id, "tables").AddQueryParameters(("lang", actualLang));
+
+                // Determine available languages (intersection between name translations and supported languages)
+                IEnumerable<string> languages = nameMulti.Languages.Intersect(settings.Localization.SupportedLanguages);
+
+                DataBaseListingItem item = new()
                 {
-                    return BadRequest("The requested language is not supported.");
-                }
-
-                // Audit only successful listing requests after input validation.
-                auditLogger.LogAuditEvent();
-
-                IReadOnlyCollection<DataBaseRef> dbRefs = dataSource.GetAllDataBaseReferences();
-                List<DataBaseListingItem> result = [];
-                foreach (DataBaseRef dbRef in dbRefs)
-                {
-                    // Resolve localized name from alias files via cached datasource; fallback to id if missing / error
-                    MultilanguageString nameMulti = await dataSource.GetDatabaseNameAsync(dbRef, string.Empty);
-
-                    // Description still resolved from configuration custom values (Description.<lang>)
-                    DataBaseConfig? config = settings.DataBases.FirstOrDefault(c => c.Id == dbRef.Id);
-                    string descKey = $"Description.{actualLang}";
-                    string? description = config?.Custom.GetValueOrDefault(descKey);
-
-                    Task<ImmutableSortedDictionary<string, PxFileRef>> filesTask = dataSource.GetFileListCachedAsync(dbRef);
-                    ImmutableSortedDictionary<string, PxFileRef> files = await filesTask;
-                    int tableCount = files.Count;
-                    Uri tablesUri = settings.RootUrl.AddRelativePath("tables", dbRef.Id).AddQueryParameters(("lang", actualLang));
-
-                    // Determine available languages (intersection between name translations and supported languages)
-                    IEnumerable<string> languages = nameMulti.Languages.Intersect(settings.Localization.SupportedLanguages);
-
-                    DataBaseListingItem item = new()
-                    {
-                        ID = dbRef.Id,
-                        Name = nameMulti[actualLang],
-                        Description = description,
-                        TableCount = tableCount,
-                        AvailableLanguages = [.. languages],
-                        Links = [
-                            new Link
+                    ID = dbRef.Id,
+                    Name = nameMulti[actualLang],
+                    Description = description,
+                    TableCount = tableCount,
+                    AvailableLanguages = [.. languages],
+                    Links = [
+                        new Link
                         {
                             Rel = "describedby",
                             Href = tablesUri.ToString(),
                             Method = "GET"
                         }
-                        ]
-                    };
-                    result.Add(item);
-                }
-                return Ok(result);
+                    ]
+                };
+                result.Add(item);
             }
+
+            logger.LogInformation("Database listing returned {DatabaseCount} items.", result.Count);
+            return Ok(result);
         }
 
         /// <summary>
@@ -107,22 +100,13 @@ namespace PxApi.Controllers
         /// </summary>
         /// <returns><see cref="OkResult"/> indicating the collection resource exists.</returns>
         /// <response code="200">Resource exists.</response>
-        /// <response code="500">Unexpected server error.</response>
         [HttpHead]
         [OperationId("headDatabases")]
         [ProducesResponseType(200)]
-        [ProducesResponseType(500)]
         public IActionResult HeadDatabases()
         {
-            using (logger.BeginScope(new Dictionary<string, object>()
-            {
-                { LoggerConsts.CONTROLLER, nameof(DatabasesController) },
-                { LoggerConsts.ACTION, nameof(HeadDatabases) },
-            }))
-            {
-                auditLogger.LogAuditEvent();
-                return Ok();
-            }
+            auditLogger.LogAuditEvent();
+            return Ok();
         }
 
         /// <summary>
@@ -130,23 +114,14 @@ namespace PxApi.Controllers
         /// </summary>
         /// <returns><see cref="OkResult"/> with Allow header populated.</returns>
         /// <response code="200">Allowed methods returned.</response>
-        /// <response code="500">Unexpected server error.</response>
         [HttpOptions]
         [OperationId("optionsDatabases")]
         [ProducesResponseType(200)]
-        [ProducesResponseType(500)]
         public IActionResult OptionsDatabases()
         {
-            using (logger.BeginScope(new Dictionary<string, object>()
-            {
-                { LoggerConsts.CONTROLLER, nameof(DatabasesController) },
-                { LoggerConsts.ACTION, nameof(OptionsDatabases) },
-            }))
-            {
-                Response.Headers.Allow = "GET,HEAD,OPTIONS";
-                auditLogger.LogAuditEvent();
-                return Ok();
-            }
+            Response.Headers.Allow = "GET,HEAD,OPTIONS";
+            auditLogger.LogAuditEvent();
+            return Ok();
         }
     }
 }

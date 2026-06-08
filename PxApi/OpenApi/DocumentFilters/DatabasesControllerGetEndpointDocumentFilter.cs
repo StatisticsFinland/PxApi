@@ -6,13 +6,13 @@ using System.Diagnostics.CodeAnalysis;
 namespace PxApi.OpenApi.DocumentFilters
 {
     /// <summary>
-    /// Adds example response documentation for the DatabasesController GET /databases endpoint.
+    /// Adds example response documentation for the DatabasesController GET /meta/databases endpoint.
     /// </summary>
     [ExcludeFromCodeCoverage]
     public class DatabasesControllerGetEndpointDocumentFilter : IDocumentFilter
     {
         /// <summary>
-        /// Applies documentation enhancements to the /databases GET operation by injecting an example response.
+        /// Applies documentation enhancements to the /meta/databases GET operation by injecting an example response.
         /// </summary>
         /// <param name="swaggerDoc">OpenAPI document.</param>
         /// <param name="context">Filter context.</param>
@@ -25,7 +25,7 @@ namespace PxApi.OpenApi.DocumentFilters
 
             foreach (KeyValuePair<string, IOpenApiPathItem> path in swaggerDoc.Paths)
             {
-                if (path.Key.Equals("/databases", StringComparison.OrdinalIgnoreCase) &&
+                if (path.Key.Equals("/meta/databases", StringComparison.OrdinalIgnoreCase) &&
                     path.Value is OpenApiPathItem pathItem &&
                     pathItem.Operations != null &&
                     pathItem.Operations.TryGetValue(HttpMethod.Get, out OpenApiOperation? getOp))

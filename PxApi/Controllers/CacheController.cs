@@ -19,7 +19,7 @@ namespace PxApi.Controllers
     /// <param name="logger">Logger for logging information, warnings and errors.</param>
     [ApiKeyAuth]
     [FeatureGate(nameof(CacheController))]
-    [Route("cache")]
+    [Route("cache/databases")]
     [ApiController]
     public class CacheController(ICachedDataSource cachedConnector, ILogger<CacheController> logger) : ControllerBase
     {
@@ -36,7 +36,7 @@ namespace PxApi.Controllers
         /// <response code="200">Cache for the specified PX file was successfully cleared.</response>
         /// <response code="404">If the database or PX file was not found.</response>
         /// <response code="500">If an error occurs while clearing the cache.</response>
-        [HttpDelete("{database}/{id}")]
+        [HttpDelete("{database}/tables/{id}")]
         [OperationId("clearTableCache")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(string), 200)]
@@ -44,21 +44,15 @@ namespace PxApi.Controllers
         [ProducesResponseType(typeof(string), 500)]
         public async Task<ActionResult> ClearTableCacheAsync([FromRoute] string database, string id)
         {
-            using (_logger.BeginScope(new Dictionary<string, string>
+            DataBaseRef? dbRef = _cachedConnector.GetDataBaseReference(database);
+            if (dbRef == null)
             {
-                { LoggerConsts.CONTROLLER, nameof(CacheController) },
-                { LoggerConsts.FUNCTION, nameof(ClearTableCacheAsync) },
-                { LoggerConsts.DB_ID, database },
-                { LoggerConsts.PX_FILE, id }
-            }))
-            {
-                DataBaseRef? dbRef = _cachedConnector.GetDataBaseReference(database);
-                if (dbRef == null)
-                {
-                    _logger.LogWarning(DB_NOT_FOUND);
-                    return NotFound(DB_NOT_FOUND);
-                }
+                _logger.LogWarning(DB_NOT_FOUND);
+                return NotFound(DB_NOT_FOUND);
+            }
 
+            using (_logger.BeginDbScope(dbRef.Value.Id))
+            {
                 try
                 {
                     ImmutableSortedDictionary<string, PxFileRef> files = await _cachedConnector.GetFileListCachedAsync(dbRef.Value);
@@ -67,9 +61,13 @@ namespace PxApi.Controllers
                         _logger.LogWarning("PX file not found in database");
                         return NotFound("PX file not found in database");
                     }
-                    _cachedConnector.ClearTableCache(pxFileRef);
-                    _logger.LogInformation("Cache for PX file cleared successfully");
-                    return Ok("Cache for PX file cleared successfully");
+
+                    using (_logger.BeginFileScope(pxFileRef.Id))
+                    {
+                        _cachedConnector.ClearTableCache(pxFileRef);
+                        _logger.LogInformation("Cache for PX file cleared successfully");
+                        return Ok("Cache for PX file cleared successfully");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -95,20 +93,15 @@ namespace PxApi.Controllers
         [ProducesResponseType(typeof(string), 500)]
         public async Task<ActionResult> ClearAllCacheAsync([FromRoute] string database)
         {
-            using (_logger.BeginScope(new Dictionary<string, object>
+            DataBaseRef? dbRef = _cachedConnector.GetDataBaseReference(database);
+            if (dbRef == null)
             {
-                { LoggerConsts.CONTROLLER, nameof(CacheController) },
-                { LoggerConsts.FUNCTION, nameof(ClearAllCacheAsync) },
-                { LoggerConsts.DB_ID, database }
-            }))
-            {
-                DataBaseRef? dbRef = _cachedConnector.GetDataBaseReference(database);
-                if (dbRef == null)
-                {
-                    _logger.LogWarning(DB_NOT_FOUND);
-                    return NotFound(DB_NOT_FOUND);
-                }
+                _logger.LogWarning(DB_NOT_FOUND);
+                return NotFound(DB_NOT_FOUND);
+            }
 
+            using (_logger.BeginDbScope(dbRef.Value.Id))
+            {
                 try
                 {
                     await _cachedConnector.ClearDatabaseCacheAsync(dbRef.Value);

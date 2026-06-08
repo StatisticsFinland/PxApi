@@ -1,4 +1,4 @@
-﻿namespace PxApi.Configuration
+namespace PxApi.Configuration
 {
     /// <summary>
     /// Configuration for database caching.
@@ -26,11 +26,6 @@
         public int? RevalidationIntervalMs { get; }
 
         /// <summary>
-        /// Configuration for grouping metadata caching.
-        /// </summary>
-        public CacheConfig Groupings { get; }
-
-        /// <summary>
         /// Default constructor
         /// </summary>
         /// <param name="section">Configuration section that contains the settings for database caching.</param>
@@ -41,7 +36,6 @@
             Meta = new CacheConfig(section.GetSection(nameof(Meta)));
             Data = new CacheConfig(section.GetSection(nameof(Data)));
             RevalidationIntervalMs = section.GetValue<int?>(nameof(RevalidationIntervalMs), null);
-            Groupings = new CacheConfig(section.GetSection(nameof(Groupings)));
         }
     }
 }

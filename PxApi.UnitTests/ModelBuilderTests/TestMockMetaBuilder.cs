@@ -9,7 +9,10 @@ namespace PxApi.UnitTests.ModelBuilderTests
 {
     internal static class TestMockMetaBuilder
     {
-        internal static MatrixMetadata GetMockMetadata(DimensionType[]? additionalDimensions = null, Dictionary<string, MetaProperty>?[]? dimensionAdditionalProps = null)
+        internal static MatrixMetadata GetMockMetadata(
+            DimensionType[]? additionalDimensions = null,
+            Dictionary<string, MetaProperty>?[]? dimensionAdditionalProps = null,
+            string tableId = "table-tableid")
         {
             string defaultLang = "fi";
             List<string> availableLangs = ["fi", "sv", "en"];
@@ -56,7 +59,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             Dictionary<string, MetaProperty> props = new()
             {
-                { PxFileConstants.TABLEID, new StringProperty("table-tableid") },
+                { PxFileConstants.TABLEID, new StringProperty(tableId) },
                 { PxFileConstants.DESCRIPTION, new MultilanguageStringProperty(description) },
                 { PxFileConstants.CONTENTS, new MultilanguageStringProperty(contents) },
                 { PxFileConstants.SOURCE, new MultilanguageStringProperty(source) },

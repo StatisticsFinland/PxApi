@@ -265,7 +265,7 @@ namespace PxApi.UnitTests.ControllerTests
         private DataController _controller = null!;
         private DataBaseRef _testDatabase;
         private PxFileRef _testTable;
-        private static readonly string[] expected = ["vuosineljannes", "alue", "tiedot"];
+        private static readonly string[] expected = ["Vuosineljännes", "Alue", "Tiedot"];
 
         [SetUp]
         public void SetUp()
@@ -366,7 +366,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             string[] filters = [
                 "Tiedot:code=neljmuut,neljmuut_eka",
-                "Vuosineljannes:code=2022Q1,2022Q2",
+                "Vuosineljännes:code=2022Q1,2022Q2",
                 "Alue:code=ksu,pks,msu,kas,muu"
             ];
 
@@ -404,9 +404,9 @@ namespace PxApi.UnitTests.ControllerTests
                 
                 // Check Dimensions structure
                 Assert.That(dataResponse.Dimension, Has.Count.EqualTo(3));
-                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "tiedot"));
-                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "vuosineljannes"));
-                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "alue"));
+                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "Tiedot"));
+                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "Vuosineljännes"));
+                Assert.That(dataResponse.Dimension.Any(dm => dm.Key == "Alue"));
             }
 
             _mockConnector.Verify(c => c.ReadDataAsync(_testTable, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
@@ -420,7 +420,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             string[] filters = [
                 "Tiedot:code=neljmuut",
-                "Vuosineljannes:code=2022Q1,2022Q2",
+                "Vuosineljännes:code=2022Q1,2022Q2",
                 "Alue:code=ksu,pks,msu,kas,muu"
             ];
 
@@ -487,14 +487,14 @@ namespace PxApi.UnitTests.ControllerTests
             // First request for superset
             string[] supersetFilters = [
                 "Tiedot:code=neljmuut,neljmuut_eka",
-                "Vuosineljannes:code=2022Q1,2022Q2",
+                "Vuosineljännes:code=2022Q1,2022Q2",
                 "Alue:code=ksu,pks,msu,kas,muu"
             ];
             
             // Second request for subset
             string[] subsetFilters = [
                 "Tiedot:code=neljmuut",
-                "Vuosineljannes:code=2022Q2",
+                "Vuosineljännes:code=2022Q2",
                 "Alue:code=ksu,pks,msu,kas,muu"
             ];
 
@@ -672,9 +672,9 @@ namespace PxApi.UnitTests.ControllerTests
                 // Verify dimensions structure  
                 Assert.That(jsonStat.Dimension, Is.Not.Null);
                 Assert.That(jsonStat.Dimension, Has.Count.EqualTo(3));
-                Assert.That(jsonStat.Dimension.ContainsKey("vuosineljannes"));
-                Assert.That(jsonStat.Dimension.ContainsKey("alue"));
-                Assert.That(jsonStat.Dimension.ContainsKey("tiedot"));
+                Assert.That(jsonStat.Dimension.ContainsKey("Vuosineljännes"));
+                Assert.That(jsonStat.Dimension.ContainsKey("Alue"));
+                Assert.That(jsonStat.Dimension.ContainsKey("Tiedot"));
                 
                 // Verify size array matches expected dimensions
                 Assert.That(jsonStat.Size, Has.Count.EqualTo(3));

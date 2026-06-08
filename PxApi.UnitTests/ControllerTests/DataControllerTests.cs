@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Px.Utils.Language;
 using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Metadata;
@@ -80,31 +79,10 @@ namespace PxApi.UnitTests.ControllerTests
                 new DoubleDataValue(2.0, DataValueType.Exists)
             ];
 
-            // Added TableGroup list fixture
-            List<TableGroup> groupingsFixture = [
-                new TableGroup
-            {
-                Code = "grp1",
-                Name = new MultilanguageString([
-                    new("fi", "group.fi"),
-                    new("sv", "group.sv"),
-                    new("en", "group.en")
-                ]),
-                GroupingCode = "rootGrouping",
-                GroupingName = new MultilanguageString([
-                    new("fi", "groupingname.fi"),
-                    new("sv", "groupingname.sv"),
-                    new("en", "groupingname.en")
-                ]),
-                Links = []
-            }
-            ];
-
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
             _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync(pxFileRef);
             _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>(), CancellationToken.None)).ReturnsAsync(mockMetadata);
             _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>(), CancellationToken.None)).ReturnsAsync(mockData);
-            _cachedDbConnector.Setup(x => x.GetGroupingsCachedAsync(It.IsAny<PxFileRef>(), CancellationToken.None)).ReturnsAsync(groupingsFixture);
         }
 
         #region GetDataAsync Tests
@@ -206,6 +184,40 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task GetDataAsync_MissingDatabase_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+            string[] filters = ["dim0:code=value1"];
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            IActionResult result = await _controller.GetDataAsync(database, table, filters);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+        }
+
+        [Test]
+        public async Task GetDataAsync_MissingDatabase_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+            string[] filters = ["dim0:code=value1"];
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            await _controller.GetDataAsync(database, table, filters);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
         public async Task GetDataAsync_MissingTable_ReturnsNotFound()
         {
             // Arrange
@@ -222,6 +234,25 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+        }
+
+        [Test]
+        public async Task GetDataAsync_MissingTable_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "nonexistent";
+            string[] filters = ["dim0:code=value1"];
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            await _controller.GetDataAsync(database, table, filters);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         #endregion
@@ -336,6 +367,60 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+        }
+
+        [Test]
+        public async Task PostDataAsync_ValidRequest_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+
+            SetupMockDataSourceForValidRequest(database, table);
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
+            // Act
+            await _controller.PostDataAsync(database, table, query);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
+        public async Task PostDataAsync_MissingDatabase_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            await _controller.PostDataAsync(database, table, query);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
+        public async Task PostDataAsync_MissingTable_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "nonexistent";
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            await _controller.PostDataAsync(database, table, query);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
 
         #endregion
@@ -807,6 +892,92 @@ namespace PxApi.UnitTests.ControllerTests
             }
             _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
         }
+
+        [Test]
+        public async Task HeadDataAsync_DatabaseNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            IActionResult result = await _controller.HeadDataAsync(database, table);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        }
+
+        [Test]
+        public async Task HeadDataAsync_DatabaseNotFound_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "nonexistent";
+            string table = "testtable";
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns((DataBaseRef?)null);
+
+            // Act
+            await _controller.HeadDataAsync(database, table);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
+        public async Task HeadDataAsync_TableNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "nonexistent";
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            IActionResult result = await _controller.HeadDataAsync(database, table);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        }
+
+        [Test]
+        public async Task HeadDataAsync_TableNotFound_LogsAuditEvent()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "nonexistent";
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(It.Is<string>(s => s == table), dataBaseRef, CancellationToken.None)).ReturnsAsync((PxFileRef?)null);
+
+            // Act
+            await _controller.HeadDataAsync(database, table);
+
+            // Assert
+            _mockAuditLogService.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
+        public async Task HeadDataAsync_InvalidLanguage_ReturnsBadRequest()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string lang = "invalid";
+
+            SetupMockDataSourceForValidRequest(database, table);
+
+            // Act
+            IActionResult result = await _controller.HeadDataAsync(database, table, lang);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<BadRequestResult>());
+        }
+
         #endregion
 
         #region CSV Tests
@@ -982,6 +1153,103 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(_controller.Response.Headers.ContainsKey("X-Max-Cells"), Is.True);
                 Assert.That(_controller.Response.Headers["X-Max-Cells"].ToString(), Is.Not.Empty);
             }
+        }
+
+        #endregion
+
+        #region Cancellation Tests
+
+        [Test]
+        public void GetDataAsync_CancellationDuringFileReference_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(table, dataBaseRef, cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            // Act & Assert
+            Assert.That(async () => await _controller.GetDataAsync(database, table, filters, null, cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        [Test]
+        public void PostDataAsync_CancellationDuringFileReference_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(table, dataBaseRef, cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            // Act & Assert
+            Assert.That(async () => await _controller.PostDataAsync(database, table, query, null, cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        [Test]
+        public void GetDataAsync_CancellationDuringGetData_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+            string[] filters = ["dim0-code:code=dim0-value1-code"];
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
+            IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(table, dataBaseRef, cts.Token)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>(), cts.Token)).ReturnsAsync(mockMetadata);
+            _cachedDbConnector.Setup(x => x.GetDataCachedAsync(It.IsAny<PxFileRef>(), It.IsAny<MatrixMap>(), cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
+
+            // Act & Assert
+            Assert.That(async () => await _controller.GetDataAsync(database, table, filters, null, cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        [Test]
+        public void HeadDataAsync_CancellationDuringMetadata_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            string database = "testdb";
+            string table = "testtable";
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            DataBaseRef dataBaseRef = DataBaseRef.Create(database);
+            PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
+
+            _cachedDbConnector.Setup(x => x.GetDataBaseReference(database)).Returns(dataBaseRef);
+            _cachedDbConnector.Setup(x => x.GetFileReferenceCachedAsync(table, dataBaseRef, cts.Token)).ReturnsAsync(pxFileRef);
+            _cachedDbConnector.Setup(x => x.GetMetadataCachedAsync(It.IsAny<PxFileRef>(), cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            // Act & Assert
+            Assert.That(async () => await _controller.HeadDataAsync(database, table, null, cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
         }
 
         #endregion

@@ -18,6 +18,10 @@ namespace PxApi.UnitTests.ControllerTests
     [TestFixture]
     public class TablesControllerTests
     {
+        private const string NonExistentDb = "nonexistentdb";
+        private const string StatisticalProgram = "statisticalProgram";
+        private const string File1Name = "file1";
+        private const string Table1Name = "table1";
         private Mock<ICachedDataSource> _cachedDbConnector;
         private Mock<ILogger<TablesController>> _mockLogger;
         private Mock<IAuditLogService> _mockAuditLogger; // Added mock for audit service
@@ -106,6 +110,24 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task GetTablesAsync_DatabaseNotFound_LogsAuditEvent()
+        {
+            // Arrange
+            string dbId = NonExistentDb;
+            string lang = "en";
+            int page = 1;
+            int pageSize = 50;
+
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns((DataBaseRef?)null);
+
+            // Act
+            await _controller.GetTablesAsync(dbId, lang, page, pageSize);
+
+            // Assert
+            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
         public async Task GetTablesAsync_TwoTables_ReturnsExpectedMetadata()
         {
             // Arrange
@@ -113,11 +135,11 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            PxFileRef file1 = PxFileRef.ValidateAndCreate("file1", db, ["statisticalProgram"]);
-            PxFileRef file2 = PxFileRef.ValidateAndCreate("file2", db, ["statisticalProgram"]);
+            PxFileRef file1 = PxFileRef.ValidateAndCreate(File1Name, db, [StatisticalProgram]);
+            PxFileRef file2 = PxFileRef.ValidateAndCreate("file2", db, [StatisticalProgram]);
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(new Dictionary<string, PxFileRef>
             {
-                { "file1", file1 },
+                { File1Name, file1 },
                 { "file2", file2 }
             });
             MatrixMetadata meta1 = TestMockMetaBuilder.GetMockMetadata();
@@ -140,15 +162,25 @@ namespace PxApi.UnitTests.ControllerTests
             Assert.That(pagedTableList.Tables, Has.Count.EqualTo(2));
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(pagedTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
-                Assert.That(pagedTableList.Tables[0].Title, Is.EqualTo("table-description.en"));
-                Assert.That(pagedTableList.Tables[0].Name, Is.EqualTo("file1"));
-                Assert.That(pagedTableList.Tables[0].LastUpdated, Is.EqualTo(meta1.GetContentDimension().Values.Map(v => v.LastUpdated).Max()));
+                Assert.That(pagedTableList.Tables[0].Table.TableId, Is.EqualTo("table-tableid"));
+                Assert.That(pagedTableList.Tables[0].Table.Title, Is.EqualTo("table-description.en"));
+                Assert.That(pagedTableList.Tables[0].Table.LastUpdated, Is.EqualTo(meta1.GetContentDimension().Values.Map(v => v.LastUpdated).Max()));
+                Assert.That(pagedTableList.Tables[0].Table.Metrics, Is.Not.Null);
+                Assert.That(pagedTableList.Tables[0].Table.Metrics, Has.Count.EqualTo(2));
+                Assert.That(pagedTableList.Tables[0].Table.Metrics[0].Name, Is.EqualTo("content-value0-name.en"));
+                Assert.That(pagedTableList.Tables[0].Table.Metrics[0].Unit, Is.EqualTo("content-value0-unit.en"));
+                Assert.That(pagedTableList.Tables[0].Table.TimeRange, Is.Not.Null);
+                Assert.That(pagedTableList.Tables[0].Table.TimeRange!.From, Is.EqualTo("time-value0-name.en"));
+                Assert.That(pagedTableList.Tables[0].Table.TimeRange!.To, Is.EqualTo("time-value1-name.en"));
+                Assert.That(pagedTableList.Tables[0].Table.Dimensions, Is.Not.Null);
+                Assert.That(pagedTableList.Tables[0].Table.Dimensions, Has.Count.EqualTo(2));
+                Assert.That(pagedTableList.Tables[0].Table.Dimensions[0].Name, Is.EqualTo("dim0-name.en"));
+                Assert.That(pagedTableList.Tables[0].Table.Dimensions[0].Size, Is.EqualTo(2));
                 Assert.That(pagedTableList.Tables[0].Links, Has.Count.EqualTo(1));
                 Assert.That(pagedTableList.Tables[0].Links[0].Rel, Is.EqualTo("describedby"));
-                Assert.That(pagedTableList.Tables[0].Links[0].Href, Is.EqualTo("https://testurl.fi/meta/exampledb/file1?lang=en"));
+                Assert.That(pagedTableList.Tables[0].Links[0].Href, Is.EqualTo("https://testurl.fi/meta/databases/exampledb/tables/file1?lang=en"));
                 Assert.That(pagedTableList.Tables[0].Links[0].Method, Is.EqualTo("GET"));
-            };
+            }
         }
 
         [Test]
@@ -177,7 +209,7 @@ namespace PxApi.UnitTests.ControllerTests
             int pageSize = 200;
             DataBaseRef db = DataBaseRef.Create(dbId);
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary<string, PxFileRef>.Empty;
-            
+
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
             _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ReturnsAsync(tableList);
 
@@ -197,11 +229,11 @@ namespace PxApi.UnitTests.ControllerTests
         public async Task GetTablesAsync_DatabaseNotFound_ReturnsNotFound()
         {
             // Arrange
-            string dbId = "nonexistentdb";
+            string dbId = NonExistentDb;
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            
+
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns((DataBaseRef?)null);
 
             // Act
@@ -220,7 +252,7 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            
+
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
             _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ThrowsAsync(new DirectoryNotFoundException("Directory not found"));
 
@@ -239,30 +271,31 @@ namespace PxApi.UnitTests.ControllerTests
             DataBaseRef db = DataBaseRef.Create(dbId);
             string lang = "en";
             int pageSize = 3;
-            
+
             List<PxFileRef> files =
             [
-                PxFileRef.ValidateAndCreate("file1", db, ["statisticalProgram"]),
-                PxFileRef.ValidateAndCreate("file2", db, ["statisticalProgram"]),
-                PxFileRef.ValidateAndCreate("file3", db, ["statisticalProgram"]),
-                PxFileRef.ValidateAndCreate("file4", db, ["statisticalProgram"]),
-                PxFileRef.ValidateAndCreate("file5", db, ["statisticalProgram"]),
-                PxFileRef.ValidateAndCreate("file6", db, ["statisticalProgram"]),
-                PxFileRef.ValidateAndCreate("file7", db, ["statisticalProgram"]),
+                PxFileRef.ValidateAndCreate(File1Name, db, [StatisticalProgram]),
+                PxFileRef.ValidateAndCreate("file2", db, [StatisticalProgram]),
+                PxFileRef.ValidateAndCreate("file3", db, [StatisticalProgram]),
+                PxFileRef.ValidateAndCreate("file4", db, [StatisticalProgram]),
+                PxFileRef.ValidateAndCreate("file5", db, [StatisticalProgram]),
+                PxFileRef.ValidateAndCreate("file6", db, [StatisticalProgram]),
+                PxFileRef.ValidateAndCreate("file7", db, [StatisticalProgram]),
             ];
-            
+
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
                 files.ToDictionary(f => f.Id));
-            
+            List<string> expectedTableIds = [.. files.Select((file, index) => $"table-tableid-{index + 1}")];
+
             _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(dbId)).Returns(db);
             _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, CancellationToken.None)).ReturnsAsync(tableList);
-            
-            foreach (PxFileRef file in files)
-            {
-                _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(TestMockMetaBuilder.GetMockMetadata());
-            }
 
-            int tableIndex = 0;
+            for (int i = 0; i < files.Count; i++)
+            {
+                PxFileRef file = files[i];
+                string tableId = expectedTableIds[i];
+                _cachedDbConnector.Setup(ds => ds.GetMetadataCachedAsync(file, CancellationToken.None)).ReturnsAsync(TestMockMetaBuilder.GetMockMetadata(tableId: tableId));
+            }
 
             // Act & Assert
             for (int page = 1; page <= 3; page++)
@@ -273,26 +306,28 @@ namespace PxApi.UnitTests.ControllerTests
                 Assert.That(okResult, Is.Not.Null);
                 PagedTableList? pagedTableList = okResult.Value as PagedTableList;
                 Assert.That(pagedTableList, Is.Not.Null);
+                int expectedStartIndex = (page - 1) * pageSize;
+                int expectedCount = Math.Min(pageSize, files.Count - expectedStartIndex);
 
-                if(page == 3) Assert.That(pagedTableList.Tables, Has.Count.EqualTo(1));
-                else Assert.That(pagedTableList.Tables, Has.Count.EqualTo(3));
+                Assert.That(pagedTableList.Tables, Has.Count.EqualTo(expectedCount));
 
                 using (Assert.EnterMultipleScope())
                 {
-                    for (int i = 0; i < (page == 3 ? 1 : pageSize); i++)
+                    for (int i = 0; i < expectedCount; i++)
                     {
-                        Assert.That(pagedTableList.Tables[i].Name, Is.EqualTo(files[tableIndex++].Id));
+                        int expectedIndex = expectedStartIndex + i;
+                        PxFileRef expectedFile = files[expectedIndex];
+                        Assert.That(pagedTableList.Tables[i].Table.TableId, Is.EqualTo(expectedTableIds[expectedIndex]));
+                        Assert.That(pagedTableList.Tables[i].Links[0].Href, Is.EqualTo($"https://testurl.fi/meta/databases/exampledb/tables/{expectedFile.Id}?lang=en"));
                     }
-                };
+                }
 
                 Assert.That(pagedTableList.PagingInfo.CurrentPage, Is.EqualTo(page));
             }
-
-            Assert.That(tableIndex, Is.EqualTo(files.Count));
         }
 
         [Test]
-        public async Task GetTablesAsync_BuildingMetadataIsNotPossible_TableNotReadable_ReturnsTableObjectWithErrorState_TableIdIsName()
+        public async Task GetTablesAsync_BuildingMetadataIsNotPossible_ReturnsInternalServerError()
         {
             // Arrange
             string dbId = "exampledb";
@@ -300,8 +335,8 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            
-            PxFileRef file = PxFileRef.ValidateAndCreate("table1", db, ["statisticalProgram"]);
+
+            PxFileRef file = PxFileRef.ValidateAndCreate(Table1Name, db, [StatisticalProgram]);
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
                 new Dictionary<string, PxFileRef> { { file.Id, file } });
 
@@ -314,27 +349,17 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
-            OkObjectResult? objectResult = result.Result as OkObjectResult;
+            ObjectResult? objectResult = result.Result as ObjectResult;
             Assert.That(objectResult, Is.Not.Null);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
-                if (objectResult.Value is not PagedTableList pageTableList)
-                {
-                    Assert.Fail("PagedTableList is null");
-                }
-                else
-                {
-                    Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
-                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table1"));
-                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1"));
-                    Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
-                }
-            };
+                Assert.That(objectResult!.StatusCode, Is.EqualTo(StatusCodes.Status500InternalServerError));
+                Assert.That(objectResult.Value, Is.EqualTo("A table on the requested page could not be loaded."));
+            }
         }
 
         [Test]
-        public async Task GetTablesAsync_MetadataWithoutContentDimension_ReturnsTableWithErrorStatusAndNullLastUpdated()
+        public async Task GetTablesAsync_MetadataWithoutContentDimension_ReturnsInternalServerError()
         {
             // Arrange
             string dbId = "exampledb";
@@ -342,15 +367,15 @@ namespace PxApi.UnitTests.ControllerTests
             string lang = "en";
             int page = 1;
             int pageSize = 50;
-            
-            PxFileRef file = PxFileRef.ValidateAndCreate("table1", db, ["statisticalProgram"]);
+
+            PxFileRef file = PxFileRef.ValidateAndCreate(Table1Name, db, [StatisticalProgram]);
             ImmutableSortedDictionary<string, PxFileRef> tableList = ImmutableSortedDictionary.CreateRange(
                 new Dictionary<string, PxFileRef> { { file.Id, file } });
 
             // Create metadata with only non-content dimensions (time dimension and regular dimensions)
             // This will cause TryGetContentDimension to return false
             MatrixMetadata metaWithoutContent = TestMockMetaBuilder.GetMockMetadata([
-                Px.Utils.Models.Metadata.Enums.DimensionType.Ordinal, 
+                Px.Utils.Models.Metadata.Enums.DimensionType.Ordinal,
                 Px.Utils.Models.Metadata.Enums.DimensionType.Nominal
             ]);
 
@@ -373,27 +398,33 @@ namespace PxApi.UnitTests.ControllerTests
 
             // Assert
             Assert.That(result, Is.InstanceOf<ActionResult<PagedTableList>>());
-            OkObjectResult? objectResult = result.Result as OkObjectResult;
+            ObjectResult? objectResult = result.Result as ObjectResult;
             Assert.That(objectResult, Is.Not.Null);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(objectResult.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
-                if (objectResult.Value is not PagedTableList pageTableList)
-                {
-                    Assert.Fail("PagedTableList is null");
-                }
-                else
-                {
-                    Assert.That(pageTableList.Tables, Has.Count.EqualTo(1));
-                    Assert.That(pageTableList.Tables[0].ID, Is.EqualTo("table-tableid"));
-                    Assert.That(pageTableList.Tables[0].Name, Is.EqualTo("table1"));
-                    Assert.That(pageTableList.Tables[0].Status, Is.EqualTo(TableStatus.Error));
-                    Assert.That(pageTableList.Tables[0].LastUpdated, Is.EqualTo(DateTime.MinValue));
-                }
-            };
+                Assert.That(objectResult!.StatusCode, Is.EqualTo(StatusCodes.Status500InternalServerError));
+                Assert.That(objectResult.Value, Is.EqualTo("A table on the requested page could not be loaded."));
+            }
         }
 
         #region HeadTablesAsync Tests
+
+        [Test]
+        public void HeadTablesAsync_DatabaseNotFound_LogsAuditEvent()
+        {
+            // Arrange
+            string database = NonExistentDb;
+            int page = 1;
+            int pageSize = 50;
+
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
+
+            // Act
+            _controller.HeadTablesAsync(database, page, pageSize);
+
+            // Assert
+            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
 
         [Test]
         public void HeadTablesAsync_ValidParameters_ReturnsOk()
@@ -462,7 +493,7 @@ namespace PxApi.UnitTests.ControllerTests
         public void HeadTablesAsync_DatabaseNotFound_ReturnsNotFound()
         {
             // Arrange
-            string database = "nonexistentdb";
+            string database = NonExistentDb;
             int page = 1;
             int pageSize = 50;
 
@@ -480,6 +511,22 @@ namespace PxApi.UnitTests.ControllerTests
         #region OptionsTables Tests
 
         [Test]
+        public void OptionsTables_DatabaseNotFound_ReturnsNotFoundAndLogsAudit()
+        {
+            // Arrange
+            string database = NonExistentDb;
+
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(database)).Returns((DataBaseRef?)null);
+
+            // Act
+            IActionResult result = _controller.OptionsTables(database);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+            _mockAuditLogger.Verify(x => x.LogAuditEvent(), Times.Once);
+        }
+
+        [Test]
         public void OptionsTables_AnyDatabase_ReturnsOkWithAllowHeader()
         {
             // Arrange
@@ -495,7 +542,29 @@ namespace PxApi.UnitTests.ControllerTests
             {
                 Assert.That(result, Is.InstanceOf<OkResult>());
                 Assert.That(_controller.Response.Headers.Allow.ToString(), Is.EqualTo("GET,HEAD,OPTIONS"));
-            };
+            }
+        }
+
+        #endregion
+
+        #region Cancellation Tests
+
+        [Test]
+        public void GetTablesAsync_CancellationRequested_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            DataBaseRef db = DataBaseRef.Create("exampledb");
+
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            _cachedDbConnector.Setup(ds => ds.GetDataBaseReference(db.Id)).Returns(db);
+            _cachedDbConnector.Setup(ds => ds.GetFileListCachedAsync(db, cts.Token))
+                .ThrowsAsync(new OperationCanceledException());
+
+            // Act & Assert
+            Assert.That(async () => await _controller.GetTablesAsync(db.Id, "en", 1, 50, cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
         }
 
         #endregion

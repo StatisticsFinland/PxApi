@@ -18,3 +18,11 @@ using System.Diagnostics.CodeAnalysis;
     Justification = "The application currently does not contain expensive logging scenarios that we do not want to trigger.",
     Scope = "module"
     )]
+
+[assembly: SuppressMessage(
+    "Major Code Smell",
+    "S107:Methods should not have too many parameters",
+    Justification = "Controller endpoints typically have long parameter lists due to query parameters.",
+    Scope = "namespaceanddescendants",
+    Target = "~N:PxApi.Controllers"
+    )]

@@ -15,6 +15,14 @@ namespace PxApi.DataSources
         public DataBaseRef DataBase { get; }
 
         /// <summary>
+        /// Performs a lightweight connectivity check to verify that the underlying data source is reachable.
+        /// Throws if the connection cannot be established.
+        /// </summary>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>A task representing the asynchronous check operation.</returns>
+        public Task CheckConnectionAsync(CancellationToken ct = default);
+
+        /// <summary>
         /// Get references to all Px files available in the database.
         /// </summary>
         /// <returns>Task that resolves to an array of <see cref="PxFileRef"/> references.</returns>
@@ -48,7 +56,7 @@ namespace PxApi.DataSources
 
         /// <summary>
         /// Opens an auxiliary (non PX) file located in the database root or a sub directory.
-        /// Used for reading grouping metadata (e.g. groupings.json and Alias_{lang}.txt files).
+        /// Used for reading alias files.
         /// Throws <see cref="FileNotFoundException"/> if the file does not exist and <see cref="UnauthorizedAccessException"/> if the resolved path escapes the database root.
         /// </summary>
         /// <param name="fileName">The name of the auxiliary file to read.</param>

@@ -1,4 +1,4 @@
-﻿using Px.Utils.Models.Data.DataValue;
+using Px.Utils.Models.Data.DataValue;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Metadata.Dimensions;
 using Px.Utils.Models.Metadata.Enums;
@@ -7,7 +7,6 @@ using Px.Utils.Models.Metadata;
 using PxApi.Models.JsonStat;
 using PxApi.Utilities;
 using System.Globalization;
-using PxApi.Models;
 
 namespace PxApi.ModelBuilders
 {
@@ -20,13 +19,12 @@ namespace PxApi.ModelBuilders
         /// Builds a JSON-stat 2.0 format response from matrix metadata and data values.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyMatrixMetadata"/> containing the structure and metadata</param>
-        /// <param name="groupings">The groups this table belongs to</param>
         /// <param name="data">The <see cref="DoubleDataValue"/> array containing the actual data values</param>
         /// <param name="lang">Language of the response, if not provided the default language will be used</param>
         /// <returns><see cref="JsonStat2"/> object representing the data in JSON-stat 2.0 format</returns>
-        public static JsonStat2 BuildJsonStat2(IReadOnlyMatrixMetadata meta, IReadOnlyList<TableGroup> groupings, DoubleDataValue[] data, string? lang = null)
+        public static JsonStat2 BuildJsonStat2(IReadOnlyMatrixMetadata meta, DoubleDataValue[] data, string? lang = null)
         {
-            JsonStat2 jsonStat2Meta = BuildJsonStat2(meta, groupings, lang);
+            JsonStat2 jsonStat2Meta = BuildJsonStat2(meta, lang);
             jsonStat2Meta.Value = data;
             jsonStat2Meta.Status = BuildStatusDictionary(data);
             return jsonStat2Meta;
@@ -36,10 +34,9 @@ namespace PxApi.ModelBuilders
         /// Builds a JSON-stat 2.0 format response from matrix metadata.
         /// </summary>
         /// <param name="meta">Input <see cref="IReadOnlyMatrixMetadata"/> containing the structure and metadata</param>
-        /// <param name="groupings">The groups this table belongs to</param>
         /// <param name="lang">Language of the response, if not provided the default language will be used</param>
         /// <returns><see cref="JsonStat2"/> object representing the data in JSON-stat 2.0 format</returns>
-        public static JsonStat2 BuildJsonStat2(IReadOnlyMatrixMetadata meta, IReadOnlyList<TableGroup> groupings, string? lang = null)
+        public static JsonStat2 BuildJsonStat2(IReadOnlyMatrixMetadata meta, string? lang = null)
         {
             // Use default language if none specified
             string actualLang = lang ?? meta.DefaultLanguage;
@@ -55,11 +52,10 @@ namespace PxApi.ModelBuilders
             Dictionary<DataValueType, string> translations = PxFileConstants.MISSING_DATA_TRANSLATIONS.GetValueOrDefault(actualLang)
                 ?? throw new ArgumentException($"No missing data translations found for language '{actualLang}'");
             extension["missingValueDescriptions"] = translations;
-            extension["groupings"] = BuildLocalizedGroupings(groupings, actualLang);
 
             return new JsonStat2
             {
-                Id = [.. meta.Dimensions.Select(d => d.Code.Convert())],
+                Id = [.. meta.Dimensions.Select(d => d.Code)],
                 Label = tableLabel,
                 Source = GetSourceByLang(meta, actualLang),
                 Note = GetNotesByLang(meta, actualLang),
@@ -92,25 +88,6 @@ namespace PxApi.ModelBuilders
 
             // If no missing values were found, return null
             return status.Count > 0 ? status : null;
-        }
-
-        private static List<TableGroupJsonStatExtension> BuildLocalizedGroupings(IReadOnlyList<TableGroup> groupings, string lang)
-        {
-            List<TableGroupJsonStatExtension> localizedGroupings = [];
-            for (int i = 0; i < groupings.Count; i++)
-            {
-                TableGroup group = groupings[i];
-                TableGroupJsonStatExtension localized = new()
-                {
-                    Code = group.Code,
-                    Name = group.Name[lang],
-                    GroupingCode = group.GroupingCode,
-                    GroupingName = group.GroupingName[lang],
-                    Links = group.Links
-                };
-                localizedGroupings.Add(localized);
-            }
-            return localizedGroupings;
         }
 
         private static Dictionary<string, Models.JsonStat.Dimension> BuildJsonStatDimensions(IReadOnlyMatrixMetadata meta, string lang)
@@ -159,7 +136,7 @@ namespace PxApi.ModelBuilders
                     }
                 }
 
-                dimensions[dimension.Code.Convert()] = jsonDimension;
+                dimensions[dimension.Code] = jsonDimension;
             }
 
             return dimensions;
@@ -174,11 +151,11 @@ namespace PxApi.ModelBuilders
         {
             Dictionary<string, List<string>> roles = new()
             {
-                { "time", [meta.GetTimeDimension().Code.Convert()] },
-                { "metric", [meta.GetContentDimension().Code.Convert()] }
+                { "time", [meta.GetTimeDimension().Code] },
+                { "metric", [meta.GetContentDimension().Code] }
             };
 
-            List<string> geoDimensions = [.. meta.Dimensions.Where(d => d.Type == DimensionType.Geographical).Select(d => d.Code.Convert())];
+            List<string> geoDimensions = [.. meta.Dimensions.Where(d => d.Type == DimensionType.Geographical).Select(d => d.Code)];
             if (geoDimensions.Count > 0)
             {
                 roles["geo"] = geoDimensions;

@@ -9,7 +9,7 @@ namespace PxApi.OpenApi
     public class UnhandledErrorResponseOperationFilter : IOperationFilter
     {
         /// <summary>
-        /// Applies the filter to add a 500 ProblemDetails response if absent.
+        /// Applies the filter to add a 500 string response if absent.
         /// </summary>
         /// <param name="operation">The OpenAPI operation.</param>
         /// <param name="context">The operation filter context.</param>
@@ -27,7 +27,7 @@ namespace PxApi.OpenApi
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
-                        Schema = new OpenApiSchemaReference("ProblemDetails")
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                     }
                 }
             };
