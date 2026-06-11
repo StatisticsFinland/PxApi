@@ -116,7 +116,7 @@ namespace PxApi.UnitTests.Utilities
             MatrixMetadata baseMetadata = TestMockMetaBuilder.GetMockMetadata();
             TimeDimension timeDimension = (TimeDimension)baseMetadata.Dimensions[1];
             ContentDimension contentDimension = TestMockMetaBuilder.GetMockContentDimension("content", [0, 2]);
-            Dimension dim0 = (Dimension)baseMetadata.Dimensions[2];
+            Dimension dim0 = baseMetadata.Dimensions[2];
             List<Dimension> dimensions =
             [
                 timeDimension,
@@ -164,7 +164,7 @@ namespace PxApi.UnitTests.Utilities
                 [contentDimension.Values[0]]);
 
             TimeDimension timeDimension = (TimeDimension)baseMetadata.Dimensions[1];
-            Dimension dim0 = (Dimension)baseMetadata.Dimensions[2];
+            Dimension dim0 = baseMetadata.Dimensions[2];
             List<Dimension> dimensions =
             [
                 singleValueContentDimension,
@@ -214,6 +214,28 @@ namespace PxApi.UnitTests.Utilities
             {
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(1.2));
                 Assert.That(result[1].UnsafeValue, Is.EqualTo(1.9));
+            }
+        }
+
+        [Test]
+        public void ApplyContentPrecision_RoundsMiddleAwayFromZero()
+        {
+            MatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
+            DoubleDataValue[] data =
+            [
+                new DoubleDataValue(1.555, DataValueType.Exists),
+                new DoubleDataValue(2.555, DataValueType.Exists),
+                new DoubleDataValue(-1.555, DataValueType.Exists),
+                new DoubleDataValue(-2.555, DataValueType.Exists)
+            ];
+
+            DoubleDataValue[] result = DataPrecisionUtils.ApplyContentPrecision(data, metadata);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result[0].UnsafeValue, Is.EqualTo(1.56));
+                Assert.That(result[1].UnsafeValue, Is.EqualTo(2.56));
+                Assert.That(result[2].UnsafeValue, Is.EqualTo(-1.56));
+                Assert.That(result[3].UnsafeValue, Is.EqualTo(-2.56));
             }
         }
 
