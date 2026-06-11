@@ -103,7 +103,7 @@ namespace PxApi.UnitTests.Utilities
             {
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(1));
                 Assert.That(result[1].Type, Is.EqualTo(DataValueType.Missing));
-                Assert.That(result[1].UnsafeValue, Is.EqualTo(0.0));
+                Assert.That(result[1].UnsafeValue, Is.Zero);
                 Assert.That(result[2].UnsafeValue, Is.EqualTo(2.44));
                 Assert.That(result[3].Type, Is.EqualTo(DataValueType.Confidential));
                 Assert.That(result[3].UnsafeValue, Is.EqualTo(99.999));
