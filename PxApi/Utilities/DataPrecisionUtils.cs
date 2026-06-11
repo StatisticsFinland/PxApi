@@ -34,7 +34,7 @@ namespace PxApi.Utilities
                 || meta.Dimensions[contentDimensionPosition] is not ContentDimension contentDimension
                 || contentDimension.Values.Count == 0)
             {
-                return [.. data];
+                return data;
             }
 
             int contentStride = 1;
