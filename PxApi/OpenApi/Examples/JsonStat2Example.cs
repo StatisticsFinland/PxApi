@@ -1,4 +1,4 @@
-﻿using PxApi.Configuration;
+using PxApi.Configuration;
 using PxApi.Models.JsonStat;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
@@ -20,13 +20,13 @@ namespace PxApi.OpenApi.Examples
         public static readonly JsonNode? Instance = JsonSerializer.SerializeToNode(
             new JsonStat2
             {
-                Id = ["vuosi", "sukupuoli", "ika", "tiedot"],
+                Id = ["timeperiod_y", "sukupuoli_9_20180101", "ikaryhma_10_20180101", "contentscode"],
                 Label = "Population according to age (5-year) and sex, 2014-2023",
                 Source = "Statistics Finland, population structure",
                 Updated = "2024-04-26T08:00:00Z",
                 Dimension = new Dictionary<string, Dimension>
                 {
-                    ["vuosi"] = new()
+                    ["timeperiod_y"] = new()
                     {
                         Label = "Year",
                         Category = new Category
@@ -47,7 +47,7 @@ namespace PxApi.OpenApi.Examples
                             }
                         }
                     },
-                    ["sukupuoli"] = new()
+                    ["sukupuoli_9_20180101"] = new()
                     {
                         Label = "Sex",
                         Category = new Category
@@ -61,7 +61,7 @@ namespace PxApi.OpenApi.Examples
                             }
                         }
                     },
-                    ["ika"] = new()
+                    ["ikaryhma_10_20180101"] = new()
                     {
                         Label = "Age",
                         Category = new Category
@@ -70,7 +70,7 @@ namespace PxApi.OpenApi.Examples
                             Label = new Dictionary<string, string> { ["SSS"] = "Total" }
                         }
                     },
-                    ["tiedot"] = new()
+                    ["contentscode"] = new()
                     {
                         Label = "Information",
                         Category = new Category
@@ -100,8 +100,8 @@ namespace PxApi.OpenApi.Examples
                 Size = [10, 3, 1, 1],
                 Role = new Dictionary<string, List<string>>
                 {
-                    ["time"] = ["Vuosi"],
-                    ["metric"] = ["Tiedot"]
+                    ["time"] = ["timeperiod_y"],
+                    ["metric"] = ["contentscode"]
                 }
             },
             GlobalJsonConverterOptions.Default);

@@ -22,25 +22,25 @@ namespace PxApi.OpenApi.Examples
                 Description = "Specific codes, full wildcard, partial wildcard.",
                 Value = new JsonObject
                 {
-                    ["gender"] = new JsonObject
+                    ["sukupuoli_9_20180101"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.Code),
                         ["query"] = new JsonArray("1")
                     },
-                    ["age"] = new JsonObject
+                    ["ikaryhma_10_20180101"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.Code),
-                        ["query"] = new JsonArray("25-34", "35-44")
+                        ["query"] = new JsonArray("25-29", "30-34")
                     },
-                    ["region"] = new JsonObject
+                    ["valtio_19_20190101"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.Code),
                         ["query"] = new JsonArray("*")
                     },
-                    ["category"] = new JsonObject
+                    ["contentscode"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.Code),
-                        ["query"] = new JsonArray("*manufacturing*")
+                        ["query"] = new JsonArray("*OSUUS*")
                     }
                 }
             },
@@ -50,12 +50,12 @@ namespace PxApi.OpenApi.Examples
                 Description = "Inclusive start at value or pattern.",
                 Value = new JsonObject
                 {
-                    ["year"] = new JsonObject
+                    ["timeperiod_m"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.From),
-                        ["query"] = "2020"
+                        ["query"] = "2020M01"
                     },
-                    ["time"] = new JsonObject
+                    ["timeperiod_y"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.From),
                         ["query"] = "202*"
@@ -68,12 +68,12 @@ namespace PxApi.OpenApi.Examples
                 Description = "Inclusive end at value or pattern.",
                 Value = new JsonObject
                 {
-                    ["year"] = new JsonObject
+                    ["timeperiod_m"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.To),
-                        ["query"] = "2023"
+                        ["query"] = "2023M12"
                     },
-                    ["time"] = new JsonObject
+                    ["timeperiod_y"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.To),
                         ["query"] = "2022*"
@@ -86,7 +86,7 @@ namespace PxApi.OpenApi.Examples
                 Description = "First N values (N > 0).",
                 Value = new JsonObject
                 {
-                    ["region"] = new JsonObject
+                    ["valtio_19_20190101"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.First),
                         ["query"] = 10
@@ -99,7 +99,7 @@ namespace PxApi.OpenApi.Examples
                 Description = "Last N values (N > 0).",
                 Value = new JsonObject
                 {
-                    ["region"] = new JsonObject
+                    ["valtio_19_20190101"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.Last),
                         ["query"] = 5
@@ -112,27 +112,27 @@ namespace PxApi.OpenApi.Examples
                 Description = "Multiple filter types in one request.",
                 Value = new JsonObject
                 {
-                    ["gender"] = new JsonObject
+                    ["sukupuoli_9_20180101"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.Code),
                         ["query"] = new JsonArray("1", "2")
                     },
-                    ["year"] = new JsonObject
+                    ["timeperiod_m"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.From),
-                        ["query"] = "2020"
+                        ["query"] = "2020M01"
                     },
-                    ["age"] = new JsonObject
+                    ["ikaryhma_10_20180101"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.To),
-                        ["query"] = "81-90"
+                        ["query"] = "60-64"
                     },
-                    ["region"] = new JsonObject
+                    ["valtio_19_20190101"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.First),
                         ["query"] = 3
                     },
-                    ["rooms"] = new JsonObject
+                    ["contentscode"] = new JsonObject
                     {
                         ["type"] = nameof(FilterType.Last),
                         ["query"] = 2

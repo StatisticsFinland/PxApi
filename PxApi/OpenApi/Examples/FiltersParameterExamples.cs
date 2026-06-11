@@ -20,52 +20,52 @@ namespace PxApi.OpenApi.Examples
                 Summary = "Code filter",
                 Description = "Single gender, multiple ages, full wildcard region, partial wildcard category.",
                 Value = new JsonArray(
-                    "gender:code=1",
-                    "age:code=25-34,35-44",
-                    "region:code=*",
-                    "category:code=*manufacturing*"
+                    "sukupuoli_9_20180101:code=1",
+                    "ikaryhma_10_20180101:code=25-29,30-34",
+                    "valtio_19_20190101:code=*",
+                    "contentscode:code=*OSUUS*"
                 )
             },
             ["from-filter"] = new OpenApiExample
             {
                 Summary = "From filter",
-                Description = "Years from 2020 onward; time codes starting with 202.",
+                Description = "Months from 2020M01 onward; time codes starting with 202.",
                 Value = new JsonArray(
-                    "year:from=2020",
-                    "time:from=202*"
+                    "timeperiod_m:from=2020M01",
+                    "timeperiod_y:from=202*"
                 )
             },
             ["to-filter"] = new OpenApiExample
             {
                 Summary = "To filter",
-                Description = "Years up to 2023; time codes up to first match starting with 2022.",
+                Description = "Months up to 2023M12; time codes up to first match starting with 2022.",
                 Value = new JsonArray(
-                    "year:to=2023",
-                    "time:to=2022*"
+                    "timeperiod_m:to=2023M12",
+                    "timeperiod_y:to=2022*"
                 )
             },
             ["first-filter"] = new OpenApiExample
             {
                 Summary = "First filter",
                 Description = "First 10 region codes.",
-                Value = new JsonArray("region:first=10")
+                Value = new JsonArray("valtio_19_20190101:first=10")
             },
             ["last-filter"] = new OpenApiExample
             {
                 Summary = "Last filter",
                 Description = "Last 5 region codes.",
-                Value = new JsonArray("region:last=5")
+                Value = new JsonArray("valtio_19_20190101:last=5")
             },
             ["combined-filters"] = new OpenApiExample
             {
                 Summary = "Combined filters",
                 Description = "Multiple types together.",
                 Value = new JsonArray(
-                    "gender:code=1,2",
-                    "year:from=2020",
-                    "age:to=81-90",
-                    "region:first=3",
-                    "rooms:last=2"
+                    "sukupuoli_9_20180101:code=1,2",
+                    "timeperiod_m:from=2020M01",
+                    "ikaryhma_10_20180101:to=60-64",
+                    "valtio_19_20190101:first=3",
+                    "contentscode:last=2"
                 )
             }
         };

@@ -20,7 +20,7 @@ namespace PxApi.UnitTests.Models.Search
             {
                 Score = 0.98,
                 Database = new SearchDatabaseRef { Id = "StatFin", Name = "StatFin" },
-                Table = CreateSummary("statfin_vaerak_pxt_11ra", "Population according to age and sex"),
+                Table = CreateSummary("11ra", "Population according to age and sex"),
                 Matches =
                 [
                     new MatchInfo
@@ -40,7 +40,7 @@ namespace PxApi.UnitTests.Models.Search
             {
                 Assert.That(root.GetProperty("score").GetDouble(), Is.EqualTo(0.98));
                 Assert.That(root.GetProperty("database").GetProperty("id").GetString(), Is.EqualTo("StatFin"));
-                Assert.That(root.GetProperty("table").GetProperty("tableId").GetString(), Is.EqualTo("statfin_vaerak_pxt_11ra"));
+                Assert.That(root.GetProperty("table").GetProperty("tableId").GetString(), Is.EqualTo("11ra"));
                 Assert.That(root.GetProperty("table").GetProperty("title").GetString(), Is.EqualTo("Population according to age and sex"));
                 Assert.That(root.GetProperty("matches").GetArrayLength(), Is.EqualTo(1));
             }
