@@ -99,6 +99,8 @@ Retrieves data values applying filters to dimensions. Content negotiation suppor
 - `Accept: application/json` or `*/*` -> JSON-stat 2.0
 - `Accept: text/csv` -> CSV format with containing table description, selected value names and data.
 
+Returned data values are automatically rounded according to the `Precision` of the applicable selected content dimension value (`ContentDimensionValue.Precision`). This precision rule is applied consistently before formatting, so both JSON-stat and CSV responses contain precision-adjusted values.
+
 ####CSV Export Structure:####
 - Table description as A1 cell header
 - Stub dimensions (rows) and heading dimensions (columns) based on PX file metadata

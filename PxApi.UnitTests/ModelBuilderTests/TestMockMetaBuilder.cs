@@ -136,7 +136,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             return new TimeDimension($"{identifier}-code", name, props, values, TimeDimensionInterval.Year);
         }
 
-        internal static ContentDimension GetMockContentDimension(string identifier)
+        internal static ContentDimension GetMockContentDimension(string identifier, int[]? precisions = null)
         {
             MultilanguageString name = new([
                 new("fi", $"{identifier}-name.fi"),
@@ -146,8 +146,8 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             List<ContentDimensionValue> values =
             [
-                GetMockContentValue($"{identifier}-value0"),
-                GetMockContentValue($"{identifier}-value1"),
+                GetMockContentValue($"{identifier}-value0", precisions is not null && precisions.Length > 0 ? precisions[0] : 2),
+                GetMockContentValue($"{identifier}-value1", precisions is not null && precisions.Length > 1 ? precisions[1] : 2),
             ];
 
             MultilanguageString note = new([
@@ -186,7 +186,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             return new DimensionValue($"{identifier}-code", name, false, props);
         }
 
-        internal static ContentDimensionValue GetMockContentValue(string identifier)
+        internal static ContentDimensionValue GetMockContentValue(string identifier, int precision = 2)
         {
             DimensionValue value = GetMockDimensionValue(identifier);
 
@@ -198,7 +198,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             DateTime lastUpdated = new(2024, 10, 10, 0, 0, 0, DateTimeKind.Utc);
 
-            return new ContentDimensionValue(value, unit, lastUpdated, 2);
+            return new ContentDimensionValue(value, unit, lastUpdated, precision);
         }
 
         private static MultilanguageStringListProperty CreateStubProperty()

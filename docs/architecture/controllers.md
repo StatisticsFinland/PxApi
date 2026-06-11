@@ -57,6 +57,7 @@ Validates and sanitizes the query via `InputSanitizer`, delegates to `ISearchSer
 Both paths validate language and query size limits (`QueryLimitsConfig`), fetch cached metadata/data, and negotiate output format:
 - `Accept: application/json` or `*/*` → JSON-stat 2.0 via `JsonStat2Builder`
 - `Accept: text/csv` → CSV via `CsvBuilder`
+- Data values are precision-adjusted in `GenerateResponse` via `DataPrecisionUtils` based on the selected content dimension value metadata before either formatter is invoked
 
 Content negotiation is handled by `ContentNegotiation` utility class.
 

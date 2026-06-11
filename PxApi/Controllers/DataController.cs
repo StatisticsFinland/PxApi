@@ -252,6 +252,8 @@ namespace PxApi.Controllers
                     }
 
                     DoubleDataValue[] data = await dataSource.GetDataCachedAsync(fileRef.Value, requestMap, ct);
+                    IReadOnlyMatrixMetadata requestMeta = meta.GetTransform(requestMap);
+                    DoubleDataValue[] precisionData = DataPrecisionUtils.ApplyContentPrecision(data, requestMeta);
 
                     // Use proper content negotiation with quality values
                     IList<MediaTypeHeaderValue> acceptHeaderValues = Request.GetTypedHeaders().Accept;
@@ -259,14 +261,14 @@ namespace PxApi.Controllers
 
                     if (bestMatch == TEXT_CSV)
                     {
-                        Matrix<DoubleDataValue> requestMatrix = new(meta.GetTransform(requestMap), data);
-                        logger.LogInformation("Data query returned. Returned cell count: {ReturnedCellCount}. Format: {Format}.", data.LongLength, TEXT_CSV);
+                        Matrix<DoubleDataValue> requestMatrix = new(requestMeta, precisionData);
+                        logger.LogInformation("Data query returned. Returned cell count: {ReturnedCellCount}. Format: {Format}.", precisionData.LongLength, TEXT_CSV);
                         return Content(CsvBuilder.BuildCsvResponse(requestMatrix, actualLang, meta), TEXT_CSV);
                     }
                     if (bestMatch == APPLICATION_JSON)
                     {
-                        JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(meta.GetTransform(requestMap), data, actualLang);
-                        logger.LogInformation("Data query returned. Returned cell count: {ReturnedCellCount}. Format: {Format}.", data.LongLength, APPLICATION_JSON);
+                        JsonStat2 jsonStat = JsonStat2Builder.BuildJsonStat2(requestMeta, precisionData, actualLang);
+                        logger.LogInformation("Data query returned. Returned cell count: {ReturnedCellCount}. Format: {Format}.", precisionData.LongLength, APPLICATION_JSON);
                         return Ok(jsonStat);
                     }
                 }

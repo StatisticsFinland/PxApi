@@ -82,6 +82,12 @@ Builds CSV output from matrix data plus metadata:
 - Maps missing data values to PX-standard dot codes (`.`, `..`, `...`, etc.)
 - Culture-invariant number formatting (period as decimal separator)
 
+### DataPrecisionUtils
+
+**File**: `PxApi/Utilities/DataPrecisionUtils.cs`
+
+Applies data value rounding based on `ContentDimensionValue.Precision` for the selected content dimension values in the request matrix. `DataController.GenerateResponse` runs this utility before invoking `JsonStat2Builder` or `CsvBuilder`, ensuring format-independent precision behavior.
+
 ### PxFileConstants
 
 **File**: `PxApi/ModelBuilders/PxFileConstants.cs`

@@ -75,8 +75,8 @@ namespace PxApi.UnitTests.ControllerTests
             PxFileRef pxFileRef = PxFileRef.ValidateAndCreate(table, dataBaseRef, ["statisticalProgram"]);
             IReadOnlyMatrixMetadata mockMetadata = TestMockMetaBuilder.GetMockMetadata();
             DoubleDataValue[] mockData = [
-                new DoubleDataValue(1.0, DataValueType.Exists),
-                new DoubleDataValue(2.0, DataValueType.Exists)
+                new DoubleDataValue(1.123456, DataValueType.Exists),
+                new DoubleDataValue(2.654321, DataValueType.Exists)
             ];
 
             _cachedDbConnector.Setup(x => x.GetDataBaseReference(It.Is<string>(s => s == database))).Returns(dataBaseRef);
@@ -142,7 +142,7 @@ namespace PxApi.UnitTests.ControllerTests
             string[] filters = ["dim0-code:code=dim0-value1-code"];
             string lang = "en";
 
-            double[] expectedValues = [1.0, 2.0];
+            double[] expectedValues = [1.12, 2.65];
 
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
@@ -294,7 +294,7 @@ namespace PxApi.UnitTests.ControllerTests
             string table = "testtable";
             Dictionary<string, Filter> query = new() { { "dim0-code", new CodeFilter(["dim0-value1-code"]) } };
 
-            double[] expectedValues = [1.0, 2.0];
+            double[] expectedValues = [1.12, 2.65];
 
             SetupMockDataSourceForValidRequest(database, table);
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "application/json";
@@ -995,8 +995,8 @@ namespace PxApi.UnitTests.ControllerTests
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "text/csv";
             string expected =
                 $"\"table-description.en\",\"dim0-value1-name.en dim1-value0-name.en\"{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value0-name.en\",1{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value1-name.en\",2";
+                $"\"content-value0-name.en time-value0-name.en\",1.12{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en\",2.65";
 
             // Act
             IActionResult result = await _controller.GetDataAsync(database, table, filters, lang);
@@ -1026,8 +1026,8 @@ namespace PxApi.UnitTests.ControllerTests
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "text/csv";
             string expected =
                 $"\"table-description.en\",\"dim0-value1-name.en dim1-value0-name.en\"{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value0-name.en\",1{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value1-name.en\",2";
+                $"\"content-value0-name.en time-value0-name.en\",1.12{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en\",2.65";
 
             // Act
             IActionResult result = await _controller.PostDataAsync(database, table, query, lang);
