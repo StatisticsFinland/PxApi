@@ -193,7 +193,7 @@ namespace PxApi.UnitTests.Utilities
         }
 
         [Test]
-        public void ApplyContentPrecision_ContentValuePrecisionExceedsDataPrecision_RoundsToMaxPrecision()
+        public void ApplyContentPrecision_ContentValuePrecisionExceedsDataPrecision_RoundsToHighestPossiblePrecision()
         {
             MatrixMetadata baseMetadata = TestMockMetaBuilder.GetMockMetadata();
             ContentDimension contentDimension = TestMockMetaBuilder.GetMockContentDimension("content", [3]); // Content precision is higher than data precision

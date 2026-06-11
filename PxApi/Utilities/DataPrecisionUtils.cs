@@ -9,7 +9,7 @@ namespace PxApi.Utilities
     /// <summary>
     /// Provides helper methods for applying metadata-defined precision to data values.
     /// </summary>
-    internal static class DataPrecisionUtils
+    public static class DataPrecisionUtils
     {
         /// <summary>
         /// Applies content value precision to existing numeric data values based on the content dimension value
