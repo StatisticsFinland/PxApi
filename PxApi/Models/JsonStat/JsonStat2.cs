@@ -68,7 +68,7 @@ namespace PxApi.Models.JsonStat
         /// </summary>
         [Required]
         [JsonPropertyName("value")]
-        public required DoubleDataValue[] Value { get; set; }
+        public required PrecisionDataArray Value { get; set; }
 
         /// <summary>
         /// Optional status information for data values. Keys are zero-based indexes into <see cref="Value"/>; values are arbitrary status codes.

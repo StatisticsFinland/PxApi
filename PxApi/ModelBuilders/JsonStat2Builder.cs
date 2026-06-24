@@ -25,7 +25,7 @@ namespace PxApi.ModelBuilders
         public static JsonStat2 BuildJsonStat2(IReadOnlyMatrixMetadata meta, DoubleDataValue[] data, string? lang = null)
         {
             JsonStat2 jsonStat2Meta = BuildJsonStat2(meta, lang);
-            jsonStat2Meta.Value = data;
+            jsonStat2Meta.Value = new PrecisionDataArray(data, new PrecisionResolver(meta));
             jsonStat2Meta.Status = BuildStatusDictionary(data);
             return jsonStat2Meta;
         }
@@ -62,7 +62,7 @@ namespace PxApi.ModelBuilders
                 Updated = updated,
                 Dimension = BuildJsonStatDimensions(meta, actualLang),
                 Size = [.. meta.Dimensions.Select(d => d.Values.Count)],
-                Value = [],
+                Value = new PrecisionDataArray([]),
                 Role = BuildJsonStatRoles(meta),
                 Extension = extension
             };

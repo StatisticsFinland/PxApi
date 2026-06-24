@@ -25,10 +25,10 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             string expected =
                 $"\"table-description.en\",\"dim0-value0-name.en dim1-value0-name.en\",\"dim0-value0-name.en dim1-value1-name.en\",\"dim0-value1-name.en dim1-value0-name.en\",\"dim0-value1-name.en dim1-value1-name.en\"{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value0-name.en\",1,2,3,4{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value1-name.en\",5,6,7,8{Environment.NewLine}" +
-                $"\"content-value1-name.en time-value0-name.en\",9,10,11,12{Environment.NewLine}" +
-                "\"content-value1-name.en time-value1-name.en\",13,14,15,16";
+                $"\"content-value0-name.en time-value0-name.en\",1.00,2.00,3.00,4.00{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en\",5.00,6.00,7.00,8.00{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value0-name.en\",9.00,10.00,11.00,12.00{Environment.NewLine}" +
+                "\"content-value1-name.en time-value1-name.en\",13.00,14.00,15.00,16.00";
             Matrix<DoubleDataValue> requestMatrix = new(metadata, data);
 
             // Act
@@ -102,8 +102,8 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             string expected =
                 $"\"table-description.en\",\"dim0-value0-name.en\"{Environment.NewLine}" +
-                $"\"time-value0-name.en\",1{Environment.NewLine}" +
-                "\"time-value1-name.en\",2";
+                $"\"time-value0-name.en\",1.00{Environment.NewLine}" +
+                "\"time-value1-name.en\",2.00";
 
             Matrix<DoubleDataValue> requestMatrix = new(filteredMeta, data);
 
@@ -226,7 +226,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             // Assert
             Assert.That(result, Does.Contain("1.5"));
             Assert.That(result, Does.Contain("2.75"));
-            Assert.That(result, Does.Contain("3.1415926535")); // Full precision
+            Assert.That(result, Does.Contain("3.14")); // Rounded to precision 2 from content dimension metadata
             Assert.That(result, Does.Contain("4"));  // Should not show .0 for whole numbers
             Assert.That(result, Does.Contain("123456789"));  // No thousand separators
             // Should use period as decimal separator, not comma
@@ -284,22 +284,22 @@ namespace PxApi.UnitTests.ModelBuilderTests
             const string lang = "en";
             string expected =
                 $"\"table-description.en\"{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value0-name.en dim0-value0-name.en dim1-value0-name.en\",1{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value0-name.en dim0-value0-name.en dim1-value1-name.en\",2{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value0-name.en dim0-value1-name.en dim1-value0-name.en\",3{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value0-name.en dim0-value1-name.en dim1-value1-name.en\",4{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value1-name.en dim0-value0-name.en dim1-value0-name.en\",5{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value1-name.en dim0-value0-name.en dim1-value1-name.en\",6{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value1-name.en dim0-value1-name.en dim1-value0-name.en\",7{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value1-name.en dim0-value1-name.en dim1-value1-name.en\",8{Environment.NewLine}" +
-                $"\"content-value1-name.en time-value0-name.en dim0-value0-name.en dim1-value0-name.en\",9{Environment.NewLine}" +
-                $"\"content-value1-name.en time-value0-name.en dim0-value0-name.en dim1-value1-name.en\",10{Environment.NewLine}" +
-                $"\"content-value1-name.en time-value0-name.en dim0-value1-name.en dim1-value0-name.en\",11{Environment.NewLine}" +
-                $"\"content-value1-name.en time-value0-name.en dim0-value1-name.en dim1-value1-name.en\",12{Environment.NewLine}" +
-                $"\"content-value1-name.en time-value1-name.en dim0-value0-name.en dim1-value0-name.en\",13{Environment.NewLine}" +
-                $"\"content-value1-name.en time-value1-name.en dim0-value0-name.en dim1-value1-name.en\",14{Environment.NewLine}" +
-                $"\"content-value1-name.en time-value1-name.en dim0-value1-name.en dim1-value0-name.en\",15{Environment.NewLine}" +
-                "\"content-value1-name.en time-value1-name.en dim0-value1-name.en dim1-value1-name.en\",16";
+                $"\"content-value0-name.en time-value0-name.en dim0-value0-name.en dim1-value0-name.en\",1.00{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en dim0-value0-name.en dim1-value1-name.en\",2.00{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en dim0-value1-name.en dim1-value0-name.en\",3.00{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value0-name.en dim0-value1-name.en dim1-value1-name.en\",4.00{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en dim0-value0-name.en dim1-value0-name.en\",5.00{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en dim0-value0-name.en dim1-value1-name.en\",6.00{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en dim0-value1-name.en dim1-value0-name.en\",7.00{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en dim0-value1-name.en dim1-value1-name.en\",8.00{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value0-name.en dim0-value0-name.en dim1-value0-name.en\",9.00{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value0-name.en dim0-value0-name.en dim1-value1-name.en\",10.00{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value0-name.en dim0-value1-name.en dim1-value0-name.en\",11.00{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value0-name.en dim0-value1-name.en dim1-value1-name.en\",12.00{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value1-name.en dim0-value0-name.en dim1-value0-name.en\",13.00{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value1-name.en dim0-value0-name.en dim1-value1-name.en\",14.00{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value1-name.en dim0-value1-name.en dim1-value0-name.en\",15.00{Environment.NewLine}" +
+                "\"content-value1-name.en time-value1-name.en dim0-value1-name.en dim1-value1-name.en\",16.00";
             Matrix<DoubleDataValue> requestMatrix = new(metadata, data);
 
             // Act
@@ -331,7 +331,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
             const string lang = "en";
             string expected =
                 $"\"table-description.en\",\"content-value0-name.en time-value0-name.en dim0-value0-name.en dim1-value0-name.en\",\"content-value0-name.en time-value0-name.en dim0-value0-name.en dim1-value1-name.en\",\"content-value0-name.en time-value0-name.en dim0-value1-name.en dim1-value0-name.en\",\"content-value0-name.en time-value0-name.en dim0-value1-name.en dim1-value1-name.en\",\"content-value0-name.en time-value1-name.en dim0-value0-name.en dim1-value0-name.en\",\"content-value0-name.en time-value1-name.en dim0-value0-name.en dim1-value1-name.en\",\"content-value0-name.en time-value1-name.en dim0-value1-name.en dim1-value0-name.en\",\"content-value0-name.en time-value1-name.en dim0-value1-name.en dim1-value1-name.en\",\"content-value1-name.en time-value0-name.en dim0-value0-name.en dim1-value0-name.en\",\"content-value1-name.en time-value0-name.en dim0-value0-name.en dim1-value1-name.en\",\"content-value1-name.en time-value0-name.en dim0-value1-name.en dim1-value0-name.en\",\"content-value1-name.en time-value0-name.en dim0-value1-name.en dim1-value1-name.en\",\"content-value1-name.en time-value1-name.en dim0-value0-name.en dim1-value0-name.en\",\"content-value1-name.en time-value1-name.en dim0-value0-name.en dim1-value1-name.en\",\"content-value1-name.en time-value1-name.en dim0-value1-name.en dim1-value0-name.en\",\"content-value1-name.en time-value1-name.en dim0-value1-name.en dim1-value1-name.en\"{Environment.NewLine}" +
-                $"\"\",1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16";
+                $"\"\",1.00,2.00,3.00,4.00,5.00,6.00,7.00,8.00,9.00,10.00,11.00,12.00,13.00,14.00,15.00,16.00";
             Matrix<DoubleDataValue> requestMatrix = new(metadata, data);
 
             // Act
@@ -395,7 +395,7 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             string expected =
                 $"\"table-description.fi\",\"dim0-value1-name.fi dim1-value1-name.fi\"{Environment.NewLine}" +
-                "\"content-value1-name.fi time-value1-name.fi\",1";
+                "\"content-value1-name.fi time-value1-name.fi\",1.00";
             Matrix<DoubleDataValue> requestMatrix = new(filteredMeta, [new(1, DataValueType.Exists)]);
 
             // Act
@@ -454,10 +454,10 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             string expected =
                 $"\"table-description.en\",\"dim1-value0-name.en\",\"dim1-value1-name.en\"{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value0-name.en\",1,2{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value1-name.en\",3,4{Environment.NewLine}" +
-                $"\"content-value1-name.en time-value0-name.en\",5,6{Environment.NewLine}" +
-                $"\"content-value1-name.en time-value1-name.en\",7,8";
+                $"\"content-value0-name.en time-value0-name.en\",1.00,2.00{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en\",3.00,4.00{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value0-name.en\",5.00,6.00{Environment.NewLine}" +
+                $"\"content-value1-name.en time-value1-name.en\",7.00,8.00";
 
             Matrix<DoubleDataValue> requestMatrix = new(filteredMeta, data);
 
@@ -512,6 +512,60 @@ namespace PxApi.UnitTests.ModelBuilderTests
             }
 
             return data;
+        }
+
+        [Test]
+        public void BuildCsvResponse_MixedPrecision_AppliesCorrectDecimalsPerContentValue()
+        {
+            // Arrange: Content dimension with value0=precision 0, value1=precision 3
+            // Dimensions: Content(2), Time(2), dim0(2), dim1(2) → 16 cells
+            // After stub/heading transform: Content is first → stride=8, contentSize=2
+            // cells 0–7  belong to content-value0 (precision 0) → "X"
+            // cells 8–15 belong to content-value1 (precision 3) → "X.XXX"
+            MatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
+
+            ContentDimension mixedPrecisionContent = new(
+                metadata.Dimensions[0].Code,
+                metadata.Dimensions[0].Name,
+                metadata.Dimensions[0].AdditionalProperties,
+                [
+                    new ContentDimensionValue(
+                        TestMockMetaBuilder.GetMockDimensionValue("content-value0"),
+                        new MultilanguageString([new("en", "unit0")]),
+                        DateTime.UtcNow,
+                        precision: 0),
+                    new ContentDimensionValue(
+                        TestMockMetaBuilder.GetMockDimensionValue("content-value1"),
+                        new MultilanguageString([new("en", "unit1")]),
+                        DateTime.UtcNow,
+                        precision: 3),
+                ]
+            );
+            metadata.Dimensions[0] = mixedPrecisionContent;
+
+            DoubleDataValue[] data = new DoubleDataValue[16];
+            for (int i = 0; i < 16; i++)
+            {
+                data[i] = new DoubleDataValue(1.5678, DataValueType.Exists);
+            }
+
+            Matrix<DoubleDataValue> requestMatrix = new(metadata, data);
+
+            // Act
+            string result = CsvBuilder.BuildCsvResponse(requestMatrix, "en", metadata);
+
+            // Assert: first 8 cells (content-value0, precision 0) → "2" (rounded to 0 decimals)
+            //         last 8 cells (content-value1, precision 3) → "1.568" (rounded to 3 decimals)
+            string[] lines = result.Split(Environment.NewLine);
+            using (Assert.EnterMultipleScope())
+            {
+                // Rows 1–2 belong to content-value0 (precision 0): e.g. "2,2,2,2"
+                Assert.That(lines[1], Does.Contain("2,2,2,2"));
+                Assert.That(lines[2], Does.Contain("2,2,2,2"));
+                // Rows 3–4 belong to content-value1 (precision 3): e.g. "1.568,1.568,1.568,1.568"
+                Assert.That(lines[3], Does.Contain("1.568,1.568,1.568,1.568"));
+                Assert.That(lines[4], Does.Contain("1.568,1.568,1.568,1.568"));
+            }
         }
     }
 }
