@@ -52,6 +52,7 @@ namespace PxApi.Utilities
             {
                 _precisions = [];
                 _contentSize = 0;
+                _stride = 1;
                 return;
             }
 

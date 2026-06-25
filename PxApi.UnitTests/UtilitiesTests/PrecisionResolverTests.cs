@@ -15,7 +15,7 @@ namespace PxApi.UnitTests.UtilitiesTests
         /// Dimension at <paramref name="contentIndex"/> is a ContentDimension with the given <paramref name="precisions"/>.
         /// All other dimensions are plain Other-type dimensions.
         /// </summary>
-        private static IReadOnlyMatrixMetadata BuildMetadata(int[] dimensionSizes, int contentIndex, int[] precisions)
+        private static MatrixMetadata BuildMetadata(int[] dimensionSizes, int contentIndex, int[] precisions)
         {
             string[] langs = ["en"];
             List<Dimension> dimensions = [];
@@ -84,11 +84,11 @@ namespace PxApi.UnitTests.UtilitiesTests
 
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(resolver.Resolve(0), Is.EqualTo(0));
-                Assert.That(resolver.Resolve(3), Is.EqualTo(0));
+                Assert.That(resolver.Resolve(0), Is.Zero);
+                Assert.That(resolver.Resolve(3), Is.Zero);
                 Assert.That(resolver.Resolve(4), Is.EqualTo(2));
                 Assert.That(resolver.Resolve(7), Is.EqualTo(2));
-                Assert.That(resolver.Resolve(8), Is.EqualTo(0));
+                Assert.That(resolver.Resolve(8), Is.Zero);
                 Assert.That(resolver.Resolve(12), Is.EqualTo(2));
             }
         }
@@ -105,10 +105,10 @@ namespace PxApi.UnitTests.UtilitiesTests
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(resolver.Resolve(0), Is.EqualTo(5));
-                Assert.That(resolver.Resolve(1), Is.EqualTo(0));
+                Assert.That(resolver.Resolve(1), Is.Zero);
                 Assert.That(resolver.Resolve(2), Is.EqualTo(5));
-                Assert.That(resolver.Resolve(3), Is.EqualTo(0));
-                Assert.That(resolver.Resolve(23), Is.EqualTo(0));
+                Assert.That(resolver.Resolve(3), Is.Zero);
+                Assert.That(resolver.Resolve(23), Is.Zero);
             }
         }
 

@@ -222,15 +222,19 @@ namespace PxApi.UnitTests.ModelBuilderTests
 
             // Act
             string result = CsvBuilder.BuildCsvResponse(requestMatrix, lang, metadata);
+            string[] lines = result.Split(Environment.NewLine);
 
-            // Assert
-            Assert.That(result, Does.Contain("1.5"));
-            Assert.That(result, Does.Contain("2.75"));
-            Assert.That(result, Does.Contain("3.14")); // Rounded to precision 2 from content dimension metadata
-            Assert.That(result, Does.Contain("4"));  // Should not show .0 for whole numbers
-            Assert.That(result, Does.Contain("123456789"));  // No thousand separators
-            // Should use period as decimal separator, not comma
-            Assert.That(result.Split(','), Has.Length.GreaterThan(4)); // Should have CSV commas, but not decimal commas
+            // Assert exact F2-formatted tokens (precision 2 comes from mock content dimension metadata).
+            // Row indices: [0] = header, [1] = content-value0/time-value0, [2] = content-value0/time-value1, …
+            using (Assert.EnterMultipleScope())
+            {
+                // data[0..3] land in the first data row: "1.50" confirms trailing zero, "3.14" confirms
+                // rounding, "4.00" confirms whole-number trailing zeros (period as decimal separator).
+                Assert.That(lines[1], Is.EqualTo("\"content-value0-name.en time-value0-name.en\",1.50,2.75,3.14,4.00"));
+                // data[4] lands at the start of the second data row: "123456789.00" confirms no
+                // thousand separators and correct trailing zeros.
+                Assert.That(lines[2], Is.EqualTo("\"content-value0-name.en time-value1-name.en\",123456789.00,6.00,7.00,8.00"));
+            };
         }
 
         [Test]
