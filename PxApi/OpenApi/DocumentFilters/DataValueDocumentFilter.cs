@@ -1,6 +1,8 @@
 ﻿using Microsoft.OpenApi;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Data.DataValue;
+using PxApi.Models.JsonStat;
+using PxApi.Utilities;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace PxApi.OpenApi.DocumentFilters
@@ -16,7 +18,9 @@ namespace PxApi.OpenApi.DocumentFilters
         private static readonly HashSet<string> DataValueTypeNames =
         [
             nameof(DoubleDataValue),
-            nameof(DataValueType)
+            nameof(DataValueType),
+            nameof(PrecisionDataArray),
+            nameof(PrecisionResolver)
         ];
 
         /// <summary>

@@ -70,8 +70,10 @@ namespace PxApi.ModelBuilders
             List<IReadOnlyDimension> filteredStubDims = FilterSingleValueDimensions(orderedStubDims, completeDimensionSizes, lang);
             List<IReadOnlyDimension> filteredHeadingDims = FilterSingleValueDimensions(orderedHeadingDims, completeDimensionSizes, lang);
 
+            PrecisionResolver precisionResolver = new(orderedMatrix.Metadata);
+
             BuildHeaderRow(csv, header, filteredHeadingDims, lang);
-            BuildDataRows(csv, orderedMatrix.Data, filteredStubDims, filteredHeadingDims, lang);
+            BuildDataRows(csv, orderedMatrix.Data, filteredStubDims, filteredHeadingDims, lang, precisionResolver);
 
             return csv.ToString();
         }
@@ -152,7 +154,7 @@ namespace PxApi.ModelBuilders
             csv.AppendLine();
         }
 
-        private static void BuildDataRows(StringBuilder csv, DoubleDataValue[] data, List<IReadOnlyDimension> filteredStubDims, List<IReadOnlyDimension> filteredHeadingDims, string lang)
+        private static void BuildDataRows(StringBuilder csv, DoubleDataValue[] data, List<IReadOnlyDimension> filteredStubDims, List<IReadOnlyDimension> filteredHeadingDims, string lang, PrecisionResolver precisionResolver)
         {
             // Generate combinations for filtered dimensions (which are the same for data indexing)
             List<string[]> stubCombinations = GetValueCombinations(filteredStubDims, lang);
@@ -188,7 +190,8 @@ namespace PxApi.ModelBuilders
                     if (dataIndex < data.Length)
                     {
                         DoubleDataValue value = data[dataIndex];
-                        csv.Append(FormatDataValue(value));
+                        int precision = precisionResolver.Resolve(dataIndex);
+                        csv.Append(FormatDataValue(value, precision));
                     }
                 }
 
@@ -233,12 +236,16 @@ namespace PxApi.ModelBuilders
             return result;
         }
 
-        private static string FormatDataValue(DoubleDataValue value)
+        private static string FormatDataValue(DoubleDataValue value, int precision)
         {
             if (value.Type == DataValueType.Exists)
             {
-                // Use period as decimal separator, no thousands separator
-                return value.UnsafeValue.ToString("0.###################", CultureInfo.InvariantCulture);
+                if (precision == PrecisionResolver.NoPrecision)
+                {
+                    return value.UnsafeValue.ToString("0.###################", CultureInfo.InvariantCulture);
+                }
+                double rounded = Math.Round(value.UnsafeValue, precision, MidpointRounding.AwayFromZero);
+                return rounded.ToString(PrecisionResolver.FormatStrings[precision], CultureInfo.InvariantCulture);
             }
             else
             {
