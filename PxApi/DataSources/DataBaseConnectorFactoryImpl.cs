@@ -58,7 +58,7 @@ namespace PxApi.DataSources
                     databases.Add(database);
                 }
 
-                _logger.LogInformation("Found {DatabaseCount} available databases", databases.Count);
+                _logger.LogDebug("Found {DatabaseCount} available databases", databases.Count);
                 return databases;
             }
         }

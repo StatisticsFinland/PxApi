@@ -1,5 +1,6 @@
 ﻿using Microsoft.OpenApi;
 using Px.Utils.Models.Data.DataValue;
+using PxApi.Models.JsonStat;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace PxApi.OpenApi.SchemaFilters
@@ -36,7 +37,7 @@ namespace PxApi.OpenApi.SchemaFilters
                 concreteSchema.AdditionalProperties = null;
             }
             // Handle DoubleDataValue arrays
-            else if (context.Type == typeof(DoubleDataValue[]))
+            else if (context.Type == typeof(DoubleDataValue[]) || context.Type == typeof(PrecisionDataArray))
             {
                 concreteSchema.Type = JsonSchemaType.Array;
                 concreteSchema.Items = new OpenApiSchema

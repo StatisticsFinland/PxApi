@@ -312,5 +312,37 @@ namespace PxApi.UnitTests.ModelBuilderTests
                 JsonStat2Builder.BuildJsonStat2(meta, data, "en"));
             Assert.That(ex.Message, Does.Contain("No DESCRIPTION found in table level metadata"));
         }
+
+        [Test]
+        public static void BuildJsonStat2_WithData_SetsPrecision()
+        {
+            // Arrange
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+            DoubleDataValue[] data = [
+                new DoubleDataValue(1.0, DataValueType.Exists),
+                new DoubleDataValue(2.0, DataValueType.Exists),
+                new DoubleDataValue(3.0, DataValueType.Exists),
+                new DoubleDataValue(4.0, DataValueType.Exists)
+            ];
+
+            // Act
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, data, "en");
+
+            // Assert: Precision should be set when data is provided
+            Assert.That(result.Value.Precision, Is.Not.Null);
+        }
+
+        [Test]
+        public static void BuildJsonStat2_WithoutData_PrecisionIsNull()
+        {
+            // Arrange
+            MatrixMetadata meta = TestMockMetaBuilder.GetMockMetadata();
+
+            // Act
+            JsonStat2 result = JsonStat2Builder.BuildJsonStat2(meta, "en");
+
+            // Assert: Precision should not be set for metadata-only responses
+            Assert.That(result.Value.Precision, Is.Null);
+        }
     }
 }

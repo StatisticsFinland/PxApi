@@ -995,8 +995,8 @@ namespace PxApi.UnitTests.ControllerTests
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "text/csv";
             string expected =
                 $"\"table-description.en\",\"dim0-value1-name.en dim1-value0-name.en\"{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value0-name.en\",1{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value1-name.en\",2";
+                $"\"content-value0-name.en time-value0-name.en\",1.00{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en\",2.00";
 
             // Act
             IActionResult result = await _controller.GetDataAsync(database, table, filters, lang);
@@ -1026,8 +1026,8 @@ namespace PxApi.UnitTests.ControllerTests
             _controller.ControllerContext.HttpContext.Request.Headers.Accept = "text/csv";
             string expected =
                 $"\"table-description.en\",\"dim0-value1-name.en dim1-value0-name.en\"{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value0-name.en\",1{Environment.NewLine}" +
-                $"\"content-value0-name.en time-value1-name.en\",2";
+                $"\"content-value0-name.en time-value0-name.en\",1.00{Environment.NewLine}" +
+                $"\"content-value0-name.en time-value1-name.en\",2.00";
 
             // Act
             IActionResult result = await _controller.PostDataAsync(database, table, query, lang);
