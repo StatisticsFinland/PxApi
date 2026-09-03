@@ -84,7 +84,7 @@ namespace PxApi.OpenApi.Examples
                         }
                     }
                 },
-                Value =
+                Value = new PrecisionDataArray(
                 [
                     new(5471753, DataValueType.Exists), new(2691863, DataValueType.Exists), new(2779890, DataValueType.Exists),
                     new(5487308, DataValueType.Exists), new(2701490, DataValueType.Exists), new(2785818, DataValueType.Exists),
@@ -96,7 +96,7 @@ namespace PxApi.OpenApi.Examples
                     new(5548241, DataValueType.Exists), new(2743101, DataValueType.Exists), new(2805140, DataValueType.Exists),
                     new(5563970, DataValueType.Exists), new(2753477, DataValueType.Exists), new(2810493, DataValueType.Exists),
                     new(5603851, DataValueType.Exists), new(2773898, DataValueType.Exists), new(2829953, DataValueType.Exists)
-                ],
+                ]),
                 Size = [10, 3, 1, 1],
                 Role = new Dictionary<string, List<string>>
                 {
