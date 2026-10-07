@@ -515,6 +515,32 @@ public class QueryLoggingIntegrationTests
     }
 
     [Test]
+    public async Task InvalidSearchParameters_RecordSpecificRejection()
+    {
+        application.Configuration["FeatureManagement:SearchController"] = "true";
+        string[] routes = ["/meta/search", "/meta/databases/db/search"];
+        string[] invalidQueries = ["", "?q=%20%20", "?q=" + new string('x', 401), "?scope=invalid&q=term", "?q=%3C%3E"];
+
+        foreach (string route in routes)
+        {
+            foreach (string query in invalidQueries)
+            {
+                using HttpResponseMessage response = await client.GetAsync(route + query);
+                await response.Content.ReadAsByteArrayAsync();
+                Dictionary<string, object?> completed = Completion();
+
+                using (Assert.EnterMultipleScope())
+                {
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+                    Assert.That(completed["error_code"], Is.EqualTo("invalid_search"));
+                    Assert.That(completed["outcome"], Is.EqualTo("rejected"));
+                }
+                logger.Events.Clear();
+            }
+        }
+    }
+
+    [Test]
     public async Task SearchUnavailable_Emits503CompletionWithoutSearchText()
     {
         application.Configuration["FeatureManagement:SearchController"] = "true";

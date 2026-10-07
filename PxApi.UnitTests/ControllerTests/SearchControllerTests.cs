@@ -96,6 +96,26 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task InvalidPaging_RecordsSpecificRejectionForBothSearchActions()
+        {
+            QueryObservation globalObservation = new(new ConfigurationBuilder().Build());
+            _controller.HttpContext.Features.Set(globalObservation);
+            ActionResult<SearchResponse> globalResult = await _controller.SearchAsync("query", page: 0);
+
+            QueryObservation databaseObservation = new(new ConfigurationBuilder().Build());
+            _controller.HttpContext.Features.Set(databaseObservation);
+            ActionResult<SearchResponse> databaseResult = await _controller.SearchDatabaseAsync("db1", "query", page: 0);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(globalResult.Result, Is.InstanceOf<BadRequestObjectResult>());
+                Assert.That(globalObservation.Complete().Single(field => field.Key == LoggerConsts.Query.Fields.ErrorCode).Value, Is.EqualTo("invalid_paging"));
+                Assert.That(databaseResult.Result, Is.InstanceOf<BadRequestObjectResult>());
+                Assert.That(databaseObservation.Complete().Single(field => field.Key == LoggerConsts.Query.Fields.ErrorCode).Value, Is.EqualTo("invalid_paging"));
+            }
+        }
+
+        [Test]
         public async Task SearchAsync_EmptyQuery_ReturnsBadRequest()
         {
             // Act

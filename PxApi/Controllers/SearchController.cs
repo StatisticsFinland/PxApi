@@ -76,9 +76,21 @@ namespace PxApi.Controllers
         {
             QueryObservation? observation = BeginObservation(GLOBAL_SCOPE);
             observation?.Set(LoggerConsts.Query.Fields.Page, page);
-            if (string.IsNullOrWhiteSpace(q)) return BadRequest("The query parameter 'q' is required.");
-            if (q.Length > MAX_QUERY_LENGTH) return BadRequest($"Query too long. Maximum length is {MAX_QUERY_LENGTH} characters.");
-            if (page < 1 || pageSize < 1) return BadRequest("Invalid paging values.");
+            if (string.IsNullOrWhiteSpace(q))
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidSearch);
+                return BadRequest("The query parameter 'q' is required.");
+            }
+            if (q.Length > MAX_QUERY_LENGTH)
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidSearch);
+                return BadRequest($"Query too long. Maximum length is {MAX_QUERY_LENGTH} characters.");
+            }
+            if (page < 1 || pageSize < 1)
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidPaging);
+                return BadRequest("Invalid paging values.");
+            }
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
             observation?.Set(LoggerConsts.Query.Fields.PageSize, pageSize);
 
@@ -92,11 +104,19 @@ namespace PxApi.Controllers
             observation?.Set(LoggerConsts.Query.Fields.Language, actualLang);
 
             SearchTarget? parsedTarget = ParseScope(scope);
-            if (parsedTarget is null) return BadRequest(AcceptedScopeMessage);
+            if (parsedTarget is null)
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidSearch);
+                return BadRequest(AcceptedScopeMessage);
+            }
             SearchTarget target = parsedTarget.Value;
             observation?.Set(LoggerConsts.Query.Fields.SearchTarget, target.ToString().ToLowerInvariant());
             string sanitizedQuery = InputSanitizer.SanitizeInput(q, MAX_QUERY_LENGTH);
-            if (string.IsNullOrWhiteSpace(sanitizedQuery)) return BadRequest(BlankSanitizedQueryMessage);
+            if (string.IsNullOrWhiteSpace(sanitizedQuery))
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidSearch);
+                return BadRequest(BlankSanitizedQueryMessage);
+            }
 
             observation?.SearchText(sanitizedQuery);
             using (logger.BeginScope(new Dictionary<string, object> { [LoggerConsts.Query.Fields.SearchScope] = LoggerConsts.Query.Value(GLOBAL_SCOPE) }))
@@ -161,9 +181,21 @@ namespace PxApi.Controllers
         {
             QueryObservation? observation = BeginObservation(LoggerConsts.Query.SearchScope.Database);
             observation?.Set(LoggerConsts.Query.Fields.Page, page);
-            if (string.IsNullOrWhiteSpace(q)) return BadRequest("The query parameter 'q' is required.");
-            if (q.Length > MAX_QUERY_LENGTH) return BadRequest($"Query too long. Maximum length is {MAX_QUERY_LENGTH} characters.");
-            if (page < 1 || pageSize < 1) return BadRequest("Invalid paging values.");
+            if (string.IsNullOrWhiteSpace(q))
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidSearch);
+                return BadRequest("The query parameter 'q' is required.");
+            }
+            if (q.Length > MAX_QUERY_LENGTH)
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidSearch);
+                return BadRequest($"Query too long. Maximum length is {MAX_QUERY_LENGTH} characters.");
+            }
+            if (page < 1 || pageSize < 1)
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidPaging);
+                return BadRequest("Invalid paging values.");
+            }
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
             observation?.Set(LoggerConsts.Query.Fields.PageSize, pageSize);
 
@@ -177,11 +209,19 @@ namespace PxApi.Controllers
             observation?.Set(LoggerConsts.Query.Fields.Language, actualLang);
 
             SearchTarget? parsedTarget = ParseScope(scope);
-            if (parsedTarget is null) return BadRequest(AcceptedScopeMessage);
+            if (parsedTarget is null)
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidSearch);
+                return BadRequest(AcceptedScopeMessage);
+            }
             SearchTarget target = parsedTarget.Value;
             observation?.Set(LoggerConsts.Query.Fields.SearchTarget, target.ToString().ToLowerInvariant());
             string sanitizedQuery = InputSanitizer.SanitizeInput(q, MAX_QUERY_LENGTH);
-            if (string.IsNullOrWhiteSpace(sanitizedQuery)) return BadRequest(BlankSanitizedQueryMessage);
+            if (string.IsNullOrWhiteSpace(sanitizedQuery))
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidSearch);
+                return BadRequest(BlankSanitizedQueryMessage);
+            }
 
             DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
             if (dbRef is null)
