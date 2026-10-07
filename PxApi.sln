@@ -30,7 +30,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{5C6E13B8-2410-44BA-98F5-8830DA756959}"
 	ProjectSection(SolutionItems) = preProject
 		.github\workflows\ci.yml = .github\workflows\ci.yml
-		.github\workflows\sonar.yml = .github\workflows\sonar.yml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{11A8C8BB-BE45-4CF4-BBA9-80E0B0E862EC}"
