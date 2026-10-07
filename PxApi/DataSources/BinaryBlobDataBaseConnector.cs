@@ -68,7 +68,7 @@ namespace PxApi.DataSources
                     [LoggerConsts.CONTAINER_NAME] = ContainerName
                 }))
             {
-                Logger.LogDebug("Getting last write time for meta file {FileId} from blob storage", file.Id);
+                Logger.LogDebug("Getting last write time for meta file {file_id} from blob storage", file.Id);
                 IReadOnlyMatrixMetadata metadata = await ReadMetadataAsync(file, ct);
                 ContentValueList contentDimensionValues = metadata.GetContentDimension().Values;
                 return contentDimensionValues.Map(value => value.LastUpdated).Max();
@@ -117,8 +117,7 @@ namespace PxApi.DataSources
                             {
                                 if (!await BlobExistsAsync(blobName, ct))
                                 {
-                                    Logger.LogError("Data blob {BlobName} not found in blob storage.", blobName);
-                                    throw new BinaryBlobSynchronizationException(file, lastUpdated);
+                                    throw new BinaryBlobSynchronizationException(file, lastUpdated, $"{ContainerName}/{blobName}");
                                 }
 
                                 IMatrixMap readMap = targetMap.CollapseDimension(contentDimension.Code, cValCode);
@@ -133,7 +132,7 @@ namespace PxApi.DataSources
 
                                 if (BlobReadModeSelector.ReadStreaming(readMap, blobMap, out long startIndex))
                                 {
-                                    Logger.LogDebug("Using streaming read from index {Index}.", startIndex);
+                                    Logger.LogDebug("Using streaming read from index {index}.", startIndex);
                                     if (startIndex > 0)
                                     {
                                         byte[] headerBytes = new byte[8];
@@ -169,7 +168,7 @@ namespace PxApi.DataSources
 
                                     BinaryDataReader reader = BinaryDataReader.Create(Codec, headerLengthBytes: HeaderLength);
                                     await reader.ReadByChunkAsync(readerFunc, readMap, blobMap, targetMap, result, ct);
-                                    Logger.LogDebug("Window read calls: {Count}", windowReaderCallsForDebug);
+                                    Logger.LogDebug("Window read calls: {count}", windowReaderCallsForDebug);
                                 }
                             }
                         }
@@ -197,7 +196,7 @@ namespace PxApi.DataSources
                     [LoggerConsts.CONTAINER_NAME] = ContainerName
                 }))
             {
-                Logger.LogDebug("Reading metadata for meta file {FileId} from blob storage", file.Id);
+                Logger.LogDebug("Reading metadata for meta file {file_id} from blob storage", file.Id);
 
                 string prefix = BuildMetadataPrefix(file.DataBase.Id, file.Id);
                 IReadOnlyList<string> blobNames = await GetBlobItemsAsync(prefix, ct);
@@ -207,12 +206,11 @@ namespace PxApi.DataSources
 
                 if (metaBlobNames.Count == 0)
                 {
-                    Logger.LogError("Meta file for id {FileId} not found in blob storage", file.Id);
-                    throw new FileNotFoundException($"Meta file for id {file.Id} not found in blob storage container.");
+                    throw new FileNotFoundException($"Meta file for id {file.Id} not found in database {DataBase.Id}, blob storage container {ContainerName}.");
                 }
                 else if (metaBlobNames.Count > 1)
                 {
-                    Logger.LogWarning("Multiple meta files for id {FileId} found in blob storage", file.Id);
+                    Logger.LogWarning("Multiple meta files for id {file_id} found in blob storage", file.Id);
                     selectedBlobName = metaBlobNames
                         .OrderByDescending(name => name) // Assuming the name includes a timestamp
                         .First();
@@ -222,20 +220,19 @@ namespace PxApi.DataSources
 
                 using Stream stream = await OpenBlobReadStreamAsync(selectedBlobName, ct);
 
+                string failureMessage = $"Failed to deserialize metadata file {selectedBlobName} for table {file.Id} in database {DataBase.Id}, container {ContainerName}.";
                 try
                 {
                     MatrixMetadata? metadata = await JsonSerializer.DeserializeAsync<MatrixMetadata>(stream, GlobalJsonConverterOptions.Default, ct);
                     if (metadata is null)
                     {
-                        Logger.LogError("Failed to deserialize metadata for id {FileId}", file.Id);
-                        throw new InvalidDataException("Failed to deserialize metadata file.");
+                        throw new InvalidDataException(failureMessage);
                     }
                     return metadata;
                 }
                 catch (JsonException ex)
                 {
-                    Logger.LogError(ex, "Failed to deserialize metadata for id {FileId}", file.Id);
-                    throw new InvalidDataException("Failed to deserialize metadata file.", ex);
+                    throw new InvalidDataException(failureMessage, ex);
                 }
             }
         }

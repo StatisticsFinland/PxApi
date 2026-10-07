@@ -37,5 +37,7 @@ namespace PxApi.Models.Search
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<Link>? Links { get; set; }
+
+        internal string? CanonicalTableId { get; set; }
     }
 }

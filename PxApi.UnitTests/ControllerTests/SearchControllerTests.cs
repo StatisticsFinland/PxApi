@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using Moq;
 using PxApi.Caching;
 using PxApi.Controllers;
@@ -95,6 +96,26 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public async Task InvalidPaging_RecordsSpecificRejectionForBothSearchActions()
+        {
+            QueryObservation globalObservation = new(new ConfigurationBuilder().Build());
+            _controller.HttpContext.Features.Set(globalObservation);
+            ActionResult<SearchResponse> globalResult = await _controller.SearchAsync("query", page: 0);
+
+            QueryObservation databaseObservation = new(new ConfigurationBuilder().Build());
+            _controller.HttpContext.Features.Set(databaseObservation);
+            ActionResult<SearchResponse> databaseResult = await _controller.SearchDatabaseAsync("db1", "query", page: 0);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(globalResult.Result, Is.InstanceOf<BadRequestObjectResult>());
+                Assert.That(globalObservation.Complete().Single(field => field.Key == LoggerConsts.Query.Fields.ErrorCode).Value, Is.EqualTo("invalid_paging"));
+                Assert.That(databaseResult.Result, Is.InstanceOf<BadRequestObjectResult>());
+                Assert.That(databaseObservation.Complete().Single(field => field.Key == LoggerConsts.Query.Fields.ErrorCode).Value, Is.EqualTo("invalid_paging"));
+            }
+        }
+
+        [Test]
         public async Task SearchAsync_EmptyQuery_ReturnsBadRequest()
         {
             // Act
@@ -145,7 +166,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task SearchAsync_ValidQuery_BeginsSearchScopeWithSanitizedQuery()
+        public async Task SearchAsync_ValidQuery_SanitizesBackendQueryButOmitsTextFromScope()
         {
             // Arrange
             SearchHitResponse expectedResponse = BuildEmptyResponse("populationscript", SearchTarget.Content, "fi");
@@ -159,7 +180,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Assert
             _mockSearchService.Verify(x => x.SearchAsync("populationscript", It.IsAny<SearchTarget>(), "fi", 1, 20, It.IsAny<CancellationToken>()), Times.Once);
             _mockLogger.Verify(x => x.BeginScope(It.Is<It.IsAnyType>((state, _) =>
-                MatchesSearchScope(state, "populationscript"))), Times.Once);
+                MatchesSearchScope(state))), Times.Once);
         }
 
         [Test]
@@ -272,7 +293,7 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
-        public async Task SearchDatabaseAsync_ValidQuery_BeginsSearchScopeWithSanitizedQueryAndDatabase()
+        public async Task SearchDatabaseAsync_ValidQuery_SanitizesBackendQueryButOnlyScopesDatabase()
         {
             // Arrange
             SearchHitResponse expectedResponse = BuildEmptyResponse("populationscript", SearchTarget.Content, "fi");
@@ -286,7 +307,7 @@ namespace PxApi.UnitTests.ControllerTests
             // Assert
             _mockSearchService.Verify(x => x.SearchDatabaseAsync("db1", "populationscript", It.IsAny<SearchTarget>(), "fi", 1, 20, It.IsAny<CancellationToken>()), Times.Once);
             _mockLogger.Verify(x => x.BeginScope(It.Is<It.IsAnyType>((state, _) =>
-                MatchesSearchScope(state, "populationscript", "db1"))), Times.Once);
+                MatchesSearchScope(state, "db1"))), Times.Once);
         }
 
         [Test]
@@ -507,6 +528,32 @@ namespace PxApi.UnitTests.ControllerTests
 
         #region Helpers
 
+        [Test]
+        public async Task SearchAsync_ObservedPage_DistinguishesLowerBoundTotalsAndReturnedCount()
+        {
+            QueryObservation observation = new(new ConfigurationBuilder().Build());
+            _controller.HttpContext.Features.Set(observation);
+            SearchHitResponse hits = BuildEmptyResponse("test", SearchTarget.Geo, "en");
+            hits.ObservedTotalMatches = 10000;
+            hits.TotalMatchesRelation = "lower_bound";
+            _mockSearchService.Setup(instance => instance.SearchAsync("test", SearchTarget.Geo, "en", 2, 10, It.IsAny<CancellationToken>())).ReturnsAsync(hits);
+
+            await _controller.SearchAsync("test", scope: "geo", lang: "en", page: 2, pageSize: 10);
+            Dictionary<string, object?> fields = observation.Complete().ToDictionary();
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(fields["total_matches"], Is.EqualTo(10000L));
+                Assert.That(fields["total_matches_relation"], Is.EqualTo("lower_bound"));
+                Assert.That(fields["returned_matches"], Is.EqualTo(0));
+                Assert.That(fields["search_target"], Is.EqualTo("geo"));
+                Assert.That(fields["language"], Is.EqualTo("en"));
+                Assert.That(fields["page"], Is.EqualTo(2));
+                Assert.That(fields["page_size"], Is.EqualTo(10));
+                Assert.That(fields.ContainsKey("search_text"), Is.False);
+            }
+        }
+
         private static SearchHitResponse BuildEmptyResponse(string query, SearchTarget target, string lang)
         {
             return BuildHitResponse(query, target, lang, []);
@@ -532,21 +579,21 @@ namespace PxApi.UnitTests.ControllerTests
             };
         }
 
-        private static bool MatchesSearchScope(object state, string expectedQuery, string? expectedDbId = null)
+        private static bool MatchesSearchScope(object state, string? expectedDbId = null)
         {
             if (state is not Dictionary<string, object> scopeValues)
             {
                 return false;
             }
 
-            if (!scopeValues.TryGetValue(LoggerConsts.SEARCH_QUERY, out object? queryValue) || queryValue is not string actualQuery || actualQuery != expectedQuery)
+            if (scopeValues.ContainsKey(LoggerConsts.SEARCH_QUERY))
             {
                 return false;
             }
 
             if (expectedDbId is null)
             {
-                return !scopeValues.ContainsKey(LoggerConsts.DB_ID);
+                return !scopeValues.ContainsKey(LoggerConsts.DB_ID) && Equals(scopeValues["search_scope"], "global");
             }
 
             return scopeValues.TryGetValue(LoggerConsts.DB_ID, out object? dbValue) && dbValue is string actualDbId && actualDbId == expectedDbId;

@@ -69,6 +69,38 @@ Both are exposed as `DELETE` endpoints on `CacheController` (requires feature fl
 
 ## Concurrency
 
+### Request diagnostics
+
+Tracked query requests expose `DataCacheOutcome` (`exact_hit`, `superset_hit`,
+`miss`, `not_used`, or `unknown`) and thread-safe metadata/file-list hit/miss
+counters on their single completion event. Counters measure internal lookup
+work, not users, requested tables, or metadata endpoint requests. The first
+lookup initializes both hit/miss counters; untouched cache categories remain
+absent. Search enrichment can accumulate counters concurrently. Cache hits do
+not imply a successfully written response.
+
+[CachedDataSource](../../PxApi/Caching/CachedDataSource.cs) reports actual lookup
+decisions through the optional, transport-neutral
+[ICacheObserver](../../PxApi/Caching/ICacheObserver.cs). It does not depend on
+`HttpContext`, `IHttpContextAccessor`, or `QueryObservation`. Manual/background
+callers can omit the observer without changing cache behavior.
+
+The composition root registers
+[HttpCacheObserver](../../PxApi/Services/HttpCacheObserver.cs) as a stateless
+singleton adapter. Only this adapter accesses the current HTTP feature, resolving
+it on each call rather than retaining request state. It forwards decisions to
+`QueryObservation` when a tracked request exists and otherwise does nothing.
+Background cache operations and infrastructure endpoints emit no user completions.
+
+Cache lifetimes, validity checks, loading and superset slicing are unchanged.
+Routine hit/miss Debug messages are no longer emitted by `CachedDataSource`,
+which has no logger dependency. Lookup outcomes are reported only through the
+observer; without an observer, including untracked/background work using the
+HTTP adapter, there are no routine outcome logs. Detailed failure diagnostics
+remain at the connector and request-handling boundaries. Canonical user demand
+belongs to the controller's completion fields, not each enriched table's cache
+work.
+
 The `Task<T>` storage pattern in `DatabaseCache` prevents cache stampede. When multiple concurrent requests hit the same cache miss, only one request triggers the actual data fetch. All other requests await the same `Task<T>`, sharing the result.
 
 ## Data Flow

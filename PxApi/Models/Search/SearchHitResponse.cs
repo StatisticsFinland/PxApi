@@ -24,5 +24,8 @@ namespace PxApi.Models.Search
         /// </summary>
         [Required]
         public required PagingInfo PagingInfo { get; set; }
+
+        internal long? ObservedTotalMatches { get; set; }
+        internal string TotalMatchesRelation { get; set; } = "unknown";
     }
 }

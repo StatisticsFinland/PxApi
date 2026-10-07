@@ -11,7 +11,7 @@ using System.Text;
 namespace PxApi.Caching
 {
     /// <inheritdoc/>
-    public class CachedDataSource(IDataBaseConnectorFactory dbConnectorFactory, DatabaseCache cache, ILogger<CachedDataSource> logger) : ICachedDataSource
+    public class CachedDataSource(IDataBaseConnectorFactory dbConnectorFactory, DatabaseCache cache, ICacheObserver? cacheObserver = null) : ICachedDataSource
     {
         private const string GROUP_ALIAS_PREFIX = "Alias_"; // Files like Alias_fi.txt inside group folder
         private const string GROUP_ALIAS_SUFFIX = ".txt";
@@ -43,11 +43,11 @@ namespace PxApi.Caching
         {
             if (cache.TryGetFileList(dataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? files))
             {
-                logger.LogDebug("File list cache hit.");
+                cacheObserver?.RecordFileListLookup(true);
                 return await files!;
             }
 
-            logger.LogDebug("File list cache miss. Reading from database.");
+            cacheObserver?.RecordFileListLookup(false);
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(dataBase);
             Task<ImmutableSortedDictionary<string, PxFileRef>> fileListTask = dbConnector.GetAllFilesAsync(ct)
                 .ContinueWith(t =>
@@ -58,7 +58,7 @@ namespace PxApi.Caching
                         fileDict.TryAdd(file.Id, file);
                     }
                     return fileDict.ToImmutableSortedDictionary();
-                });
+                }, CancellationToken.None);
 
             cache.SetFileList(dataBase, fileListTask);
             return await fileListTask;
@@ -100,7 +100,7 @@ namespace PxApi.Caching
             {
                 if (await CheckCacheValidity(pxFile, cached!.Value, ct))
                 {
-                    logger.LogDebug("Data cache exact hit.");
+                    cacheObserver?.RecordDataCacheHit(isSuperset: false);
                     return await data!;
                 }
                 cache.TryRemoveMeta(pxFile);
@@ -109,7 +109,7 @@ namespace PxApi.Caching
             {
                 if (await CheckCacheValidity(pxFile, cached!.Value, ct))
                 {
-                    logger.LogDebug("Data cache superset hit.");
+                    cacheObserver?.RecordDataCacheHit(isSuperset: true);
                     DataIndexer indexer = new(superMap!, map);
                     DoubleDataValue[] result = new DoubleDataValue[indexer.DataLength];
                     DoubleDataValue[] superDataArray = await superData!;
@@ -121,7 +121,7 @@ namespace PxApi.Caching
                 cache.TryRemoveMeta(pxFile);
             }
 
-            logger.LogDebug("Data cache miss. Reading from database.");
+            cacheObserver?.RecordDataCacheMiss();
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
             MetaCacheContainer metaContainer = await GetMetaContainer(pxFile, ct);
             Task<DoubleDataValue[]> dataTask = dbConnector.ReadDataAsync(pxFile, map, await metaContainer.Metadata, ct);
@@ -165,11 +165,11 @@ namespace PxApi.Caching
             if (cache.TryGetMetadata(pxFile, out MetaCacheContainer? metaContainer) &&
                 await CheckCacheValidity(pxFile, metaContainer!.CachedUtc, ct))
             {
-                logger.LogDebug("Metadata cache hit.");
-                return metaContainer!;
+                cacheObserver?.RecordMetadataLookup(true);
+                return metaContainer;
             }
 
-            logger.LogDebug("Metadata cache miss. Reading from database.");
+            cacheObserver?.RecordMetadataLookup(false);
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
             Task<IReadOnlyMatrixMetadata> meta = dbConnector.ReadMetadataAsync(pxFile, ct);
             metaContainer = new MetaCacheContainer(meta);

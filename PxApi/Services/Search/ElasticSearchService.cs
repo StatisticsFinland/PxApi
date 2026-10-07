@@ -5,6 +5,7 @@ using PxApi.Configuration;
 using PxApi.Exceptions;
 using PxApi.Models;
 using PxApi.Models.Search;
+using PxApi.Utilities;
 using MatchType = PxApi.Models.Search.MatchType;
 
 namespace PxApi.Services.Search
@@ -28,7 +29,7 @@ namespace PxApi.Services.Search
     /// and maps hits back to raw search hits for controller-level enrichment.
     /// </summary>
     [ExcludeFromCodeCoverage(Justification = "SDK-dependent members are tested indirectly; pure helpers are covered by unit tests.")]
-    public class ElasticSearchService(ElasticsearchClient client, SearchConfig searchConfig, ILogger<ElasticSearchService> logger) : ISearchService
+    public class ElasticSearchService(ElasticsearchClient client, SearchConfig searchConfig) : ISearchService
     {
         private const string FieldTitle = "title";
         private const string FieldSource = "source";
@@ -164,23 +165,31 @@ namespace PxApi.Services.Search
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogError(ex, "Elasticsearch request failed");
                 throw new SearchUnavailableException("Search backend is temporarily unavailable.", ex);
             }
 
             if (!esResponse.IsValidResponse)
             {
-                logger.LogError("Elasticsearch returned an invalid response: {DebugInformation}", esResponse.DebugInformation);
-                throw new SearchUnavailableException("Search backend returned an error.");
+                int? statusCode = esResponse.ApiCallDetails?.HttpStatusCode;
+                string? rawErrorType = esResponse.ElasticsearchServerError?.Error?.Type;
+                string? errorType = rawErrorType is null ? null : InputSanitizer.SanitizeInput(rawErrorType, 128);
+                throw new SearchUnavailableException(
+                    "Search backend returned an error.", esResponse.ApiCallDetails?.OriginalException, statusCode, errorType);
             }
 
-            long totalItems = esResponse.HitsMetadata?.Total?.Match(
+            long? observedTotal = esResponse.HitsMetadata?.Total?.Match(
                 totalHits => totalHits.Value,
-                value => value) ?? 0;
+                value => value);
+            long totalItems = observedTotal ?? 0;
+            string totalRelation = esResponse.HitsMetadata?.Total?.Match(
+                totalHits => totalHits.Relation.ToString().Equals("eq", StringComparison.OrdinalIgnoreCase) ? "exact" : "lower_bound",
+                _ => "exact") ?? "unknown";
             List<SearchHit> results = MapHits(esResponse.Hits);
 
             return new SearchHitResponse
             {
+                ObservedTotalMatches = observedTotal,
+                TotalMatchesRelation = totalRelation,
                 Query = new SearchQueryInfo
                 {
                     Q = query,

@@ -3,7 +3,7 @@ namespace PxApi.Configuration
     /// <summary>
     /// Configuration for Application Insights integration.
     /// Connection string can be provided via configuration or the APPLICATIONINSIGHTS_CONNECTION_STRING environment variable.
-    /// Log level filtering is controlled through the standard <c>Logging:ApplicationInsights:LogLevel</c> configuration section.
+    /// SDK 3 log level filtering uses the standard <c>Logging:OpenTelemetry:LogLevel</c> configuration section.
     /// </summary>
     public class ApplicationInsightsConfig
     {
@@ -12,6 +12,15 @@ namespace PxApi.Configuration
         /// Can be overridden by the APPLICATIONINSIGHTS_CONNECTION_STRING environment variable.
         /// </summary>
         public string? ConnectionString { get; }
+
+        /// <summary>SDK 3.x trace sampling ratio, between zero and one. Defaults to one.</summary>
+        public float SamplingRatio { get; }
+
+        /// <summary>Opt-in to sample logs using their trace's sampling decision.</summary>
+        public bool EnableTraceBasedLogsSampler { get; }
+
+        /// <summary>Explicit privacy opt-in to send security audit records to Application Insights.</summary>
+        public bool IncludeAuditLogs { get; }
 
         /// <summary>
         /// Initializes ApplicationInsights configuration from the provided configuration section.
@@ -22,6 +31,10 @@ namespace PxApi.Configuration
         {
             ConnectionString = Environment.GetEnvironmentVariable(envVarName)
                ?? configurationSection.GetValue<string>(nameof(ConnectionString));
+                float ratio = configurationSection.GetValue(nameof(SamplingRatio), 1f);
+                SamplingRatio = float.IsFinite(ratio) && ratio is >= 0 and <= 1 ? ratio : 1f;
+                EnableTraceBasedLogsSampler = configurationSection.GetValue(nameof(EnableTraceBasedLogsSampler), false);
+                IncludeAuditLogs = configurationSection.GetValue(nameof(IncludeAuditLogs), false);
         }
 
         /// <summary>

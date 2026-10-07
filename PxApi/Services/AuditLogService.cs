@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Primitives;
+using PxApi.Utilities;
 
 namespace PxApi.Services
 {
@@ -16,7 +17,7 @@ namespace PxApi.Services
 
     /// <summary>
     /// Implementation of <see cref="IAuditLogService"/> that gathers selected request header values and contextual information.
-    /// Uses a logging scope with the Category set to "Audit" so that NLog can route the event to the dedicated audit target.
+    /// Uses normalized audit fields; NLog routes the logger category to the dedicated audit target.
     /// </summary>
     public class AuditLogService : IAuditLogService
     {
@@ -53,19 +54,24 @@ namespace PxApi.Services
             {
                 if (httpContext.Request.Headers.TryGetValue(header, out StringValues value))
                 {
-                    context[header] = value.ToString();
+                    context[header] = SanitizeLogValue(value.ToString());
                 }
             }
 
-            context["Category"] = "Audit";
+            context[LoggerConsts.Audit.Fields.Category] = LoggerConsts.Audit.CategoryValue;
 
             using (_logger.BeginScope(context))
             {
-                _logger.LogInformation("Audit Event: user={User}, clientIP={ClientIP}",
-                    httpContext.User.Identity?.Name ?? "Anonymous",
-                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown"
+                _logger.LogInformation("Audit event: user={user}, client_ip={client_ip}",
+                    SanitizeLogValue(httpContext.User.Identity?.Name ?? LoggerConsts.Audit.Anonymous),
+                    httpContext.Connection.RemoteIpAddress?.ToString() ?? LoggerConsts.Audit.Unknown
                     );
             }
+        }
+
+        private static string SanitizeLogValue(string value)
+        {
+            return string.Concat(value.Select(character => char.IsControl(character) || character is '\u2028' or '\u2029' ? ' ' : character));
         }
     }
 }

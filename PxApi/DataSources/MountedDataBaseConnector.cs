@@ -144,7 +144,6 @@ namespace PxApi.DataSources
                 {
                     if (!File.Exists(fullPath))
                     {
-                        Logger.LogWarning("Aux file {AuxFile} not found", fullPath);
                         throw new FileNotFoundException("Auxiliary file not found", fullPath);
                     }
                     return new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);

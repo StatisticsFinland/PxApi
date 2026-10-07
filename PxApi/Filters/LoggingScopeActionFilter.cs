@@ -16,7 +16,7 @@ namespace PxApi.Filters
             string controllerName = context.Controller.GetType().Name;
             string actionName = context.ActionDescriptor is ControllerActionDescriptor descriptor
                 ? descriptor.ActionName
-                : context.ActionDescriptor.DisplayName ?? "Unknown";
+                : context.ActionDescriptor.DisplayName ?? LoggerConsts.UNKNOWN_PLACEHOLDER;
 
             using (logger.BeginScope(new Dictionary<string, object>
             {
