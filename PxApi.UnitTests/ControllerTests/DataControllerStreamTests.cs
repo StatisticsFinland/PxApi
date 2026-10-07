@@ -281,8 +281,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             IMemoryCache memoryCache = new MemoryCache(new MemoryCacheOptions());
             DatabaseCache databaseCache = new(memoryCache);
-            Mock<ILogger<CachedDataSource>> cachedDataSourceLoggerMock = new();
-            _cachedDataSource = new CachedDataSource(_mockConnectorFactory.Object, databaseCache, cachedDataSourceLoggerMock.Object);
+            _cachedDataSource = new CachedDataSource(_mockConnectorFactory.Object, databaseCache);
             
             _controller = new DataController(_cachedDataSource, _mockLogger.Object, _mockAuditLogService.Object)
             {

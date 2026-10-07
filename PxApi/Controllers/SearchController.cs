@@ -28,6 +28,7 @@ namespace PxApi.Controllers
     public class SearchController(ISearchService searchService, ICachedDataSource cachedDataSource, ILogger<SearchController> logger, IAuditLogService auditLogger) : ControllerBase
     {
         private const int MAX_PAGE_SIZE = 100;
+        private const LoggerConsts.Query.SearchScope GLOBAL_SCOPE = LoggerConsts.Query.SearchScope.Global;
 
         /// <summary>
         /// Maximum allowed length for the user-provided search query.
@@ -73,22 +74,32 @@ namespace PxApi.Controllers
             [FromQuery][Range(1, 100)] int pageSize = 20,
             CancellationToken ct = default)
         {
+            QueryObservation? observation = BeginObservation(GLOBAL_SCOPE);
+            observation?.Set(LoggerConsts.Query.Fields.Page, page);
             if (string.IsNullOrWhiteSpace(q)) return BadRequest("The query parameter 'q' is required.");
             if (q.Length > MAX_QUERY_LENGTH) return BadRequest($"Query too long. Maximum length is {MAX_QUERY_LENGTH} characters.");
             if (page < 1 || pageSize < 1) return BadRequest("Invalid paging values.");
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
+            observation?.Set(LoggerConsts.Query.Fields.PageSize, pageSize);
 
             AppSettings settings = AppSettings.Active;
             string actualLang = lang ?? settings.Localization.DefaultLanguage;
-            if (!settings.Localization.SupportedLanguages.Contains(actualLang)) return BadRequest("The requested language is not supported.");
+            if (!settings.Localization.SupportedLanguages.Contains(actualLang))
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidLanguage);
+                return BadRequest("The requested language is not supported.");
+            }
+            observation?.Set(LoggerConsts.Query.Fields.Language, actualLang);
 
             SearchTarget? parsedTarget = ParseScope(scope);
             if (parsedTarget is null) return BadRequest(AcceptedScopeMessage);
             SearchTarget target = parsedTarget.Value;
+            observation?.Set(LoggerConsts.Query.Fields.SearchTarget, target.ToString().ToLowerInvariant());
             string sanitizedQuery = InputSanitizer.SanitizeInput(q, MAX_QUERY_LENGTH);
             if (string.IsNullOrWhiteSpace(sanitizedQuery)) return BadRequest(BlankSanitizedQueryMessage);
 
-            using (logger.BeginSearchScope(sanitizedQuery))
+            observation?.SearchText(sanitizedQuery);
+            using (logger.BeginScope(new Dictionary<string, object> { [LoggerConsts.Query.Fields.SearchScope] = LoggerConsts.Query.Value(GLOBAL_SCOPE) }))
             {
                 auditLogger.LogAuditEvent();
 
@@ -98,16 +109,18 @@ namespace PxApi.Controllers
                     // so user input is safe from injection. Length is validated above.
                     SearchHitResponse response = await searchService.SearchAsync(sanitizedQuery, target, actualLang, page, pageSize, ct);
                     SearchResponse enrichedResponse = await BuildSearchResponseAsync(response, actualLang, ct);
-                    logger.LogInformation("Search completed with {NumOfResults} results.", response.PagingInfo.TotalItems);
+                    ObserveResults(observation, response, enrichedResponse);
                     return Ok(enrichedResponse);
                 }
                 catch (SearchUnavailableException ex)
                 {
-                    logger.LogError(ex, "Search backend unavailable.");
+                    observation?.Reject(LoggerConsts.Query.ErrorCode.SearchUnavailable);
+                    logger.LogError(ex, "Search backend unavailable. Backend status: {backend_status_code}, error type: {backend_error_type}.", ex.StatusCode, ex.ErrorType);
                     return StatusCode(StatusCodes.Status503ServiceUnavailable, "Search is temporarily unavailable.");
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
+                    observation?.Reject(LoggerConsts.Query.ErrorCode.MetadataUnavailable);
                     logger.LogError(ex, "Failed to enrich search results.");
                     return StatusCode(StatusCodes.Status500InternalServerError, "A matched table could not be loaded.");
                 }
@@ -146,24 +159,34 @@ namespace PxApi.Controllers
             [FromQuery][Range(1, 100)] int pageSize = 20,
             CancellationToken ct = default)
         {
+            QueryObservation? observation = BeginObservation(LoggerConsts.Query.SearchScope.Database);
+            observation?.Set(LoggerConsts.Query.Fields.Page, page);
             if (string.IsNullOrWhiteSpace(q)) return BadRequest("The query parameter 'q' is required.");
             if (q.Length > MAX_QUERY_LENGTH) return BadRequest($"Query too long. Maximum length is {MAX_QUERY_LENGTH} characters.");
             if (page < 1 || pageSize < 1) return BadRequest("Invalid paging values.");
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
+            observation?.Set(LoggerConsts.Query.Fields.PageSize, pageSize);
 
             AppSettings settings = AppSettings.Active;
             string actualLang = lang ?? settings.Localization.DefaultLanguage;
-            if (!settings.Localization.SupportedLanguages.Contains(actualLang)) return BadRequest("The requested language is not supported.");
+            if (!settings.Localization.SupportedLanguages.Contains(actualLang))
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidLanguage);
+                return BadRequest("The requested language is not supported.");
+            }
+            observation?.Set(LoggerConsts.Query.Fields.Language, actualLang);
 
             SearchTarget? parsedTarget = ParseScope(scope);
             if (parsedTarget is null) return BadRequest(AcceptedScopeMessage);
             SearchTarget target = parsedTarget.Value;
+            observation?.Set(LoggerConsts.Query.Fields.SearchTarget, target.ToString().ToLowerInvariant());
             string sanitizedQuery = InputSanitizer.SanitizeInput(q, MAX_QUERY_LENGTH);
             if (string.IsNullOrWhiteSpace(sanitizedQuery)) return BadRequest(BlankSanitizedQueryMessage);
 
             DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
             if (dbRef is null)
             {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.DatabaseNotFound);
                 using (logger.BeginDbNotFoundScope())
                 {
                     auditLogger.LogAuditEvent();
@@ -171,7 +194,9 @@ namespace PxApi.Controllers
                 }
             }
 
-            using (logger.BeginSearchScope(sanitizedQuery, dbRef.Value.Id))
+            observation?.Set(LoggerConsts.Query.Fields.DatabaseId, dbRef.Value.Id);
+            observation?.SearchText(sanitizedQuery);
+            using (logger.BeginDbScope(dbRef.Value.Id))
             {
                 auditLogger.LogAuditEvent();
 
@@ -181,16 +206,18 @@ namespace PxApi.Controllers
                     // so user input is safe from injection. Length is validated above.
                     SearchHitResponse response = await searchService.SearchDatabaseAsync(dbRef.Value.Id, sanitizedQuery, target, actualLang, page, pageSize, ct);
                     SearchResponse enrichedResponse = await BuildSearchResponseAsync(response, actualLang, ct);
-                    logger.LogInformation("Search completed with {NumOfResults} results.", response.PagingInfo.TotalItems);
+                    ObserveResults(observation, response, enrichedResponse);
                     return Ok(enrichedResponse);
                 }
                 catch (SearchUnavailableException ex)
                 {
-                    logger.LogError(ex, "Search backend unavailable.");
+                    observation?.Reject(LoggerConsts.Query.ErrorCode.SearchUnavailable);
+                    logger.LogError(ex, "Search backend unavailable. Backend status: {backend_status_code}, error type: {backend_error_type}.", ex.StatusCode, ex.ErrorType);
                     return StatusCode(StatusCodes.Status503ServiceUnavailable, "Search is temporarily unavailable.");
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
+                    observation?.Reject(LoggerConsts.Query.ErrorCode.MetadataUnavailable);
                     logger.LogError(ex, "Failed to enrich search results.");
                     return StatusCode(StatusCodes.Status500InternalServerError, "A matched table could not be loaded.");
                 }
@@ -206,6 +233,7 @@ namespace PxApi.Controllers
         [ProducesResponseType(200)]
         public IActionResult HeadSearch()
         {
+            BeginObservation(GLOBAL_SCOPE);
             auditLogger.LogAuditEvent();
             return Ok();
         }
@@ -219,6 +247,7 @@ namespace PxApi.Controllers
         [ProducesResponseType(200)]
         public IActionResult OptionsSearch()
         {
+            BeginObservation(GLOBAL_SCOPE);
             Response.Headers.Allow = "GET,HEAD,OPTIONS";
             return Ok();
         }
@@ -235,9 +264,11 @@ namespace PxApi.Controllers
         [ProducesResponseType(404)]
         public IActionResult HeadSearchDatabase(string database)
         {
+            QueryObservation? observation = BeginObservation(LoggerConsts.Query.SearchScope.Database);
             DataBaseRef? dbRef = cachedDataSource.GetDataBaseReference(database);
             if (dbRef is null)
             {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.DatabaseNotFound);
                 using (logger.BeginDbNotFoundScope())
                 {
                     auditLogger.LogAuditEvent();
@@ -245,6 +276,7 @@ namespace PxApi.Controllers
                 }
             }
 
+            observation?.Set(LoggerConsts.Query.Fields.DatabaseId, dbRef.Value.Id);
             using (logger.BeginDbScope(dbRef.Value.Id))
             {
                 auditLogger.LogAuditEvent();
@@ -263,8 +295,29 @@ namespace PxApi.Controllers
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Needs to match route signature.")]
         public IActionResult OptionsSearchDatabase(string database)
         {
+            BeginObservation(LoggerConsts.Query.SearchScope.Database);
             Response.Headers.Allow = "GET,HEAD,OPTIONS";
             return Ok();
+        }
+
+        private QueryObservation? BeginObservation(LoggerConsts.Query.SearchScope scope)
+        {
+            QueryObservation? observation = QueryObservation.Get(HttpContext);
+            if (observation is not null)
+            {
+                observation.ActionEntered = true;
+                observation.Set(LoggerConsts.Query.Fields.SearchScope, scope);
+            }
+            return observation;
+        }
+
+        private static void ObserveResults(QueryObservation? observation, SearchHitResponse hits, SearchResponse response)
+        {
+            observation?.Set(LoggerConsts.Query.Fields.TotalMatches, hits.ObservedTotalMatches);
+            observation?.Set(LoggerConsts.Query.Fields.TotalMatchesRelation, hits.TotalMatchesRelation);
+            observation?.Set(LoggerConsts.Query.Fields.ReturnedMatches, response.Results.Count);
+            observation?.Set(LoggerConsts.Query.Fields.Format, "application/json");
+            observation?.ResultIds(LoggerConsts.Query.Fields.ResultTableIds, response.Results.Select(item => item.Database.Id + "/" + item.CanonicalTableId));
         }
 
         private static SearchTarget? ParseScope(string? scope)
@@ -310,6 +363,7 @@ namespace PxApi.Controllers
 
             return new SearchResultItem
             {
+                CanonicalTableId = resolvedFileReference.Id,
                 Score = hit.Score,
                 Database = hit.Database,
                 Table = summary,

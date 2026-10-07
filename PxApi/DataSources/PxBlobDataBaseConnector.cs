@@ -40,7 +40,7 @@ namespace PxApi.DataSources
                     [LoggerConsts.CONTAINER_NAME] = ContainerName
                 }))
             {
-                Logger.LogDebug("Getting last write time for PX file {FileId} from blob storage", file.Id);
+                Logger.LogDebug("Getting last write time for PX file {file_id} from blob storage", file.Id);
 
                 BlobContainerClient containerClient = GetContainerClient();
                 string normalizedPath = GetBlobName(file.Id, DataBase, PxBlobPrefix, file.GetHierarchyLevels());
@@ -48,8 +48,7 @@ namespace PxApi.DataSources
 
                 if (!await blobClient.ExistsAsync(ct))
                 {
-                    Logger.LogError("PX file {FileId} not found in blob storage", file.Id);
-                    throw new FileNotFoundException($"File {file.Id} not found in blob storage container.");
+                    throw new FileNotFoundException($"File {file.Id} not found in database {DataBase.Id}, blob storage container {ContainerName}, path {normalizedPath}.");
                 }
 
                 BlobProperties properties = await blobClient.GetPropertiesAsync(cancellationToken: ct);

@@ -41,7 +41,7 @@ namespace PxApi.Controllers
                     IDataBaseConnector connector = scope.ServiceProvider.GetRequiredKeyedService<IDataBaseConnector>(dbId);
                     await connector.CheckConnectionAsync(ct);
 
-                    logger.LogDebug("Database {DatabaseId} health check passed", dbId);
+                    logger.LogDebug("Database {database_id} health check passed", dbId);
                     databaseStatuses.Add(new DatabaseHealthStatus(dbId, HealthStatus.Healthy));
                 }
                 catch (OperationCanceledException)
@@ -50,7 +50,7 @@ namespace PxApi.Controllers
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex, "Database {DatabaseId} health check failed", dbId);
+                    logger.LogWarning(ex, "Database {database_id} health check failed", dbId);
                     databaseStatuses.Add(new DatabaseHealthStatus(dbId, HealthStatus.Unhealthy));
                     allHealthy = false;
                 }

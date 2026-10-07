@@ -26,6 +26,28 @@ namespace PxApi.UnitTests.ConfigurationTests
             {
                 Assert.That(config.IsEnabled, Is.False);
                 Assert.That(config.ConnectionString, Is.Null);
+                Assert.That(config.SamplingRatio, Is.EqualTo(1f));
+                Assert.That(config.EnableTraceBasedLogsSampler, Is.False);
+                Assert.That(config.IncludeAuditLogs, Is.False);
+            }
+        }
+
+        [Test]
+        public void Constructor_ExplicitTelemetryOptIns_AreRead()
+        {
+            IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ApplicationInsights:SamplingRatio"] = "0.5",
+                ["ApplicationInsights:EnableTraceBasedLogsSampler"] = "true",
+                ["ApplicationInsights:IncludeAuditLogs"] = "true"
+            }).Build();
+            ApplicationInsightsConfig config = new(configuration.GetSection("ApplicationInsights"), EnvVarName);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(config.SamplingRatio, Is.EqualTo(0.5f));
+                Assert.That(config.EnableTraceBasedLogsSampler, Is.True);
+                Assert.That(config.IncludeAuditLogs, Is.True);
             }
         }
 

@@ -70,6 +70,8 @@ Supports two read modes controlled by `BlobReadModeConfig`:
 The read mode is selected by `BlobReadModeSelector` based on request density (ratio of requested cells to total cells) and configured thresholds.
 
 Throws `BinaryBlobSynchronizationException` when metadata references a binary blob that hasn't been synchronized yet.
+Its optional `BlobPath` identifies the missing container/blob location for the
+handling caller's diagnostic. Existing two-argument construction remains valid.
 
 ### BlobDataBaseConnector (Base)
 
@@ -86,6 +88,21 @@ Connectors are registered as keyed services in DI, one per configured database I
 **File**: `PxApi/DataSources/DataBaseConnectorFactoryImpl.cs`
 
 `IDataBaseConnectorFactory` resolves the correct keyed connector at runtime by database ID.
+
+## Failure Diagnostics
+
+Connectors and the factory propagate ordinary storage/resolution failures
+without logging the same failure before throwing. Missing-file exceptions retain
+the relevant database and storage location; malformed binary metadata retains
+its inner `JsonException` and identifies the selected blob and container.
+Missing auxiliary files preserve their location through `FileNotFoundException`.
+
+The handling controller, global error handler, or background operation is
+responsible for the exception diagnostic. Security warnings and recoverable
+operational warnings remain at the connector. No HTTP context or request
+observation dependency is introduced into the storage layer. HTTP response
+status codes and public error messages are unchanged; storage locations are not
+returned to clients.
 
 ## Key Value Types
 

@@ -68,6 +68,41 @@ namespace PxApi.UnitTests.Services
         }
 
         [Test]
+        public void LogAuditEvent_HostileHeader_NeutralizesControlsWithoutChangingOrdinaryValues()
+        {
+            IConfiguration configuration = BuildConfig(true, "X-Selected");
+            _httpContextAccessor.HttpContext = new DefaultHttpContext();
+            _httpContextAccessor.HttpContext.Request.Headers["X-Selected"] = "ordinary\r\n\t\0\u2028{\"Category\":\"Forged\"}";
+            AuditLogService service = new(_httpContextAccessor, _testLogger, configuration);
+
+            service.LogAuditEvent();
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(_testLogger.Entries, Has.Count.EqualTo(1));
+                Assert.That(_testLogger.LastScope!["category"], Is.EqualTo("audit"));
+                Assert.That(_testLogger.LastScope["X-Selected"], Is.EqualTo("ordinary     {\"Category\":\"Forged\"}"));
+            }
+        }
+
+        [Test]
+        public void LogAuditEvent_AnonymousRequest_UsesNormalizedFallbacks()
+        {
+            _httpContextAccessor.HttpContext = new DefaultHttpContext();
+            AuditLogService service = new(_httpContextAccessor, _testLogger, BuildConfig(true));
+
+            service.LogAuditEvent();
+
+            Dictionary<string, object> fields = _testLogger.Entries.Single().State.ToDictionary();
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(_testLogger.LastScope!["category"], Is.EqualTo("audit"));
+                Assert.That(fields["user"], Is.EqualTo("anonymous"));
+                Assert.That(fields["client_ip"], Is.EqualTo("unknown"));
+            }
+        }
+
+        [Test]
         public void LogAuditEvent_Disabled_DoesNotLog()
         {
             // Arrange
@@ -117,13 +152,13 @@ namespace PxApi.UnitTests.Services
             Assert.That(scope, Is.Not.Null);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(scope!.ContainsKey("Category"), Is.True);
-                Assert.That(scope["Category"], Is.EqualTo("Audit"));
+                Assert.That(scope!.ContainsKey("category"), Is.True);
+                Assert.That(scope["category"], Is.EqualTo("audit"));
                 Assert.That(scope.ContainsKey("X-Correlation-Id"), Is.True);
                 Assert.That(scope["X-Correlation-Id"], Is.EqualTo("abc123"));
                 Assert.That(scope.ContainsKey("X-Ignored"), Is.False);
                 Assert.That(scope.ContainsKey("X-Request-Id"), Is.False); // Header whitelisted but absent
-            };
+            }
 
             // Assert log content
             (LogLevel Level, EventId EventId, IReadOnlyList<KeyValuePair<string, object>> State, Exception? Exception) infoEntry
@@ -132,11 +167,11 @@ namespace PxApi.UnitTests.Services
             Dictionary<string, object> dict = infoEntry.State.ToDictionary(k => k.Key, v => v.Value);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(dict.ContainsKey("User"), Is.True);
-                Assert.That(dict.ContainsKey("ClientIP"), Is.True);
-                Assert.That(dict["User"], Is.EqualTo("TestUser"));
-                Assert.That(dict["ClientIP"], Is.EqualTo("127.0.0.1"));
-            };
+                Assert.That(dict.ContainsKey("user"), Is.True);
+                Assert.That(dict.ContainsKey("client_ip"), Is.True);
+                Assert.That(dict["user"], Is.EqualTo("TestUser"));
+                Assert.That(dict["client_ip"], Is.EqualTo("127.0.0.1"));
+            }
         }
     }
 }

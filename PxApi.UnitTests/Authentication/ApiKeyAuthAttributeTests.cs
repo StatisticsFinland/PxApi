@@ -126,6 +126,7 @@ namespace PxApi.UnitTests.Authentication
             {
                 Assert.That(_nextCalled, Is.True);
                 Assert.That(actionContext.Result, Is.Null);
+                Assert.That(_mockLogger.Invocations.Where(invocation => invocation.Method.Name == nameof(ILogger.Log)), Is.Empty);
             }
         }
 
@@ -133,14 +134,7 @@ namespace PxApi.UnitTests.Authentication
         public async Task OnActionExecutionAsync_WhenCacheApiKeyAuthDisabled_ShouldProceed()
         {
             // Arrange
-            Dictionary<string, string?> configData = TestConfigFactory.Merge(
-                TestConfigFactory.Base(),
-                new Dictionary<string, string?>
-                {
-                    ["Authentication:Cache:Key"] = null,
-                }
-                );
-            TestConfigFactory.BuildAndLoad(configData);
+            SetupAppSettingsWithApiKeyAuthEnabled("Data", "X-Data-API-Key");
             ActionExecutingContext actionContext = CreateActionContext(new CacheController());
 
             // Act
@@ -151,6 +145,7 @@ namespace PxApi.UnitTests.Authentication
             {
                 Assert.That(_nextCalled, Is.True);
                 Assert.That(actionContext.Result, Is.Null);
+                Assert.That(_mockLogger.Invocations.Where(invocation => invocation.Method.Name == nameof(ILogger.Log)), Is.Empty);
             }
         }
 

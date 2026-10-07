@@ -71,7 +71,7 @@ namespace PxApi.Controllers
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error clearing cache for PX file: {Message}", ex.Message);
+                    _logger.LogError(ex, "Error clearing cache for PX file: {message}", ex.Message);
                     return StatusCode(500, "Error clearing cache for PX file");
                 }
             }
@@ -105,12 +105,12 @@ namespace PxApi.Controllers
                 try
                 {
                     await _cachedConnector.ClearDatabaseCacheAsync(dbRef.Value);
-                    _logger.LogInformation("All cache entries for database {DatabaseId} cleared successfully", dbRef.Value.Id);
+                    _logger.LogInformation("All cache entries for database cleared successfully");
                     return Ok($"All cache entries for database '{dbRef.Value.Id}' cleared successfully");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error clearing all cache entries for database {DatabaseId}: {Message}", dbRef.Value.Id, ex.Message);
+                    _logger.LogError(ex, "Error clearing all cache entries for database: {message}", ex.Message);
                     return StatusCode(500, $"Error clearing all cache entries for database '{dbRef.Value.Id}'");
                 }
             }

@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging.ApplicationInsights;
+using OpenTelemetry.Logs;
 using Microsoft.FeatureManagement;
 using Microsoft.OpenApi;
 using NLog;
 using NLog.Web;
+using NLog.Extensions.Logging;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.DataSources;
@@ -43,34 +44,18 @@ namespace PxApi
 
             // Configure NLog integration AFTER configuration is available and folder exists.
             builder.Logging.ClearProviders();
-            builder.Host.UseNLog();
+            builder.Host.UseNLog(new NLogAspNetCoreOptions { CaptureEventId = EventIdCaptureType.None });
 
             Logger logger = LogManager.GetCurrentClassLogger();
             try
             {
-                logger.Debug("Main called and logger initialized. Environment={Environment} AuditEnabled={AuditEnabled}",
+                logger.Debug("Main called and logger initialized. Environment={environment} AuditEnabled={audit_enabled}",
                     builder.Environment.EnvironmentName,
                     builder.Configuration.GetValue<bool>("LogOptions:AuditLog:Enabled"));
 
                 // Configure Application Insights if connection string is available
                 ApplicationInsightsConfig aiConfig = AppSettings.Active.ApplicationInsights;
-                if (aiConfig.IsEnabled)
-                {
-                    // Add Application Insights telemetry
-                    builder.Services.AddApplicationInsightsTelemetry();
-
-                    // Remove the default Application Insights logger filter rule to allow
-                    // the log level to be controlled via the Logging:ApplicationInsights:LogLevel configuration section
-                    builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
-                    {
-                        LoggerFilterRule? defaultRule = options.Rules.FirstOrDefault(rule => rule.ProviderName
-                            == nameof(ApplicationInsightsLoggerProvider));
-                        if (defaultRule is not null)
-                        {
-                            options.Rules.Remove(defaultRule);
-                        }
-                    });
-                }
+                AddApplicationInsights(builder.Logging, aiConfig);
 
                 // Add services to the container.
                 AddServices(builder.Services);
@@ -100,10 +85,12 @@ namespace PxApi
                 app.UseSwaggerUI(c =>
                 {
                     c.SwaggerEndpoint("openapi/document.json", "PxApi");
-                    app.Logger.LogInformation("Swagger UI configured with server {RootUrl}", AppSettings.Active.RootUrl);
+                    app.Logger.LogInformation("Swagger UI configured with server {root_url}", AppSettings.Active.RootUrl);
                     c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
                 });
 
+                app.UseRouting();
+                app.UseMiddleware<QueryCompletionMiddleware>();
                 app.UseExceptionHandler("/error");
 
                 app.UseHttpsRedirection();
@@ -117,7 +104,7 @@ namespace PxApi
 
                 app.MapControllers();
 
-                logger.Info("Now listening on: {RootUrl}", AppSettings.Active.RootUrl);
+                logger.Info("Now listening on: {root_url}", AppSettings.Active.RootUrl);
 
                 await app.RunAsync();
             }
@@ -132,8 +119,29 @@ namespace PxApi
             }
         }
 
-        [ExcludeFromCodeCoverage] // Not worth it to make public for testing.
-        private static void AddServices(IServiceCollection serviceCollection)
+        internal static void AddApplicationInsights(ILoggingBuilder logging, ApplicationInsightsConfig configuration)
+        {
+            if (!configuration.IsEnabled) return;
+
+            logging.Services.AddApplicationInsightsTelemetry(options =>
+            {
+                options.ConnectionString = configuration.ConnectionString;
+                options.SamplingRatio = configuration.SamplingRatio;
+                options.EnableTraceBasedLogsSampler = configuration.EnableTraceBasedLogsSampler;
+            });
+            if (!configuration.IncludeAuditLogs)
+                logging.AddFilter<OpenTelemetryLoggerProvider>(typeof(AuditLogService).FullName, Microsoft.Extensions.Logging.LogLevel.None);
+            logging.Services.Configure<OpenTelemetryLoggerOptions>(options => options.IncludeScopes = true);
+            logging.Services.Configure<LoggerFilterOptions>(options =>
+            {
+                LoggerFilterRule? defaultRule = options.Rules.FirstOrDefault(rule => rule.CategoryName is null &&
+                    (rule.ProviderName == typeof(OpenTelemetryLoggerProvider).FullName || rule.ProviderName == nameof(OpenTelemetryLoggerProvider)));
+                if (defaultRule is not null) options.Rules.Remove(defaultRule);
+            });
+        }
+
+        [ExcludeFromCodeCoverage]
+        internal static void AddServices(IServiceCollection serviceCollection)
         {
             // Add feature management first and API explorer conventions to control Swagger visibility
             serviceCollection.AddFeatureManagement();
@@ -142,6 +150,7 @@ namespace PxApi
             {
                 options.Filters.Add<LoggingScopeActionFilter>();
                 options.Filters.Add<OperationCanceledExceptionFilter>();
+                options.Filters.Add<QueryResponseExecutionFilter>();
                 options.Conventions.Add(new ApiExplorerConventionsFactory());
             })
             .AddJsonOptions(options =>
@@ -256,6 +265,7 @@ namespace PxApi
 
             // Register HttpContextAccessor and audit logging service
             serviceCollection.AddHttpContextAccessor();
+            serviceCollection.AddSingleton<ICacheObserver, HttpCacheObserver>();
             serviceCollection.AddScoped<IAuditLogService, AuditLogService>();
 
             // Register search service: use Elasticsearch when the feature is enabled,

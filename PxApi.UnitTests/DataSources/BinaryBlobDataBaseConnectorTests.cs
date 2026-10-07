@@ -120,15 +120,20 @@ namespace PxApi.UnitTests.DataSources
             PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             // Act & Assert
-            Assert.ThrowsAsync<FileNotFoundException>(async () => await connector.ReadMetadataAsync(fileRef));
+            Assert.That(async () => await connector.ReadMetadataAsync(fileRef),
+                Throws.TypeOf<FileNotFoundException>().With.Message.Contains(fileRef.Id)
+                    .And.Message.Contains(_dbRef.Id).And.Message.Contains("test-container"));
+            VerifyNoFailureLogged();
         }
 
-        [Test]
-        public void ReadMetadataAsync_WhenMetadataIsNull_ThrowsInvalidDataException()
+        [TestCase("")]
+        [TestCase("null")]
+        [TestCase("{")]
+        public void ReadMetadataAsync_WhenMetadataIsInvalid_ThrowsWithContextWithoutLogging(string json)
         {
             // Arrange
             const string blobName = "meta/testdb/table1_202501010000.meta.json";
-            byte[] metaBytes = [];
+            byte[] metaBytes = System.Text.Encoding.UTF8.GetBytes(json);
 
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, [blobName]);
             connector.AddBlobContent(blobName, metaBytes);
@@ -136,7 +141,10 @@ namespace PxApi.UnitTests.DataSources
             PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             // Act & Assert
-            Assert.ThrowsAsync<InvalidDataException>(async () => await connector.ReadMetadataAsync(fileRef));
+            Assert.That(async () => await connector.ReadMetadataAsync(fileRef),
+                Throws.TypeOf<InvalidDataException>().With.Message.Contains(blobName)
+                    .And.Message.Contains(_dbRef.Id).And.Message.Contains("test-container"));
+            VerifyNoFailureLogged();
         }
 
         #endregion
@@ -181,8 +189,12 @@ namespace PxApi.UnitTests.DataSources
             PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             // Act & Assert
-            Assert.ThrowsAsync<BinaryBlobSynchronizationException>(async () =>
-                await connector.ReadDataAsync(fileRef, targetMap, metadata));
+            Assert.That(async () => await connector.ReadDataAsync(fileRef, targetMap, metadata),
+                Throws.TypeOf<BinaryBlobSynchronizationException>()
+                    .With.Property(nameof(BinaryBlobSynchronizationException.BlobPath)).StartsWith("test-container/bin/testdb/table1")
+                    .And.Property(nameof(BinaryBlobSynchronizationException.File)).EqualTo(fileRef)
+                    .And.Message.Contains("test-container/bin/testdb/table1"));
+            VerifyNoFailureLogged();
         }
 
         [Test]
@@ -634,6 +646,16 @@ namespace PxApi.UnitTests.DataSources
         }
 
         #endregion
+
+        private void VerifyNoFailureLogged()
+        {
+            _loggerMock.Verify(logger => logger.Log(
+                It.Is<LogLevel>(level => level >= LogLevel.Error),
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never);
+        }
 
         private class TestableBinaryBlobConnector : BinaryBlobDataBaseConnector
         {

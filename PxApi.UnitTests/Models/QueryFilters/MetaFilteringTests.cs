@@ -145,7 +145,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
         }
 
         [Test]
-        public void ApplyToMatrixMeta_WithFilterThatResultsInNoData_ThrowsInvalidOperationException()
+        public void ApplyToMatrixMeta_WithFilterThatResultsInNoData_ThrowsArgumentException()
         {
             // Arrange
             IReadOnlyMatrixMetadata meta = MatrixMetadataUtils.CreateMetadata([3, 3], ["fi", "en"]);
@@ -156,7 +156,7 @@ namespace PxApi.UnitTests.Models.QueryFilters
             };
 
             // Act & Assert
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => 
+            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
                 MetaFiltering.ApplyToMatrixMeta(meta, filters));
             
             Assert.That(exception.Message, Is.EqualTo("The resulting filtered matrix map has no data."));

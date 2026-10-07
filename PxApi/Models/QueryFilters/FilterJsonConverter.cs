@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -11,6 +9,9 @@ namespace PxApi.Models.QueryFilters
     /// </summary>
     public class FilterJsonConverter : JsonConverter<Filter>
     {
+        /// <inheritdoc/>
+        public override bool HandleNull => true;
+
         /// <summary>
         /// Specifies the type of filter to use when serializing and deserializing.
         /// </summary>
@@ -45,21 +46,28 @@ namespace PxApi.Models.QueryFilters
         public class FilterJsonModel
         {
             /// <summary>
-            /// Enumeration type of the filter.
+            /// Required enumeration type of the filter.
             /// <see cref="FilterType"/>
             /// </summary>
             [JsonPropertyName("type")]
+            [JsonRequired]
             public FilterType Type { get; set; }
             /// <summary>
-            /// Value of the filter query. Can be a string, list of strings, or an integer depending on the filter type.
+            /// Required value of the filter query. Can be a string, list of strings, or an integer depending on the filter type.
             /// </summary>
             [JsonPropertyName("query")]
+            [JsonRequired]
             public JsonElement Query { get; set; }
         }
 
         /// <inheritdoc/>
         public override void Write(Utf8JsonWriter writer, Filter value, JsonSerializerOptions options)
         {
+            if (value is null)
+            {
+                writer.WriteNullValue();
+                return;
+            }
             if (value is CodeFilter codeFilter)
             {
                 JsonSerializer.Serialize(writer, new { type = FilterType.Code, query = codeFilter.FilterStrings });
@@ -90,30 +98,35 @@ namespace PxApi.Models.QueryFilters
         }
 
         /// <inheritdoc/>
-        [ExcludeFromCodeCoverage(Justification = "Default case is unreachable: JsonStringEnumConverter throws JsonException for unknown FilterType values before the switch is evaluated.")]
         public override Filter Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            FilterJsonModel? filterWrapper = JsonSerializer.Deserialize<FilterJsonModel>(ref reader, options);
+            FilterJsonModel filterWrapper = JsonSerializer.Deserialize<FilterJsonModel>(ref reader, options)
+                ?? throw new JsonException("Filter must be a non-null object.");
+            if (filterWrapper.Query.ValueKind == JsonValueKind.Null)
+                throw new JsonException("Filter query must not be null.");
 
-            switch (filterWrapper!.Type)
+            switch (filterWrapper.Type)
             {
                 case FilterType.Code:
                     {
-                        List<string>? codesList = filterWrapper.Query.Deserialize<List<string>>(options);
-                        codesList!.ForEach(ValidateInputString);
+                        List<string> codesList = filterWrapper.Query.Deserialize<List<string>>(options)
+                            ?? throw new JsonException("Code filter query must be a non-null list.");
+                        codesList.ForEach(ValidateInputString);
                         return new CodeFilter(codesList);
                     }
                 case FilterType.From:
                     {
-                        string? fromCode = filterWrapper.Query.Deserialize<string>(options);
-                        ValidateInputString(fromCode!);
-                        return new FromFilter(fromCode!);
+                        string fromCode = filterWrapper.Query.Deserialize<string>(options)
+                            ?? throw new JsonException("From filter query must be a non-null string.");
+                        ValidateInputString(fromCode);
+                        return new FromFilter(fromCode);
                     }
                 case FilterType.To:
                     {
-                        string? toCode = filterWrapper.Query.Deserialize<string>(options);
-                        ValidateInputString(toCode!);
-                        return new ToFilter { FilterString = toCode! };
+                        string toCode = filterWrapper.Query.Deserialize<string>(options)
+                            ?? throw new JsonException("To filter query must be a non-null string.");
+                        ValidateInputString(toCode);
+                        return new ToFilter { FilterString = toCode };
                     }
                 case FilterType.First:
                     {
@@ -125,12 +138,13 @@ namespace PxApi.Models.QueryFilters
                         int lastCount = filterWrapper.Query.Deserialize<int>(options);
                         return new LastFilter(lastCount);
                     }
-                default: throw new UnreachableException("Unknown filter type: " + filterWrapper.Type);
+                default: throw new JsonException("Filter type is not supported.");
             }
         }
 
         private static void ValidateInputString(string input)
         {
+            if (input is null) throw new JsonException("Filter strings must not be null.");
             if (input.Length > 50)
             {
                 throw new JsonException("Filter string exceeds maximum length of 50 characters");
