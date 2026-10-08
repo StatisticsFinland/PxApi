@@ -63,6 +63,11 @@ The most specialized connector, optimized for large datasets by separating metad
 - **Metadata**: Read from JSON files at `meta/{dbId}/{fileId}_*.meta.json`
 - **Data**: Read from binary files at `bin/{dbId}/{fileId}_{contentValue}_{timestamp}.pxb`
 
+Table discovery uses `{fileId}_{yyyyMMddHHmm}.meta.json` blobs directly under
+`meta/{dbId}/`, not source PX files. It returns one entry per table ID. Multiple
+versions generate a warning and the latest timestamp is used. Malformed metadata
+filenames are skipped with a warning; metadata contents are validated when read.
+
 Supports two read modes controlled by `BlobReadModeConfig`:
 - **Sequential streaming**: Reads the entire binary blob
 - **Windowed/range reads**: Issues HTTP range requests for specific byte offsets

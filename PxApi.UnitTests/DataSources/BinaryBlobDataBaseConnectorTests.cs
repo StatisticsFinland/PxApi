@@ -59,6 +59,168 @@ namespace PxApi.UnitTests.DataSources
             Assert.That(useShortFormNames, Is.True);
         }
 
+        [Test]
+        public async Task GetAllFilesAsync_DiscoversMetadataWithoutPxSources()
+        {
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object,
+                ["meta/testdb/table_one-2_202501010000.meta.json", "px/testdb/folder/source_only.px"]);
+
+            PxFileRef[] files = await connector.GetAllFilesAsync();
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(files, Has.Length.EqualTo(1));
+                Assert.That(files[0].Id, Is.EqualTo("table_one-2"));
+                Assert.That(files[0].DataBase, Is.EqualTo(_dbRef));
+                Assert.That(files[0].Hierarchy, Is.Null);
+                Assert.That(connector.LastListedPrefix, Is.EqualTo("meta/testdb/"));
+                Assert.That(connector.LastOpenedBlobName, Is.Null);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task GetAllFilesAsync_MultipleVersions_ReturnsOneTableAndReadsLatestWithWarnings(bool newestFirst)
+        {
+            const string newest = "meta/testdb/table_one_202502010000.meta.json";
+            const string oldest = "meta/testdb/table_one_202501010000.meta.json";
+            MatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object,
+                newestFirst ? [newest, oldest] : [oldest, newest]);
+            connector.AddBlobContent(newest, JsonSerializer.SerializeToUtf8Bytes(metadata, GlobalJsonConverterOptions.Default));
+
+            PxFileRef[] files = await connector.GetAllFilesAsync();
+            await connector.ReadMetadataAsync(files.Single());
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(files, Has.Length.EqualTo(1));
+                Assert.That(connector.LastOpenedBlobName, Is.EqualTo(newest));
+            }
+            _loggerMock.Verify(logger => logger.Log(
+                LogLevel.Warning, It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, type) => state.ToString()!.Contains("Multiple meta files for id table_one found in blob storage: 2")),
+                It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Exactly(2));
+        }
+
+            [TestCase("px/testdb/folder/source_only.px")]
+        [TestCase("meta/testdb/readme.txt")]
+        [TestCase("meta/otherdb/table_202501010000.meta.json")]
+        [TestCase("meta/TestDb/table_202501010000.meta.json")]
+        [TestCase("meta/testdb/folder/table_202501010000.meta.json")]
+        [TestCase("meta/testdb/table.meta.json")]
+        [TestCase("meta/testdb/_202501010000.meta.json")]
+        [TestCase("meta/testdb/table_202513010000.meta.json")]
+        [TestCase("meta/testdb/table_202502300000.meta.json")]
+        [TestCase("meta/testdb/table_20250101000000.meta.json")]
+        [TestCase("meta/testdb/invalid.id_202501010000.meta.json")]
+        public async Task GetAllFilesAsync_IgnoresUnrelatedOrMalformedNames(string blobName)
+        {
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, [blobName]);
+
+            PxFileRef[] files = await connector.GetAllFilesAsync();
+
+            Assert.That(files, Is.Empty);
+        }
+
+        [Test]
+        public async Task GetAllFilesAsync_PreservesCaseSensitiveTableIds()
+        {
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object,
+                ["meta/testdb/Table_202501010000.meta.json", "meta/testdb/table_202501010000.meta.json"]);
+
+            PxFileRef[] files = await connector.GetAllFilesAsync();
+
+            Assert.That(files.Select(file => file.Id), Is.EquivalentTo(new[] { "Table", "table" }));
+        }
+
+        [Test]
+        public async Task GetAllFilesAsync_MalformedNames_WarnsOnceAndRetainsValidTable()
+        {
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object,
+                ["meta/testdb/table_202501010000.meta.json", "meta/testdb/table_bad.meta.json",
+                    "meta/testdb/invalid.id_202501010000.meta.json"]);
+
+            PxFileRef[] files = await connector.GetAllFilesAsync();
+
+            Assert.That(files.Select(file => file.Id), Is.EqualTo(new[] { "table" }));
+            _loggerMock.Verify(logger => logger.Log(
+                LogLevel.Warning, It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, type) => state.ToString()!.Contains("Skipped 2 malformed metadata blob names")),
+                It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+        }
+
+        [Test]
+        public async Task GetAllFilesAsync_EmptyContainer_ReturnsEmptyList()
+        {
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
+
+            PxFileRef[] files = await connector.GetAllFilesAsync();
+
+            Assert.That(files, Is.Empty);
+        }
+
+        [Test]
+        public async Task GetAllFilesAsync_ForwardsCancellationToken()
+        {
+            using CancellationTokenSource source = new();
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
+
+            await connector.GetAllFilesAsync(source.Token);
+
+            Assert.That(connector.LastListedToken, Is.EqualTo(source.Token));
+        }
+
+        [Test]
+        public void GetAllFilesAsync_PropagatesCancellation()
+        {
+            using CancellationTokenSource source = new();
+            source.Cancel();
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
+
+            Assert.That(async () => await connector.GetAllFilesAsync(source.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        [Test]
+        public void GetAllFilesAsync_PropagatesStorageFailure()
+        {
+            IOException failure = new("Storage unavailable");
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []) { ListingFailure = failure };
+
+            IOException? observed = Assert.ThrowsAsync<IOException>(async () => await connector.GetAllFilesAsync());
+            Assert.That(observed, Is.SameAs(failure));
+            VerifyNoFailureLogged();
+        }
+
+        [Test]
+        public async Task ReadMetadataAsync_DoesNotSelectTableWithOverlappingIdPrefix()
+        {
+            const string expected = "meta/testdb/table_202501010000.meta.json";
+            MatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object,
+                [expected, "meta/testdb/table_other_202502010000.meta.json"]);
+            connector.AddBlobContent(expected, JsonSerializer.SerializeToUtf8Bytes(metadata, GlobalJsonConverterOptions.Default));
+
+            await connector.ReadMetadataAsync(PxFileRef.ValidateAndCreate("table", _dbRef));
+
+            Assert.That(connector.LastOpenedBlobName, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public async Task ReadMetadataAsync_IgnoresMalformedNewerVersion()
+        {
+            const string expected = "meta/testdb/table_202501010000.meta.json";
+            MatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object,
+                [expected, "meta/testdb/table_202513010000.meta.json"]);
+            connector.AddBlobContent(expected, JsonSerializer.SerializeToUtf8Bytes(metadata, GlobalJsonConverterOptions.Default));
+
+            await connector.ReadMetadataAsync(PxFileRef.ValidateAndCreate("table", _dbRef));
+
+            Assert.That(connector.LastOpenedBlobName, Is.EqualTo(expected));
+        }
+
         #region ReadMetadataAsync
 
         [Test]
@@ -666,6 +828,9 @@ namespace PxApi.UnitTests.DataSources
             internal long? LastOpenedBlobPosition { get; private set; }
             internal long? LastDownloadedBlobOffset { get; private set; }
             internal bool UseShortFormNamesValue => UseShortFormNames;
+            internal string? LastListedPrefix { get; private set; }
+            internal CancellationToken LastListedToken { get; private set; }
+            internal Exception? ListingFailure { get; init; }
 
             internal TestableBinaryBlobConnector(DataBaseRef db, ILogger<BinaryBlobDataBaseConnector> logger, List<string> blobNames)
                 : base(db, "test-container", null!, logger)
@@ -684,7 +849,11 @@ namespace PxApi.UnitTests.DataSources
 
             internal override Task<IReadOnlyList<string>> GetBlobItemsAsync(string prefix, CancellationToken ct = default)
             {
-                IReadOnlyList<string> result = [.. _blobNames.Where(n => n.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))];
+                LastListedPrefix = prefix;
+                LastListedToken = ct;
+                ct.ThrowIfCancellationRequested();
+                if (ListingFailure is not null) return Task.FromException<IReadOnlyList<string>>(ListingFailure);
+                IReadOnlyList<string> result = [.. _blobNames.Where(n => n.StartsWith(prefix, StringComparison.Ordinal))];
                 return Task.FromResult(result);
             }
 
