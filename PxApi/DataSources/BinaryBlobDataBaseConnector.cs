@@ -13,6 +13,7 @@ using PxApi.Exceptions;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Text.Json;
 
 namespace PxApi.DataSources
@@ -55,6 +56,22 @@ namespace PxApi.DataSources
         private const string DataFileSuffix = ".pxb";
 
         private const int DefaultMaxDegreeOfParallelism = 4;
+
+        /// <inheritdoc/>
+        public override async Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default)
+        {
+            using (Logger.BeginScope(new Dictionary<string, object>
+            {
+                [LoggerConsts.DB_ID] = DataBase.Id,
+                [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync),
+                [LoggerConsts.CONTAINER_NAME] = ContainerName
+            }))
+            {
+                ILookup<string, string> metadataBlobs =
+                    await GetMetadataBlobsAsync($"{MetaPrefix}/{DataBase.Id}/", null, ct);
+                return [.. metadataBlobs.Select(group => PxFileRef.ValidateAndCreate(group.Key, DataBase))];
+            }
+        }
 
         /// <inheritdoc/>
         public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default)
@@ -199,24 +216,12 @@ namespace PxApi.DataSources
                 Logger.LogDebug("Reading metadata for meta file {file_id} from blob storage", file.Id);
 
                 string prefix = BuildMetadataPrefix(file.DataBase.Id, file.Id);
-                IReadOnlyList<string> blobNames = await GetBlobItemsAsync(prefix, ct);
-                List<string> metaBlobNames = [.. blobNames.Where(name => name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase))];
-
-                string? selectedBlobName = null;
-
-                if (metaBlobNames.Count == 0)
+                ILookup<string, string> metadataBlobs = await GetMetadataBlobsAsync(prefix, file.Id, ct);
+                string? selectedBlobName = metadataBlobs[file.Id].OrderDescending(StringComparer.Ordinal).FirstOrDefault();
+                if (selectedBlobName is null)
                 {
                     throw new FileNotFoundException($"Meta file for id {file.Id} not found in database {DataBase.Id}, blob storage container {ContainerName}.");
                 }
-                else if (metaBlobNames.Count > 1)
-                {
-                    Logger.LogWarning("Multiple meta files for id {file_id} found in blob storage", file.Id);
-                    selectedBlobName = metaBlobNames
-                        .OrderByDescending(name => name) // Assuming the name includes a timestamp
-                        .First();
-                }
-
-                selectedBlobName ??= metaBlobNames[0];
 
                 using Stream stream = await OpenBlobReadStreamAsync(selectedBlobName, ct);
 
@@ -348,5 +353,64 @@ namespace PxApi.DataSources
             return (headerLength, codec);
         }
 
+        private async Task<ILookup<string, string>> GetMetadataBlobsAsync(
+            string prefix, string? requestedTableId, CancellationToken ct)
+        {
+            IReadOnlyList<string> blobNames = await GetBlobItemsAsync(prefix, ct);
+            List<(string TableId, string BlobName)> metadataBlobs = [];
+            int invalidNames = 0;
+            foreach (string blobName in blobNames.Where(name => name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase)))
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!TryParseMetadataBlobName(blobName, out string tableId))
+                {
+                    invalidNames++;
+                    continue;
+                }
+                if (requestedTableId is not null && !string.Equals(tableId, requestedTableId, StringComparison.Ordinal)) continue;
+
+                metadataBlobs.Add((tableId, blobName));
+            }
+
+            if (invalidNames > 0)
+            {
+                Logger.LogWarning("Skipped {invalid_metadata_file_count} malformed metadata blob names", invalidNames);
+            }
+            ILookup<string, string> groups = metadataBlobs.ToLookup(blob => blob.TableId, blob => blob.BlobName, StringComparer.Ordinal);
+            foreach (IGrouping<string, string> group in groups)
+            {
+                int versionCount = group.Count();
+                if (versionCount > 1)
+                {
+                    Logger.LogWarning("Multiple meta files for id {file_id} found in blob storage: {version_count}; using latest timestamp",
+                        group.Key, versionCount);
+                }
+            }
+            return groups;
+        }
+
+        private bool TryParseMetadataBlobName(string blobName, out string tableId)
+        {
+            tableId = string.Empty;
+            string root = $"{MetaPrefix}/{DataBase.Id}/";
+            if (!blobName.StartsWith(root, StringComparison.Ordinal)) return false;
+            string fileName = blobName[root.Length..^MetaFileSuffix.Length];
+            if (fileName.Contains('/')) return false;
+            int separator = fileName.LastIndexOf('_');
+            if (separator <= 0 || !DateTime.TryParseExact(fileName[(separator + 1)..], "yyyyMMddHHmm",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) return false;
+
+            string candidateId = fileName[..separator];
+            try
+            {
+                PxFileRef file = PxFileRef.ValidateAndCreate(candidateId, DataBase);
+                tableId = file.Id;
+                return true;
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+        }
     }
 }
