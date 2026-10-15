@@ -346,7 +346,7 @@ namespace PxApi.UnitTests.Caching
         }
 
         [Test]
-        public void SetData_WhenMetaContainerDoesNotExist_ThrowsInvalidOperationException()
+        public void SetData_WhenMetaContainerDoesNotExist_DoesNotCreateCacheEntry()
         {
             // Arrange
             Task<int[]> testData = Task.FromResult<int[]>([ 1, 2, 3 ]);
@@ -364,12 +364,27 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache sut = new(memoryCacheMock.Object);
 
             // Act & Assert
+            sut.SetData(_tableId, matrixMap, testData);
+
+            memoryCacheMock.Verify(m => m.CreateEntry(It.IsAny<object>()), Times.Never);
+        }
+
+        [Test]
+        public void GetSubMaps_ReturnsSnapshotBeforeRelatedMapsChange()
+        {
+            MetaCacheContainer container = new(MatrixMetadata);
+            MatrixMap map = new([new DimensionMap("dimension", ["value"])]);
+            DataCacheContainer<int> data = new(map, Task.FromResult<int[]>([1]));
+            container.AddDataContainer(data);
+
+            IEnumerable<IMatrixMap> submaps = container.GetSubMaps(map);
+            container.TryRemoveDataContainer(data);
+
             using (Assert.EnterMultipleScope())
             {
-                InvalidOperationException? ex = Assert.Throws<InvalidOperationException>(() => 
-                    sut.SetData(_tableId, matrixMap, testData));
-                Assert.That(ex?.Message, Does.Contain(_tableId.Id));
-            };
+                Assert.That(submaps, Is.EqualTo(new[] { map }));
+                Assert.That(container.GetRelatedMaps(), Is.Empty);
+            }
         }
 
         [Test]

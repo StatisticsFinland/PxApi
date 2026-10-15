@@ -68,7 +68,15 @@ Three explicit invalidation paths via `CacheController`:
 
 All are exposed as `DELETE` endpoints on `CacheController` (requires feature flag `CacheController = true`) and affect only the current API instance.
 
+If the related metadata entry is missing when data is inserted, data caching is
+skipped with an informational diagnostic. The in-flight request still awaits
+the source read and returns its result; source errors and cancellation still
+propagate normally.
+
 ## Concurrency
+
+Submap filtering is materialized under the related-map list's lock, so callers
+receive a snapshot rather than enumerating a list that eviction callbacks can modify.
 
 ### Request diagnostics
 
