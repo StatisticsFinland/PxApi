@@ -4,6 +4,7 @@ using Px.Utils.Models.Metadata.ExtensionMethods;
 using Px.Utils.Models.Metadata;
 using PxApi.Configuration;
 using PxApi.Models;
+using PxApi.Utilities;
 using System.Collections.Immutable;
 
 namespace PxApi.Caching
@@ -11,7 +12,7 @@ namespace PxApi.Caching
     /// <summary>
     /// Provides caching operations for matrix metadata and data containers.
     /// </summary>
-    public class DatabaseCache(IMemoryCache memoryCache)
+    public class DatabaseCache(IMemoryCache memoryCache, ILogger<DatabaseCache>? logger = null)
     {
         private readonly Dictionary<string, DatabaseCacheConfig> cacheConfigs = 
             AppSettings.Active.DataBases.ToDictionary(
@@ -210,6 +211,7 @@ namespace PxApi.Caching
 
         /// <summary>
         /// Stores data for the specified matrix map in the cache and manages eviction of submaps.
+        /// Skips caching if the related metadata entry was cleared or evicted during processing.
         /// </summary>
         public void SetData<TData>(PxFileRef file, MatrixMap map, Task<TData[]> data)
         {
@@ -240,7 +242,10 @@ namespace PxApi.Caching
             }
             else
             {
-                throw new InvalidOperationException($"Unable to set data container to cache, related meta container for tableId '{file}' not found.");
+                using (logger?.BeginResourceScope(file.DataBase.Id, file.Id))
+                {
+                    logger?.LogInformation("Skipping data caching because the related metadata entry was cleared or evicted during processing");
+                }
             }
         }
 

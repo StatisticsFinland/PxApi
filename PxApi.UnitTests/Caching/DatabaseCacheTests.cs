@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Data.DataValue;
@@ -518,7 +519,7 @@ namespace PxApi.UnitTests.Caching
         #region SetData
 
         [Test]
-        public void SetData_WithoutMetaCacheHit_ThrowsInvalidOperationException()
+        public void SetData_WithoutMetaCacheHit_SkipsCachingAndLogsDiagnostic()
         {
             // Arrange
             MatrixMap map = new([
@@ -529,11 +530,18 @@ namespace PxApi.UnitTests.Caching
             Task<DoubleDataValue[]> dataTask = Task.FromResult(data);
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
-            DatabaseCache dbCache = new(memoryCache);
+            Mock<ILogger<DatabaseCache>> logger = new();
+            DatabaseCache dbCache = new(memoryCache, logger.Object);
 
-            // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => 
-                dbCache.SetData(_file1, map, dataTask));
+            dbCache.SetData(_file1, map, dataTask);
+
+            Assert.That(dbCache.TryGetData<DoubleDataValue>(map, out _, out _), Is.False);
+            logger.Verify(item => item.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, type) => state.ToString()!.Contains("cleared or evicted during processing")),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
         }
 
         [Test]

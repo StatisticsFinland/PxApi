@@ -55,7 +55,7 @@ namespace PxApi.Caching
         }
 
         /// <summary>
-        /// Gets all related maps that are submaps of the provided map.
+        /// Gets a snapshot of all related maps that are submaps of the provided map.
         /// </summary>
         /// <param name="map">The matrix map to find submaps for.</param>
         /// <returns>A collection of matrix maps that are submaps of the provided map.</returns>
@@ -63,7 +63,7 @@ namespace PxApi.Caching
         {
             lock (_listAccessLock)
             {
-                return _relatedCachedData.Where(m => m.IsSubmapOf(map));
+                return [.._relatedCachedData.Where(m => m.IsSubmapOf(map))];
             }
         }
 
