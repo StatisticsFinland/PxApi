@@ -464,6 +464,86 @@ namespace PxApi.UnitTests.Caching
         #region ClearTableCacheAsync
 
         [Test]
+        public async Task ClearTableListCache_PreservesOtherCaches_AndCanBeRepeated()
+        {
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            DataBaseRef otherDataBase = DataBaseRef.Create("AnotherPxApiUnitTestsDb");
+            PxFileRef file = BuildTestFileRef("testfile", dataBase);
+            using MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            Task<ImmutableSortedDictionary<string, PxFileRef>> fileList = Task.FromResult(
+                ImmutableSortedDictionary<string, PxFileRef>.Empty.Add(file.Id, file));
+            Task<ImmutableSortedDictionary<string, PxFileRef>> otherFileList = Task.FromResult(
+                ImmutableSortedDictionary<string, PxFileRef>.Empty);
+            dbCache.SetFileList(dataBase, fileList);
+            dbCache.SetFileList(otherDataBase, otherFileList);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
+            dbCache.SetMetadata(file, metaContainer);
+            MatrixMap map = new([new DimensionMap("dim1", ["value1"])]);
+            Task<DoubleDataValue[]> data = Task.FromResult<DoubleDataValue[]>([new DoubleDataValue(2, DataValueType.Exists)]);
+            dbCache.SetData(file, map, data);
+            Task<DateTime> lastUpdated = Task.FromResult(DateTime.UtcNow);
+            dbCache.SetLastUpdated(file, lastUpdated);
+            Task<MultilanguageString> databaseName = Task.FromResult(new MultilanguageString("en", "Test database"));
+            dbCache.SetDatabaseName(dataBase, databaseName);
+            Mock<IDataBaseConnectorFactory> factory = new(MockBehavior.Strict);
+            CachedDataSource connector = new(factory.Object, dbCache);
+
+            connector.ClearTableListCache(dataBase);
+            connector.ClearTableListCache(dataBase);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(dbCache.TryGetFileList(dataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? clearedList), Is.False);
+                Assert.That(clearedList, Is.Null);
+                Assert.That(dbCache.TryGetFileList(otherDataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? retainedList), Is.True);
+                Assert.That(retainedList, Is.SameAs(otherFileList));
+                Assert.That(dbCache.TryGetMetadata(file, out MetaCacheContainer? retainedMetadata), Is.True);
+                Assert.That(retainedMetadata, Is.SameAs(metaContainer));
+                Assert.That(dbCache.TryGetData(map, out Task<DoubleDataValue[]>? retainedData, out _), Is.True);
+                Assert.That(retainedData, Is.SameAs(data));
+                Assert.That(dbCache.TryGetLastUpdated(file, out Task<DateTime>? retainedLastUpdated), Is.True);
+                Assert.That(retainedLastUpdated, Is.SameAs(lastUpdated));
+                Assert.That(dbCache.TryGetDatabaseName(dataBase, out Task<MultilanguageString>? retainedName), Is.True);
+                Assert.That(retainedName, Is.SameAs(databaseName));
+            }
+            factory.VerifyNoOtherCalls();
+        }
+
+        [Test]
+        public async Task ClearTableListCache_NextLookupDiscoversNewTable_AndCachesUpdatedList()
+        {
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef newFile = BuildTestFileRef("newtable", dataBase);
+            using MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            dbCache.SetFileList(dataBase, Task.FromResult(ImmutableSortedDictionary<string, PxFileRef>.Empty));
+            Mock<IDataBaseConnector> source = new(MockBehavior.Strict);
+            source.Setup(connector => connector.GetAllFilesAsync(CancellationToken.None)).ReturnsAsync([newFile]);
+            Mock<IDataBaseConnectorFactory> factory = new(MockBehavior.Strict);
+            factory.Setup(connectorFactory => connectorFactory.GetConnector(dataBase)).Returns(source.Object);
+            CachedDataSource connector = new(factory.Object, dbCache);
+            PxFileRef? before = await connector.GetFileReferenceCachedAsync(newFile.Id, dataBase);
+
+            connector.ClearTableListCache(dataBase);
+
+            source.Verify(connector => connector.GetAllFilesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            PxFileRef? after = await connector.GetFileReferenceCachedAsync(newFile.Id, dataBase);
+            PxFileRef? cached = await connector.GetFileReferenceCachedAsync(newFile.Id, dataBase);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(before, Is.Null);
+                Assert.That(after, Is.EqualTo(newFile));
+                Assert.That(cached, Is.EqualTo(newFile));
+            }
+            source.Verify(connector => connector.GetAllFilesAsync(CancellationToken.None), Times.Once);
+            factory.Verify(connectorFactory => connectorFactory.GetConnector(dataBase), Times.Once);
+            source.VerifyNoOtherCalls();
+            factory.VerifyNoOtherCalls();
+        }
+
+        [Test]
         public void ClearTableCacheAsync_ClearsTableSpecificCaches()
         {
             // Arrange
