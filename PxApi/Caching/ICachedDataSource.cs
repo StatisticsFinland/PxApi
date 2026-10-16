@@ -89,6 +89,13 @@ namespace PxApi.Caching
         Task ClearDatabaseCacheAsync(DataBaseRef dataBase);
 
         /// <summary>
+        /// Clears only the cached table list, leaving table content caches unchanged.
+        /// The list is rebuilt on the next lookup.
+        /// </summary>
+        /// <param name="dataBase">The database whose cached table list should be cleared.</param>
+        void ClearTableListCache(DataBaseRef dataBase);
+
+        /// <summary>
         /// Clears all cache entries for a specified table, including metadata, data and last-updated.
         /// </summary>
         /// <param name="file">Reference to the px file for which to clear the cache</param>

@@ -28,15 +28,19 @@ namespace PxApi.UnitTests.ConfigurationTests
             Assert.That(action.ApiExplorer.IsVisible, Is.False);
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void Apply_SetsIsVisibleFalse_ForCacheController_RegardlessOfFeatureFlag(bool cacheEnabled)
+        [TestCase(false, nameof(CacheController.ClearTableCacheAsync))]
+        [TestCase(true, nameof(CacheController.ClearTableCacheAsync))]
+        [TestCase(false, nameof(CacheController.ClearTableListCache))]
+        [TestCase(true, nameof(CacheController.ClearTableListCache))]
+        [TestCase(false, nameof(CacheController.ClearAllCacheAsync))]
+        [TestCase(true, nameof(CacheController.ClearAllCacheAsync))]
+        public void Apply_SetsIsVisibleFalse_ForCacheController_RegardlessOfFeatureFlag(bool cacheEnabled, string actionName)
         {
             LoadConfigWithFeatures(cacheEnabled, searchEnabled: true);
 
             ControllerModel controllerModel = new(typeof(CacheController).GetTypeInfo(), []);
             ApiExplorerModel apiExplorerModel = new() { IsVisible = true };
-            MethodInfo methodInfo = typeof(CacheController).GetMethod("ToString")!;
+            MethodInfo methodInfo = typeof(CacheController).GetMethod(actionName)!;
             ActionModel action = new(methodInfo, new List<Attribute>())
             {
                 Controller = controllerModel,
