@@ -344,18 +344,25 @@ namespace PxApi.UnitTests.DataSources
         {
             // Arrange
             MatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
-
-            MatrixMap targetMap = new([.. metadata.Dimensions.Select(d => new DimensionMap(d.Code, [.. d.Values.Select(v => v.Code)]))]);
+            ContentDimension contentDim = metadata.GetContentDimension();
+            string contentValueCode = contentDim.Values[0].Code;
+            string timestamp = contentDim.Values.Map(v => v.LastUpdated).Max().ToString("yyyyMMddHHmm");
+            MatrixMap targetMap = new([
+                new DimensionMap(contentDim.Code, [contentValueCode]),
+                .. metadata.Dimensions.Where(d => d.Code != contentDim.Code)
+                    .Select(d => new DimensionMap(d.Code, [.. d.Values.Select(v => v.Code)]))
+            ]);
 
             TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, []);
             PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
+            string expectedBlobPath = $"test-container/bin/testdb/table1/{contentValueCode}_{timestamp}.pxb";
 
             // Act & Assert
             Assert.That(async () => await connector.ReadDataAsync(fileRef, targetMap, metadata),
                 Throws.TypeOf<BinaryBlobSynchronizationException>()
-                    .With.Property(nameof(BinaryBlobSynchronizationException.BlobPath)).StartsWith("test-container/bin/testdb/table1")
+                    .With.Property(nameof(BinaryBlobSynchronizationException.BlobPath)).EqualTo(expectedBlobPath)
                     .And.Property(nameof(BinaryBlobSynchronizationException.File)).EqualTo(fileRef)
-                    .And.Message.Contains("test-container/bin/testdb/table1"));
+                    .And.Message.Contains(expectedBlobPath));
             VerifyNoFailureLogged();
         }
 
@@ -415,7 +422,7 @@ namespace PxApi.UnitTests.DataSources
             for (int c = 0; c < contentDim.Values.Count; c++)
             {
                 ContentDimensionValue cVal = contentDim.Values[c];
-                string blobName = BinaryBlobDataBaseConnector.BuildDataBlobName(_dbRef.Id, fileRef.Id, cVal.Code, timestamp);
+                string blobName = $"bin/testdb/table1/{cVal.Code}_{timestamp}.pxb";
                 connector.AddBlobContent(blobName, BuildPxbBlobWithValues(blobValues[c]));
             }
 
@@ -653,7 +660,7 @@ namespace PxApi.UnitTests.DataSources
             IMatrixMap collapsedBlobMap = metadata.CollapseDimension(contentDim.Code, contentDim.Values[0].Code);
             int fullBlobSize = (int)collapsedBlobMap.GetSize();
 
-            string blobName = BinaryBlobDataBaseConnector.BuildDataBlobName(_dbRef.Id, fileRef.Id, contentDim.Values[0].Code, timestamp);
+            string blobName = $"bin/testdb/table1/{contentDim.Values[0].Code}_{timestamp}.pxb";
             connector.AddBlobContent(blobName, BuildPxbBlob(fullBlobSize, BinaryValueCodecType.DoubleCodec));
 
             // Act
@@ -712,7 +719,7 @@ namespace PxApi.UnitTests.DataSources
             IMatrixMap collapsedBlobMap = metadata.CollapseDimension(contentDim.Code, contentDim.Values[0].Code);
             int fullBlobSize = (int)collapsedBlobMap.GetSize();
 
-            string blobName = BinaryBlobDataBaseConnector.BuildDataBlobName(_dbRef.Id, fileRef.Id, contentDim.Values[0].Code, timestamp);
+            string blobName = $"bin/testdb/table1/{contentDim.Values[0].Code}_{timestamp}.pxb";
             connector.AddBlobContent(blobName, BuildPxbBlob(fullBlobSize, BinaryValueCodecType.DoubleCodec));
 
             // Act
