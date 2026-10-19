@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Moq;
 using Px.Utils.Models.Data;
 using Px.Utils.Models.Data.DataValue;
@@ -519,7 +518,7 @@ namespace PxApi.UnitTests.Caching
         #region SetData
 
         [Test]
-        public void SetData_WithoutMetaCacheHit_SkipsCachingAndLogsDiagnostic()
+        public void SetData_WithoutMetaCacheHit_SkipsCachingAndNotifiesObserver()
         {
             // Arrange
             MatrixMap map = new([
@@ -530,18 +529,27 @@ namespace PxApi.UnitTests.Caching
             Task<DoubleDataValue[]> dataTask = Task.FromResult(data);
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
-            Mock<ILogger<DatabaseCache>> logger = new();
-            DatabaseCache dbCache = new(memoryCache, logger.Object);
+            Mock<ICacheObserver> observer = new();
+            DatabaseCache dbCache = new(memoryCache, observer.Object);
 
             dbCache.SetData(_file1, map, dataTask);
 
             Assert.That(dbCache.TryGetData<DoubleDataValue>(map, out _, out _), Is.False);
-            logger.Verify(item => item.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((state, type) => state.ToString()!.Contains("cleared or evicted during processing")),
-                It.IsAny<Exception?>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+            observer.Verify(item => item.RecordDataCacheWriteSkipped(), Times.Once);
+            observer.VerifyNoOtherCalls();
+        }
+
+        [Test]
+        public void SetData_WithoutMetaCacheHitOrObserver_SkipsCaching()
+        {
+            MatrixMap map = new([new DimensionMap("dim1", ["value1"])]);
+            Task<DoubleDataValue[]> dataTask = Task.FromResult<DoubleDataValue[]>([]);
+            using MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+
+            dbCache.SetData(_file1, map, dataTask);
+
+            Assert.That(dbCache.TryGetData<DoubleDataValue>(map, out _, out _), Is.False);
         }
 
         [Test]
@@ -558,7 +566,8 @@ namespace PxApi.UnitTests.Caching
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
             MemoryCache memoryCache = new(new MemoryCacheOptions());
-            DatabaseCache dbCache = new(memoryCache);
+            Mock<ICacheObserver> observer = new();
+            DatabaseCache dbCache = new(memoryCache, observer.Object);
             memoryCache.Set(HashCode.Combine(GetSeedForKeyword(META_SEED_VARNAME), _file1), metaContainer);
             int mapCode = MetaCacheUtils.GetCacheKey(map);
 
@@ -573,6 +582,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(memoryCache.TryGetValue(mapCode, out DataCacheContainer<DoubleDataValue>? cachedContainer), Is.True);
                 Assert.That(cachedContainer!.Data, Is.SameAs(dataTask));
             }
+            observer.VerifyNoOtherCalls();
         }
 
         [Test]

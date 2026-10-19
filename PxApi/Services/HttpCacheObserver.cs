@@ -20,4 +20,7 @@ public sealed class HttpCacheObserver(IHttpContextAccessor httpContextAccessor) 
 
     /// <inheritdoc />
     public void RecordDataCacheMiss() => Observation?.Set(LoggerConsts.Query.Fields.DataCacheOutcome, LoggerConsts.Query.DataCacheOutcome.Miss);
+
+    /// <inheritdoc />
+    public void RecordDataCacheWriteSkipped() => Observation?.Set(LoggerConsts.Query.Fields.DataCacheWriteSkipped, true);
 }
