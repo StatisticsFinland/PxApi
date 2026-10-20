@@ -78,6 +78,46 @@ namespace PxApi.Controllers
         }
 
         /// <summary>
+        /// Clears only the cached table list for a specific database, leaving table content caches unchanged.
+        /// The list is rebuilt on the next lookup.
+        /// </summary>
+        /// <param name="database">Name of the database whose cached table list should be cleared.</param>
+        /// <returns>A message indicating the result of the operation.</returns>
+        /// <response code="200">The cached table list was successfully cleared.</response>
+        /// <response code="404">If the database was not found.</response>
+        /// <response code="500">If an error occurs while clearing the cached table list.</response>
+        [HttpDelete("{database}/tables")]
+        [OperationId("clearTableListCache")]
+        [Produces("application/json")]
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(string), 500)]
+        public ActionResult ClearTableListCache([FromRoute] string database)
+        {
+            DataBaseRef? dbRef = _cachedConnector.GetDataBaseReference(database);
+            if (dbRef == null)
+            {
+                _logger.LogWarning(DB_NOT_FOUND);
+                return NotFound(DB_NOT_FOUND);
+            }
+
+            using (_logger.BeginDbScope(dbRef.Value.Id))
+            {
+                try
+                {
+                    _cachedConnector.ClearTableListCache(dbRef.Value);
+                    _logger.LogInformation("Cached table list cleared successfully");
+                    return Ok("Cached table list cleared successfully");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error clearing cached table list");
+                    return StatusCode(500, "Error clearing cached table list");
+                }
+            }
+        }
+
+        /// <summary>
         /// Clears all cache entries for a specific database.
         /// </summary>
         /// <param name="database">Name of the database for which to clear all cache entries.</param>
