@@ -61,7 +61,12 @@ Reads plain `.px` files from Azure Blob Storage under the path pattern `px/{dbId
 The most specialized connector, optimized for large datasets by separating metadata from data values:
 
 - **Metadata**: Read from JSON files at `meta/{dbId}/{fileId}_*.meta.json`
-- **Data**: Read from binary files at `bin/{dbId}/{fileId}_{contentValue}_{timestamp}.pxb`
+- **Data**: Read from binary files at `bin/{dbId}/{fileId}/{contentValue}_{timestamp}.pxb`
+
+Each table ID has its own slash-separated section under `bin/{dbId}/`. The
+filename contains only the content dimension value code and the timestamp
+(`yyyyMMddHHmm`, using the latest `LastUpdated` across all content dimension
+values). For example, `bin/db1/table/cv1_202501010930.pxb`.
 
 Table discovery uses `{fileId}_{yyyyMMddHHmm}.meta.json` blobs directly under
 `meta/{dbId}/`, not source PX files. It returns one entry per table ID. Multiple
