@@ -9,9 +9,9 @@ using System.Collections.Immutable;
 namespace PxApi.Caching
 {
     /// <summary>
-    /// Provides caching operations for matrix metadata and data containers.
+    /// Provides caching operations for matrix metadata and data containers, reporting skipped writes through an optional observer.
     /// </summary>
-    public class DatabaseCache(IMemoryCache memoryCache)
+    public class DatabaseCache(IMemoryCache memoryCache, ICacheObserver? cacheObserver = null)
     {
         private readonly Dictionary<string, DatabaseCacheConfig> cacheConfigs = 
             AppSettings.Active.DataBases.ToDictionary(
@@ -210,6 +210,7 @@ namespace PxApi.Caching
 
         /// <summary>
         /// Stores data for the specified matrix map in the cache and manages eviction of submaps.
+        /// Skips caching and notifies the observer if the related metadata entry was cleared or evicted during processing.
         /// </summary>
         public void SetData<TData>(PxFileRef file, MatrixMap map, Task<TData[]> data)
         {
@@ -240,7 +241,7 @@ namespace PxApi.Caching
             }
             else
             {
-                throw new InvalidOperationException($"Unable to set data container to cache, related meta container for tableId '{file}' not found.");
+                cacheObserver?.RecordDataCacheWriteSkipped();
             }
         }
 

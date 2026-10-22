@@ -305,6 +305,34 @@ namespace PxApi.UnitTests.Caching
         #region GetDataCachedAsync
 
         [Test]
+        public async Task GetDataCachedAsync_MetadataClearedBeforeCaching_ReturnsDataWithoutCaching()
+        {
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef file = BuildTestFileRef("table", database);
+            MatrixMap map = new([new DimensionMap("dim1", ["value1"])]);
+            IReadOnlyMatrixMetadata metadata = new Mock<IReadOnlyMatrixMetadata>().Object;
+            DoubleDataValue[] expected = [new(2, DataValueType.Exists)];
+            using MemoryCache memory = new(new MemoryCacheOptions());
+            DatabaseCache cache = new(memory);
+            Mock<IDataBaseConnector> connector = new();
+            connector.Setup(item => item.ReadMetadataAsync(file, CancellationToken.None)).ReturnsAsync(metadata);
+            connector.Setup(item => item.ReadDataAsync(file, map, metadata, CancellationToken.None))
+                .Callback(() => cache.TryRemoveMeta(file))
+                .ReturnsAsync(expected);
+            Mock<IDataBaseConnectorFactory> factory = new();
+            factory.Setup(item => item.GetConnector(database)).Returns(connector.Object);
+            CachedDataSource source = new(factory.Object, cache);
+
+            DoubleDataValue[] result = await source.GetDataCachedAsync(file, map);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result, Is.SameAs(expected));
+                Assert.That(cache.TryGetData<DoubleDataValue>(map, out _, out _), Is.False);
+            }
+        }
+
+        [Test]
         public async Task GetDataCachedAsync_DataInCache_ReturnsData()
         {
             // Arrange

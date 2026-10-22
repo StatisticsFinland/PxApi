@@ -115,6 +115,7 @@ namespace PxApi.Utilities
                 public const string SelectionDetailsTruncated = "selection_details_truncated";
                 public const string SelectionDetailMode = "selection_detail_mode";
                 public const string DataCacheOutcome = "data_cache_outcome";
+                public const string DataCacheWriteSkipped = "data_cache_write_skipped";
                 public const string MetadataCacheHits = "metadata_cache_hits";
                 public const string MetadataCacheMisses = "metadata_cache_misses";
                 public const string FileListCacheHits = "file_list_cache_hits";

@@ -31,10 +31,12 @@ actual method or property name.
 
 [ICacheObserver](../../PxApi/Caching/ICacheObserver.cs) is the cache-specific
 notification contract for file-list/metadata hits and misses and exact/superset
-data hits or data misses. `CachedDataSource` depends only on that optional
-contract, not HTTP or the completion-event state.
+data hits or data misses, plus skipped data-cache writes when metadata is
+missing. `CachedDataSource` and `DatabaseCache` depend only on that optional
+contract, not HTTP, a logger, or the completion-event state.
 [HttpCacheObserver](../../PxApi/Services/HttpCacheObserver.cs) translates those
-decisions into the existing completion fields. It is registered as a stateless
+decisions into completion fields, including `data_cache_write_skipped=true`
+when a write was skipped, without replacing `data_cache_outcome`. It is registered as a stateless
 singleton alongside the scoped data source and resolves `IHttpContextAccessor`
 on every notification. Without a tracked HTTP feature it is a no-op; it never
 creates request state or completion events. Scopes still correlate diagnostic
