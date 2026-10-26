@@ -321,6 +321,12 @@ Global cache size limit controlled via `Cache.MaxSizeBytes`. Individual item siz
 - Azure Blob Storage via Azure Storage SDK
 - Azure Binary Blob Storage via Azure Storage SDK (binary-optimized blob access)
 
+### Binary Blob Storage Layout
+
+`BinaryBlobStorage` expects these paths inside the configured container:
+- Metadata: `meta/{database}/{table}_{timestamp}.meta.json`
+- Binary data: `bin/{database}/{table}/{contentValueCode}_{timestamp}.pxb`
+
 ## Content Negotiation
 Specify desired format with `Accept` header:
 - `application/json` -> JSON-stat 2.0

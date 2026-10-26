@@ -26,7 +26,7 @@ namespace PxApi.DataSources
     /// <list type="bullet">
     /// <item><description>Lists available PX files by enumerating metadata blobs under <c>meta/</c>.</description></item>
     /// <item><description>Reads metadata from <c>*.meta.json</c> blobs and deserializes it into <see cref="MatrixMetadata"/>.</description></item>
-    /// <item><description>Reads binary data from <c>*.pxb</c> blobs under <c>bin/</c>, optionally using windowed reads for dense selections.</description></item>
+    /// <item><description>Reads binary data from <c>bin/{database}/{table}/{contentValue}_{timestamp}.pxb</c> blobs, optionally using windowed reads for dense selections.</description></item>
     /// </list>
     /// Read strategy selection for binary data is delegated to <see cref="BlobReadModeSelector"/>.
     /// <para>
@@ -330,7 +330,7 @@ namespace PxApi.DataSources
 
         internal static string BuildDataBlobName(string dbId, string fileId, string contentValueCode, string timestamp)
         {
-            return $"{DataPrefix}/{dbId}/{fileId}_{contentValueCode}_{timestamp}{DataFileSuffix}";
+            return $"{DataPrefix}/{dbId}/{fileId}/{contentValueCode}_{timestamp}{DataFileSuffix}";
         }
 
         internal static string GetTimestamp(ContentValueList values)
