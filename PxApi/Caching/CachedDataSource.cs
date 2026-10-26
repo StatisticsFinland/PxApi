@@ -143,6 +143,12 @@ namespace PxApi.Caching
             cache.ClearFileListCache(dataBase);
         }
 
+        /// <inheritdoc/>
+        public void ClearTableListCache(DataBaseRef dataBase)
+        {
+            cache.ClearFileListCache(dataBase);
+        }
+
         /// <inheritdoc />
         public void ClearTableCache(PxFileRef file)
         {

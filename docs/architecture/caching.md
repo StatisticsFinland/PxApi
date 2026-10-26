@@ -60,12 +60,13 @@ Global cache capacity is set via `MemoryCacheConfig.MaxSizeBytes`.
 
 ## Cache Invalidation
 
-Two explicit invalidation paths via `CacheController`:
+Three explicit invalidation paths via `CacheController`:
 
-1. **Single table**: `ClearTableCache(dbRef, fileRef)` — Removes metadata, data, and last-updated timestamp for one table
-2. **Entire database**: `ClearDatabaseCacheAsync(dbRef)` — Iterates all files in the database and clears metadata, data, last-updated, file-list, and database-name caches
+1. **Single table**: `ClearTableCache(fileRef)` — Removes metadata, data, and last-updated timestamp for one table
+2. **Table list only**: `ClearTableListCache(dbRef)` - Removes only the cached file list. The next lookup rebuilds it; table content and database-name caches remain unchanged.
+3. **Entire database**: `ClearDatabaseCacheAsync(dbRef)` — Iterates all files in the database and clears metadata, data, last-updated, file-list, and database-name caches
 
-Both are exposed as `DELETE` endpoints on `CacheController` (requires feature flag `CacheController = true`).
+All are exposed as `DELETE` endpoints on `CacheController` (requires feature flag `CacheController = true`) and affect only the current API instance.
 
 ## Concurrency
 
