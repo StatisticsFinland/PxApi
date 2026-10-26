@@ -125,7 +125,7 @@ namespace PxApi.Caching
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
             MetaCacheContainer metaContainer = await GetMetaContainer(pxFile, ct);
             Task<DoubleDataValue[]> dataTask = dbConnector.ReadDataAsync(pxFile, map, await metaContainer.Metadata, ct);
-            cache.SetData(pxFile, new MatrixMap([.. map.DimensionMaps]), dataTask);
+            cache.SetData(pxFile, metaContainer, new MatrixMap([.. map.DimensionMaps]), dataTask);
             return await dataTask;
         }
 

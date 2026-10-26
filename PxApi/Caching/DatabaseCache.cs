@@ -210,13 +210,19 @@ namespace PxApi.Caching
 
         /// <summary>
         /// Stores data for the specified matrix map in the cache and manages eviction of submaps.
-        /// Skips caching and notifies the observer if the related metadata entry was cleared or evicted during processing.
+        /// Skips caching and notifies the observer if the related metadata entry was cleared, evicted, or replaced during processing.
         /// </summary>
-        public void SetData<TData>(PxFileRef file, MatrixMap map, Task<TData[]> data)
+        /// <param name="file">The file whose data is being cached.</param>
+        /// <param name="expectedMetaContainer">The metadata container used to read the data. It must still be the current cached container.</param>
+        /// <param name="map">The matrix map describing the data selection.</param>
+        /// <param name="data">The task producing the selected data.</param>
+        public void SetData<TData>(PxFileRef file, MetaCacheContainer expectedMetaContainer, MatrixMap map, Task<TData[]> data)
         {
-            if (_cache.TryGetValue(HashCode.Combine(META_SEED, file), out MetaCacheContainer? metaContainer))
+            if (_cache.TryGetValue(HashCode.Combine(META_SEED, file), out MetaCacheContainer? metaContainer) &&
+                metaContainer is not null &&
+                ReferenceEquals(metaContainer, expectedMetaContainer))
             {
-                List<IMatrixMap> subMaps = [..metaContainer!.GetSubMaps(map)];
+                List<IMatrixMap> subMaps = [..metaContainer.GetSubMaps(map)];
                 foreach (IMatrixMap subMap in subMaps)
                 { 
                     // Triggers eviction

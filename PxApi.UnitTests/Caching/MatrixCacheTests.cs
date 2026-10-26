@@ -329,7 +329,7 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache sut = new(memoryCacheMock.Object);
 
             // Act
-            sut.SetData(_tableId, dataMap, testData);
+            sut.SetData(_tableId, (MetaCacheContainer)metaContainer, dataMap, testData);
 
             // Assert
             memoryCacheMock.Verify(memoryCacheMock => memoryCacheMock.CreateEntry(
@@ -364,7 +364,7 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache sut = new(memoryCacheMock.Object);
 
             // Act & Assert
-            sut.SetData(_tableId, matrixMap, testData);
+            sut.SetData(_tableId, new(MatrixMetadata), matrixMap, testData);
 
             memoryCacheMock.Verify(m => m.CreateEntry(It.IsAny<object>()), Times.Never);
         }
@@ -443,7 +443,7 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache sut = new(memoryCacheMock.Object);
 
             // Act
-            sut.SetData(_tableId, matrixMap, testData);
+            sut.SetData(_tableId, metaContainer, matrixMap, testData);
 
             // Assert
             memoryCacheMock.Verify(m => m.Remove(It.IsAny<object>()), Times.Exactly(2));
@@ -491,8 +491,8 @@ namespace PxApi.UnitTests.Caching
 
             // Act
             sut.SetMetadata(_tableId, (MetaCacheContainer)metaContainer);
-            sut.SetData(_tableId, new([new DimensionMap("foo", ["bar1", "bar2"])]), Task.FromResult<int[]>([1, 2]));
-            sut.SetData(_tableId, new([new DimensionMap("foo", ["bar2", "bar3"])]), Task.FromResult<int[]>([2, 3]));
+            sut.SetData(_tableId, (MetaCacheContainer)metaContainer, new([new DimensionMap("foo", ["bar1", "bar2"])]), Task.FromResult<int[]>([1, 2]));
+            sut.SetData(_tableId, (MetaCacheContainer)metaContainer, new([new DimensionMap("foo", ["bar2", "bar3"])]), Task.FromResult<int[]>([2, 3]));
             cache.Remove(MetaCacheUtils.GetCacheKey(_tableId));
 
             // Assert
@@ -530,7 +530,7 @@ namespace PxApi.UnitTests.Caching
 
             // Act
             sut.SetMetadata(_tableId, (MetaCacheContainer)metaContainer);
-            sut.SetData(_tableId, superMap, Task.FromResult<int[]>([1, 2, 3]));
+            sut.SetData(_tableId, (MetaCacheContainer)metaContainer, superMap, Task.FromResult<int[]>([1, 2, 3]));
 
             bool result = sut.TryGetDataSuperset(
                 _tableId,
