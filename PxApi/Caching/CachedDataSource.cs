@@ -96,7 +96,7 @@ namespace PxApi.Caching
         /// <inheritdoc/>
         public async Task<DoubleDataValue[]> GetDataCachedAsync(PxFileRef pxFile, IMatrixMap map, CancellationToken ct = default)
         {
-            if (cache.TryGetData(map, out Task<DoubleDataValue[]>? data, out DateTime? cached))
+            if (cache.TryGetData(pxFile, map, out Task<DoubleDataValue[]>? data, out DateTime? cached))
             {
                 if (await CheckCacheValidity(pxFile, cached!.Value, ct))
                 {

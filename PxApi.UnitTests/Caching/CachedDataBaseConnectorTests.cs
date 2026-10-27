@@ -305,6 +305,53 @@ namespace PxApi.UnitTests.Caching
         #region GetDataCachedAsync
 
         [Test]
+        public async Task GetDataCachedAsync_IdenticalMapsForDifferentTables_ReturnsEachTablesData()
+        {
+            DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef firstFile = BuildTestFileRef("firstTable", database);
+            PxFileRef secondFile = BuildTestFileRef("secondTable", database);
+            MatrixMap map = new([new DimensionMap("dimension", ["one", "two"])]);
+            MatrixMap subset = new([new DimensionMap("dimension", ["two"])]);
+            IReadOnlyMatrixMetadata metadata = Mock.Of<IReadOnlyMatrixMetadata>();
+            DoubleDataValue[] firstData = [new(1, DataValueType.Exists), new(2, DataValueType.Exists)];
+            DoubleDataValue[] secondData = [new(3, DataValueType.Exists), new(4, DataValueType.Exists)];
+            using MemoryCache memory = new(new MemoryCacheOptions());
+            Mock<IDataBaseConnector> connector = new();
+            connector.Setup(item => item.ReadMetadataAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
+                .ReturnsAsync(metadata);
+            connector.Setup(item => item.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
+                .ReturnsAsync(DateTime.UtcNow.AddDays(-1));
+            connector.Setup(item => item.ReadDataAsync(firstFile, map, metadata, CancellationToken.None)).ReturnsAsync(firstData);
+            connector.Setup(item => item.ReadDataAsync(secondFile, map, metadata, CancellationToken.None)).ReturnsAsync(secondData);
+            Mock<IDataBaseConnectorFactory> factory = new();
+            factory.Setup(item => item.GetConnector(database)).Returns(connector.Object);
+            CachedDataSource source = new(factory.Object, new DatabaseCache(memory));
+
+            DoubleDataValue[] first = await source.GetDataCachedAsync(firstFile, map);
+            DoubleDataValue[] second = await source.GetDataCachedAsync(secondFile, map);
+            DoubleDataValue[] firstCached = await source.GetDataCachedAsync(firstFile, map);
+            DoubleDataValue[] secondCached = await source.GetDataCachedAsync(secondFile, map);
+            DoubleDataValue[] firstSubset = await source.GetDataCachedAsync(firstFile, subset);
+            DoubleDataValue[] secondSubset = await source.GetDataCachedAsync(secondFile, subset);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(first, Is.SameAs(firstData));
+                Assert.That(second, Is.SameAs(secondData));
+                Assert.That(firstCached, Is.SameAs(firstData));
+                Assert.That(secondCached, Is.SameAs(secondData));
+                Assert.That(firstSubset, Has.Length.EqualTo(1));
+                Assert.That(firstSubset[0].UnsafeValue, Is.EqualTo(2));
+                Assert.That(secondSubset, Has.Length.EqualTo(1));
+                Assert.That(secondSubset[0].UnsafeValue, Is.EqualTo(4));
+            }
+            connector.Verify(item => item.ReadDataAsync(firstFile, map, metadata, CancellationToken.None), Times.Once);
+            connector.Verify(item => item.ReadDataAsync(secondFile, map, metadata, CancellationToken.None), Times.Once);
+            connector.Verify(item => item.ReadDataAsync(
+                It.IsAny<PxFileRef>(), subset, It.IsAny<IReadOnlyMatrixMetadata>(), CancellationToken.None), Times.Never);
+        }
+
+        [Test]
         public async Task GetDataCachedAsync_MetadataClearedBeforeCaching_ReturnsDataWithoutCaching()
         {
             DataBaseRef database = DataBaseRef.Create("PxApiUnitTestsDb");
@@ -328,7 +375,7 @@ namespace PxApi.UnitTests.Caching
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.SameAs(expected));
-                Assert.That(cache.TryGetData<DoubleDataValue>(map, out _, out _), Is.False);
+                Assert.That(cache.TryGetData<DoubleDataValue>(file, map, out _, out _), Is.False);
             }
         }
 
@@ -359,7 +406,7 @@ namespace PxApi.UnitTests.Caching
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(request.IsCompleted, Is.False);
-                Assert.That(cache.TryGetData<DoubleDataValue>(map, out _, out _), Is.False);
+                Assert.That(cache.TryGetData<DoubleDataValue>(file, map, out _, out _), Is.False);
                 Assert.That(replacement.GetRelatedMaps(), Is.Empty);
             }
 
@@ -371,7 +418,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Is.SameAs(expected));
                 Assert.That(cache.TryGetMetadata(file, out MetaCacheContainer? cachedMetadata), Is.True);
                 Assert.That(cachedMetadata, Is.SameAs(replacement));
-                Assert.That(cache.TryGetData<DoubleDataValue>(map, out _, out _), Is.False);
+                Assert.That(cache.TryGetData<DoubleDataValue>(file, map, out _, out _), Is.False);
                 Assert.That(replacement.GetRelatedMaps(), Is.Empty);
             }
             observer.Verify(item => item.RecordDataCacheWriteSkipped(), Times.Once);
@@ -575,7 +622,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(retainedList, Is.SameAs(otherFileList));
                 Assert.That(dbCache.TryGetMetadata(file, out MetaCacheContainer? retainedMetadata), Is.True);
                 Assert.That(retainedMetadata, Is.SameAs(metaContainer));
-                Assert.That(dbCache.TryGetData(map, out Task<DoubleDataValue[]>? retainedData, out _), Is.True);
+                Assert.That(dbCache.TryGetData(file, map, out Task<DoubleDataValue[]>? retainedData, out _), Is.True);
                 Assert.That(retainedData, Is.SameAs(data));
                 Assert.That(dbCache.TryGetLastUpdated(file, out Task<DateTime>? retainedLastUpdated), Is.True);
                 Assert.That(retainedLastUpdated, Is.SameAs(lastUpdated));
@@ -1130,7 +1177,7 @@ namespace PxApi.UnitTests.Caching
             dbCache.SetData(fileRef, metaContainer, map, dataTcs.Task);
 
             // Pre-assert: present in cache
-            bool before = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? beforeTask, out DateTime? beforeCached);
+            bool before = dbCache.TryGetData(fileRef, map, out Task<DoubleDataValue[]>? beforeTask, out DateTime? beforeCached);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(before, Is.True);
@@ -1142,7 +1189,7 @@ namespace PxApi.UnitTests.Caching
             dataTcs.SetException(new InvalidOperationException("data failure"));
 
             // Assert: evicted
-            bool after = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? afterTask, out DateTime? afterCached);
+            bool after = dbCache.TryGetData(fileRef, map, out Task<DoubleDataValue[]>? afterTask, out DateTime? afterCached);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(after, Is.False);
@@ -1172,7 +1219,7 @@ namespace PxApi.UnitTests.Caching
             dbCache.SetData(fileRef, metaContainer, map, dataTcs.Task);
 
             // Pre-assert: present in cache
-            bool before = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? beforeTask, out DateTime? beforeCached);
+            bool before = dbCache.TryGetData(fileRef, map, out Task<DoubleDataValue[]>? beforeTask, out DateTime? beforeCached);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(before, Is.True);
@@ -1184,7 +1231,7 @@ namespace PxApi.UnitTests.Caching
             dataTcs.SetCanceled();
 
             // Assert: evicted
-            bool after = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? afterTask, out DateTime? afterCached);
+            bool after = dbCache.TryGetData(fileRef, map, out Task<DoubleDataValue[]>? afterTask, out DateTime? afterCached);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(after, Is.False);

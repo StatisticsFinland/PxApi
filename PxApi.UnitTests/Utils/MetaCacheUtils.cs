@@ -19,7 +19,7 @@ namespace PxApi.UnitTests.Utils
             return HashCode.Combine(metaSeed, tableId);
         }
 
-        internal static int GetCacheKey(IMatrixMap map)
+        internal static (string, PxFileRef, int) GetCacheKey(PxFileRef file, IMatrixMap map)
         {
             // Use reflection to get the private META_SEED constant from MatrixCache
             System.Reflection.FieldInfo? field = typeof(DatabaseCache).GetField(
@@ -38,7 +38,7 @@ namespace PxApi.UnitTests.Utils
             int hash = method == null
                 ? throw new InvalidOperationException("GenerateCacheKey(IMatrixMap) method not found on MatrixCache.")
                 : (int)method.Invoke(null, [map])!;
-            return HashCode.Combine(dataSeed, hash);
+            return (dataSeed, file, hash);
         }
     }
 }

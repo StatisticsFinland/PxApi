@@ -46,7 +46,17 @@ Generic wrapper used to store cached items with metadata needed for cache manage
 
 ## Cache Key Structure
 
-Cache keys combine the database ID, file ID, and entity type. The `DatabaseCache` class manages key construction internally.
+Data cache keys are composite values containing the data-entry discriminator,
+the full `PxFileRef` (database, file ID, and hierarchy), and the existing matrix-map
+hash. The file reference is retained for equality comparison, rather than reduced
+to an integer hash. Exact reads, superset reads, submap eviction, metadata eviction,
+and failed-load cleanup use the same table-scoped key construction.
+
+Identical selections in different tables therefore cannot share data entries or
+evict one another's data. The selection is still represented by a hash, so
+selection-hash collisions within one table remain possible. This change does not
+address same-table generation races. Other cache categories retain their existing
+keys. `DatabaseCache` manages key construction internally.
 
 ## TTL Configuration
 

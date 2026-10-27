@@ -149,7 +149,7 @@ namespace PxApi.Caching
             };
 
             int cacheKey = HashCode.Combine(META_SEED, file);
-            options.RegisterPostEvictionCallback(OnMetaCacheEvicted);
+            options.RegisterPostEvictionCallback(OnMetaCacheEvicted, file);
 
             _cache.Set(cacheKey, metaContainer, options);
             AttachEvictionOnFail(metaContainer, metaContainer.Metadata, cacheKey);
@@ -167,11 +167,11 @@ namespace PxApi.Caching
         }
 
         /// <summary>
-        /// Attempts to retrieve cached data for the specified matrix map.
+        /// Attempts to retrieve cached data for the specified file and matrix map.
         /// </summary>
-        public bool TryGetData<TData>(IMatrixMap map, out Task<TData[]>? data, out DateTime? cached)
+        public bool TryGetData<TData>(PxFileRef file, IMatrixMap map, out Task<TData[]>? data, out DateTime? cached)
         {
-            if (_cache.TryGetValue(HashCode.Combine(DATA_SEED, MapHash(map)), out DataCacheContainer<TData>? dataContainer))
+            if (_cache.TryGetValue(GetDataCacheKey(file, map), out DataCacheContainer<TData>? dataContainer))
             {
                 data = dataContainer!.Data;
                 cached = dataContainer!.CachedUtc;
@@ -195,7 +195,7 @@ namespace PxApi.Caching
             if (_cache.TryGetValue(HashCode.Combine(META_SEED, file), out MetaCacheContainer? metaContainer) &&
                 metaContainer is not null &&
                 metaContainer.TryGetSuperMap(map, out supersetMap) &&
-                _cache.TryGetValue(HashCode.Combine(DATA_SEED, MapHash(supersetMap)), out DataCacheContainer<TData>? superContainer))
+                _cache.TryGetValue(GetDataCacheKey(file, supersetMap), out DataCacheContainer<TData>? superContainer))
             {
                 data = superContainer!.Data;
                 cached = superContainer!.CachedUtc;
@@ -226,7 +226,7 @@ namespace PxApi.Caching
                 foreach (IMatrixMap subMap in subMaps)
                 { 
                     // Triggers eviction
-                    _cache.Remove(HashCode.Combine(DATA_SEED, MapHash(subMap)));
+                    _cache.Remove(GetDataCacheKey(file, subMap));
                 }
 
                 CacheConfig config = cacheConfigs[file.DataBase.Id].Data;
@@ -240,7 +240,7 @@ namespace PxApi.Caching
 
                 DataCacheContainer<TData> value = new(map, data);
                 options.RegisterPostEvictionCallback(value.EvictionCallback);
-                int cacheKey = HashCode.Combine(DATA_SEED, MapHash(map));
+                (string, PxFileRef, int) cacheKey = GetDataCacheKey(file, map);
                 _cache.Set(cacheKey, value, options);
                 metaContainer.AddDataContainer(value);
                 AttachEvictionOnFail(value, value.Data, cacheKey);
@@ -277,7 +277,7 @@ namespace PxApi.Caching
             _cache.Remove(HashCode.Combine(DATABASE_NAME_SEED, dbRef));
         }
 
-        private void AttachEvictionOnFail(object cacheItem, Task task, int cacheKey)
+        private void AttachEvictionOnFail(object cacheItem, Task task, object cacheKey)
         {
             task.ContinueWith(
                 t =>
@@ -306,12 +306,15 @@ namespace PxApi.Caching
 
         private void OnMetaCacheEvicted(object? key, object? value, EvictionReason reason, object? state)
         {
-            if (value is MetaCacheContainer metaContainder)
+            if (value is MetaCacheContainer metaContainder && state is PxFileRef file)
             {
                 metaContainder.GetRelatedMaps().ForEach(map =>
-                    _cache.Remove(HashCode.Combine(DATA_SEED, MapHash(map))));
+                    _cache.Remove(GetDataCacheKey(file, map)));
             }
         }
+
+        private static (string, PxFileRef, int) GetDataCacheKey(PxFileRef file, IMatrixMap map) =>
+            (DATA_SEED, file, MapHash(map));
 
         private static int MapHash(IMatrixMap map)
         {
