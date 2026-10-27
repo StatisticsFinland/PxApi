@@ -19,7 +19,6 @@ namespace PxApi.UnitTests.Caching
     {
         private const string FILE_LIST_SEED_VARNAME = "FILE_LIST_SEED";
         private const string LAST_UPDATED_SEED_VARNAME = "LAST_UPDATED_SEED";
-        private const string DATA_SEED_VARNAME = "DATA_SEED";
         private const string META_SEED_VARNAME = "META_SEED";
         private const string DATABASE_NAME_SEED_VARNAME = "DATABASE_NAME_SEED";
 
@@ -322,9 +321,9 @@ namespace PxApi.UnitTests.Caching
             DataCacheContainer<DoubleDataValue> dataContainer = new(map, expectedDataTask);
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
-            string dataSeed = GetSeedForKeyword(DATA_SEED_VARNAME);
-            int mapHash = GetMapHash(map);
-            memoryCache.Set((dataSeed, _file1, mapHash), dataContainer);
+            MetaCacheContainer metaContainer = new(Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>()));
+            memoryCache.Set(MetaCacheUtils.GetCacheKey(_file1), metaContainer);
+            memoryCache.Set(MetaCacheUtils.GetCacheKey(_file1, metaContainer, map), dataContainer);
             
             DatabaseCache dbCache = new(memoryCache);
 
@@ -644,7 +643,7 @@ namespace PxApi.UnitTests.Caching
             int metaKey = MetaCacheUtils.GetCacheKey(_file1);
             memoryCache.Set(metaKey, metaContainer);
 
-            (string, PxFileRef, int) dataKey = MetaCacheUtils.GetCacheKey(_file1, superMap);
+            object dataKey = MetaCacheUtils.GetCacheKey(_file1, metaContainer, superMap);
             memoryCache.Set(dataKey, dataContainer);
             
             DatabaseCache dbCache = new(memoryCache);
@@ -721,7 +720,7 @@ namespace PxApi.UnitTests.Caching
             Mock<ICacheObserver> observer = new();
             DatabaseCache dbCache = new(memoryCache, observer.Object);
             memoryCache.Set(HashCode.Combine(GetSeedForKeyword(META_SEED_VARNAME), _file1), metaContainer);
-            (string, PxFileRef, int) mapCode = MetaCacheUtils.GetCacheKey(_file1, map);
+            object mapCode = MetaCacheUtils.GetCacheKey(_file1, metaContainer, map);
 
             // Act
             dbCache.SetData(_file1, metaContainer, map, dataTask);
@@ -761,8 +760,8 @@ namespace PxApi.UnitTests.Caching
             currentMetaContainer.AddDataContainer(subDataContainer);
             using MemoryCache memoryCache = new(new MemoryCacheOptions());
             memoryCache.Set(MetaCacheUtils.GetCacheKey(_file1), currentMetaContainer);
-            memoryCache.Set(MetaCacheUtils.GetCacheKey(_file1, map), currentDataContainer);
-            memoryCache.Set(MetaCacheUtils.GetCacheKey(_file1, subMap), subDataContainer);
+            memoryCache.Set(MetaCacheUtils.GetCacheKey(_file1, currentMetaContainer, map), currentDataContainer);
+            memoryCache.Set(MetaCacheUtils.GetCacheKey(_file1, currentMetaContainer, subMap), subDataContainer);
             Mock<ICacheObserver> observer = new();
             DatabaseCache dbCache = new(memoryCache, withObserver ? observer.Object : null);
 
@@ -818,8 +817,8 @@ namespace PxApi.UnitTests.Caching
             memoryCache.Set(HashCode.Combine(metaSeed, _file1), metaContainer);
 
             // Pre-populate the cache with the submap data container
-            (string, PxFileRef, int) subMapKey = MetaCacheUtils.GetCacheKey(_file1, subMap1);
-            (string, PxFileRef, int) mapKey = MetaCacheUtils.GetCacheKey(_file1, map);
+            object subMapKey = MetaCacheUtils.GetCacheKey(_file1, metaContainer, subMap1);
+            object mapKey = MetaCacheUtils.GetCacheKey(_file1, metaContainer, map);
             memoryCache.Set(subMapKey, subContainer);
 
             // Act
@@ -1018,12 +1017,5 @@ namespace PxApi.UnitTests.Caching
             return keywordSeed;
         }
 
-        private static int GetMapHash(IMatrixMap map)
-        {
-            // Use reflection to get the private function for generating a matrix map hash code
-            System.Reflection.MethodInfo? mapHashMethod = typeof(DatabaseCache)
-                .GetMethod("MapHash", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            return (int)mapHashMethod!.Invoke(null, [map])!;
-        }
     }
 }

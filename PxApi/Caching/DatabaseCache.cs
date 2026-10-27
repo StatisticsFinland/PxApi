@@ -171,7 +171,9 @@ namespace PxApi.Caching
         /// </summary>
         public bool TryGetData<TData>(PxFileRef file, IMatrixMap map, out Task<TData[]>? data, out DateTime? cached)
         {
-            if (_cache.TryGetValue(GetDataCacheKey(file, map), out DataCacheContainer<TData>? dataContainer))
+            if (TryGetMetadata(file, out MetaCacheContainer? metaContainer) &&
+                metaContainer is not null &&
+                _cache.TryGetValue(GetDataCacheKey(file, metaContainer, map), out DataCacheContainer<TData>? dataContainer))
             {
                 data = dataContainer!.Data;
                 cached = dataContainer!.CachedUtc;
@@ -195,7 +197,7 @@ namespace PxApi.Caching
             if (_cache.TryGetValue(HashCode.Combine(META_SEED, file), out MetaCacheContainer? metaContainer) &&
                 metaContainer is not null &&
                 metaContainer.TryGetSuperMap(map, out supersetMap) &&
-                _cache.TryGetValue(GetDataCacheKey(file, supersetMap), out DataCacheContainer<TData>? superContainer))
+                _cache.TryGetValue(GetDataCacheKey(file, metaContainer, supersetMap), out DataCacheContainer<TData>? superContainer))
             {
                 data = superContainer!.Data;
                 cached = superContainer!.CachedUtc;
@@ -218,15 +220,21 @@ namespace PxApi.Caching
         /// <param name="data">The task producing the selected data.</param>
         public void SetData<TData>(PxFileRef file, MetaCacheContainer expectedMetaContainer, MatrixMap map, Task<TData[]> data)
         {
-            if (_cache.TryGetValue(HashCode.Combine(META_SEED, file), out MetaCacheContainer? metaContainer) &&
-                metaContainer is not null &&
-                ReferenceEquals(metaContainer, expectedMetaContainer))
+            lock (expectedMetaContainer.DataAccessLock)
             {
+                if (!TryGetMetadata(file, out MetaCacheContainer? metaContainer) ||
+                    metaContainer is null ||
+                    !ReferenceEquals(metaContainer, expectedMetaContainer))
+                {
+                    cacheObserver?.RecordDataCacheWriteSkipped();
+                    return;
+                }
+
                 List<IMatrixMap> subMaps = [..metaContainer.GetSubMaps(map)];
                 foreach (IMatrixMap subMap in subMaps)
                 { 
                     // Triggers eviction
-                    _cache.Remove(GetDataCacheKey(file, subMap));
+                    _cache.Remove(GetDataCacheKey(file, metaContainer, subMap));
                 }
 
                 CacheConfig config = cacheConfigs[file.DataBase.Id].Data;
@@ -240,14 +248,11 @@ namespace PxApi.Caching
 
                 DataCacheContainer<TData> value = new(map, data);
                 options.RegisterPostEvictionCallback(value.EvictionCallback);
-                (string, PxFileRef, int) cacheKey = GetDataCacheKey(file, map);
-                _cache.Set(cacheKey, value, options);
+                (string, PxFileRef, object, int) cacheKey = GetDataCacheKey(file, metaContainer, map);
+                // Register before publishing so even immediate eviction can remove this container's registration.
                 metaContainer.AddDataContainer(value);
-                AttachEvictionOnFail(value, value.Data, cacheKey);
-            }
-            else
-            {
-                cacheObserver?.RecordDataCacheWriteSkipped();
+                _cache.Set(cacheKey, value, options);
+                AttachEvictionOnFail(value, value.Data, cacheKey, metaContainer.DataAccessLock);
             }
         }
 
@@ -277,7 +282,7 @@ namespace PxApi.Caching
             _cache.Remove(HashCode.Combine(DATABASE_NAME_SEED, dbRef));
         }
 
-        private void AttachEvictionOnFail(object cacheItem, Task task, object cacheKey)
+        private void AttachEvictionOnFail(object cacheItem, Task task, object cacheKey, Lock? evictionLock = null)
         {
             task.ContinueWith(
                 t =>
@@ -286,11 +291,26 @@ namespace PxApi.Caching
                     // The exceptions should be handled by the initial caller of the task, but just to be safe.
                     _ = t.Exception;
 
-                    // Make sure we remove the right items, since this callback is task and not key based.
-                    if (_cache.TryGetValue(cacheKey, out object? current) &&
-                        ReferenceEquals(current, cacheItem))
+                    if (evictionLock is null)
                     {
-                        _cache.Remove(cacheKey);
+                        RemoveIfCurrent();
+                    }
+                    else
+                    {
+                        lock (evictionLock)
+                        {
+                            RemoveIfCurrent();
+                        }
+                    }
+
+                    void RemoveIfCurrent()
+                    {
+                        // Failed loads must not remove replacements that reuse the same key.
+                        if (_cache.TryGetValue(cacheKey, out object? current) &&
+                            ReferenceEquals(current, cacheItem))
+                        {
+                            _cache.Remove(cacheKey);
+                        }
                     }
                 },
                 CancellationToken.None,
@@ -306,15 +326,20 @@ namespace PxApi.Caching
 
         private void OnMetaCacheEvicted(object? key, object? value, EvictionReason reason, object? state)
         {
-            if (value is MetaCacheContainer metaContainder && state is PxFileRef file)
+            if (value is MetaCacheContainer metaContainer && state is PxFileRef file)
             {
-                metaContainder.GetRelatedMaps().ForEach(map =>
-                    _cache.Remove(GetDataCacheKey(file, map)));
+                lock (metaContainer.DataAccessLock)
+                {
+                    foreach (IMatrixMap map in metaContainer.GetRelatedMaps())
+                    {
+                        _cache.Remove(GetDataCacheKey(file, metaContainer, map));
+                    }
+                }
             }
         }
 
-        private static (string, PxFileRef, int) GetDataCacheKey(PxFileRef file, IMatrixMap map) =>
-            (DATA_SEED, file, MapHash(map));
+        private static (string, PxFileRef, object, int) GetDataCacheKey(PxFileRef file, MetaCacheContainer metaContainer, IMatrixMap map) =>
+            (DATA_SEED, file, metaContainer.Generation, MapHash(map));
 
         private static int MapHash(IMatrixMap map)
         {
