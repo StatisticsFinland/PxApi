@@ -68,7 +68,17 @@ Three explicit invalidation paths via `CacheController`:
 
 All are exposed as `DELETE` endpoints on `CacheController` (requires feature flag `CacheController = true`) and affect only the current API instance.
 
+If the related metadata entry is missing when data is inserted, data caching is
+skipped and reported through the optional cache observer. On tracked requests,
+the completion event includes `data_cache_write_skipped=true`; no separate
+cache diagnostic is emitted. The in-flight request still awaits
+the source read and returns its result; source errors and cancellation still
+propagate normally.
+
 ## Concurrency
+
+Submap filtering is materialized under the related-map list's lock, so callers
+receive a snapshot rather than enumerating a list that eviction callbacks can modify.
 
 ### Request diagnostics
 
@@ -79,9 +89,13 @@ work, not users, requested tables, or metadata endpoint requests. The first
 lookup initializes both hit/miss counters; untouched cache categories remain
 absent. Search enrichment can accumulate counters concurrently. Cache hits do
 not imply a successfully written response.
+`data_cache_write_skipped=true` is present only when a data-cache write was
+skipped because its metadata entry was missing. This does not change the
+lookup outcome (`miss`) or indicate a failed response.
 
 [CachedDataSource](../../PxApi/Caching/CachedDataSource.cs) reports actual lookup
-decisions through the optional, transport-neutral
+decisions and [DatabaseCache](../../PxApi/Caching/DatabaseCache.cs) reports skipped
+data-cache writes through the optional, transport-neutral
 [ICacheObserver](../../PxApi/Caching/ICacheObserver.cs). It does not depend on
 `HttpContext`, `IHttpContextAccessor`, or `QueryObservation`. Manual/background
 callers can omit the observer without changing cache behavior.

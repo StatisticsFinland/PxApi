@@ -53,6 +53,33 @@ public class QueryCompletionMiddlewareTests
     }
 
     [Test]
+    public async Task InvokeAsync_SkippedDataCacheWrite_IncludesObservationInSingleCompletion()
+    {
+        List<Dictionary<string, object?>> events = [];
+        Mock<ILogger<QueryCompletionMiddleware>> logger = CreateLogger(events);
+        HttpContext context = CreateContext();
+        Mock<IHttpContextAccessor> accessor = new();
+        accessor.SetupGet(item => item.HttpContext).Returns(context);
+        HttpCacheObserver observer = new(accessor.Object);
+        QueryCompletionMiddleware middleware = new(http =>
+        {
+            observer.RecordDataCacheMiss();
+            observer.RecordDataCacheWriteSkipped();
+            return Task.CompletedTask;
+        }, logger.Object, configuration);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.That(events, Has.Count.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(events[0]["data_cache_outcome"], Is.EqualTo("miss"));
+            Assert.That(events[0]["data_cache_write_skipped"], Is.True);
+            Assert.That(events[0]["outcome"], Is.EqualTo("success"));
+        }
+    }
+
+    [Test]
     public async Task InvokeAsync_Reexecution_PreservesOriginalOperationAndEmitsOnce()
     {
         List<Dictionary<string, object?>> events = [];

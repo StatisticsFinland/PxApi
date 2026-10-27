@@ -69,6 +69,7 @@ public class HttpCacheObserverTests
                 observer.RecordMetadataLookup(false);
                 observer.RecordDataCacheHit(false);
                 observer.RecordDataCacheMiss();
+                observer.RecordDataCacheWriteSkipped();
             }, Throws.Nothing);
             if (context is not null) Assert.That(QueryObservation.Get(context), Is.Null);
         }
@@ -91,13 +92,16 @@ public class HttpCacheObserverTests
         observer.RecordDataCacheHit(false);
         currentContext = secondContext;
         observer.RecordDataCacheMiss();
+        observer.RecordDataCacheWriteSkipped();
         currentContext = null;
         observer.RecordDataCacheHit(true);
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(first.Complete().ToDictionary()["data_cache_outcome"], Is.EqualTo("exact_hit"));
+            Assert.That(first.Complete().ToDictionary().ContainsKey("data_cache_write_skipped"), Is.False);
             Assert.That(second.Complete().ToDictionary()["data_cache_outcome"], Is.EqualTo("miss"));
+            Assert.That(second.Complete().ToDictionary()["data_cache_write_skipped"], Is.True);
         }
     }
 }
