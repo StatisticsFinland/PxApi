@@ -324,12 +324,12 @@ namespace PxApi.UnitTests.Caching
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             string dataSeed = GetSeedForKeyword(DATA_SEED_VARNAME);
             int mapHash = GetMapHash(map);
-            memoryCache.Set(HashCode.Combine(dataSeed, mapHash), dataContainer);
+            memoryCache.Set((dataSeed, _file1, mapHash), dataContainer);
             
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
+            bool result = dbCache.TryGetData(_file1, map, out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
 
             // Assert
             using (Assert.EnterMultipleScope())
@@ -353,7 +353,7 @@ namespace PxApi.UnitTests.Caching
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetData(map, out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
+            bool result = dbCache.TryGetData(_file1, map, out Task<DoubleDataValue[]>? actualData, out DateTime? actualCached);
 
             // Assert
             using (Assert.EnterMultipleScope())
@@ -367,6 +367,156 @@ namespace PxApi.UnitTests.Caching
         #endregion
 
         #region TryGetDataSuperset
+
+        [TestCase("differentTable", "PxApiUnitTestsDb", "statisticalProgram")]
+        [TestCase("file1", "OtherDb", "statisticalProgram")]
+        [TestCase("file1", "PxApiUnitTestsDb", "differentHierarchy")]
+        public void TryGetData_WithDifferentFileReference_DoesNotReturnCachedData(string tableId, string databaseId, string hierarchy)
+        {
+            PxFileRef otherFile = PxFileRef.ValidateAndCreate(tableId, DataBaseRef.Create(databaseId), [hierarchy]);
+            MatrixMap map = new([new DimensionMap("dimension", ["value"])]);
+            MetaCacheContainer metadata = new(Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>()));
+            using MemoryCache memory = new(new MemoryCacheOptions());
+            DatabaseCache cache = new(memory);
+            cache.SetMetadata(_file1, metadata);
+            cache.SetData(_file1, metadata, map, Task.FromResult<int[]>([1]));
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(cache.TryGetData<int>(_file1, map, out _, out _), Is.True);
+                Assert.That(cache.TryGetData<int>(otherFile, map, out Task<int[]>? data, out DateTime? cached), Is.False);
+                Assert.That(data, Is.Null);
+                Assert.That(cached, Is.Null);
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SetData_WithIdenticalMapsForDifferentTables_KeepsExactAndSupersetDataSeparate(bool differentDatabase)
+        {
+            TestConfigFactory.BuildAndLoad(TestConfigFactory.Merge(
+                TestConfigFactory.Base(),
+                TestConfigFactory.MountedDb(0, _file1.DataBase.Id),
+                TestConfigFactory.MountedDb(1, "OtherDb")));
+            PxFileRef otherFile = differentDatabase
+                ? PxFileRef.ValidateAndCreate(_file1.Id, DataBaseRef.Create("OtherDb"), ["statisticalProgram"])
+                : _file2;
+            MatrixMap map = new([new DimensionMap("dimension", ["one", "two"])]);
+            MatrixMap subset = new([new DimensionMap("dimension", ["two"])]);
+            MetaCacheContainer firstMetadata = new(Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>()));
+            MetaCacheContainer otherMetadata = new(Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>()));
+            Task<int[]> firstData = Task.FromResult<int[]>([1, 2]);
+            Task<int[]> otherData = Task.FromResult<int[]>([3, 4]);
+            using MemoryCache memory = new(new MemoryCacheOptions());
+            DatabaseCache cache = new(memory);
+            cache.SetMetadata(_file1, firstMetadata);
+            cache.SetMetadata(otherFile, otherMetadata);
+            cache.SetData(_file1, firstMetadata, map, firstData);
+            cache.SetData(otherFile, otherMetadata, map, otherData);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(cache.TryGetData(_file1, map, out Task<int[]>? firstExact, out _), Is.True);
+                Assert.That(firstExact, Is.SameAs(firstData));
+                Assert.That(cache.TryGetData(otherFile, map, out Task<int[]>? otherExact, out _), Is.True);
+                Assert.That(otherExact, Is.SameAs(otherData));
+                Assert.That(cache.TryGetDataSuperset(_file1, subset, out _, out Task<int[]>? firstSuper, out _), Is.True);
+                Assert.That(firstSuper, Is.SameAs(firstData));
+                Assert.That(cache.TryGetDataSuperset(otherFile, subset, out _, out Task<int[]>? otherSuper, out _), Is.True);
+                Assert.That(otherSuper, Is.SameAs(otherData));
+            }
+        }
+
+        [Test]
+        public void SetData_WithLargerMap_RemovesOnlyOwningTablesSubmap()
+        {
+            MatrixMap subset = new([new DimensionMap("dimension", ["one"])]);
+            MatrixMap superset = new([new DimensionMap("dimension", ["one", "two"])]);
+            MetaCacheContainer firstMetadata = new(Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>()));
+            MetaCacheContainer otherMetadata = new(Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>()));
+            Task<int[]> otherData = Task.FromResult<int[]>([3]);
+            using MemoryCache memory = new(new MemoryCacheOptions());
+            DatabaseCache cache = new(memory);
+            cache.SetMetadata(_file1, firstMetadata);
+            cache.SetMetadata(_file2, otherMetadata);
+            cache.SetData(_file1, firstMetadata, subset, Task.FromResult<int[]>([1]));
+            cache.SetData(_file2, otherMetadata, subset, otherData);
+
+            cache.SetData(_file1, firstMetadata, superset, Task.FromResult<int[]>([1, 2]));
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(cache.TryGetData<int>(_file1, subset, out _, out _), Is.False);
+                Assert.That(cache.TryGetData<int>(_file1, superset, out _, out _), Is.True);
+                Assert.That(cache.TryGetData(_file2, subset, out Task<int[]>? retained, out _), Is.True);
+                Assert.That(retained, Is.SameAs(otherData));
+            }
+        }
+
+        [Test]
+        public void SetData_WhenSourceTaskFails_PreservesOtherTablesData()
+        {
+            MatrixMap map = new([new DimensionMap("dimension", ["one"])]);
+            MetaCacheContainer firstMetadata = new(Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>()));
+            MetaCacheContainer otherMetadata = new(Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>()));
+            TaskCompletionSource<int[]> failedData = new();
+            Task<int[]> otherData = Task.FromResult<int[]>([3]);
+            using MemoryCache memory = new(new MemoryCacheOptions());
+            DatabaseCache cache = new(memory);
+            cache.SetMetadata(_file1, firstMetadata);
+            cache.SetMetadata(_file2, otherMetadata);
+            cache.SetData(_file1, firstMetadata, map, failedData.Task);
+            cache.SetData(_file2, otherMetadata, map, otherData);
+
+            failedData.SetException(new InvalidOperationException("Source read failed."));
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(cache.TryGetData<int>(_file1, map, out _, out _), Is.False);
+                Assert.That(cache.TryGetData(_file2, map, out Task<int[]>? retained, out _), Is.True);
+                Assert.That(retained, Is.SameAs(otherData));
+            }
+        }
+
+        [TestCase(EvictionReason.Removed)]
+        [TestCase(EvictionReason.Replaced)]
+        public void OnMetaCacheEvicted_RemovesOnlyOwningTablesData(EvictionReason reason)
+        {
+            MatrixMap map = new([new DimensionMap("dimension", ["one"])]);
+            MetaCacheContainer firstMetadata = new(Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>()));
+            MetaCacheContainer otherMetadata = new(Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>()));
+            Task<int[]> otherData = Task.FromResult<int[]>([3]);
+            using MemoryCache memory = new(new MemoryCacheOptions());
+            ICacheEntry? firstMetadataEntry = null;
+            Mock<IMemoryCache> forwardingCache = new();
+            forwardingCache.Setup(item => item.CreateEntry(It.IsAny<object>()))
+                .Returns<object>(key =>
+                {
+                    ICacheEntry entry = memory.CreateEntry(key);
+                    if (key.Equals(MetaCacheUtils.GetCacheKey(_file1))) firstMetadataEntry = entry;
+                    return entry;
+                });
+            forwardingCache.Setup(item => item.TryGetValue(It.IsAny<object>(), out It.Ref<object?>.IsAny))
+                .Returns((object key, out object? value) => memory.TryGetValue(key, out value));
+            forwardingCache.Setup(item => item.Remove(It.IsAny<object>()))
+                .Callback<object>(memory.Remove);
+            DatabaseCache cache = new(forwardingCache.Object);
+            cache.SetMetadata(_file1, firstMetadata);
+            cache.SetMetadata(_file2, otherMetadata);
+            cache.SetData(_file1, firstMetadata, map, Task.FromResult<int[]>([1]));
+            cache.SetData(_file2, otherMetadata, map, otherData);
+            PostEvictionCallbackRegistration callback = firstMetadataEntry!.PostEvictionCallbacks.Single();
+
+            callback.EvictionCallback!(firstMetadataEntry.Key, firstMetadata, reason, callback.State);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(callback.State, Is.EqualTo(_file1));
+                Assert.That(cache.TryGetData<int>(_file1, map, out _, out _), Is.False);
+                Assert.That(cache.TryGetData(_file2, map, out Task<int[]>? retained, out _), Is.True);
+                Assert.That(retained, Is.SameAs(otherData));
+            }
+        }
 
         [Test]
         public void TryGetDataSuperSet_WithCacheMiss_ReturnsFalse()
@@ -494,7 +644,7 @@ namespace PxApi.UnitTests.Caching
             int metaKey = MetaCacheUtils.GetCacheKey(_file1);
             memoryCache.Set(metaKey, metaContainer);
 
-            int dataKey = MetaCacheUtils.GetCacheKey(superMap);
+            (string, PxFileRef, int) dataKey = MetaCacheUtils.GetCacheKey(_file1, superMap);
             memoryCache.Set(dataKey, dataContainer);
             
             DatabaseCache dbCache = new(memoryCache);
@@ -531,10 +681,11 @@ namespace PxApi.UnitTests.Caching
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             Mock<ICacheObserver> observer = new();
             DatabaseCache dbCache = new(memoryCache, observer.Object);
+            MetaCacheContainer metaContainer = new(Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>()));
 
-            dbCache.SetData(_file1, map, dataTask);
+            dbCache.SetData(_file1, metaContainer, map, dataTask);
 
-            Assert.That(dbCache.TryGetData<DoubleDataValue>(map, out _, out _), Is.False);
+            Assert.That(dbCache.TryGetData<DoubleDataValue>(_file1, map, out _, out _), Is.False);
             observer.Verify(item => item.RecordDataCacheWriteSkipped(), Times.Once);
             observer.VerifyNoOtherCalls();
         }
@@ -546,10 +697,11 @@ namespace PxApi.UnitTests.Caching
             Task<DoubleDataValue[]> dataTask = Task.FromResult<DoubleDataValue[]>([]);
             using MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
+            MetaCacheContainer metaContainer = new(Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>()));
 
-            dbCache.SetData(_file1, map, dataTask);
+            dbCache.SetData(_file1, metaContainer, map, dataTask);
 
-            Assert.That(dbCache.TryGetData<DoubleDataValue>(map, out _, out _), Is.False);
+            Assert.That(dbCache.TryGetData<DoubleDataValue>(_file1, map, out _, out _), Is.False);
         }
 
         [Test]
@@ -569,10 +721,10 @@ namespace PxApi.UnitTests.Caching
             Mock<ICacheObserver> observer = new();
             DatabaseCache dbCache = new(memoryCache, observer.Object);
             memoryCache.Set(HashCode.Combine(GetSeedForKeyword(META_SEED_VARNAME), _file1), metaContainer);
-            int mapCode = MetaCacheUtils.GetCacheKey(map);
+            (string, PxFileRef, int) mapCode = MetaCacheUtils.GetCacheKey(_file1, map);
 
             // Act
-            dbCache.SetData(_file1, map, dataTask);
+            dbCache.SetData(_file1, metaContainer, map, dataTask);
 
             // Assert
             using (Assert.EnterMultipleScope())
@@ -582,6 +734,52 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(memoryCache.TryGetValue(mapCode, out DataCacheContainer<DoubleDataValue>? cachedContainer), Is.True);
                 Assert.That(cachedContainer!.Data, Is.SameAs(dataTask));
             }
+            observer.VerifyNoOtherCalls();
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void SetData_WithReplacedMetaContainer_PreservesCurrentCache(bool withObserver)
+        {
+            MatrixMap map = new([new DimensionMap("dim1", ["value1", "value2"])]);
+            MatrixMap subMap = new([new DimensionMap("dim1", ["value1"])]);
+            Task<IReadOnlyMatrixMetadata> metadata = Task.FromResult(Mock.Of<IReadOnlyMatrixMetadata>());
+            MetaCacheContainer expectedMetaContainer = new(metadata);
+            MetaCacheContainer currentMetaContainer = new(metadata);
+            Task<DoubleDataValue[]> currentData = Task.FromResult<DoubleDataValue[]>([
+                new(1, DataValueType.Exists),
+                new(2, DataValueType.Exists)
+            ]);
+            Task<DoubleDataValue[]> subData = Task.FromResult<DoubleDataValue[]>([new(1, DataValueType.Exists)]);
+            Task<DoubleDataValue[]> staleData = Task.FromResult<DoubleDataValue[]>([
+                new(3, DataValueType.Exists),
+                new(4, DataValueType.Exists)
+            ]);
+            DataCacheContainer<DoubleDataValue> currentDataContainer = new(map, currentData);
+            DataCacheContainer<DoubleDataValue> subDataContainer = new(subMap, subData);
+            currentMetaContainer.AddDataContainer(currentDataContainer);
+            currentMetaContainer.AddDataContainer(subDataContainer);
+            using MemoryCache memoryCache = new(new MemoryCacheOptions());
+            memoryCache.Set(MetaCacheUtils.GetCacheKey(_file1), currentMetaContainer);
+            memoryCache.Set(MetaCacheUtils.GetCacheKey(_file1, map), currentDataContainer);
+            memoryCache.Set(MetaCacheUtils.GetCacheKey(_file1, subMap), subDataContainer);
+            Mock<ICacheObserver> observer = new();
+            DatabaseCache dbCache = new(memoryCache, withObserver ? observer.Object : null);
+
+            dbCache.SetData(_file1, expectedMetaContainer, map, staleData);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(dbCache.TryGetMetadata(_file1, out MetaCacheContainer? cachedMetadata), Is.True);
+                Assert.That(cachedMetadata, Is.SameAs(currentMetaContainer));
+                Assert.That(dbCache.TryGetData(_file1, map, out Task<DoubleDataValue[]>? cachedData, out _), Is.True);
+                Assert.That(cachedData, Is.SameAs(currentData));
+                Assert.That(dbCache.TryGetData(_file1, subMap, out Task<DoubleDataValue[]>? cachedSubData, out _), Is.True);
+                Assert.That(cachedSubData, Is.SameAs(subData));
+                Assert.That(currentMetaContainer.GetRelatedMaps(), Is.EqualTo(new[] { map, subMap }));
+                Assert.That(expectedMetaContainer.GetRelatedMaps(), Is.Empty);
+            }
+            observer.Verify(item => item.RecordDataCacheWriteSkipped(), withObserver ? Times.Once() : Times.Never());
             observer.VerifyNoOtherCalls();
         }
 
@@ -620,12 +818,12 @@ namespace PxApi.UnitTests.Caching
             memoryCache.Set(HashCode.Combine(metaSeed, _file1), metaContainer);
 
             // Pre-populate the cache with the submap data container
-            int subMapKey = MetaCacheUtils.GetCacheKey(subMap1);
-            int mapKey = MetaCacheUtils.GetCacheKey(map);
+            (string, PxFileRef, int) subMapKey = MetaCacheUtils.GetCacheKey(_file1, subMap1);
+            (string, PxFileRef, int) mapKey = MetaCacheUtils.GetCacheKey(_file1, map);
             memoryCache.Set(subMapKey, subContainer);
 
             // Act
-            dbCache.SetData(_file1, map, dataTask);
+            dbCache.SetData(_file1, metaContainer, map, dataTask);
 
             // Assert
             using (Assert.EnterMultipleScope())

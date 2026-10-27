@@ -15,6 +15,6 @@ public interface ICacheObserver
     /// <summary>Records a data-cache miss requiring source data.</summary>
     void RecordDataCacheMiss();
 
-    /// <summary>Records a data-cache write skipped because the related metadata entry is missing.</summary>
+    /// <summary>Records a data-cache write skipped because the related metadata entry is missing or has been replaced.</summary>
     void RecordDataCacheWriteSkipped();
 }

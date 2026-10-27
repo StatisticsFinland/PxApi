@@ -46,7 +46,17 @@ Generic wrapper used to store cached items with metadata needed for cache manage
 
 ## Cache Key Structure
 
-Cache keys combine the database ID, file ID, and entity type. The `DatabaseCache` class manages key construction internally.
+Data cache keys are composite values containing the data-entry discriminator,
+the full `PxFileRef` (database, file ID, and hierarchy), and the existing matrix-map
+hash. The file reference is retained for equality comparison, rather than reduced
+to an integer hash. Exact reads, superset reads, submap eviction, metadata eviction,
+and failed-load cleanup use the same table-scoped key construction.
+
+Identical selections in different tables therefore cannot share data entries or
+evict one another's data. The selection is still represented by a hash, so
+selection-hash collisions within one table remain possible. This change does not
+address same-table generation races. Other cache categories retain their existing
+keys. `DatabaseCache` manages key construction internally.
 
 ## TTL Configuration
 
@@ -68,8 +78,10 @@ Three explicit invalidation paths via `CacheController`:
 
 All are exposed as `DELETE` endpoints on `CacheController` (requires feature flag `CacheController = true`) and affect only the current API instance.
 
-If the related metadata entry is missing when data is inserted, data caching is
-skipped and reported through the optional cache observer. On tracked requests,
+Data writes carry the metadata-container reference used for the source read.
+If the related metadata entry is missing or is a different container when
+`SetData` checks the cache, data caching is skipped before any submap eviction
+or relationship changes and reported through the optional cache observer. On tracked requests,
 the completion event includes `data_cache_write_skipped=true`; no separate
 cache diagnostic is emitted. The in-flight request still awaits
 the source read and returns its result; source errors and cancellation still
@@ -79,6 +91,11 @@ propagate normally.
 
 Submap filtering is materialized under the related-map list's lock, so callers
 receive a snapshot rather than enumerating a list that eviction callbacks can modify.
+
+The metadata reference check rejects writes whose metadata was already replaced
+at the time of the lookup, even if the replacement contains identical metadata.
+It is not atomic with data insertion or invalidation; metadata can still change
+after the check.
 
 ### Request diagnostics
 
@@ -90,7 +107,7 @@ lookup initializes both hit/miss counters; untouched cache categories remain
 absent. Search enrichment can accumulate counters concurrently. Cache hits do
 not imply a successfully written response.
 `data_cache_write_skipped=true` is present only when a data-cache write was
-skipped because its metadata entry was missing. This does not change the
+skipped because its metadata entry was missing or had been replaced. This does not change the
 lookup outcome (`miss`) or indicate a failed response.
 
 [CachedDataSource](../../PxApi/Caching/CachedDataSource.cs) reports actual lookup
