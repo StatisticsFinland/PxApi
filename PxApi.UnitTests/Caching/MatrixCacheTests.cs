@@ -144,9 +144,13 @@ namespace PxApi.UnitTests.Caching
                 new DimensionMap("dim2", ["val1", "val2"]),
                 ]);
             object? cachedData = new DataCacheContainer<int>(matrixMap, testData);
+            MetaCacheContainer metaContainer = new(MatrixMetadata);
+            object? cachedMetadata = metaContainer;
 
             Mock<IMemoryCache> memoryCacheMock = new();
-            memoryCacheMock.Setup(m => m.TryGetValue(It.Is<object>(k => k.Equals(MetaCacheUtils.GetCacheKey(_tableId, matrixMap))), out cachedData))
+            memoryCacheMock.Setup(m => m.TryGetValue(It.Is<int>(k => k == MetaCacheUtils.GetCacheKey(_tableId)), out cachedMetadata))
+                .Returns(true);
+            memoryCacheMock.Setup(m => m.TryGetValue(It.Is<object>(k => k.Equals(MetaCacheUtils.GetCacheKey(_tableId, metaContainer, matrixMap))), out cachedData))
                 .Returns(true);
             DatabaseCache sut = new(memoryCacheMock.Object);
 
@@ -276,9 +280,9 @@ namespace PxApi.UnitTests.Caching
             object? metaContainerObj = metaContainer;
 
             Mock<IMemoryCache> memoryCacheMock = new();
-            memoryCacheMock.Setup(m => m.TryGetValue(It.Is<object>(k => (int)k == MetaCacheUtils.GetCacheKey(_tableId)), out metaContainerObj))
+            memoryCacheMock.Setup(m => m.TryGetValue(It.Is<int>(k => k == MetaCacheUtils.GetCacheKey(_tableId)), out metaContainerObj))
                 .Returns(true);
-            memoryCacheMock.Setup(m => m.TryGetValue(It.Is<object>(k => k.Equals(MetaCacheUtils.GetCacheKey(_tableId, supersetMap))), out supersetDataObj))
+            memoryCacheMock.Setup(m => m.TryGetValue(It.Is<object>(k => k.Equals(MetaCacheUtils.GetCacheKey(_tableId, metaContainer, supersetMap))), out supersetDataObj))
                 .Returns(true);
             DatabaseCache sut = new(memoryCacheMock.Object);
 
@@ -333,7 +337,7 @@ namespace PxApi.UnitTests.Caching
 
             // Assert
             memoryCacheMock.Verify(memoryCacheMock => memoryCacheMock.CreateEntry(
-                It.Is<object>(k => k.Equals(MetaCacheUtils.GetCacheKey(_tableId, dataMap)))),
+                It.Is<object>(k => k.Equals(MetaCacheUtils.GetCacheKey(_tableId, (MetaCacheContainer)metaContainer, dataMap)))),
                 Times.Once);
 
             MetaCacheContainer? containerAfterTest = metaContainer as MetaCacheContainer;
@@ -413,11 +417,11 @@ namespace PxApi.UnitTests.Caching
             memoryCacheMock.Setup(m => m.Remove(It.IsAny<object>()))
                 .Callback<object>(key =>
                 {
-                    if (key.Equals(MetaCacheUtils.GetCacheKey(_tableId, subMap1)))
+                    if (key.Equals(MetaCacheUtils.GetCacheKey(_tableId, metaContainer, subMap1)))
                     {
                         subContainer1.EvictionCallback(key, null, EvictionReason.Removed, null);
                     }
-                    else if (key.Equals(MetaCacheUtils.GetCacheKey(_tableId, subMap2)))
+                    else if (key.Equals(MetaCacheUtils.GetCacheKey(_tableId, metaContainer, subMap2)))
                     {
                         subContainer2.EvictionCallback(key, null, EvictionReason.Removed, null);
                     }
@@ -516,7 +520,7 @@ namespace PxApi.UnitTests.Caching
             Task<int[]> superData = Task.FromResult<int[]>([1, 2, 3]);
             object? superContainer = new DataCacheContainer<int>(superMap, superData);
 
-            memoryCacheMock.Setup(m => m.TryGetValue(It.Is<object>(k => k.Equals(MetaCacheUtils.GetCacheKey(_tableId, superMap))), out superContainer))
+            memoryCacheMock.Setup(m => m.TryGetValue(It.Is<object>(k => k.Equals(MetaCacheUtils.GetCacheKey(_tableId, (MetaCacheContainer)metaContainer, superMap))), out superContainer))
                 .Returns(true);
 
             DatabaseCache sut = new(memoryCacheMock.Object);

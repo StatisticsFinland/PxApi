@@ -30,7 +30,12 @@ Low-level cache wrapper around `IMemoryCache`. Key behaviors:
 
 **File**: `PxApi/Caching/MetaCacheContainer.cs`
 
-Tracks relationships between metadata entries and their dependent data entries. When metadata is evicted from cache, all related data cache entries are also removed. This ensures data cache entries never outlive their metadata.
+Tracks relationships between metadata entries and their dependent data containers by
+container identity. When metadata is evicted, cleanup removes only data belonging
+to that metadata generation. Exact and superset reads resolve the current metadata
+generation first and revalidate the metadata-container identity after looking up
+data. If metadata was removed or replaced before that final check, the lookup
+returns a miss even if the old data's eviction callback has not run yet.
 
 ### DataCacheContainer
 
@@ -47,16 +52,17 @@ Generic wrapper used to store cached items with metadata needed for cache manage
 ## Cache Key Structure
 
 Data cache keys are composite values containing the data-entry discriminator,
-the full `PxFileRef` (database, file ID, and hierarchy), and the existing matrix-map
-hash. The file reference is retained for equality comparison, rather than reduced
+the full `PxFileRef` (database, file ID, and hierarchy), an opaque identity token
+owned by the metadata container, and the existing matrix-map hash. File and
+generation identities are retained for equality comparison, rather than reduced
 to an integer hash. Exact reads, superset reads, submap eviction, metadata eviction,
-and failed-load cleanup use the same table-scoped key construction.
+and failed-load cleanup use the same table- and generation-scoped key construction.
 
 Identical selections in different tables therefore cannot share data entries or
 evict one another's data. The selection is still represented by a hash, so
-selection-hash collisions within one table remain possible. This change does not
-address same-table generation races. Other cache categories retain their existing
-keys. `DatabaseCache` manages key construction internally.
+selection-hash collisions within one table and generation remain possible. Other
+cache categories retain their existing keys. `DatabaseCache` manages key
+construction internally.
 
 ## TTL Configuration
 
@@ -92,10 +98,30 @@ propagate normally.
 Submap filtering is materialized under the related-map list's lock, so callers
 receive a snapshot rather than enumerating a list that eviction callbacks can modify.
 
-The metadata reference check rejects writes whose metadata was already replaced
-at the time of the lookup, even if the replacement contains identical metadata.
-It is not atomic with data insertion or invalidation; metadata can still change
-after the check.
+Every metadata container has a distinct generation identity, even when its
+metadata has the same shape or uses the same metadata task as its predecessor.
+Numeric-only revisions therefore receive the same isolation as shape-changing
+releases when metadata is replaced or cleared.
+
+Data publication, related-container registration, failure cleanup, and metadata
+eviction cleanup share the metadata container's lock. Registration happens before
+publication so immediate data eviction cannot leave an untracked registration.
+Eviction unregisters only the specific data container, not all entries with an
+identical map; a delayed callback from a replaced entry cannot unregister its
+replacement.
+
+Metadata can still be removed or replaced after the reference check. Such a writer
+can publish only under its old generation's key, which new lookups cannot read.
+The old metadata's eviction callback waits for publication to leave the generation
+lock and then removes that generation's related data. Delayed cleanup never removes
+the replacement generation's data. No storage reads or task waits occur under this
+lock.
+
+Requests whose data lookup passed the final metadata identity check can still
+complete with that result if metadata changes afterward. This is cache lifecycle
+isolation, not an atomic metadata/data snapshot for an entire HTTP response or for
+independently changing source files. It does not enforce generation ordering by
+request arrival or response completion.
 
 ### Request diagnostics
 
