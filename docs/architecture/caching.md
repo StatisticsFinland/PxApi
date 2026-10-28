@@ -33,8 +33,9 @@ Low-level cache wrapper around `IMemoryCache`. Key behaviors:
 Tracks relationships between metadata entries and their dependent data containers by
 container identity. When metadata is evicted, cleanup removes only data belonging
 to that metadata generation. Exact and superset reads resolve the current metadata
-generation first, so old data becomes inaccessible immediately even if its eviction
-callback has not run yet.
+generation first and revalidate the metadata-container identity after looking up
+data. If metadata was removed or replaced before that final check, the lookup
+returns a miss even if the old data's eviction callback has not run yet.
 
 ### DataCacheContainer
 
@@ -116,9 +117,11 @@ lock and then removes that generation's related data. Delayed cleanup never remo
 the replacement generation's data. No storage reads or task waits occur under this
 lock.
 
-Requests that already obtained an old data task can still complete with that
-result. This is cache lifecycle isolation, not an atomic metadata/data snapshot
-for an entire HTTP response or for independently changing source files.
+Requests whose data lookup passed the final metadata identity check can still
+complete with that result if metadata changes afterward. This is cache lifecycle
+isolation, not an atomic metadata/data snapshot for an entire HTTP response or for
+independently changing source files. It does not enforce generation ordering by
+request arrival or response completion.
 
 ### Request diagnostics
 

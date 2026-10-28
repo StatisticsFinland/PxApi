@@ -92,6 +92,69 @@ namespace PxApi.UnitTests.Caching
             Assert.That(_entries.ContainsKey(oldDataKey), Is.False);
         }
 
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void MetadataChangesDuringDataLookup_ReturnsMiss(bool superset, bool replace)
+        {
+            MatrixMap map = new([new DimensionMap("dimension", ["one", "two"])]);
+            MatrixMap subset = new([new DimensionMap("dimension", ["one"])]);
+            MetaCacheContainer oldMetadata = CreateMetadata();
+            MetaCacheContainer newMetadata = CreateMetadata();
+            Task<int[]> newData = Task.FromResult<int[]>([3, 4]);
+            _cache.SetMetadata(_file, oldMetadata);
+            _cache.SetData(_file, oldMetadata, map, Task.FromResult<int[]>([1, 2]));
+            object oldDataKey = MetaCacheUtils.GetCacheKey(_file, oldMetadata, map);
+            bool metadataChanged = false;
+            _memory.Setup(cache => cache.TryGetValue(
+                    It.Is<object>(key => key.Equals(oldDataKey)), out It.Ref<object?>.IsAny))
+                .Returns((object key, out object? value) =>
+                {
+                    bool found = _entries.TryGetValue(key, out ICacheEntry? entry);
+                    value = entry?.Value;
+                    if (!metadataChanged)
+                    {
+                        metadataChanged = true;
+                        _cache.TryRemoveMeta(_file);
+                        if (replace)
+                        {
+                            _cache.SetMetadata(_file, newMetadata);
+                            _cache.SetData(_file, newMetadata, map, newData);
+                        }
+                    }
+                    return found;
+                });
+
+            IMatrixMap? supersetMap = null;
+            Task<int[]>? data;
+            DateTime? cached;
+            bool hit = superset
+                ? _cache.TryGetDataSuperset(_file, subset, out supersetMap, out data, out cached)
+                : _cache.TryGetData(_file, map, out data, out cached);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(metadataChanged, Is.True);
+                Assert.That(_entries.ContainsKey(oldDataKey), Is.True, "Old data remains until delayed eviction.");
+                Assert.That(hit, Is.False);
+                Assert.That(data, Is.Null);
+                Assert.That(cached, Is.Null);
+                Assert.That(supersetMap, Is.Null);
+            }
+
+            if (replace)
+            {
+                using (Assert.EnterMultipleScope())
+                {
+                    Assert.That(_cache.TryGetData(_file, map, out Task<int[]>? exact, out _), Is.True);
+                    Assert.That(exact, Is.SameAs(newData));
+                    Assert.That(_cache.TryGetDataSuperset(_file, subset, out _, out Task<int[]>? retained, out _), Is.True);
+                    Assert.That(retained, Is.SameAs(newData));
+                }
+            }
+        }
+
         [TestCase(EvictionReason.Removed)]
         [TestCase(EvictionReason.Replaced)]
         [TestCase(EvictionReason.Expired)]

@@ -173,7 +173,9 @@ namespace PxApi.Caching
         {
             if (TryGetMetadata(file, out MetaCacheContainer? metaContainer) &&
                 metaContainer is not null &&
-                _cache.TryGetValue(GetDataCacheKey(file, metaContainer, map), out DataCacheContainer<TData>? dataContainer))
+                _cache.TryGetValue(GetDataCacheKey(file, metaContainer, map), out DataCacheContainer<TData>? dataContainer) &&
+                TryGetMetadata(file, out MetaCacheContainer? currentMetadata) &&
+                ReferenceEquals(currentMetadata, metaContainer))
             {
                 data = dataContainer!.Data;
                 cached = dataContainer!.CachedUtc;
@@ -197,7 +199,9 @@ namespace PxApi.Caching
             if (_cache.TryGetValue(HashCode.Combine(META_SEED, file), out MetaCacheContainer? metaContainer) &&
                 metaContainer is not null &&
                 metaContainer.TryGetSuperMap(map, out supersetMap) &&
-                _cache.TryGetValue(GetDataCacheKey(file, metaContainer, supersetMap), out DataCacheContainer<TData>? superContainer))
+                _cache.TryGetValue(GetDataCacheKey(file, metaContainer, supersetMap), out DataCacheContainer<TData>? superContainer) &&
+                TryGetMetadata(file, out MetaCacheContainer? currentMetadata) &&
+                ReferenceEquals(currentMetadata, metaContainer))
             {
                 data = superContainer!.Data;
                 cached = superContainer!.CachedUtc;
