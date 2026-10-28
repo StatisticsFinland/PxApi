@@ -1,6 +1,6 @@
 # Configuration
 
-All configuration is loaded from `appsettings.json` (and environment variable overrides) into typed classes in `PxApi/Configuration/`. The top-level loader is `AppSettings.Load()` called in `Program.cs`.
+all configuration is loaded from `appsettings.json` (and environment variable overrides) into typed classes in `PxApi/Configuration/`. The top-level loader is `AppSettings.Load()` called in `Program.cs`.
 
 ## AppSettings (Root)
 
@@ -17,7 +17,7 @@ Top-level configuration container with these sections:
 | `QueryLimits` | `QueryLimitsConfig` | Request size limits |
 | `Cache` | `MemoryCacheConfig` | Global memory cache sizing |
 | `OpenApi` | `OpenApiConfig` | Swagger metadata |
-| `Localization` | `LocalizationConfig` | Language configuration |
+| `Localization` | `LocalizationConfig` | language configuration |
 | `BlobReadMode` | `BlobReadModeConfig` | Binary blob read strategy tuning |
 | `ApplicationInsights` | `ApplicationInsightsConfig` | Azure Application Insights |
 | `Search` | `SearchConfig` | Elasticsearch connection |
@@ -107,6 +107,50 @@ Contact and license metadata injected into the OpenAPI spec.
 
 - `ConnectionString` — AI connection string; can be overridden by `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable
 - When present, enables telemetry and removes default AI log filter
+- SDK 3.1.2 uses native OpenTelemetry logging. Configure thresholds under
+	`Logging:OpenTelemetry:LogLevel` (default `Information`). The obsolete 2.23
+	logger package is not used; no additional exporter is registered.
+- `SamplingRatio` defaults to `1.0` (valid range 0-1). Invalid/nonfinite values
+	fall back to 1. SDK 2.x `EnableAdaptiveSampling` and `MinimumLevel` are no longer
+	supported; migrate deployment overrides.
+- `EnableTraceBasedLogsSampler` defaults to `false`, keeping completion logs
+	independent of trace sampling. Automatic request/dependency telemetry remains
+	SDK-owned. Upstream and ingestion sampling must still be checked operationally.
+- `IncludeAuditLogs` defaults to `false`. Enabling it explicitly permits selected
+	audit identity/IP/header properties into Azure and requires privacy approval;
+	NLog's final audit rule does not isolate other providers.
+
+## Query Logging
+
+This section is read per request through `IConfiguration`, not `AppSettings`.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `QueryLogging:SelectionDetailMode` | `counts` | `counts`, `codes`, or `off`; unrecognized values fall back to counts |
+| `QueryLogging:CaptureSearchText` | `false` | Approved sanitized text, at most 128 characters; sanitization is not anonymization |
+| `QueryLogging:CaptureResultIds` | `false` | Optional ranked/listing file identifiers, at most 100 IDs |
+
+Dimension JSON contains at most 64 summaries. codes are captured only in codes
+mode and only for complete selections of at most 10 values. Larger selections
+omit their code list with `code_capture_status=over_limit`; smaller selections
+retain their complete database codes regardless of their serialized size.
+Omitted detail has flags/status; absent numbers are unknown, while zero means
+a measured empty result. Each JSON field is serialized once; no application
+byte budget is applied. Verify sink property limits and actual ingestion before
+rollout rather than estimating transport size in the application.
+
+Identifiers are bounded to 128 characters and control characters are neutralized;
+truncation is explicit. Search bodies, raw query URLs, data values, API keys and
+derived key/IP identities are not completion fields. Hashes are pseudonymous
+and need the same retention/access policy as other query detail. Diagnostic
+exception text can still contain sensitive backend context and requires restricted
+access and retention. No new header allowlist or content redaction is imposed on
+maintainer-configured audit headers.
+
+Use `event_name=query_completed` and `schema_version=1` for analytics. Do not combine
+completion events, automatic requests and audit records into a request count.
+If deployment sampling is enabled, use weights for aggregate counts and do not
+claim exact unique subcube popularity or percentiles from partial telemetry.
 
 ## Blob Read Mode
 

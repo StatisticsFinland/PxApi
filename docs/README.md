@@ -8,7 +8,7 @@ PxApi is a .NET 10.0 Web API for accessing PX statistical datasets. It provides 
 - Table metadata in JSON-stat 2.0 (`/meta/databases/{database}/tables/{table}`)
 - Data retrieval with filter semantics (code, range, positional) via GET query parameters or POST body (`/data/databases/{database}/tables/{table}`)
 - Content negotiation (JSON-stat 2.0 or CSV) using the `Accept` header
-- Cache management endpoints (database level and single table) (`/cache/databases/{database}` / `/cache/databases/{database}/tables/{id}`)
+- Cache management endpoints for entire databases, table lists, and individual tables
 - Global and per-database caching (file lists, metadata, data, last updated timestamps)
 - Feature flags (cache and search endpoint visibility, and search OpenAPI documentation visibility)
 - Controller-specific API key authentication for supported controllers
@@ -181,7 +181,10 @@ Additional methods:
 Requires feature flag `CacheController = true` and valid API key when authentication is enabled. Cache endpoints are always hidden from OpenAPI documentation.
 
 - `DELETE /cache/databases/{database}` clears all cache entries (file list, metadata, data, last updated) for a database.
+- `DELETE /cache/databases/{database}/tables` clears only the cached table list. The next lookup rebuilds it, discovering newly added tables without clearing existing tables' metadata, data, or last-updated caches.
 - `DELETE /cache/databases/{database}/tables/{id}` clears all cache entries for a single table.
+
+Cache invalidation affects only the current API instance.
 
 Responses:
 - `200 OK` success message
@@ -317,6 +320,12 @@ Global cache size limit controlled via `Cache.MaxSizeBytes`. Individual item siz
 - Azure File Share via Azure Storage SDK
 - Azure Blob Storage via Azure Storage SDK
 - Azure Binary Blob Storage via Azure Storage SDK (binary-optimized blob access)
+
+### Binary Blob Storage Layout
+
+`BinaryBlobStorage` expects these paths inside the configured container:
+- Metadata: `meta/{database}/{table}_{timestamp}.meta.json`
+- Binary data: `bin/{database}/{table}/{contentValueCode}_{timestamp}.pxb`
 
 ## Content Negotiation
 Specify desired format with `Accept` header:

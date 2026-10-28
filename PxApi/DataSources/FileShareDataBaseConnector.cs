@@ -42,14 +42,14 @@ namespace PxApi.DataSources
                     [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync)
                 }))
             {
-                Logger.LogDebug("Getting all files from file share {ShareName}", shareName);
+                Logger.LogDebug("Getting all files from file share {share_name}", shareName);
                 List<PxFileRef> files = [];
 
                 ShareDirectoryClient dbDirectory = GetDatabaseDirectoryClient();
 
                 await ListAllFilesRecursivelyAsync(dbDirectory, [], files, DataBase, ct);
 
-                Logger.LogDebug("Found {Count} PX files in file share {ShareName}", files.Count, shareName);
+                Logger.LogDebug("Found {count} PX files in file share {share_name}", files.Count, shareName);
                 return [.. files];
             }
         }
@@ -71,13 +71,12 @@ namespace PxApi.DataSources
                     throw new InvalidOperationException("The file does not belong to the database.");
                 }
 
-                Logger.LogDebug("Reading PX file {FileId} from file share", file.Id);
+                Logger.LogDebug("Reading PX file {file_id} from file share", file.Id);
                 ShareFileClient fileClient = GetFileClient(file.Id + PxFileConstants.FILE_ENDING, file.GetHierarchyLevels());
 
                 if (!await fileClient.ExistsAsync(ct))
                 {
-                    Logger.LogError("PX file {FileId} not found in file share", file.Id);
-                    throw new FileNotFoundException($"File {file.Id} not found in file share {shareName}");
+                    throw new FileNotFoundException($"File {file.Id} not found in database {DataBase.Id}, file share {shareName}.");
                 }
                 return await fileClient.OpenReadAsync(cancellationToken: ct);
             }
@@ -94,14 +93,13 @@ namespace PxApi.DataSources
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
-                Logger.LogDebug("Getting last write time for PX file {FileId} from file share", file.Id);
+                Logger.LogDebug("Getting last write time for PX file {file_id} from file share", file.Id);
 
                 ShareFileClient fileClient = GetFileClient(file.Id + PxFileConstants.FILE_ENDING, file.GetHierarchyLevels());
 
                 if (!await fileClient.ExistsAsync(ct))
                 {
-                    Logger.LogError("PX file {FileId} not found in file share", file.Id);
-                    throw new FileNotFoundException($"File {file.Id} not found in file share {shareName}");
+                    throw new FileNotFoundException($"File {file.Id} not found in database {DataBase.Id}, file share {shareName}.");
                 }
 
                 ShareFileProperties properties = await fileClient.GetPropertiesAsync(cancellationToken: ct);
@@ -123,8 +121,7 @@ namespace PxApi.DataSources
 
                 if (!await fileClient.ExistsAsync(ct))
                 {
-                    Logger.LogWarning("Aux file {AuxFile} not found", fileName);
-                    throw new FileNotFoundException("Auxiliary file not found", fileName);
+                    throw new FileNotFoundException($"Auxiliary file not found in database {DataBase.Id}, file share {shareName}.", fileName);
                 }
 
                 return await fileClient.OpenReadAsync(cancellationToken: ct);

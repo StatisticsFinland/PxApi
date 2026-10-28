@@ -42,11 +42,13 @@ namespace PxApi.Controllers
             [FromQuery] string? lang,
             CancellationToken ct = default)
         {
+            QueryObservation? observation = QueryObservation.Get(HttpContext);
             try
             {
                 DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
                 if (dbRef is null)
                 {
+                    observation?.Reject(LoggerConsts.Query.ErrorCode.DatabaseNotFound);
                     using (logger.BeginResourceNotFoundScope())
                     {
                         auditLogService.LogAuditEvent();
@@ -54,9 +56,11 @@ namespace PxApi.Controllers
                     }
                 }
 
+                observation?.Set(LoggerConsts.Query.Fields.DatabaseId, dbRef.Value.Id);
                 PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value, ct);
                 if (fileRef is null)
                 {
+                    observation?.Reject(LoggerConsts.Query.ErrorCode.TableNotFound);
                     using (logger.BeginResourceNotFoundScope(dbRef.Value.Id))
                     {
                         auditLogService.LogAuditEvent();
@@ -64,6 +68,7 @@ namespace PxApi.Controllers
                     }
                 }
 
+                observation?.Set(LoggerConsts.Query.Fields.TableId, fileRef.Value.Id);
                 using (logger.BeginResourceScope(dbRef.Value.Id, fileRef.Value.Id))
                 {
                     auditLogService.LogAuditEvent();
@@ -72,16 +77,21 @@ namespace PxApi.Controllers
                     string resolvedLang = lang ?? meta.DefaultLanguage;
                     if (!meta.AvailableLanguages.Contains(resolvedLang))
                     {
+                        observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidLanguage);
                         return BadRequest("The content is not available in the requested language.");
                     }
 
                     JsonStat2 jsonStat2 = JsonStat2Builder.BuildJsonStat2(meta, resolvedLang);
-                    logger.LogInformation("Metadata response returned.");
+                    observation?.Set(LoggerConsts.Query.Fields.Language, resolvedLang);
+                    observation?.Set(LoggerConsts.Query.Fields.Format, "application/json");
+                    if (observation is not null) QuerySelectionSummary.Metadata(observation, meta);
                     return Ok(jsonStat2);
                 }
             }
-            catch (FileNotFoundException)
+            catch (FileNotFoundException exception)
             {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.TableNotFound);
+                logger.LogInformation(exception, "Metadata storage file was not found.");
                 return NotFound("Resource not found.");
             }
         }
@@ -103,9 +113,11 @@ namespace PxApi.Controllers
         [ProducesResponseType(404)]
         public async Task<IActionResult> HeadMetadataAsync(string database, string table, string? lang = null, CancellationToken ct = default)
         {
+            QueryObservation? observation = QueryObservation.Get(HttpContext);
             DataBaseRef? dbRef = cachedConnector.GetDataBaseReference(database);
             if (dbRef is null)
             {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.DatabaseNotFound);
                 using (logger.BeginResourceNotFoundScope())
                 {
                     auditLogService.LogAuditEvent();
@@ -113,9 +125,11 @@ namespace PxApi.Controllers
                 }
             }
 
+            observation?.Set(LoggerConsts.Query.Fields.DatabaseId, dbRef.Value.Id);
             PxFileRef? fileRef = await cachedConnector.GetFileReferenceCachedAsync(table, dbRef.Value, ct);
             if (fileRef is null)
             {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.TableNotFound);
                 using (logger.BeginResourceNotFoundScope(dbRef.Value.Id))
                 {
                     auditLogService.LogAuditEvent();
@@ -123,12 +137,18 @@ namespace PxApi.Controllers
                 }
             }
 
+            observation?.Set(LoggerConsts.Query.Fields.TableId, fileRef.Value.Id);
             using (logger.BeginResourceScope(dbRef.Value.Id, fileRef.Value.Id))
             {
                 auditLogService.LogAuditEvent();
                 IReadOnlyMatrixMetadata meta = await cachedConnector.GetMetadataCachedAsync(fileRef.Value, ct);
                 string resolvedLang = lang ?? meta.DefaultLanguage;
-                if (!meta.AvailableLanguages.Contains(resolvedLang)) return BadRequest();
+                if (!meta.AvailableLanguages.Contains(resolvedLang))
+                {
+                    observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidLanguage);
+                    return BadRequest();
+                }
+                observation?.Set(LoggerConsts.Query.Fields.Language, resolvedLang);
                 return Ok();
             }
         }

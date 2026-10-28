@@ -21,6 +21,7 @@ namespace PxApi.Models.QueryFilters
         /// <param name="meta">The matrix metadata to filter.</param>
         /// <param name="filters">A dictionary of filters to apply to the dimensions.</param>
         /// <returns>A new <see cref="MatrixMap"/> with the filtered dimensions.</returns>
+        /// <exception cref="ArgumentException">Filters reference unknown dimensions or select no data.</exception>
         public static MatrixMap ApplyToMatrixMeta(IReadOnlyMatrixMetadata meta, Dictionary<string, Filter> filters)
         {
             Dictionary<string, Filter> filtersCopy = new(filters, StringComparer.OrdinalIgnoreCase);
@@ -44,7 +45,7 @@ namespace PxApi.Models.QueryFilters
 
             if (map.GetSize() < 1)
             {
-                throw new InvalidOperationException("The resulting filtered matrix map has no data.");
+                throw new ArgumentException("The resulting filtered matrix map has no data.");
             }
 
             return map;
@@ -90,7 +91,7 @@ namespace PxApi.Models.QueryFilters
             return filter.Apply(dimension);
         }
 
-        private static bool TryGetDefaultValueCode(IReadOnlyDimension dim, [NotNullWhen(true)] out string? code)
+        internal static bool TryGetDefaultValueCode(IReadOnlyDimension dim, [NotNullWhen(true)] out string? code)
         {
             if (dim.AdditionalProperties.TryGetValue("ELIMINATION", out MetaProperty? prop))
             {

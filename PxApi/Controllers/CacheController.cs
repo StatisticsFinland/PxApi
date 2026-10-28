@@ -71,8 +71,48 @@ namespace PxApi.Controllers
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error clearing cache for PX file: {Message}", ex.Message);
+                    _logger.LogError(ex, "Error clearing cache for PX file: {message}", ex.Message);
                     return StatusCode(500, "Error clearing cache for PX file");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clears only the cached table list for a specific database, leaving table content caches unchanged.
+        /// The list is rebuilt on the next lookup.
+        /// </summary>
+        /// <param name="database">Name of the database whose cached table list should be cleared.</param>
+        /// <returns>A message indicating the result of the operation.</returns>
+        /// <response code="200">The cached table list was successfully cleared.</response>
+        /// <response code="404">If the database was not found.</response>
+        /// <response code="500">If an error occurs while clearing the cached table list.</response>
+        [HttpDelete("{database}/tables")]
+        [OperationId("clearTableListCache")]
+        [Produces("application/json")]
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(string), 500)]
+        public ActionResult ClearTableListCache([FromRoute] string database)
+        {
+            DataBaseRef? dbRef = _cachedConnector.GetDataBaseReference(database);
+            if (dbRef == null)
+            {
+                _logger.LogWarning(DB_NOT_FOUND);
+                return NotFound(DB_NOT_FOUND);
+            }
+
+            using (_logger.BeginDbScope(dbRef.Value.Id))
+            {
+                try
+                {
+                    _cachedConnector.ClearTableListCache(dbRef.Value);
+                    _logger.LogInformation("Cached table list cleared successfully");
+                    return Ok("Cached table list cleared successfully");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error clearing cached table list");
+                    return StatusCode(500, "Error clearing cached table list");
                 }
             }
         }
@@ -105,12 +145,12 @@ namespace PxApi.Controllers
                 try
                 {
                     await _cachedConnector.ClearDatabaseCacheAsync(dbRef.Value);
-                    _logger.LogInformation("All cache entries for database {DatabaseId} cleared successfully", dbRef.Value.Id);
+                    _logger.LogInformation("All cache entries for database cleared successfully");
                     return Ok($"All cache entries for database '{dbRef.Value.Id}' cleared successfully");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error clearing all cache entries for database {DatabaseId}: {Message}", dbRef.Value.Id, ex.Message);
+                    _logger.LogError(ex, "Error clearing all cache entries for database: {message}", ex.Message);
                     return StatusCode(500, $"Error clearing all cache entries for database '{dbRef.Value.Id}'");
                 }
             }

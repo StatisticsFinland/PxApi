@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -45,10 +45,12 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request' && '0' || '1' }}
 
       - name: Set up dotnet 
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
 
@@ -59,4 +61,43 @@ jobs:
         run: dotnet build --no-restore --verbosity normal --configuration ${{ matrix.configuration }} /p:TargetFramework=net10.0
 
       - name: Run tests
+        if: ${{ matrix.os != 'ubuntu-latest' || github.event_name != 'pull_request' }}
         run: dotnet test --no-restore --verbosity normal --configuration ${{ matrix.configuration }} /p:TargetFramework=net10.0
+
+      - name: Run tests with coverage
+        if: ${{ matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request' }}
+        run: dotnet test --no-restore --verbosity normal --configuration ${{ matrix.configuration }} /p:TargetFramework=net10.0 --collect:"XPlat Code Coverage" --results-directory TestResults
+
+      - name: Check new code coverage
+        if: ${{ matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request' }}
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git check-ref-format "refs/heads/$BASE_REF"
+          git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          python3 -m venv "$RUNNER_TEMP/diff-cover-venv"
+          "$RUNNER_TEMP/diff-cover-venv/bin/python" -m pip install diff-cover==10.6.0
+          "$RUNNER_TEMP/diff-cover-venv/bin/diff-cover" TestResults/*/coverage.cobertura.xml \
+            --compare-branch="origin/$BASE_REF" \
+            --format=html:diff-coverage.html,json:diff-coverage.json \
+            --fail-under=75
+          "$RUNNER_TEMP/diff-cover-venv/bin/python" - <<'PY'
+          import json
+
+          with open("diff-coverage.json", encoding="utf-8") as report_file:
+              report = json.load(report_file)
+          total_lines = report["total_num_lines"]
+          covered_lines = total_lines - report["total_num_violations"]
+          if total_lines and covered_lines * 100 <= total_lines * 75:
+              raise SystemExit("New code coverage must be greater than 75%.")
+          PY
+
+      - name: Upload coverage reports
+        if: ${{ always() && matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-reports
+          path: |
+            TestResults/**/coverage.cobertura.xml
+            diff-coverage.html
+            diff-coverage.json

@@ -30,7 +30,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{5C6E13B8-2410-44BA-98F5-8830DA756959}"
 	ProjectSection(SolutionItems) = preProject
 		.github\workflows\ci.yml = .github\workflows\ci.yml
-		.github\workflows\sonar.yml = .github\workflows\sonar.yml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{11A8C8BB-BE45-4CF4-BBA9-80E0B0E862EC}"
@@ -48,6 +47,28 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "architecture", "architectur
 		docs\architecture\overview.md = docs\architecture\overview.md
 		docs\architecture\services-and-utilities.md = docs\architecture\services-and-utilities.md
 		docs\architecture\testing.md = docs\architecture\testing.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "skills", "skills", "{D0587056-2B2B-47F6-9161-849737198A50}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "create-commit", "create-commit", "{8DD0E9DF-70B6-409A-AC39-3A6DB0BBAB45}"
+	ProjectSection(SolutionItems) = preProject
+		.github\skills\create-commit\SKILL.md = .github\skills\create-commit\SKILL.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "create-pr-description", "create-pr-description", "{1D9BFA44-641B-4CD3-A881-3D53E41CB151}"
+	ProjectSection(SolutionItems) = preProject
+		.github\skills\create-pr-description\SKILL.md = .github\skills\create-pr-description\SKILL.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "review-pr", "review-pr", "{87D1E38C-E2BA-4CC1-8BC6-884BEEBEA6EA}"
+	ProjectSection(SolutionItems) = preProject
+		.github\skills\review-pr\SKILL.md = .github\skills\review-pr\SKILL.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "review-staged", "review-staged", "{290B47A5-885E-476D-BDBA-A20965C48039}"
+	ProjectSection(SolutionItems) = preProject
+		.github\skills\review-staged\SKILL.md = .github\skills\review-staged\SKILL.md
 	EndProjectSection
 EndProject
 Global
@@ -72,6 +93,11 @@ Global
 		{5C6E13B8-2410-44BA-98F5-8830DA756959} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{11A8C8BB-BE45-4CF4-BBA9-80E0B0E862EC} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{CF3F59CE-56DD-4D2E-9C26-143A2407B7AB} = {9FD4A85B-517A-4CB4-B363-F9ABEFDCD5A0}
+		{D0587056-2B2B-47F6-9161-849737198A50} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{8DD0E9DF-70B6-409A-AC39-3A6DB0BBAB45} = {D0587056-2B2B-47F6-9161-849737198A50}
+		{1D9BFA44-641B-4CD3-A881-3D53E41CB151} = {D0587056-2B2B-47F6-9161-849737198A50}
+		{87D1E38C-E2BA-4CC1-8BC6-884BEEBEA6EA} = {D0587056-2B2B-47F6-9161-849737198A50}
+		{290B47A5-885E-476D-BDBA-A20965C48039} = {D0587056-2B2B-47F6-9161-849737198A50}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5B90BE07-D6C0-4E62-9F2B-7CCDF785ACFB}

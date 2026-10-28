@@ -13,6 +13,7 @@ using PxApi.Exceptions;
 using PxApi.Models;
 using PxApi.Utilities;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Text.Json;
 
 namespace PxApi.DataSources
@@ -25,7 +26,7 @@ namespace PxApi.DataSources
     /// <list type="bullet">
     /// <item><description>Lists available PX files by enumerating metadata blobs under <c>meta/</c>.</description></item>
     /// <item><description>Reads metadata from <c>*.meta.json</c> blobs and deserializes it into <see cref="MatrixMetadata"/>.</description></item>
-    /// <item><description>Reads binary data from <c>*.pxb</c> blobs under <c>bin/</c>, optionally using windowed reads for dense selections.</description></item>
+    /// <item><description>Reads binary data from <c>bin/{database}/{table}/{contentValue}_{timestamp}.pxb</c> blobs, optionally using windowed reads for dense selections.</description></item>
     /// </list>
     /// Read strategy selection for binary data is delegated to <see cref="BlobReadModeSelector"/>.
     /// <para>
@@ -57,6 +58,22 @@ namespace PxApi.DataSources
         private const int DefaultMaxDegreeOfParallelism = 4;
 
         /// <inheritdoc/>
+        public override async Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default)
+        {
+            using (Logger.BeginScope(new Dictionary<string, object>
+            {
+                [LoggerConsts.DB_ID] = DataBase.Id,
+                [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync),
+                [LoggerConsts.CONTAINER_NAME] = ContainerName
+            }))
+            {
+                ILookup<string, string> metadataBlobs =
+                    await GetMetadataBlobsAsync($"{MetaPrefix}/{DataBase.Id}/", null, ct);
+                return [.. metadataBlobs.Select(group => PxFileRef.ValidateAndCreate(group.Key, DataBase))];
+            }
+        }
+
+        /// <inheritdoc/>
         public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default)
         {
             using (Logger.BeginScope(
@@ -68,7 +85,7 @@ namespace PxApi.DataSources
                     [LoggerConsts.CONTAINER_NAME] = ContainerName
                 }))
             {
-                Logger.LogDebug("Getting last write time for meta file {FileId} from blob storage", file.Id);
+                Logger.LogDebug("Getting last write time for meta file {file_id} from blob storage", file.Id);
                 IReadOnlyMatrixMetadata metadata = await ReadMetadataAsync(file, ct);
                 ContentValueList contentDimensionValues = metadata.GetContentDimension().Values;
                 return contentDimensionValues.Map(value => value.LastUpdated).Max();
@@ -117,8 +134,7 @@ namespace PxApi.DataSources
                             {
                                 if (!await BlobExistsAsync(blobName, ct))
                                 {
-                                    Logger.LogError("Data blob {BlobName} not found in blob storage.", blobName);
-                                    throw new BinaryBlobSynchronizationException(file, lastUpdated);
+                                    throw new BinaryBlobSynchronizationException(file, lastUpdated, $"{ContainerName}/{blobName}");
                                 }
 
                                 IMatrixMap readMap = targetMap.CollapseDimension(contentDimension.Code, cValCode);
@@ -133,7 +149,7 @@ namespace PxApi.DataSources
 
                                 if (BlobReadModeSelector.ReadStreaming(readMap, blobMap, out long startIndex))
                                 {
-                                    Logger.LogDebug("Using streaming read from index {Index}.", startIndex);
+                                    Logger.LogDebug("Using streaming read from index {index}.", startIndex);
                                     if (startIndex > 0)
                                     {
                                         byte[] headerBytes = new byte[8];
@@ -169,7 +185,7 @@ namespace PxApi.DataSources
 
                                     BinaryDataReader reader = BinaryDataReader.Create(Codec, headerLengthBytes: HeaderLength);
                                     await reader.ReadByChunkAsync(readerFunc, readMap, blobMap, targetMap, result, ct);
-                                    Logger.LogDebug("Window read calls: {Count}", windowReaderCallsForDebug);
+                                    Logger.LogDebug("Window read calls: {count}", windowReaderCallsForDebug);
                                 }
                             }
                         }
@@ -197,45 +213,31 @@ namespace PxApi.DataSources
                     [LoggerConsts.CONTAINER_NAME] = ContainerName
                 }))
             {
-                Logger.LogDebug("Reading metadata for meta file {FileId} from blob storage", file.Id);
+                Logger.LogDebug("Reading metadata for meta file {file_id} from blob storage", file.Id);
 
                 string prefix = BuildMetadataPrefix(file.DataBase.Id, file.Id);
-                IReadOnlyList<string> blobNames = await GetBlobItemsAsync(prefix, ct);
-                List<string> metaBlobNames = [.. blobNames.Where(name => name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase))];
-
-                string? selectedBlobName = null;
-
-                if (metaBlobNames.Count == 0)
+                ILookup<string, string> metadataBlobs = await GetMetadataBlobsAsync(prefix, file.Id, ct);
+                string? selectedBlobName = metadataBlobs[file.Id].OrderDescending(StringComparer.Ordinal).FirstOrDefault();
+                if (selectedBlobName is null)
                 {
-                    Logger.LogError("Meta file for id {FileId} not found in blob storage", file.Id);
-                    throw new FileNotFoundException($"Meta file for id {file.Id} not found in blob storage container.");
+                    throw new FileNotFoundException($"Meta file for id {file.Id} not found in database {DataBase.Id}, blob storage container {ContainerName}.");
                 }
-                else if (metaBlobNames.Count > 1)
-                {
-                    Logger.LogWarning("Multiple meta files for id {FileId} found in blob storage", file.Id);
-                    selectedBlobName = metaBlobNames
-                        .OrderByDescending(name => name) // Assuming the name includes a timestamp
-                        .First();
-                }
-
-                selectedBlobName ??= metaBlobNames[0];
 
                 using Stream stream = await OpenBlobReadStreamAsync(selectedBlobName, ct);
 
+                string failureMessage = $"Failed to deserialize metadata file {selectedBlobName} for table {file.Id} in database {DataBase.Id}, container {ContainerName}.";
                 try
                 {
                     MatrixMetadata? metadata = await JsonSerializer.DeserializeAsync<MatrixMetadata>(stream, GlobalJsonConverterOptions.Default, ct);
                     if (metadata is null)
                     {
-                        Logger.LogError("Failed to deserialize metadata for id {FileId}", file.Id);
-                        throw new InvalidDataException("Failed to deserialize metadata file.");
+                        throw new InvalidDataException(failureMessage);
                     }
                     return metadata;
                 }
                 catch (JsonException ex)
                 {
-                    Logger.LogError(ex, "Failed to deserialize metadata for id {FileId}", file.Id);
-                    throw new InvalidDataException("Failed to deserialize metadata file.", ex);
+                    throw new InvalidDataException(failureMessage, ex);
                 }
             }
         }
@@ -328,7 +330,7 @@ namespace PxApi.DataSources
 
         internal static string BuildDataBlobName(string dbId, string fileId, string contentValueCode, string timestamp)
         {
-            return $"{DataPrefix}/{dbId}/{fileId}_{contentValueCode}_{timestamp}{DataFileSuffix}";
+            return $"{DataPrefix}/{dbId}/{fileId}/{contentValueCode}_{timestamp}{DataFileSuffix}";
         }
 
         internal static string GetTimestamp(ContentValueList values)
@@ -351,5 +353,64 @@ namespace PxApi.DataSources
             return (headerLength, codec);
         }
 
+        private async Task<ILookup<string, string>> GetMetadataBlobsAsync(
+            string prefix, string? requestedTableId, CancellationToken ct)
+        {
+            IReadOnlyList<string> blobNames = await GetBlobItemsAsync(prefix, ct);
+            List<(string TableId, string BlobName)> metadataBlobs = [];
+            int invalidNames = 0;
+            foreach (string blobName in blobNames.Where(name => name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase)))
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!TryParseMetadataBlobName(blobName, out string tableId))
+                {
+                    invalidNames++;
+                    continue;
+                }
+                if (requestedTableId is not null && !string.Equals(tableId, requestedTableId, StringComparison.Ordinal)) continue;
+
+                metadataBlobs.Add((tableId, blobName));
+            }
+
+            if (invalidNames > 0)
+            {
+                Logger.LogWarning("Skipped {invalid_metadata_file_count} malformed metadata blob names", invalidNames);
+            }
+            ILookup<string, string> groups = metadataBlobs.ToLookup(blob => blob.TableId, blob => blob.BlobName, StringComparer.Ordinal);
+            foreach (IGrouping<string, string> group in groups)
+            {
+                int versionCount = group.Count();
+                if (versionCount > 1)
+                {
+                    Logger.LogWarning("Multiple meta files for id {file_id} found in blob storage: {version_count}; using latest timestamp",
+                        group.Key, versionCount);
+                }
+            }
+            return groups;
+        }
+
+        private bool TryParseMetadataBlobName(string blobName, out string tableId)
+        {
+            tableId = string.Empty;
+            string root = $"{MetaPrefix}/{DataBase.Id}/";
+            if (!blobName.StartsWith(root, StringComparison.Ordinal)) return false;
+            string fileName = blobName[root.Length..^MetaFileSuffix.Length];
+            if (fileName.Contains('/')) return false;
+            int separator = fileName.LastIndexOf('_');
+            if (separator <= 0 || !DateTime.TryParseExact(fileName[(separator + 1)..], "yyyyMMddHHmm",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) return false;
+
+            string candidateId = fileName[..separator];
+            try
+            {
+                PxFileRef file = PxFileRef.ValidateAndCreate(candidateId, DataBase);
+                tableId = file.Id;
+                return true;
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+        }
     }
 }
