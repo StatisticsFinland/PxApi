@@ -60,6 +60,64 @@ public class QueryLoggingTransportTests
         }
     }
 
+    [TestCase("false", false)]
+    [TestCase("False", false)]
+    [TestCase("true", true)]
+    [TestCase("True", true)]
+    public void NLog_ProductionRouting_RequiresAuditOptIn(string configuredValue, bool auditEnabled)
+    {
+        DirectoryInfo? root = new(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "PxApi.sln")))
+            root = root.Parent;
+        if (root is null)
+            throw new DirectoryNotFoundException("Cannot locate the repository root for audit-routing test logs.");
+
+        string logDirectory = Path.Combine(root.FullName, "agent_tmp", "audit-routing-tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            IConfiguration settings = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["LogOptions:Folder"] = logDirectory,
+                ["LogOptions:Level"] = "Debug",
+                ["LogOptions:SysId"] = "AuditRoutingTest",
+                ["LogOptions:AuditLog:Enabled"] = configuredValue
+            }).Build();
+            using LogFactory logFactory = new() { ThrowConfigExceptions = true };
+            logFactory.Setup().SetupExtensions(extensions => extensions.RegisterConfigSettings(settings));
+            XDocument document = XDocument.Load(Path.Combine(AppContext.BaseDirectory, "nlog.config"));
+            logFactory.Configuration = XmlLoggingConfiguration.CreateFromXmlString(document.ToString(), logFactory);
+
+            const string applicationMessage = "Ordinary application routing probe";
+            logFactory.GetLogger("PxApi.TransportTest").Info(applicationMessage);
+            LogEventInfo audit = new(NLog.LogLevel.Info, typeof(AuditLogService).FullName, "Synthetic audit routing probe");
+            audit.Properties["routing_probe"] = "synthetic_audit_event";
+            logFactory.GetLogger(typeof(AuditLogService).FullName!).Log(audit);
+            logFactory.Flush();
+
+            string[] applicationFiles = Directory.GetFiles(logDirectory, "nlog-*.log");
+            Assert.That(applicationFiles, Has.Length.EqualTo(1));
+            string applicationText = File.ReadAllText(applicationFiles.Single());
+            using JsonDocument applicationRecord = JsonDocument.Parse(applicationText);
+            string[] auditFiles = Directory.GetFiles(logDirectory, "audit-*.log");
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(applicationRecord.RootElement.GetProperty("descr").GetString(), Is.EqualTo(applicationMessage));
+                Assert.That(applicationText, Does.Not.Contain("synthetic_audit_event"));
+                Assert.That(auditFiles, Has.Length.EqualTo(auditEnabled ? 1 : 0));
+            }
+            if (auditEnabled)
+            {
+                using JsonDocument auditRecord = JsonDocument.Parse(File.ReadAllText(auditFiles.Single()));
+                Assert.That(auditRecord.RootElement.GetProperty("routing_probe").GetString(), Is.EqualTo("synthetic_audit_event"));
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(logDirectory))
+                Directory.Delete(logDirectory, recursive: true);
+        }
+    }
+
     [Test]
     public void NLog_StructuredStateAndScopes_AreQueryableJsonProperties()
     {

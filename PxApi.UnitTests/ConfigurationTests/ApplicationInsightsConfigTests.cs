@@ -9,6 +9,32 @@ namespace PxApi.UnitTests.ConfigurationTests
         private const string EnvVarName = "TEST_APPLICATIONINSIGHTS_CONNECTION_STRING";
 
         [Test]
+        public void Constructor_WhenExplicitlyDisabled_IgnoresConnectionString()
+        {
+            const string variable = "TEST_DISABLED_APPLICATIONINSIGHTS_CONNECTION_STRING";
+            Environment.SetEnvironmentVariable(variable, "InstrumentationKey=synthetic-test");
+            try
+            {
+                IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["ApplicationInsights:Enabled"] = "false",
+                    ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=synthetic-config"
+                }).Build();
+                ApplicationInsightsConfig config = new(configuration.GetSection("ApplicationInsights"), variable);
+                using (Assert.EnterMultipleScope())
+                {
+                    Assert.That(config.Enabled, Is.False);
+                    Assert.That(config.IsEnabled, Is.False);
+                    Assert.That(config.ConnectionString, Is.Null);
+                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(variable, null);
+            }
+        }
+
+        [Test]
         public void Constructor_WhenNoConfigurationProvided_ShouldBeDisabledWithDefaults()
         {
             // Arrange

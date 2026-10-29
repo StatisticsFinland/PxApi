@@ -106,7 +106,10 @@ Contact and license metadata injected into the OpenAPI spec.
 **File**: `PxApi/Configuration/ApplicationInsightsConfig.cs`
 
 - `ConnectionString` — AI connection string; can be overridden by `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable
-- When present, enables telemetry and removes default AI log filter
+- `Enabled` defaults to `true`. Setting it to `false` disables telemetry and
+  skips reading the connection string, including the environment override.
+  The integration testing configuration sets it to `false`.
+- When a connection string is present and `Enabled` is true, enables telemetry and removes default AI log filter
 - SDK 3.1.2 uses native OpenTelemetry logging. Configure thresholds under
 	`Logging:OpenTelemetry:LogLevel` (default `Information`). The obsolete 2.23
 	logger package is not used; no additional exporter is registered.
