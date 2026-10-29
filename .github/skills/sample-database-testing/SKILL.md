@@ -10,8 +10,12 @@ description: 'Run the PxApi integration-test suite or start a manual sample API 
 From the repository root:
 
 ```bash
-dotnet test PxApi.IntegrationTests/PxApi.IntegrationTests.csproj --no-restore
+DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet test PxApi.IntegrationTests/PxApi.IntegrationTests.csproj --no-restore
 ```
+
+Set `DOTNET_CLI_TELEMETRY_OPTOUT=1` for every `dotnet` command in this workflow,
+per command or shell only. .NET CLI telemetry otherwise probes the Azure
+instance metadata endpoint, which sandboxes block.
 
 If declared dependencies are missing, restore this project and retry. Do not
 install tools or add dependencies for this workflow. To select a fixture, append
@@ -40,6 +44,7 @@ For interactive requests or real Kestrel verification, build from the repository
 root, then launch from the integration project's directory:
 
 ```bash
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
 dotnet build PxApi/PxApi.csproj --no-restore
 cd PxApi.IntegrationTests
 ASPNETCORE_ENVIRONMENT=testing DOTNET_ENVIRONMENT=testing \

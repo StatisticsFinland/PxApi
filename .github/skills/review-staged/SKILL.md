@@ -26,7 +26,7 @@ Use `pass` for an evidenced criterion met, `finding` for an evidenced defect/gap
 
 ## Checks
 
-Check each independently. Run .NET commands from the repository root using the CI configuration, `Debug`. Existing .NET 10 SDK and restored dependencies are prerequisites; do not restore or install to obtain a pass. No frontend lint, build, test, or browser checks apply.
+Check each independently. Run .NET commands from the repository root using the CI configuration, `Debug`. Set `DOTNET_CLI_TELEMETRY_OPTOUT=1` for each `dotnet` command or the invoking shell only, never globally: .NET CLI telemetry otherwise probes the Azure instance metadata endpoint, which sandboxes block. Existing .NET 10 SDK and restored dependencies are prerequisites; do not restore or install to obtain a pass. No frontend lint, build, test, or browser checks apply.
 
 1. Build/typecheck: `dotnet build PxApi.sln -c Debug --no-restore --no-incremental --verbosity detailed -p:WarningLevel=7 -m:1`. This builds the API, unit-test and integration-test projects. Pass requires successful exit and no warnings/errors from any project; treat compiler/analyzer warnings as regression findings under the baseline policy. A successful build does not replace test execution in check 2.
 2. Test execution: `dotnet test PxApi.UnitTests/PxApi.UnitTests.csproj -c Debug --no-restore --verbosity normal`. Pass requires successful exit, at least one executed test, no failures or build/analyzer warnings/errors, and no unexplained relevant skips. Zero tests or missing execution evidence is unverified; relevant skips are coverage gaps. Do not substitute mocked unit-test results for real storage/search integration evidence.

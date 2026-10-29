@@ -134,7 +134,8 @@ public class QueryLoggingIntegrationTests
         Assert.That(logger.Diagnostics.Where(entry => entry.Category == typeof(Program).FullName), Is.Empty);
         await application.StartAsync();
         string address = application.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
-        client = new HttpClient { BaseAddress = new Uri(address) };
+        // Loopback requests must bypass environment proxies, which cannot reach this in-test listener.
+        client = new HttpClient(new HttpClientHandler { UseProxy = false }) { BaseAddress = new Uri(address) };
         client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
     }
 
@@ -790,7 +791,7 @@ public class QueryLoggingIntegrationTests
         {
             ["Search:IndexPrefix"] = "test"
         }).Build();
-        ElasticsearchClientSettings settings = new ElasticsearchClientSettings(new Uri(client.BaseAddress!, "test-elasticsearch/")).MaximumRetries(0);
+        ElasticsearchClientSettings settings = new ElasticsearchClientSettings(new Uri(client.BaseAddress!, "test-elasticsearch/")).MaximumRetries(0).DisableAutomaticProxyDetection();
         ElasticSearchService backend = new(new ElasticsearchClient(settings), new SearchConfig(configuration.GetSection("Search")));
         search.Setup(instance => instance.SearchAsync(It.IsAny<string>(), It.IsAny<SearchTarget>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .Returns((string query, SearchTarget target, string language, int page, int pageSize, CancellationToken token) => backend.SearchAsync(query, target, language, page, pageSize, token));

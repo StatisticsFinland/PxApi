@@ -24,6 +24,9 @@ Coverage measures execution, not assertion quality.
   and `PxApi/DataSources/`) are absent from reports by design, and CI treats
   them as non-executable. Do the same, but confirm the attribute before
   attributing a missing file or line to it.
+- Run `dotnet` with `DOTNET_CLI_TELEMETRY_OPTOUT=1` set for the command or
+  shell only, never globally. .NET CLI telemetry otherwise probes the Azure
+  instance metadata endpoint, which sandboxes block.
 
 ## 1. Define the measurement
 
@@ -41,6 +44,7 @@ Run from the repository root in one shell so `task_dir` stays defined:
 
 ```bash
 mkdir -p agent_tmp
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
 task_dir=$(mktemp -d "$PWD/agent_tmp/cobertura-coverage.XXXXXX")
 dotnet test PxApi.UnitTests/PxApi.UnitTests.csproj -c Debug --no-restore --verbosity normal --collect:"XPlat Code Coverage" --results-directory "$task_dir/unit"
 dotnet test PxApi.IntegrationTests/PxApi.IntegrationTests.csproj -c Debug --no-restore --verbosity normal --collect:"XPlat Code Coverage" --results-directory "$task_dir/integration"

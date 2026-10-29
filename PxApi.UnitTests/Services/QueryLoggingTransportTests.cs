@@ -19,6 +19,7 @@ using NLog.Layouts;
 using NLog.Targets;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
 using Moq;
 using PxApi.Caching;
 using PxApi.Configuration;
@@ -37,6 +38,21 @@ namespace PxApi.UnitTests.Services;
 [TestFixture]
 public class QueryLoggingTransportTests
 {
+    // The SDK's statsbeat code probes the Azure instance metadata endpoint unless a known host is declared.
+    // No opt-out covers every path in Microsoft.ApplicationInsights 3.1.2, so tests declare a synthetic host.
+    private const string ResourceProviderVariable = "AKS_ARM_NAMESPACE_ID";
+    private string? _previousResourceProvider;
+
+    [OneTimeSetUp]
+    public void DeclareSyntheticResourceProvider()
+    {
+        _previousResourceProvider = Environment.GetEnvironmentVariable(ResourceProviderVariable);
+        Environment.SetEnvironmentVariable(ResourceProviderVariable, "pxapi-unit-tests");
+    }
+
+    [OneTimeTearDown]
+    public void RestoreResourceProvider() => Environment.SetEnvironmentVariable(ResourceProviderVariable, _previousResourceProvider);
+
     [TestCase("own")]
     [TestCase("audit")]
     public void NLog_ProductionEnvelope_UsesLowerSnakeCase(string targetName)
@@ -360,6 +376,8 @@ public class QueryLoggingTransportTests
         builder.Logging.ClearProviders();
         ApplicationInsightsConfig configuration = new(builder.Configuration.GetSection("ApplicationInsights"), "TEST_AI_" + Guid.NewGuid().ToString("N"));
         Program.AddApplicationInsights(builder.Logging, configuration);
+        // Removes the SDK's Azure VM resource detector, which probes the instance metadata endpoint.
+        builder.Services.AddOpenTelemetry().ConfigureResource(resource => resource.Clear());
         builder.Services.Configure<OpenTelemetryLoggerOptions>(options => options.AddProcessor(processor));
         builder.Services.PostConfigure<AzureMonitorExporterOptions>(options =>
         {
