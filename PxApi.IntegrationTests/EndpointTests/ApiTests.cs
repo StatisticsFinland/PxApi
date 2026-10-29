@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using NLog;
@@ -100,7 +101,15 @@ public sealed class ApiTests
             Assert.That(health.TryGetProperty("search", out _), Is.False);
         }
 
-        await GetJson("/info");
+        JsonElement info = await GetJson("/info");
+        string? expectedVersion = typeof(Program).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(info.GetProperty("application").GetString(), Is.EqualTo("PxApi"));
+            Assert.That(expectedVersion, Is.Not.Null.And.Not.Empty);
+            Assert.That(info.GetProperty("version").GetString(), Is.EqualTo(expectedVersion));
+        }
         JsonElement databases = await GetJson("/meta/databases");
         using (Assert.EnterMultipleScope())
         {
@@ -138,7 +147,17 @@ public sealed class ApiTests
             Assert.That(html, Does.Contain("swagger").IgnoreCase);
         }
         JsonElement document = await GetJson("/openapi/document.json");
-        Assert.That(document.TryGetProperty("openapi", out _), Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(document.GetProperty("openapi").GetString(), Does.StartWith("3."));
+            Assert.That(document.GetProperty("paths").EnumerateObject().Select(path => path.Name), Is.EquivalentTo(new[]
+            {
+                "/meta/databases",
+                "/meta/databases/{database}/tables",
+                "/meta/databases/{database}/tables/{table}",
+                "/data/databases/{database}/tables/{table}"
+            }));
+        }
     }
 
     [TestCase("flows")]
@@ -247,19 +266,20 @@ public sealed class ApiTests
         Assert.That(listing.GetProperty("tables").GetArrayLength(), Is.EqualTo(2));
     }
 
-    [TestCase("/meta/databases/missing/tables", HttpStatusCode.NotFound)]
-    [TestCase("/meta/databases/sample/tables/missing", HttpStatusCode.NotFound)]
-    [TestCase("/data/databases/sample/tables/missing", HttpStatusCode.NotFound)]
-    [TestCase("/meta/databases/sample/tables?lang=xx", HttpStatusCode.BadRequest)]
-    [TestCase("/data/databases/sample/tables/flows?filters=UNKNOWN:code=x", HttpStatusCode.BadRequest)]
-    public async Task InvalidRequests_ReturnErrors(string path, HttpStatusCode expected)
+    [TestCase("/meta/databases/missing/tables", HttpStatusCode.NotFound, "Database not found.")]
+    [TestCase("/meta/databases/sample/tables/missing", HttpStatusCode.NotFound, "Table not found.")]
+    [TestCase("/data/databases/sample/tables/missing", HttpStatusCode.NotFound, "The requested Px table was not found.")]
+    [TestCase("/meta/databases/sample/tables?lang=xx", HttpStatusCode.BadRequest, "The requested language is not supported.")]
+    [TestCase("/data/databases/sample/tables/flows?filters=UNKNOWN:code=x", HttpStatusCode.BadRequest, "The request parameters are invalid.")]
+    public async Task InvalidRequests_ReturnErrors(string path, HttpStatusCode expected, string message)
     {
         using HttpResponseMessage response = await _client.GetAsync(path);
         string body = await response.Content.ReadAsStringAsync();
         using (Assert.EnterMultipleScope())
         {
             Assert.That(response.StatusCode, Is.EqualTo(expected));
-            Assert.That(body, Is.Not.Empty);
+            Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/json"));
+            Assert.That(JsonSerializer.Deserialize<string>(body), Is.EqualTo(message));
         }
     }
 }
