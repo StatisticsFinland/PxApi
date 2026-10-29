@@ -100,6 +100,8 @@ Authentication is entirely optional. If no key is configured for a controller, t
 **File**: `PxApi/Configuration/OpenApiConfig.cs`
 
 Contact and license metadata injected into the OpenAPI spec.
+The optional license object is emitted only when `LicenseName` is nonempty;
+`LicenseUrl` alone is not sufficient because OpenAPI requires a license name.
 
 ## Application Insights
 

@@ -2,7 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using NLog;
 using PxApi.Configuration;
 using PxApi.IntegrationTests.Infrastructure;
@@ -150,6 +153,9 @@ public sealed class ApiTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(document.GetProperty("openapi").GetString(), Does.StartWith("3."));
+            Assert.That(document.GetProperty("info").GetProperty("title").GetString(), Is.EqualTo("PxApi"));
+            Assert.That(document.GetProperty("info").GetProperty("version").GetString(), Is.EqualTo("v1"));
+            Assert.That(document.GetProperty("info").TryGetProperty("license", out _), Is.False);
             Assert.That(document.GetProperty("paths").EnumerateObject().Select(path => path.Name), Is.EquivalentTo(new[]
             {
                 "/meta/databases",
@@ -157,6 +163,59 @@ public sealed class ApiTests
                 "/meta/databases/{database}/tables/{table}",
                 "/data/databases/{database}/tables/{table}"
             }));
+        }
+        foreach (JsonProperty path in document.GetProperty("paths").EnumerateObject())
+        {
+            string[] methods = path.Name.StartsWith("/data/", StringComparison.Ordinal)
+                ? ["get", "post", "head", "options"]
+                : ["get", "head", "options"];
+            Assert.That(path.Value.EnumerateObject().Select(operation => operation.Name),
+                Is.EquivalentTo(methods), path.Name);
+        }
+    }
+
+    [Test]
+    public async Task Swagger_MatchesDiscoveredControllerContracts()
+    {
+        JsonElement document = await GetJson("/openapi/document.json");
+        JsonElement paths = document.GetProperty("paths");
+        IApiDescriptionGroupCollectionProvider explorer =
+            _factory.Services.GetRequiredService<IApiDescriptionGroupCollectionProvider>();
+        ApiDescription[] descriptions = [.. explorer.ApiDescriptionGroups.Items.SelectMany(group => group.Items)];
+        Assert.That(paths.EnumerateObject().SelectMany(path =>
+                path.Value.EnumerateObject().Select(operation => $"{operation.Name} {path.Name}")),
+            Is.EquivalentTo(descriptions.Select(description =>
+                $"{description.HttpMethod!.ToLowerInvariant()} /{description.RelativePath}")));
+
+        foreach (ApiDescription description in descriptions)
+        {
+            string route = $"/{description.RelativePath}";
+            JsonElement operation = paths.GetProperty(route).GetProperty(description.HttpMethod!.ToLowerInvariant());
+            foreach (ApiResponseType response in description.SupportedResponseTypes)
+            {
+                string status = response.IsDefaultResponse ? "default"
+                    : response.StatusCode.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                Assert.That(operation.GetProperty("responses").TryGetProperty(status, out _),
+                    Is.True, $"{description.HttpMethod} {route}: missing response {status}");
+            }
+
+            ApiParameterDescription[] expected = [.. description.ParameterDescriptions.Where(parameter =>
+                parameter.Source == BindingSource.Path || parameter.Source == BindingSource.Query)];
+            JsonElement[] parameters = operation.TryGetProperty("parameters", out JsonElement declared)
+                ? [.. declared.EnumerateArray()] : [];
+            Assert.That(parameters.Select(parameter =>
+                    $"{parameter.GetProperty("in").GetString()}:{parameter.GetProperty("name").GetString()}"),
+                Is.EquivalentTo(expected.Select(parameter => $"{parameter.Source.Id.ToLowerInvariant()}:{parameter.Name}")),
+                $"{description.HttpMethod} {route}");
+            foreach (ApiParameterDescription parameter in expected)
+            {
+                JsonElement actual = parameters.Single(candidate =>
+                    candidate.GetProperty("name").GetString() == parameter.Name &&
+                    candidate.GetProperty("in").GetString() == parameter.Source.Id.ToLowerInvariant());
+                bool required = actual.TryGetProperty("required", out JsonElement value) && value.GetBoolean();
+                Assert.That(required, Is.EqualTo(parameter.IsRequired),
+                    $"{description.HttpMethod} {route}: {parameter.Name}");
+            }
         }
     }
 

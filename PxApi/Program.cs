@@ -196,7 +196,7 @@ namespace PxApi
                         Url = openApiConfig.ContactUrl,
                         Email = openApiConfig.ContactEmail
                     },
-                    License = new OpenApiLicense
+                    License = string.IsNullOrWhiteSpace(openApiConfig.LicenseName) ? null : new OpenApiLicense
                     {
                         Name = openApiConfig.LicenseName,
                         Url = openApiConfig.LicenseUrl
