@@ -1,6 +1,71 @@
 # Testing
 
-The test project is `PxApi.UnitTests/` and mirrors the production project structure.
+The unit-test project is `PxApi.UnitTests/` and mirrors the production structure.
+[`PxApi.IntegrationTests/`](../../PxApi.IntegrationTests) contains the canonical
+sample PX database, testing configuration and fixed HTTP regression suite.
+
+## Sample database integration tests
+
+Run `dotnet test PxApi.IntegrationTests/PxApi.IntegrationTests.csproj` from the
+repository root. The project is part of the solution and existing CI test runs.
+
+The official `Microsoft.AspNetCore.Mvc.Testing` package hosts the production
+`Program.CreateHostBuilder` with an in-process server and shared `HttpClient`.
+Tests do not need a port, running API, Azure or Elasticsearch. The factory
+replaces application configuration sources before service registration, loads
+only testing settings and resolves the fixture directory absolutely. Search,
+authentication and telemetry are disabled.
+
+Tests check discovery, metadata, all 89 synthetic data cells, GET/POST filters,
+CSV, HEAD/OPTIONS, cache invalidation, error responses and Swagger. Direct
+connector tests also verify fixture parsing and required alias files.
+Fixtures are nonparallel because `AppSettings.Active` and HTTP caches are shared.
+Unit tests run in a separate test process and do not depend on these files.
+
+CI restores and builds the solution once, then runs tests with `--no-build` in
+the same configuration, including coverage runs. Target frameworks come from
+the project files. Do not pass a global `TargetFramework` override to the solution
+build: it can create distinct MSBuild instances of the API project through
+project references, causing concurrent writes to the same output files.
+
+The canonical fixtures and testing settings are copied only to integration-test
+output. They are not API deployment assets. See the
+[manual startup instructions](../README.md#optional-manual-api-session) for an
+interactive session using the same database.
+
+## Agent review prerequisites and fresh clones
+
+Review execution requires an existing .NET 10 SDK and Python 3 for coverage
+analysis. Node.js/npm are required only for OpenAPI schema validation. Agents
+must not install missing runtimes or global tools. The permitted restore, build,
+test, local API and validator-install commands are defined by the Security
+policy in [copilot-instructions.md](../../.github/copilot-instructions.md);
+reviews read that policy from the committed `HEAD`, so policy changes apply only
+to reviews of later commits.
+
+A fresh clone has no tracked `obj/project.assets.json`. The
+[staged review](../../.github/skills/review-staged/SKILL.md) and
+[PR review](../../.github/skills/review-pr/SKILL.md) allow one
+`dotnet restore PxApi.sln --verbosity minimal` after a missing-dependency
+validation failure, then retry the build and keep later commands on
+`--no-restore`. This restores reviewed, declared packages from existing
+configured sources; it does not authorize new dependencies, sources, credential
+inspection or changes to tracked inputs.
+
+Restore permission is not permission to leave the sandbox. Choose allowed cache,
+SDK user-state and temporary locations before executing commands, retaining the
+same settings for restore/build/tests. Task-owned locations can be used when
+defaults are not allowed. Report blocked filesystem/network access instead of
+retrying with broader permissions.
+
+The [OpenAPI skill](../../.github/skills/openapi-validation/SKILL.md) can prepare
+its existing lockfile-defined validator dependencies in a task-owned directory,
+with lifecycle scripts disabled and a project-local cache. Live validation uses
+the tracked sample configuration, not developer-local application settings.
+
+Preparation is not verification: tests must actually execute, coverage reports
+must be produced, and live requests must meet their assertions. Failed
+preparation/build blocks dependent execution while static review can continue.
 
 ## Frameworks & Tools
 
@@ -102,9 +167,14 @@ Example: `PxApi.UnitTests/Authentication/ApiKeyAuthAttributeTests.cs`
 	reasons against independent literal wire values, including undefined-enum fallback.
 	A style guard checks fixed keys and token values for `lower_snake_case`.
 	Transport tests render both production NLog JSON layouts, including lowercase
-	level values. They isolate layouts from routing rules: the existing NLog
-	`enabled` expressions are not valid Boolean rule values and remain a separate
-	configuration issue, not certified by the layout tests.
+	level values. Layout tests isolate rendering from routing rules; a separate
+	transport test keeps production rules intact and verifies enabled audit events
+	reach only the audit file, disabled audit events create no audit file, and
+	ordinary application events still reach the application file. The sample integration
+	suite additionally verifies real file routing, readable Debug request logs
+	and disabled audit output. Audit opt-in comparisons are case-insensitive.
+	Conditional routing uses NLog filters rather than
+	dynamic expressions in the Boolean `enabled` rule attribute.
 - [Middleware tests](../../PxApi.UnitTests/Filters/QueryCompletionMiddlewareTests.cs)
 	assert exactly-one structured event, method distinction, re-execution,
 	failures, untracked endpoints and parallel request isolation.

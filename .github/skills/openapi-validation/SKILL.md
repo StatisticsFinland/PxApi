@@ -20,46 +20,61 @@ Perform a read-only validation of the project's OpenAPI specification against th
 - The OpenAPI document is generated via Swashbuckle and served at `/openapi/document.json`
 - Custom document filters, schema filters, and operation filters in `PxApi/OpenApi/` shape the output
 - Some controllers are excluded via `[ApiExplorerSettings(IgnoreApi = true)]` or through `ApiExplorerConventionsFactory`
-- The HTTPS dev profile runs on `https://localhost:7215`
+- Use the tracked testing configuration and sample database; developer-local application settings and HTTPS profiles are not prerequisites.
 
 ## Procedure
 
-Execute each step in order. If a step fails, **continue with remaining steps** so the final report is complete. Track progress using the todo list.
+Require an existing .NET 10 SDK; Node.js/npm are needed for schema validation. Follow the [shared prerequisites](../../../docs/architecture/testing.md#agent-review-prerequisites-and-fresh-clones) and the invoking review's input/safety checks before executing project code. When invoked directly rather than by a review, apply the Security policy from the committed `HEAD` version of `.github/copilot-instructions.md` (read with `git show HEAD:.github/copilot-instructions.md`), confirm that the working-tree inputs used to build and run the API are the ones being validated, and report any local differences with the results. Execute steps where their prerequisites are met; continue independent static review after blocked runtime/schema checks. Track progress using the todo list.
+
+Create a unique task-owned directory under repository-root `agent_tmp/`, or reuse the invoking review's directory. The placeholders below refer to absolute paths under that directory. Use platform-appropriate commands and environment assignment; do not write temporary output or npm caches outside the project.
 
 ### Step 1 — Start the Application
 
-Start the API to generate the live OpenAPI document:
+Reuse the invoking review's verified sample API session and reported URL if one is already running. Otherwise follow [sample-database-testing](../sample-database-testing/SKILL.md#manual-endpoint-testing): build the solution in `Debug` with `--no-restore`, using its one-time solution restore only after a missing-dependency failure. Do not repeat a successful parent restore/build or launch an unrelated existing configuration.
 
-```
-dotnet run --project PxApi/PxApi.csproj --launch-profile https
+After a successful build, start the API from `PxApi.IntegrationTests/` with both `ASPNETCORE_ENVIRONMENT` and `DOTNET_ENVIRONMENT` set to lowercase `testing`. Set `DOTNET_CLI_TELEMETRY_OPTOUT=1` for every .NET command or the invoking shell. Choose a free loopback HTTP port and substitute its URL consistently:
+
+```text
+dotnet ../PxApi/bin/Debug/net10.0/PxApi.dll --urls "<listening-url>" --RootUrl "<listening-url>/" --LogOptions:Folder "<absolute-task-directory>/logs" --ApplicationInsights:Enabled false --FeatureManagement:SearchController false
 ```
 
-Run this in async mode. Wait a few seconds for the application to start, then proceed.
+Keep a bounded session attached, retain its process ID and guarantee cleanup on failure. Require HTTP 200 from `/health` with a healthy `sample` database within 30 seconds; a running process or startup log alone is not readiness. Use the same-process startup/request/shutdown guidance from the sample skill. Do not inspect secret-bearing local settings, use production credentials or contact external storage/search/telemetry.
 
 ### Step 2 — Fetch the OpenAPI Document
 
-Retrieve the generated specification into the `agent_tmp/` directory:
+Retrieve the generated specification from the verified sample session into the task directory. Use direct loopback requests:
 
-```
-mkdir -p agent_tmp && curl -k https://localhost:7215/openapi/document.json -o agent_tmp/openapi-doc.json
+```text
+curl --noproxy localhost,127.0.0.1 --fail --silent --show-error --header "Accept: application/json" "<listening-url>/openapi/document.json" --output "<absolute-task-directory>/openapi-doc.json"
 ```
 
-If the fetch fails, check `PxApi/Properties/launchSettings.json` for the correct port and retry. If it still fails, record the error and stop — subsequent steps depend on the document.
+Record the HTTP result and require a JSON OpenAPI document. Failed retrieval blocks live schema/alignment checks; continue independent static controller/metadata inspection and label missing live evidence unverified. Do not fall back to another server, developer settings, or disabled certificate validation.
 
 ### Step 3 — Validate Syntax, Schema, and Unused Definitions
 
 Run the Node.js validation script to check the document for structural correctness and unused definitions. This covers both syntax/schema validation and unused definition detection in a single pass.
 
-First, ensure dependencies are installed (one-time setup):
+Reuse existing validator dependencies if the script's imports resolve. If declared dependencies are missing and Node.js/npm are available, permit only this bounded preparation, subject to the baseline Security policy (the invoking review's, or the committed `HEAD` policy when invoked directly):
 
-```bash
-cd .github/skills/openapi-validation && npm install
+1. Copy the reviewed `package.json`, `package-lock.json`, and `validate-openapi.mjs` from this skill into `<absolute-task-directory>/validator/`. Do not modify those files or replace an existing checkout's `node_modules`.
+2. Install exactly the lockfile-defined dependencies into that task-owned directory, with lifecycle scripts, audit/funding requests and update-notifier checks disabled and the cache inside the project:
+
+```text
+npm --prefix "<absolute-task-directory>/validator" ci --ignore-scripts --no-audit --no-fund --no-update-notifier --cache "<absolute-task-directory>/npm-cache"
 ```
 
-Then run the script against the fetched document:
+Do not add dependencies, update manifests/lockfiles, change registries or credentials, inspect secret stores, or install global tools. New dependencies/sources still require approval; permission to prepare this existing validator does not grant blanket package-install permission. If Node.js/npm are missing, installation is prohibited, or preparation fails, mark schema/unused-definition validation unverified while continuing document retrieval and independent static checks.
 
-```bash
-node .github/skills/openapi-validation/validate-openapi.mjs agent_tmp/openapi-doc.json
+With existing checkout dependencies, run:
+
+```text
+node .github/skills/openapi-validation/validate-openapi.mjs "<absolute-task-directory>/openapi-doc.json"
+```
+
+With task-local dependencies, run the copied script so Node resolves that installation:
+
+```text
+node "<absolute-task-directory>/validator/validate-openapi.mjs" "<absolute-task-directory>/openapi-doc.json"
 ```
 
 The script performs:
@@ -71,11 +86,11 @@ The script performs:
 - Deep validation via `@apidevtools/swagger-parser`
 - Unused definition detection for schemas, parameters, request bodies, responses, and security schemes (including `discriminator.mapping` awareness)
 
-The script exits with code 0 if the document is valid, or code 1 if issues are found. **Record** the script output for the final report.
+The script exits with code 0 if the document is valid, code 1 if issues are found or the document path argument is missing, and code 2 if the document cannot be read or parsed as JSON. Record dependency preparation separately from validation. A successful install is not a successful schema check. **Record** the script output and exit code for the final report.
 
 ### Step 4 — Validate Against Controller Implementation
 
-Compare the OpenAPI document against the actual controller code to ensure they match.
+Compare the OpenAPI document against the actual controller code to ensure they match. If no live document is available, inspect the static controller/generated-document metadata independently and mark live alignment unverified; do not invent endpoint counts or claim a live match.
 
 1. **Read all controller files** under `PxApi/Controllers/`.
 2. **Read the API explorer conventions** in `PxApi/OpenApi/ApiExplorerConventions.cs` to understand which controllers are excluded.
@@ -93,11 +108,11 @@ Compare the OpenAPI document against the actual controller code to ensure they m
 
 ### Step 5 — Stop the Application
 
-**Kill the terminal process** running the application. Clean up the temporary `agent_tmp/openapi-doc.json` file and the `agent_tmp/` directory if it is empty.
+Stop only the application process owned by this validation. If reusing the invoking review's server, leave shutdown to that owner. After shutdown, inspect task-owned Debug logs as required by the sample skill, including after failed requests. Clean up only this task's files/subdirectory, including its copied validator, `node_modules` and npm cache; never remove a pre-existing directory or another task's output.
 
 ## Report Format
 
-After all steps complete, present the findings in a single structured report:
+After all applicable steps complete, present the findings in a single structured report. Record preparation, document retrieval, schema validation and controller alignment separately. Use **unverified** for blocked checks and **not reported** for unavailable counts; incomplete checks cannot produce a clean overall result.
 
 ```
 ## OpenAPI Validation Report
@@ -143,7 +158,7 @@ After all steps complete, present the findings in a single structured report:
 
 ## Important Rules
 
-1. **Read-only**: Never modify source code, project files, or configuration. Only run diagnostic commands.
-2. **Continue on failure**: If a step fails, record the failure and proceed to the next step (except Step 2 failure, which blocks Steps 3–4).
-3. **Kill the server**: Always stop the application after validation completes.
+1. **Read-only**: Never modify tracked source code, project files, configuration, manifests, lockfiles or the index. Only generated task artifacts and the bounded dependency preparation above are permitted.
+2. **Continue on failure**: If a prerequisite fails, mark dependent checks unverified and continue independent static review.
+3. **Server ownership**: Guarantee shutdown of validation-owned servers on success/failure; do not stop unrelated or parent-owned services.
 4. **No changes**: Report findings only. If the user asks to fix issues, propose changes and wait for approval.
