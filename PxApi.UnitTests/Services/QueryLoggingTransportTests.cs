@@ -109,10 +109,11 @@ public class QueryLoggingTransportTests
             audit.Properties["routing_probe"] = "synthetic_audit_event";
             logFactory.GetLogger(typeof(AuditLogService).FullName!).Log(audit);
             logFactory.Flush();
+            logFactory.Shutdown();
 
             string[] applicationFiles = Directory.GetFiles(logDirectory, "nlog-*.log");
             Assert.That(applicationFiles, Has.Length.EqualTo(1));
-            string applicationText = File.ReadAllText(applicationFiles.Single());
+            string applicationText = ReadClosedLog(applicationFiles.Single());
             using JsonDocument applicationRecord = JsonDocument.Parse(applicationText);
             string[] auditFiles = Directory.GetFiles(logDirectory, "audit-*.log");
             using (Assert.EnterMultipleScope())
@@ -123,7 +124,7 @@ public class QueryLoggingTransportTests
             }
             if (auditEnabled)
             {
-                using JsonDocument auditRecord = JsonDocument.Parse(File.ReadAllText(auditFiles.Single()));
+                using JsonDocument auditRecord = JsonDocument.Parse(ReadClosedLog(auditFiles.Single()));
                 Assert.That(auditRecord.RootElement.GetProperty("routing_probe").GetString(), Is.EqualTo("synthetic_audit_event"));
             }
         }
@@ -357,6 +358,13 @@ public class QueryLoggingTransportTests
             Assert.That(application.Services.GetServices<ILoggerProvider>().OfType<OpenTelemetryLoggerProvider>(), Is.Empty);
             Assert.That(processor.Records, Is.Empty);
         }
+    }
+
+    private static string ReadClosedLog(string path)
+    {
+        using FileStream stream = new(path, FileMode.Open, FileAccess.Read, FileShare.None);
+        using StreamReader reader = new(stream);
+        return reader.ReadToEnd();
     }
 
     private static WebApplication CreateTelemetryApplication(CaptureProcessor processor,

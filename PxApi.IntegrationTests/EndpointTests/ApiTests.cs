@@ -52,7 +52,12 @@ public sealed class ApiTests
 
         string[] files = Directory.GetFiles(_factory.LogDirectory, "nlog-*.log");
         Assert.That(files, Is.Not.Empty);
-        string text = string.Join("\n", await Task.WhenAll(files.Select(path => File.ReadAllTextAsync(path))));
+        string text = string.Join("\n", await Task.WhenAll(files.Select(async path =>
+        {
+            using FileStream stream = new(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using StreamReader reader = new(stream);
+            return await reader.ReadToEndAsync();
+        })));
         using (Assert.EnterMultipleScope())
         {
             Assert.That(text, Does.Contain("Application started. Hosting environment: testing"));
