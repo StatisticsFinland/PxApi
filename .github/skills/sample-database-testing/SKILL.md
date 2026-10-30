@@ -17,8 +17,16 @@ Set `DOTNET_CLI_TELEMETRY_OPTOUT=1` for every `dotnet` command in this workflow,
 per command or shell only. .NET CLI telemetry otherwise probes the Azure
 instance metadata endpoint, which sandboxes block.
 
-If declared dependencies are missing, restore this project and retry. Do not
-install tools or add dependencies for this workflow. To select a fixture, append
+Require an existing .NET 10 SDK. Follow the
+[shared prerequisites](../../../docs/architecture/testing.md#agent-review-prerequisites-and-fresh-clones)
+for the one-time `dotnet restore PxApi.sln --verbosity minimal`. When invoked by
+a review, reuse its preparation and successful build; do not repeat restore or
+start tests/the API without a successful current build.
+Require a positive executed-test count; exit code 0 without executed tests is
+unverified. Use platform-appropriate environment assignment (POSIX examples
+below use `export`; PowerShell uses `$env:NAME = "value"`).
+
+To select a fixture, append
 `--filter FullyQualifiedName~ApiTests` or
 `--filter FullyQualifiedName~SampleDatabaseTests`.
 

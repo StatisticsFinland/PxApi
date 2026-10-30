@@ -33,6 +33,40 @@ output. They are not API deployment assets. See the
 [manual startup instructions](../README.md#optional-manual-api-session) for an
 interactive session using the same database.
 
+## Agent review prerequisites and fresh clones
+
+Review execution requires an existing .NET 10 SDK and Python 3 for coverage
+analysis. Node.js/npm are required only for OpenAPI schema validation. Agents
+must not install missing runtimes or global tools. The permitted restore, build,
+test, local API and validator-install commands are defined by the Security
+policy in [copilot-instructions.md](../../.github/copilot-instructions.md);
+reviews read that policy from the committed `HEAD`, so policy changes apply only
+to reviews of later commits.
+
+A fresh clone has no tracked `obj/project.assets.json`. The
+[staged review](../../.github/skills/review-staged/SKILL.md) and
+[PR review](../../.github/skills/review-pr/SKILL.md) allow one
+`dotnet restore PxApi.sln --verbosity minimal` after a missing-dependency
+validation failure, then retry the build and keep later commands on
+`--no-restore`. This restores reviewed, declared packages from existing
+configured sources; it does not authorize new dependencies, sources, credential
+inspection or changes to tracked inputs.
+
+Restore permission is not permission to leave the sandbox. Choose allowed cache,
+SDK user-state and temporary locations before executing commands, retaining the
+same settings for restore/build/tests. Task-owned locations can be used when
+defaults are not allowed. Report blocked filesystem/network access instead of
+retrying with broader permissions.
+
+The [OpenAPI skill](../../.github/skills/openapi-validation/SKILL.md) can prepare
+its existing lockfile-defined validator dependencies in a task-owned directory,
+with lifecycle scripts disabled and a project-local cache. Live validation uses
+the tracked sample configuration, not developer-local application settings.
+
+Preparation is not verification: tests must actually execute, coverage reports
+must be produced, and live requests must meet their assertions. Failed
+preparation/build blocks dependent execution while static review can continue.
+
 ## Frameworks & Tools
 
 | Package | Purpose |

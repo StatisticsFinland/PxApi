@@ -17,16 +17,26 @@ Use Git path/status metadata to identify unstaged and untracked files. Before ex
 
 ## Shared Policies
 
-- Safety: do not run checks with effects outside the project or install missing tools/dependencies. Build/test artifacts are permitted; source, configuration, and tracked files must remain unchanged. When using repository validation skills, retain these limits: do not install tools, run external SonarQube scans, or execute fetching CI scripts; report blocked steps as unverified.
+- Safety: do not modify tracked source/configuration files or the index. Build/test artifacts and the bounded dependency preparation below are permitted. Solution-scoped NuGet restore may perform normal writes to NuGet caches, .NET SDK user-state directories, and OS temporary directories as allowed by the baseline Security policy. Do not install SDKs, global tools, or dependencies outside these exceptions, run external SonarQube scans, or execute fetching CI scripts; report blocked steps as unverified.
 - Baseline: assume `HEAD` builds without warnings/errors and all tests pass. This is an acceptance assumption, not verified history. Observed build warnings/errors and test failures are findings and review blockers even if apparently pre-existing. Do not invent a staged-change cause; missing prerequisites are verification blockers, not product defects.
 - Scope: this workspace contains the `PxApi` ASP.NET Core API, `PxApi.UnitTests`, and `PxApi.IntegrationTests`, targeting .NET 10, with no frontend application. Run checks 1-3 and 5 for changes affecting implementation, tests, dependencies, configuration, or API contracts. Documentation/skill-only changes need no execution unless they affect build inputs. Explain scope decisions; uncertain impact is unverified. Continue independent checks after failures.
 - Evidence: record command, working directory, exit code, and result; include NUnit suites/classes exercised and passed, failed, and skipped counts where reported. Cite file/line, scenario, and impact for code or coverage findings. Never invent results or coverage percentages; report numeric coverage only if measured. Working-tree results cannot pass staged verification unless relevant inputs match the index.
 
 Use `pass` for an evidenced criterion met, `finding` for an evidenced defect/gap or failed check, `unverified` for blocked/inconclusive verification, and `not applicable` only for demonstrably out-of-scope checks. Explain the latter two and separate differing subcheck outcomes. No findings does not mean unverified checks passed; partial inspection is not full coverage.
 
+## Dependency preparation
+
+After the input checks, run the build below with `--no-restore`. If it reports missing declared dependencies (`NETSDK1004` or `NETSDK1064`), permit one solution restore from existing sources, then retry the build. Retain baseline dependency approvals and sandbox restrictions:
+
+```text
+dotnet restore PxApi.sln --verbosity minimal
+```
+
+Keep subsequent commands on `--no-restore` and reuse preparation in helper skills. Tests/API checks require a successful current build; coverage requires executed tests and fresh reports. Record preparation separately from findings. Mark blocked checks unverified without escalating access; continue independent static review. See [shared prerequisites](../../../docs/architecture/testing.md#agent-review-prerequisites-and-fresh-clones) for setup/cache guidance and the [OpenAPI skill](../openapi-validation/SKILL.md#step-3--validate-syntax-schema-and-unused-definitions) for validator preparation.
+
 ## Checks
 
-Check each independently. Run .NET commands from the repository root using the CI configuration, `Debug`. Set `DOTNET_CLI_TELEMETRY_OPTOUT=1` for each `dotnet` command or the invoking shell only, never globally: .NET CLI telemetry otherwise probes the Azure instance metadata endpoint, which sandboxes block. Existing .NET 10 SDK and restored dependencies are prerequisites; do not restore or install to obtain a pass. No frontend lint, build, test, or browser checks apply.
+Check each independently where its prerequisites are met. Run .NET commands from the repository root using the CI configuration, `Debug`. Set `DOTNET_CLI_TELEMETRY_OPTOUT=1` for each `dotnet` command or the invoking shell only, never globally: .NET CLI telemetry otherwise probes the Azure instance metadata endpoint, which sandboxes block. Use only the bounded preparation above when declared dependencies are missing. No frontend lint, build, test, or browser checks apply.
 
 1. Build/typecheck: `dotnet build PxApi.sln -c Debug --no-restore --no-incremental --verbosity detailed -p:WarningLevel=7 -m:1`. This builds the API, unit-test and integration-test projects. Pass requires successful exit and no warnings/errors from any project; treat compiler/analyzer warnings as regression findings under the baseline policy. A successful build does not replace test execution in check 2.
 2. Test execution: `dotnet test PxApi.UnitTests/PxApi.UnitTests.csproj -c Debug --no-restore --verbosity normal`. Pass requires successful exit, at least one executed test, no failures or build/analyzer warnings/errors, and no unexplained relevant skips. Zero tests or missing execution evidence is unverified; relevant skips are coverage gaps. Do not substitute mocked unit-test results for real storage/search integration evidence.

@@ -14,6 +14,11 @@ Coverage measures execution, not assertion quality.
 - Both NUnit test projects reference `coverlet.collector`. Use the VSTest
   `XPlat Code Coverage` collector; do not install coverage tools or use
   Microsoft.Testing.Platform switches.
+- Require an existing .NET 10 SDK and Python 3. Follow the
+  [shared prerequisites](../../../docs/architecture/testing.md#agent-review-prerequisites-and-fresh-clones)
+  for the one-time `dotnet restore PxApi.sln --verbosity minimal`; when invoked
+  by a review, reuse its preparation and successful build instead of repeating
+  restore or test runs.
 - Do not fetch. Use existing local refs and warn that they may be stale.
 - Integration tests run in-process with local fixtures; see
   [sample-database-testing](../sample-database-testing/SKILL.md).
@@ -53,6 +58,8 @@ dotnet test PxApi.IntegrationTests/PxApi.IntegrationTests.csproj -c Debug --no-r
 Record each exit code and the passed, failed, and skipped counts. Add `--filter`
 only for an explicitly focused measurement. Use `--no-build` only when current
 build outputs are verified; stale binaries produce misleading coverage.
+Require at least one executed test per project and a fresh Cobertura report.
+Exit code 0 without executed tests is unverified, not evidence of coverage.
 
 ## 3. Analyze
 
