@@ -22,6 +22,12 @@ connector tests also verify fixture parsing and required alias files.
 Fixtures are nonparallel because `AppSettings.Active` and HTTP caches are shared.
 Unit tests run in a separate test process and do not depend on these files.
 
+CI restores and builds the solution once, then runs tests with `--no-build` in
+the same configuration, including coverage runs. Target frameworks come from
+the project files. Do not pass a global `TargetFramework` override to the solution
+build: it can create distinct MSBuild instances of the API project through
+project references, causing concurrent writes to the same output files.
+
 The canonical fixtures and testing settings are copied only to integration-test
 output. They are not API deployment assets. See the
 [manual startup instructions](../README.md#optional-manual-api-session) for an

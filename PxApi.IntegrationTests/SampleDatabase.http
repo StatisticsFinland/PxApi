@@ -37,7 +37,7 @@ GET {{root}}/meta/databases/sample/tables/observations
 GET {{root}}/data/databases/sample/tables/observations?filters=REGION:code=*
 Accept: application/json
 
-### One region and year: 22 observations
+### One observation (REGION=B, TIME=2015, MEASURE=COUNT): value 22
 POST {{root}}/data/databases/sample/tables/observations
 Content-Type: application/json
 Accept: application/json
