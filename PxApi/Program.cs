@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using OpenTelemetry.Logs;
 using Microsoft.FeatureManagement;
 using Microsoft.OpenApi;
@@ -27,96 +29,99 @@ namespace PxApi
     /// Main entry point of the application.
     /// </summary>
     [ExcludeFromCodeCoverage(Justification = "No meaningful logic to test in Main.")]
-    public static class Program
+    public sealed class Program
     {
+        private Program() { }
+
         /// <summary>
         /// Main entry point of the application.
         /// </summary>
-        public static async Task Main()
+        public static async Task Main(string[] args)
         {
-            // Create the web application builder first so that configuration (including environment specific files)
-            // is available to NLog configuration variable resolution (${configsetting:...}).
-            WebApplicationBuilder builder = WebApplication.CreateBuilder();
-
-            // Explicitly access configuration to force load (appsettings.json + appsettings.{Environment}.json already added by CreateBuilder).
-            // Load strongly typed AppSettings from the aggregated configuration.
-            AppSettings.Load(builder.Configuration);
-
-            // Configure NLog integration AFTER configuration is available and folder exists.
-            builder.Logging.ClearProviders();
-            builder.Host.UseNLog(new NLogAspNetCoreOptions { CaptureEventId = EventIdCaptureType.None });
-
             Logger logger = LogManager.GetCurrentClassLogger();
             try
             {
-                logger.Debug("Main called and logger initialized. Environment={environment} AuditEnabled={audit_enabled}",
-                    builder.Environment.EnvironmentName,
-                    builder.Configuration.GetValue<bool>("LogOptions:AuditLog:Enabled"));
-
-                // Configure Application Insights if connection string is available
-                ApplicationInsightsConfig aiConfig = AppSettings.Active.ApplicationInsights;
-                AddApplicationInsights(builder.Logging, aiConfig);
-
-                // Add services to the container.
-                AddServices(builder.Services);
-
-                // Configure CORS if allowed origins are specified
-                CorsConfig corsConfig = AppSettings.Active.Cors;
-                if (corsConfig.HasAllowedOrigins)
-                {
-                    builder.Services.AddCors(options =>
-                    {
-                        options.AddDefaultPolicy(policy =>
-                        {
-                            policy.WithOrigins([.. corsConfig.AllowedOrigins])
-                                  .AllowAnyHeader()
-                                  .AllowAnyMethod();
-                        });
-                    });
-                }
-
-                WebApplication app = builder.Build();
-
-                // Configure the HTTP request pipeline.
-                app.UseSwagger(c =>
-                {
-                    c.RouteTemplate = "/{documentName}/document.json";
-                });
-                app.UseSwaggerUI(c =>
-                {
-                    c.SwaggerEndpoint("openapi/document.json", "PxApi");
-                    app.Logger.LogInformation("Swagger UI configured with server {root_url}", AppSettings.Active.RootUrl);
-                    c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
-                });
-
-                app.UseRouting();
-                app.UseMiddleware<QueryCompletionMiddleware>();
-                app.UseExceptionHandler("/error");
-
-                app.UseHttpsRedirection();
-
-                if (corsConfig.HasAllowedOrigins)
-                {
-                    app.UseCors();
-                }
-
-                app.UseAuthorization();
-
-                app.MapControllers();
-
-                logger.Info("Now listening on: {root_url}", AppSettings.Active.RootUrl);
-
-                await app.RunAsync();
+                using IHost host = CreateHostBuilder(args).Build();
+                await host.RunAsync();
             }
             catch (Exception ex)
             {
                 logger.Error(ex, "Stopped program because of exception");
-                Environment.ExitCode = 1; // Non-zero exit code indicates failure
+                Environment.ExitCode = 1;
             }
             finally
             {
                 LogManager.Shutdown();
             }
+        }
+
+        /// <summary>
+        /// Creates the application host, allowing tests to replace configuration before services are registered.
+        /// </summary>
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureLogging(logging => logging.ClearProviders())
+                .UseNLog(new NLogAspNetCoreOptions { CaptureEventId = EventIdCaptureType.None })
+                .ConfigureWebHostDefaults(webBuilder => webBuilder
+                    .ConfigureServices((context, services) =>
+                    {
+                        AppSettings.Load(context.Configuration);
+                        services.AddLogging(logging => AddApplicationInsights(logging, AppSettings.Active.ApplicationInsights));
+                        AddServices(services);
+                        CorsConfig corsConfig = AppSettings.Active.Cors;
+                        if (corsConfig.HasAllowedOrigins)
+                        {
+                            services.AddCors(options => options.AddDefaultPolicy(policy =>
+                                policy.WithOrigins([.. corsConfig.AllowedOrigins])
+                                    .AllowAnyHeader()
+                                    .AllowAnyMethod()));
+                        }
+                    })
+                    .Configure(ConfigureApplication));
+
+        private static void ConfigureApplication(IApplicationBuilder app)
+        {
+            ConfigureStartupLogging(app.ApplicationServices);
+
+            app.UseSwagger(c =>
+            {
+                c.RouteTemplate = "/{documentName}/document.json";
+            });
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("openapi/document.json", "PxApi");
+                c.RoutePrefix = string.Empty;
+            });
+
+            app.UseRouting();
+            app.UseMiddleware<QueryCompletionMiddleware>();
+            app.UseExceptionHandler("/error");
+            app.UseHttpsRedirection();
+
+            if (AppSettings.Active.Cors.HasAllowedOrigins)
+            {
+                app.UseCors();
+            }
+
+            app.UseAuthorization();
+            app.UseEndpoints(endpoints => endpoints.MapControllers());
+        }
+
+        internal static void ConfigureStartupLogging(IServiceProvider services)
+        {
+            IHostApplicationLifetime lifetime = services.GetRequiredService<IHostApplicationLifetime>();
+            ILogger<Program> logger = services.GetRequiredService<ILogger<Program>>();
+            lifetime.ApplicationStarted.Register(() =>
+            {
+                IServer server = services.GetRequiredService<IServer>();
+                foreach (string address in server.Features.Get<IServerAddressesFeature>()?.Addresses ?? [])
+                {
+                    logger.LogInformation("Now listening on: {listening_url}", address);
+                }
+
+                IHostEnvironment environment = services.GetRequiredService<IHostEnvironment>();
+                logger.LogInformation("Application started. Hosting environment: {environment}", environment.EnvironmentName);
+            });
         }
 
         internal static void AddApplicationInsights(ILoggingBuilder logging, ApplicationInsightsConfig configuration)
@@ -191,7 +196,7 @@ namespace PxApi
                         Url = openApiConfig.ContactUrl,
                         Email = openApiConfig.ContactEmail
                     },
-                    License = new OpenApiLicense
+                    License = string.IsNullOrWhiteSpace(openApiConfig.LicenseName) ? null : new OpenApiLicense
                     {
                         Name = openApiConfig.LicenseName,
                         Url = openApiConfig.LicenseUrl

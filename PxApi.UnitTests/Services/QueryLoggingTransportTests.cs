@@ -19,6 +19,7 @@ using NLog.Layouts;
 using NLog.Targets;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
 using Moq;
 using PxApi.Caching;
 using PxApi.Configuration;
@@ -37,6 +38,21 @@ namespace PxApi.UnitTests.Services;
 [TestFixture]
 public class QueryLoggingTransportTests
 {
+    // The SDK's statsbeat code probes the Azure instance metadata endpoint unless a known host is declared.
+    // No opt-out covers every path in Microsoft.ApplicationInsights 3.1.2, so tests declare a synthetic host.
+    private const string ResourceProviderVariable = "AKS_ARM_NAMESPACE_ID";
+    private string? _previousResourceProvider;
+
+    [OneTimeSetUp]
+    public void DeclareSyntheticResourceProvider()
+    {
+        _previousResourceProvider = Environment.GetEnvironmentVariable(ResourceProviderVariable);
+        Environment.SetEnvironmentVariable(ResourceProviderVariable, "pxapi-unit-tests");
+    }
+
+    [OneTimeTearDown]
+    public void RestoreResourceProvider() => Environment.SetEnvironmentVariable(ResourceProviderVariable, _previousResourceProvider);
+
     [TestCase("own")]
     [TestCase("audit")]
     public void NLog_ProductionEnvelope_UsesLowerSnakeCase(string targetName)
@@ -57,6 +73,65 @@ public class QueryLoggingTransportTests
             Assert.That(keys, Is.Not.Empty);
             Assert.That(keys, Is.All.Matches("^[a-z][a-z0-9]*(_[a-z0-9]+)*$"));
             if (targetName == "own") Assert.That(record.RootElement.GetProperty("level").GetString(), Is.EqualTo("info"));
+        }
+    }
+
+    [TestCase("false", false)]
+    [TestCase("False", false)]
+    [TestCase("true", true)]
+    [TestCase("True", true)]
+    public void NLog_ProductionRouting_RequiresAuditOptIn(string configuredValue, bool auditEnabled)
+    {
+        DirectoryInfo? root = new(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "PxApi.sln")))
+            root = root.Parent;
+        if (root is null)
+            throw new DirectoryNotFoundException("Cannot locate the repository root for audit-routing test logs.");
+
+        string logDirectory = Path.Combine(root.FullName, "agent_tmp", "audit-routing-tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            IConfiguration settings = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["LogOptions:Folder"] = logDirectory,
+                ["LogOptions:Level"] = "Debug",
+                ["LogOptions:SysId"] = "AuditRoutingTest",
+                ["LogOptions:AuditLog:Enabled"] = configuredValue
+            }).Build();
+            using LogFactory logFactory = new() { ThrowConfigExceptions = true };
+            logFactory.Setup().SetupExtensions(extensions => extensions.RegisterConfigSettings(settings));
+            XDocument document = XDocument.Load(Path.Combine(AppContext.BaseDirectory, "nlog.config"));
+            logFactory.Configuration = XmlLoggingConfiguration.CreateFromXmlString(document.ToString(), logFactory);
+
+            const string applicationMessage = "Ordinary application routing probe";
+            logFactory.GetLogger("PxApi.TransportTest").Info(applicationMessage);
+            LogEventInfo audit = new(NLog.LogLevel.Info, typeof(AuditLogService).FullName, "Synthetic audit routing probe");
+            audit.Properties["routing_probe"] = "synthetic_audit_event";
+            logFactory.GetLogger(typeof(AuditLogService).FullName!).Log(audit);
+            logFactory.Flush();
+            logFactory.Shutdown();
+
+            string[] applicationFiles = Directory.GetFiles(logDirectory, "nlog-*.log");
+            Assert.That(applicationFiles, Has.Length.EqualTo(1));
+            string applicationText = ReadClosedLog(applicationFiles.Single());
+            using JsonDocument applicationRecord = JsonDocument.Parse(applicationText);
+            string[] auditFiles = Directory.GetFiles(logDirectory, "audit-*.log");
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(applicationRecord.RootElement.GetProperty("descr").GetString(), Is.EqualTo(applicationMessage));
+                Assert.That(applicationText, Does.Not.Contain("synthetic_audit_event"));
+                Assert.That(auditFiles, Has.Length.EqualTo(auditEnabled ? 1 : 0));
+            }
+            if (auditEnabled)
+            {
+                using JsonDocument auditRecord = JsonDocument.Parse(ReadClosedLog(auditFiles.Single()));
+                Assert.That(auditRecord.RootElement.GetProperty("routing_probe").GetString(), Is.EqualTo("synthetic_audit_event"));
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(logDirectory))
+                Directory.Delete(logDirectory, recursive: true);
         }
     }
 
@@ -285,6 +360,13 @@ public class QueryLoggingTransportTests
         }
     }
 
+    private static string ReadClosedLog(string path)
+    {
+        using FileStream stream = new(path, FileMode.Open, FileAccess.Read, FileShare.None);
+        using StreamReader reader = new(stream);
+        return reader.ReadToEnd();
+    }
+
     private static WebApplication CreateTelemetryApplication(CaptureProcessor processor,
         Dictionary<string, string?>? overrides = null, bool enabled = true)
     {
@@ -302,6 +384,8 @@ public class QueryLoggingTransportTests
         builder.Logging.ClearProviders();
         ApplicationInsightsConfig configuration = new(builder.Configuration.GetSection("ApplicationInsights"), "TEST_AI_" + Guid.NewGuid().ToString("N"));
         Program.AddApplicationInsights(builder.Logging, configuration);
+        // Removes the SDK's Azure VM resource detector, which probes the instance metadata endpoint.
+        builder.Services.AddOpenTelemetry().ConfigureResource(resource => resource.Clear());
         builder.Services.Configure<OpenTelemetryLoggerOptions>(options => options.AddProcessor(processor));
         builder.Services.PostConfigure<AzureMonitorExporterOptions>(options =>
         {

@@ -96,6 +96,7 @@ public class QueryLoggingIntegrationTests
         builder.Services.RemoveAll<ISearchService>();
         builder.Services.AddSingleton(search.Object);
         application = builder.Build();
+        Program.ConfigureStartupLogging(application.Services);
         application.UseRouting();
         application.UseMiddleware<QueryCompletionMiddleware>();
         application.UseExceptionHandler("/error");
@@ -130,9 +131,11 @@ public class QueryLoggingIntegrationTests
             if (backendTotal.HasValue) hits["total"] = backendTotal.Value;
             await context.Response.WriteAsJsonAsync(new { took = 1, timed_out = false, _shards = new { total = 1, successful = 1, skipped = 0, failed = 0 }, hits });
         });
+        Assert.That(logger.Diagnostics.Where(entry => entry.Category == typeof(Program).FullName), Is.Empty);
         await application.StartAsync();
         string address = application.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
-        client = new HttpClient { BaseAddress = new Uri(address) };
+        // Loopback requests must bypass environment proxies, which cannot reach this in-test listener.
+        client = new HttpClient(new HttpClientHandler { UseProxy = false }) { BaseAddress = new Uri(address) };
         client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
     }
 
@@ -161,6 +164,23 @@ public class QueryLoggingIntegrationTests
             Assert.That(completed["method"], Is.EqualTo(method));
             Assert.That(completed["outcome"], Is.EqualTo("success"));
             Assert.That(completed.ContainsKey("returned_cells"), Is.EqualTo(method == "GET"));
+        }
+    }
+
+    [Test]
+    public void ApplicationStarted_LogsActualBoundAddressAndEnvironment()
+    {
+        string address = application.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        Diagnostic[] startup = [.. logger.Diagnostics.Where(entry => entry.Category == typeof(Program).FullName)];
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(startup.Select(entry => entry.Message), Is.EqualTo(new[]
+            {
+                $"Now listening on: {address}",
+                "Application started. Hosting environment: Testing"
+            }));
+            Assert.That(startup.Select(entry => entry.Level), Is.All.EqualTo(LogLevel.Information));
+            Assert.That(address, Does.Not.EndWith(":0"));
         }
     }
 
@@ -771,7 +791,7 @@ public class QueryLoggingIntegrationTests
         {
             ["Search:IndexPrefix"] = "test"
         }).Build();
-        ElasticsearchClientSettings settings = new ElasticsearchClientSettings(new Uri(client.BaseAddress!, "test-elasticsearch/")).MaximumRetries(0);
+        ElasticsearchClientSettings settings = new ElasticsearchClientSettings(new Uri(client.BaseAddress!, "test-elasticsearch/")).MaximumRetries(0).DisableAutomaticProxyDetection();
         ElasticSearchService backend = new(new ElasticsearchClient(settings), new SearchConfig(configuration.GetSection("Search")));
         search.Setup(instance => instance.SearchAsync(It.IsAny<string>(), It.IsAny<SearchTarget>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .Returns((string query, SearchTarget target, string language, int page, int pageSize, CancellationToken token) => backend.SearchAsync(query, target, language, page, pageSize, token));

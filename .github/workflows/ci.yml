@@ -58,15 +58,15 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet build --no-restore --verbosity normal --configuration ${{ matrix.configuration }} /p:TargetFramework=net10.0
+        run: dotnet build --no-restore --verbosity normal --configuration ${{ matrix.configuration }}
 
       - name: Run tests
         if: ${{ matrix.os != 'ubuntu-latest' || github.event_name != 'pull_request' }}
-        run: dotnet test --no-restore --verbosity normal --configuration ${{ matrix.configuration }} /p:TargetFramework=net10.0
+        run: dotnet test --no-build --no-restore --verbosity normal --configuration ${{ matrix.configuration }}
 
       - name: Run tests with coverage
         if: ${{ matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request' }}
-        run: dotnet test --no-restore --verbosity normal --configuration ${{ matrix.configuration }} /p:TargetFramework=net10.0 --collect:"XPlat Code Coverage" --results-directory TestResults
+        run: dotnet test --no-build --no-restore --verbosity normal --configuration ${{ matrix.configuration }} --collect:"XPlat Code Coverage" --results-directory TestResults
 
       - name: Check new code coverage
         if: ${{ matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request' }}

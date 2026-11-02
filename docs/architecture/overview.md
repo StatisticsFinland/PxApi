@@ -43,10 +43,16 @@ PxApi.sln
 
 There is no `Startup.cs`. Everything is in `Program.cs`:
 
-1. **Configuration**: `AppSettings.Load()` binds `appsettings.json` into typed config.
-2. **Logging**: Default providers cleared, NLog configured. Application Insights added if connection string exists.
-3. **Services**: Feature management, MVC controllers, JSON serialization, Swagger, memory cache, keyed database connectors, connector factory, `HttpContextAccessor`, audit logging, and optional Elasticsearch search.
-4. **Pipeline**: Swagger JSON at `/openapi/document.json`, Swagger UI at `/`, exception handling via `/error`, HTTPS redirection, authorization, controller mapping.
+1. **Host**: `Main` builds and runs `CreateHostBuilder(args)`. Integration tests use
+   the same host builder with an in-process server and isolated configuration.
+2. **Configuration**: `AppSettings.Load()` binds configuration after host configuration
+   callbacks, before application service registration.
+3. **Logging**: Default providers cleared, NLog configured. Application Insights added if enabled and a connection string exists.
+   After `ApplicationStarted`, application-owned Information logs report each actual
+   bound server address and the hosting environment. They follow normal NLog routing,
+   including Development console output, without enabling suppressed framework logs.
+4. **Services**: Feature management, MVC controllers, JSON serialization, Swagger, memory cache, keyed database connectors, connector factory, `HttpContextAccessor`, audit logging, and optional Elasticsearch search.
+5. **Pipeline**: Swagger JSON at `/openapi/document.json`, Swagger UI at `/`, exception handling via `/error`, HTTPS redirection, authorization, controller mapping.
 
 ## Request Flow
 
