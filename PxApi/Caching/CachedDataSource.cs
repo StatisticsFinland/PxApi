@@ -76,7 +76,7 @@ namespace PxApi.Caching
         public async Task<IReadOnlyMatrixMetadata> GetMetadataCachedAsync(PxFileRef pxFile, CancellationToken ct = default)
         {
             MetaCacheContainer container = await GetMetaContainer(pxFile, ct);
-            return await container.Metadata;
+            return await container.Metadata.WaitAsync(ct);
         }
 
         /// <inheritdoc/>
@@ -96,35 +96,30 @@ namespace PxApi.Caching
         /// <inheritdoc/>
         public async Task<DoubleDataValue[]> GetDataCachedAsync(PxFileRef pxFile, IMatrixMap map, CancellationToken ct = default)
         {
-            if (cache.TryGetData(pxFile, map, out Task<DoubleDataValue[]>? data, out DateTime? cached))
+            // Data entries are scoped to a metadata generation, so revalidating (and if needed replacing) the
+            // metadata first makes any data found below at least as fresh as the validated metadata.
+            MetaCacheContainer metaContainer = await GetMetaContainer(pxFile, ct, recordHit: false); // Hits are recorded by the metadata request
+
+            if (cache.TryGetData(pxFile, map, out Task<DoubleDataValue[]>? data, out _))
             {
-                if (await CheckCacheValidity(pxFile, cached!.Value, ct))
-                {
-                    cacheObserver?.RecordDataCacheHit(isSuperset: false);
-                    return await data!;
-                }
-                cache.TryRemoveMeta(pxFile);
+                cacheObserver?.RecordDataCacheHit(isSuperset: false);
+                return await data!;
             }
-            else if (cache.TryGetDataSuperset(pxFile, map, out IMatrixMap? superMap, out Task<DoubleDataValue[]>? superData, out cached))
+            else if (cache.TryGetDataSuperset(pxFile, map, out IMatrixMap? superMap, out Task<DoubleDataValue[]>? superData, out _))
             {
-                if (await CheckCacheValidity(pxFile, cached!.Value, ct))
-                {
-                    cacheObserver?.RecordDataCacheHit(isSuperset: true);
-                    DataIndexer indexer = new(superMap!, map);
-                    DoubleDataValue[] result = new DoubleDataValue[indexer.DataLength];
-                    DoubleDataValue[] superDataArray = await superData!;
-                    int index =0;
-                    do result[index++] = superDataArray[indexer.CurrentIndex];
-                    while (indexer.Next());
-                    return result;
-                }
-                cache.TryRemoveMeta(pxFile);
+                cacheObserver?.RecordDataCacheHit(isSuperset: true);
+                DataIndexer indexer = new(superMap!, map);
+                DoubleDataValue[] result = new DoubleDataValue[indexer.DataLength];
+                DoubleDataValue[] superDataArray = await superData!;
+                int index =0;
+                do result[index++] = superDataArray[indexer.CurrentIndex];
+                while (indexer.Next());
+                return result;
             }
 
             cacheObserver?.RecordDataCacheMiss();
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
-            MetaCacheContainer metaContainer = await GetMetaContainer(pxFile, ct);
-            Task<DoubleDataValue[]> dataTask = dbConnector.ReadDataAsync(pxFile, map, await metaContainer.Metadata, ct);
+            Task<DoubleDataValue[]> dataTask = dbConnector.ReadDataAsync(pxFile, map, await metaContainer.Metadata.WaitAsync(ct), ct);
             cache.SetData(pxFile, metaContainer, new MatrixMap([.. map.DimensionMaps]), dataTask);
             return await dataTask;
         }
@@ -166,37 +161,48 @@ namespace PxApi.Caching
             cache.ClearLastUpdatedCache(file);
         }
 
-        private async Task<MetaCacheContainer> GetMetaContainer(PxFileRef pxFile, CancellationToken ct = default)
+        private async Task<MetaCacheContainer> GetMetaContainer(PxFileRef pxFile, CancellationToken ct = default, bool recordHit = true)
         {
             if (cache.TryGetMetadata(pxFile, out MetaCacheContainer? metaContainer) &&
-                await CheckCacheValidity(pxFile, metaContainer!.CachedUtc, ct))
+                await IsSourceUnchanged(pxFile, metaContainer!, ct))
             {
-                cacheObserver?.RecordMetadataLookup(true);
-                return metaContainer;
+                if (recordHit) cacheObserver?.RecordMetadataLookup(true);
+                return metaContainer!;
             }
 
             cacheObserver?.RecordMetadataLookup(false);
+            // Observe the version before reading so a concurrent source update can only cause an extra reload, never a missed one.
+            DateTime? sourceVersion = IsRevalidationEnabled(pxFile) ? await GetSourceVersionAsync(pxFile, ct) : null;
+
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
-            Task<IReadOnlyMatrixMetadata> meta = dbConnector.ReadMetadataAsync(pxFile, ct);
-            metaContainer = new MetaCacheContainer(meta);
-            cache.SetMetadata(pxFile, metaContainer);
-            return metaContainer;
+            // Task.Run keeps connector work, including synchronous prefixes or throws, outside the publication lock.
+            // Shared reads outlive individual requests; cancellation only stops each caller's wait.
+            return cache.GetOrSetMetadata(pxFile, sourceVersion,
+                () => new MetaCacheContainer(Task.Run(() => dbConnector.ReadMetadataAsync(pxFile, CancellationToken.None), CancellationToken.None), sourceVersion));
         }
 
-        private async Task<bool> CheckCacheValidity(PxFileRef file, DateTime cachedUtc, CancellationToken ct = default)
-        {
-            int? revalidationInterval = cacheConfigs[file.DataBase.Id].RevalidationIntervalMs;
-            if (revalidationInterval is null || revalidationInterval == 0) return true;
+        private bool IsRevalidationEnabled(PxFileRef file) =>
+            cacheConfigs[file.DataBase.Id].RevalidationIntervalMs is int interval && interval != 0;
 
+        // Compares source versions for equality instead of against the clock, because some sources
+        // (e.g. LAST-UPDATED in binary blob databases) report local or future-dated timestamps.
+        private async Task<bool> IsSourceUnchanged(PxFileRef file, MetaCacheContainer metaContainer, CancellationToken ct)
+        {
+            if (!IsRevalidationEnabled(file) || metaContainer.SourceVersion is null) return true;
+            return await GetSourceVersionAsync(file, ct) == metaContainer.SourceVersion;
+        }
+
+        private Task<DateTime> GetSourceVersionAsync(PxFileRef file, CancellationToken ct)
+        {
             if (cache.TryGetLastUpdated(file, out Task<DateTime>? cachedTask))
             {
-                return cachedUtc > await cachedTask!;
+                return cachedTask!.WaitAsync(ct);
             }
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(file.DataBase);
-            Task<DateTime> lastModified = dbConnector.GetLastWriteTimeAsync(file, ct);
+            Task<DateTime> lastModified = dbConnector.GetLastWriteTimeAsync(file, CancellationToken.None);
             cache.SetLastUpdated(file, lastModified);
-            return cachedUtc > await lastModified;
+            return lastModified.WaitAsync(ct);
         }
 
         // Reads alias files (Alias_{lang}.txt) from a folder and builds a MultilanguageString from the first line of each file.

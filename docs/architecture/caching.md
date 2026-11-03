@@ -17,6 +17,12 @@ The main cache API used by controllers. Wraps raw `IDataBaseConnector` calls and
 
 **Superset optimization**: `GetDataCachedAsync` supports superset cache hits. If a cached matrix contains a superset of the requested dimensions, it uses `DataIndexer` to slice the requested subset from the cached data without re-reading the source. This avoids redundant storage reads for overlapping queries.
 
+**Cancellation**: Metadata and source-version reads are shared across requests.
+Cancelling a request stops only that caller's wait, including when a data request
+is waiting for metadata. The shared read continues and can populate the cache
+even if all callers cancel; request cancellation does not evict it. Data reads
+still receive the requesting caller's cancellation token.
+
 ### DatabaseCache
 
 **File**: `PxApi/Caching/DatabaseCache.cs`

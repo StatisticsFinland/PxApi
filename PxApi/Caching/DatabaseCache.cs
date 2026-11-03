@@ -21,6 +21,7 @@ namespace PxApi.Caching
 
         private readonly MemoryCacheConfig memoryCacheConfig = AppSettings.Active.Cache;
         private readonly IMemoryCache _cache = memoryCache;
+        private readonly Lock[] _metadataPublishLocks = [.. Enumerable.Range(0, 32).Select(_ => new Lock())];
 
         private const string FILE_LIST_SEED = "9afc7b09";
         private const string LAST_UPDATED_SEED = "553313ea";
@@ -153,6 +154,30 @@ namespace PxApi.Caching
 
             _cache.Set(cacheKey, metaContainer, options);
             AttachEvictionOnFail(metaContainer, metaContainer.Metadata, cacheKey);
+        }
+
+        /// <summary>
+        /// Returns the cached metadata container if it was loaded from the given source version; otherwise creates, caches and returns a new one.
+        /// The check and publication are atomic per file, so concurrent loads of the same source version share one container.
+        /// </summary>
+        /// <param name="file">The file whose metadata is requested.</param>
+        /// <param name="sourceVersion">The source version observed before reading, or null when revalidation is disabled.</param>
+        /// <param name="createContainer">Creates the container and starts the metadata read. Called at most once, inside the lock, so it must not block.</param>
+        public MetaCacheContainer GetOrSetMetadata(PxFileRef file, DateTime? sourceVersion, Func<MetaCacheContainer> createContainer)
+        {
+            lock (_metadataPublishLocks[(uint)file.GetHashCode() % (uint)_metadataPublishLocks.Length])
+            {
+                if (TryGetMetadata(file, out MetaCacheContainer? existing) &&
+                    existing is not null &&
+                    existing.SourceVersion == sourceVersion)
+                {
+                    return existing;
+                }
+
+                MetaCacheContainer metaContainer = createContainer();
+                SetMetadata(file, metaContainer);
+                return metaContainer;
+            }
         }
 
         /// <summary>
