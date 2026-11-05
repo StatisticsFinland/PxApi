@@ -9,7 +9,7 @@ All data access code is in `PxApi/DataSources/`. The connector pattern abstracts
 The core abstraction exposing:
 - Database discovery (list databases, get database names)
 - File enumeration (list PX files in a database)
-- Last-write timestamps (for cache invalidation)
+- Source versions (opaque change tokens for cache invalidation)
 - Metadata reads (PX metadata parsing)
 - Data reads (PX data value arrays)
 - Connectivity checks (for health endpoint)

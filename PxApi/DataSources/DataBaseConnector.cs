@@ -37,7 +37,7 @@ namespace PxApi.DataSources
         public abstract Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default);
 
         /// <inheritdoc/>
-        public abstract Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default);
+        public abstract Task<string> GetSourceVersionAsync(PxFileRef file, CancellationToken ct = default);
 
         /// <inheritdoc/>
         public abstract Task<Stream> TryReadAuxiliaryFileAsync(string fileName, string[]? hierarchy, CancellationToken ct = default);

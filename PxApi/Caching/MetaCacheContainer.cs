@@ -9,8 +9,8 @@ namespace PxApi.Caching
     /// Provides coordination between metadata and its associated data containers in the cache.
     /// </summary>
     /// <param name="meta">Task producing the matrix metadata.</param>
-    /// <param name="sourceVersion">The source last-write value observed before the metadata was read, or null when revalidation is disabled.</param>
-    public class MetaCacheContainer(Task<IReadOnlyMatrixMetadata> meta, DateTime? sourceVersion = null) : CacheContainer
+    /// <param name="sourceVersion">The source version observed before the metadata was read, or null when revalidation is disabled.</param>
+    public class MetaCacheContainer(Task<IReadOnlyMatrixMetadata> meta, string? sourceVersion = null) : CacheContainer
     {
         /// <summary>
         /// Gets the metadata for the matrix.
@@ -18,11 +18,10 @@ namespace PxApi.Caching
         public Task<IReadOnlyMatrixMetadata> Metadata { get; private init; } = meta;
 
         /// <summary>
-        /// Gets the source last-write value observed before the metadata was read.
-        /// The entry is stale when the source reports a different value. The value is compared for equality only,
-        /// so it does not need to be in UTC (for example, binary blob databases report LAST-UPDATED local time).
+        /// Gets the source version observed before the metadata was read.
+        /// The entry is stale when the source reports a different version. Versions are opaque and compared for equality only.
         /// </summary>
-        public DateTime? SourceVersion { get; } = sourceVersion;
+        public string? SourceVersion { get; } = sourceVersion;
 
         internal object Generation { get; } = new();
 

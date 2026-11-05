@@ -29,7 +29,7 @@ namespace PxApi.Controllers
         private const string DB_NOT_FOUND = "Database not found";
 
         /// <summary>
-        /// Clears data, metadata and last updated caches related to a specific px file in a specific database.
+        /// Clears data, metadata and source-version caches related to a specific px file in a specific database.
         /// </summary>
         /// <param name="database">Name of the database with the table cache to clear</param>
         /// <param name="id">Id of the px file to be cleared</param>

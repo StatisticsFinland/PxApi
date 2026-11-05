@@ -800,8 +800,8 @@ public class QueryLoggingIntegrationTests
     private sealed class DiagnosticBinaryConnector(DataBaseRef database, ILogger<BinaryBlobDataBaseConnector> connectorLogger)
         : BinaryBlobDataBaseConnector(database, "test-container", null!, connectorLogger)
     {
-        internal override Task<IReadOnlyList<string>> GetBlobItemsAsync(string prefix, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<string>>(["meta/db/table_202501010000.meta.json"]);
+        internal override Task<IReadOnlyList<BlobListItem>> GetBlobItemsAsync(string prefix, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<BlobListItem>>([new("meta/db/table_202501010000.meta.json", "\"etag\"")]);
 
         internal override Task<Stream> OpenBlobReadStreamAsync(string blobName, CancellationToken ct = default)
             => Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes("{")));

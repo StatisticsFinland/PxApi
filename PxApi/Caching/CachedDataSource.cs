@@ -132,7 +132,7 @@ namespace PxApi.Caching
             foreach (PxFileRef file in files.Values)
             {
                 ClearMetadataCacheAsync(file);
-                ClearLastUpdatedCacheAsync(file);
+                ClearSourceVersionCache(file);
             }
             cache.ClearDatabaseNameCache(dataBase);
             cache.ClearFileListCache(dataBase);
@@ -148,7 +148,7 @@ namespace PxApi.Caching
         public void ClearTableCache(PxFileRef file)
         {
             ClearMetadataCacheAsync(file);
-            ClearLastUpdatedCacheAsync(file);
+            ClearSourceVersionCache(file);
         }
 
         private void ClearMetadataCacheAsync(PxFileRef file)
@@ -156,9 +156,9 @@ namespace PxApi.Caching
             cache.TryRemoveMeta(file);
         }
 
-        private void ClearLastUpdatedCacheAsync(PxFileRef file)
+        private void ClearSourceVersionCache(PxFileRef file)
         {
-            cache.ClearLastUpdatedCache(file);
+            cache.ClearSourceVersionCache(file);
         }
 
         private async Task<MetaCacheContainer> GetMetaContainer(PxFileRef pxFile, CancellationToken ct = default, bool recordHit = true)
@@ -171,8 +171,8 @@ namespace PxApi.Caching
             }
 
             cacheObserver?.RecordMetadataLookup(false);
-            // Observe the version before reading so a concurrent source update can only cause an extra reload, never a missed one.
-            DateTime? sourceVersion = IsRevalidationEnabled(pxFile) ? await GetSourceVersionAsync(pxFile, ct) : null;
+            // Version observation precedes the metadata load, but interval caching means this is not an atomic source snapshot.
+            string? sourceVersion = IsRevalidationEnabled(pxFile) ? await GetSourceVersionAsync(pxFile, ct) : null;
 
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
             // Task.Run keeps connector work, including synchronous prefixes or throws, outside the publication lock.
@@ -184,25 +184,21 @@ namespace PxApi.Caching
         private bool IsRevalidationEnabled(PxFileRef file) =>
             cacheConfigs[file.DataBase.Id].RevalidationIntervalMs is int interval && interval != 0;
 
-        // Compares source versions for equality instead of against the clock, because some sources
-        // (e.g. LAST-UPDATED in binary blob databases) report local or future-dated timestamps.
+        // Source versions are opaque per connector (e.g. ETags) and are compared for equality only, never against the clock.
         private async Task<bool> IsSourceUnchanged(PxFileRef file, MetaCacheContainer metaContainer, CancellationToken ct)
         {
             if (!IsRevalidationEnabled(file) || metaContainer.SourceVersion is null) return true;
-            return await GetSourceVersionAsync(file, ct) == metaContainer.SourceVersion;
+            return string.Equals(await GetSourceVersionAsync(file, ct), metaContainer.SourceVersion, StringComparison.Ordinal);
         }
 
-        private Task<DateTime> GetSourceVersionAsync(PxFileRef file, CancellationToken ct)
+        private Task<string> GetSourceVersionAsync(PxFileRef file, CancellationToken ct)
         {
-            if (cache.TryGetLastUpdated(file, out Task<DateTime>? cachedTask))
+            Task<string> sourceVersion = cache.GetOrSetSourceVersion(file, () =>
             {
-                return cachedTask!.WaitAsync(ct);
-            }
-
-            IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(file.DataBase);
-            Task<DateTime> lastModified = dbConnector.GetLastWriteTimeAsync(file, CancellationToken.None);
-            cache.SetLastUpdated(file, lastModified);
-            return lastModified.WaitAsync(ct);
+                IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(file.DataBase);
+                return dbConnector.GetSourceVersionAsync(file, CancellationToken.None);
+            });
+            return sourceVersion.WaitAsync(ct);
         }
 
         // Reads alias files (Alias_{lang}.txt) from a folder and builds a MultilanguageString from the first line of each file.

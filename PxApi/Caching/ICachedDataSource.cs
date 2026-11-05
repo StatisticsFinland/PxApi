@@ -96,7 +96,7 @@ namespace PxApi.Caching
         void ClearTableListCache(DataBaseRef dataBase);
 
         /// <summary>
-        /// Clears all cache entries for a specified table, including metadata, data and last-updated.
+        /// Clears all cache entries for a specified table, including metadata, data and source version.
         /// </summary>
         /// <param name="file">Reference to the px file for which to clear the cache</param>
         void ClearTableCache(PxFileRef file);
