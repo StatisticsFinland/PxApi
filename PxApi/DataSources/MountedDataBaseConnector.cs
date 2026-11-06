@@ -1,6 +1,7 @@
 using PxApi.ModelBuilders;
 using PxApi.Models;
 using PxApi.Utilities;
+using System.Globalization;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PxApi.DataSources
@@ -8,7 +9,7 @@ namespace PxApi.DataSources
     /// <summary>
     /// Data source for using database on the local file system.
     /// </summary>
-    [ExcludeFromCodeCoverage] // This class is not unit tested because it relies on file system access.
+    [ExcludeFromCodeCoverage] // Excluded from coverage because it relies on file system access.
     public class MountedDataBaseConnector(DataBaseRef dataBase, string rootPath, ILogger<MountedDataBaseConnector> logger) : DataBaseConnector(dataBase)
     {
         private readonly string _normalizedRootPath = NormalizeDirectoryPath(rootPath);
@@ -99,21 +100,27 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default)
+        /// <remarks>The version combines the UTC last write time and the file length.</remarks>
+        public override async Task<string> GetSourceVersionAsync(PxFileRef file, CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
                     [LoggerConsts.CONTROLLER] = nameof(MountedDataBaseConnector),
-                    [LoggerConsts.FUNCTION] = nameof(GetLastWriteTimeAsync),
+                    [LoggerConsts.FUNCTION] = nameof(GetSourceVersionAsync),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
-                Logger.LogDebug("Getting last write time");
+                Logger.LogDebug("Getting source version");
 
                 string fullPath = GetValidatedPxFilePath(file);
-                return await Task.Run(() => File.GetLastWriteTimeUtc(fullPath), ct);
+                return await Task.Run(() =>
+                {
+                    FileInfo info = new(fullPath);
+                    if (!info.Exists) throw new FileNotFoundException($"File {file.Id} not found in database {DataBase.Id}.");
+                    return string.Create(CultureInfo.InvariantCulture, $"{info.LastWriteTimeUtc.Ticks}:{info.Length}");
+                }, ct);
             }
         }
 

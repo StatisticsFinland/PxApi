@@ -18,7 +18,7 @@ namespace PxApi.UnitTests.Caching
     internal class DatabaseCacheTests
     {
         private const string FILE_LIST_SEED_VARNAME = "FILE_LIST_SEED";
-        private const string LAST_UPDATED_SEED_VARNAME = "LAST_UPDATED_SEED";
+        private const string SOURCE_VERSION_SEED_VARNAME = "SOURCE_VERSION_SEED";
         private const string META_SEED_VARNAME = "META_SEED";
         private const string DATABASE_NAME_SEED_VARNAME = "DATABASE_NAME_SEED";
 
@@ -122,70 +122,118 @@ namespace PxApi.UnitTests.Caching
 
         #endregion
 
-        #region TryGetLastUpdated
+        #region TryGetSourceVersion
 
         [Test]
-        public void TryGetLastUpdated_WithCacheHit_ReturnsTruewithLastUpdated()
+        public void TryGetSourceVersion_WithCacheHit_ReturnsTrueWithSourceVersion()
         {
             // Arrange
-            Task<DateTime> expectedLastUpdated = Task.FromResult(DateTime.UtcNow);
+            Task<string> expectedSourceVersion = Task.FromResult("version-1");
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
-            string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);
-            memoryCache.Set(HashCode.Combine(lastUpdatedSeed, _file1), expectedLastUpdated);
+            string sourceVersionSeed = GetSeedForKeyword(SOURCE_VERSION_SEED_VARNAME);
+            memoryCache.Set(HashCode.Combine(sourceVersionSeed, _file1), expectedSourceVersion);
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetLastUpdated(_file1, out Task<DateTime>? actualLastUpdated);
+            bool result = dbCache.TryGetSourceVersion(_file1, out Task<string>? actualSourceVersion);
 
             // Assert
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.True);
-                Assert.That(actualLastUpdated, Is.SameAs(expectedLastUpdated));
+                Assert.That(actualSourceVersion, Is.SameAs(expectedSourceVersion));
             }
         }
 
         [Test]
-        public void TryGetLastUpdated_WithCacheMiss_ReturnsFalse()
+        public void TryGetSourceVersion_WithCacheMiss_ReturnsFalse()
         {
             // Arrange
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
 
             // Act
-            bool result = dbCache.TryGetLastUpdated(_file1, out Task<DateTime>? actualLastUpdated);
+            bool result = dbCache.TryGetSourceVersion(_file1, out Task<string>? actualSourceVersion);
 
             // Assert
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(result, Is.False);
-                Assert.That(actualLastUpdated, Is.Null);
+                Assert.That(actualSourceVersion, Is.Null);
+            }
+        }
+
+        [Test]
+        public async Task GetOrSetSourceVersion_ConcurrentMissesShareOneRead()
+        {
+            // Arrange
+            const int concurrentCalls = 12;
+            using MemoryCache memoryCache = new(new MemoryCacheOptions());
+            DatabaseCache dbCache = new(memoryCache);
+            TaskCompletionSource<string> sourceVersion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            TaskCompletionSource allLookupsComplete = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            using Barrier startBarrier = new(concurrentCalls);
+            int sourceVersionReads = 0;
+            int completedLookups = 0;
+
+            Task<Task<string>>[] requests = Enumerable.Range(0, concurrentCalls).Select(_ =>
+                Task.Factory.StartNew(() =>
+                {
+                    if (!startBarrier.SignalAndWait(TimeSpan.FromSeconds(10)))
+                    {
+                        throw new TimeoutException("Concurrent source-version lookups did not start together.");
+                    }
+
+                    Task<string> sharedTask = dbCache.GetOrSetSourceVersion(_file1, () =>
+                    {
+                        Interlocked.Increment(ref sourceVersionReads);
+                        return sourceVersion.Task;
+                    });
+                    if (Interlocked.Increment(ref completedLookups) == concurrentCalls)
+                    {
+                        allLookupsComplete.TrySetResult();
+                    }
+                    return sharedTask;
+                }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default)).ToArray();
+
+            // Act
+            await allLookupsComplete.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            sourceVersion.SetResult("version-1");
+            Task<string>[] sharedTasks = await Task.WhenAll(requests);
+            string[] results = await Task.WhenAll(sharedTasks);
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(sourceVersionReads, Is.EqualTo(1));
+                Assert.That(sharedTasks, Has.All.SameAs(sharedTasks[0]));
+                Assert.That(results, Has.All.EqualTo("version-1"));
             }
         }
 
         #endregion
 
-        #region SetLastUpdated
+        #region SetSourceVersion
 
         [Test]
-        public void SetLastUpdated_WithFileRefAndTimeStamp_SetsCacheWithExpectedValues()
+        public void SetSourceVersion_WithFileRefAndSourceVersion_SetsCacheWithExpectedValues()
         {
             // Arrange
-            Task<DateTime> lastUpdated = Task.FromResult(DateTime.UtcNow);
-            string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);
+            Task<string> sourceVersion = Task.FromResult("version-1");
+            string sourceVersionSeed = GetSeedForKeyword(SOURCE_VERSION_SEED_VARNAME);
             
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
                 
             // Act
-            dbCache.SetLastUpdated(_file1, lastUpdated);
+            dbCache.SetSourceVersion(_file1, sourceVersion);
 
             // Assert
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, _file1), out Task<DateTime>? cachedLastUpdated), Is.True);
-                Assert.That(cachedLastUpdated, Is.SameAs(lastUpdated));
+                Assert.That(memoryCache.TryGetValue(HashCode.Combine(sourceVersionSeed, _file1), out Task<string>? cachedSourceVersion), Is.True);
+                Assert.That(cachedSourceVersion, Is.SameAs(sourceVersion));
             }
         }
 
@@ -867,28 +915,27 @@ namespace PxApi.UnitTests.Caching
 
         #endregion
 
-        #region ClearLastUpdatedCache
+        #region ClearSourceVersionCache
 
         [Test]
-        public void ClearLastUpdatedCache_ClearsLastUpdatedForFile()
+        public void ClearSourceVersionCache_ClearsSourceVersionForFile()
         {
             // Arrange
             MemoryCache memoryCache = new(new MemoryCacheOptions());
-            string lastUpdatedSeed = GetSeedForKeyword(LAST_UPDATED_SEED_VARNAME);
+            string sourceVersionSeed = GetSeedForKeyword(SOURCE_VERSION_SEED_VARNAME);
             
-            DateTime now = DateTime.UtcNow;
-            memoryCache.Set(HashCode.Combine(lastUpdatedSeed, _file1), Task.FromResult(now));
+            memoryCache.Set(HashCode.Combine(sourceVersionSeed, _file1), Task.FromResult("version-1"));
             
             DatabaseCache dbCache = new(memoryCache);
             
-            // Verify that cache has the last updated timestamp
-            Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, _file1), out _), Is.True);
+            // Verify that cache has the source version
+            Assert.That(memoryCache.TryGetValue(HashCode.Combine(sourceVersionSeed, _file1), out _), Is.True);
 
             // Act
-            dbCache.ClearLastUpdatedCache(_file1);
+            dbCache.ClearSourceVersionCache(_file1);
 
             // Assert
-            Assert.That(memoryCache.TryGetValue(HashCode.Combine(lastUpdatedSeed, _file1), out _), Is.False);
+            Assert.That(memoryCache.TryGetValue(HashCode.Combine(sourceVersionSeed, _file1), out _), Is.False);
         }
 
         #endregion

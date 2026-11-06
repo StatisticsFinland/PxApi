@@ -311,28 +311,76 @@ namespace PxApi.UnitTests.DataSources
 
         #endregion
 
-        #region GetLastWriteTimeAsync
+        #region GetSourceVersionAsync
 
         [Test]
-        public async Task GetLastWriteTimeAsync_ReturnsMaxLastUpdatedFromContentDimension()
+        public async Task GetSourceVersionAsync_ReturnsLatestMetadataBlobNameAndETag_WithoutReadingBlob()
         {
             // Arrange
-            MatrixMetadata metadata = TestMockMetaBuilder.GetMockMetadata();
-            byte[] metaBytes = JsonSerializer.SerializeToUtf8Bytes(metadata, GlobalJsonConverterOptions.Default);
-            const string blobName = "meta/testdb/table1_202501010000.meta.json";
-
-            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, [blobName]);
-            connector.AddBlobContent(blobName, metaBytes);
-
+            const string olderBlob = "meta/testdb/table1_202501010000.meta.json";
+            const string latestBlob = "meta/testdb/table1_202502010000.meta.json";
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, [olderBlob, latestBlob]);
+            connector.SetETag(olderBlob, "\"old\"");
+            connector.SetETag(latestBlob, "\"latest\"");
             PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
 
             // Act
-            DateTime result = await connector.GetLastWriteTimeAsync(fileRef);
+            string result = await connector.GetSourceVersionAsync(fileRef);
 
             // Assert
-            ContentDimension contentDimension = metadata.GetContentDimension();
-            DateTime expected = contentDimension.Values.Map(v => v.LastUpdated).Max();
-            Assert.That(result, Is.EqualTo(expected));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result, Is.EqualTo(latestBlob + "|\"latest\""));
+                Assert.That(connector.LastOpenedBlobName, Is.Null);
+                Assert.That(connector.LastListedPrefix, Is.EqualTo("meta/testdb/table1_"));
+            }
+        }
+
+        [Test]
+        public async Task GetSourceVersionAsync_SelectedBlobRewritten_ReturnsDifferentVersion()
+        {
+            // Arrange
+            const string blobName = "meta/testdb/table1_202501010000.meta.json";
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, [blobName]);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
+            connector.SetETag(blobName, "\"v1\"");
+            string before = await connector.GetSourceVersionAsync(fileRef);
+
+            // Act
+            connector.SetETag(blobName, "\"v2\"");
+            string after = await connector.GetSourceVersionAsync(fileRef);
+
+            // Assert
+            Assert.That(after, Is.Not.EqualTo(before));
+        }
+
+        [Test]
+        public async Task GetSourceVersionAsync_NewerMetadataBlobPublished_ReturnsDifferentVersion()
+        {
+            // Arrange
+            const string blobName = "meta/testdb/table1_202501010000.meta.json";
+            List<string> blobNames = [blobName];
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, blobNames);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
+            string before = await connector.GetSourceVersionAsync(fileRef);
+
+            // Act
+            blobNames.Add("meta/testdb/table1_202502010000.meta.json");
+            string after = await connector.GetSourceVersionAsync(fileRef);
+
+            // Assert
+            Assert.That(after, Is.Not.EqualTo(before));
+        }
+
+        [Test]
+        public void GetSourceVersionAsync_NoMetadataBlob_ThrowsFileNotFoundException()
+        {
+            // Arrange
+            TestableBinaryBlobConnector connector = new(_dbRef, _loggerMock.Object, ["meta/testdb/table10_202501010000.meta.json"]);
+            PxFileRef fileRef = PxFileRef.ValidateAndCreate("table1", _dbRef, ["statisticalProgram"]);
+
+            // Act & Assert
+            Assert.That(async () => await connector.GetSourceVersionAsync(fileRef), Throws.TypeOf<FileNotFoundException>());
         }
 
         #endregion
@@ -830,6 +878,7 @@ namespace PxApi.UnitTests.DataSources
         {
             private readonly Dictionary<string, byte[]> _blobContents = [];
             private readonly List<string> _blobNames;
+            private readonly Dictionary<string, string> _etags = [];
 
             internal string? LastOpenedBlobName { get; private set; }
             internal long? LastOpenedBlobPosition { get; private set; }
@@ -854,13 +903,17 @@ namespace PxApi.UnitTests.DataSources
                 }
             }
 
-            internal override Task<IReadOnlyList<string>> GetBlobItemsAsync(string prefix, CancellationToken ct = default)
+            internal void SetETag(string name, string etag) => _etags[name] = etag;
+
+            internal override Task<IReadOnlyList<BlobListItem>> GetBlobItemsAsync(string prefix, CancellationToken ct = default)
             {
                 LastListedPrefix = prefix;
                 LastListedToken = ct;
                 ct.ThrowIfCancellationRequested();
-                if (ListingFailure is not null) return Task.FromException<IReadOnlyList<string>>(ListingFailure);
-                IReadOnlyList<string> result = [.. _blobNames.Where(n => n.StartsWith(prefix, StringComparison.Ordinal))];
+                if (ListingFailure is not null) return Task.FromException<IReadOnlyList<BlobListItem>>(ListingFailure);
+                IReadOnlyList<BlobListItem> result = [.. _blobNames
+                    .Where(n => n.StartsWith(prefix, StringComparison.Ordinal))
+                    .Select(n => new BlobListItem(n, _etags.GetValueOrDefault(n, "\"initial\"")))];
                 return Task.FromResult(result);
             }
 

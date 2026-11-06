@@ -1,3 +1,4 @@
+using Azure;
 using Azure.Storage.Files.Shares.Models;
 using Azure.Storage.Files.Shares;
 using Microsoft.Extensions.Azure;
@@ -83,27 +84,31 @@ namespace PxApi.DataSources
         }
 
         /// <inheritdoc/>
-        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default)
+        /// <remarks>The version is the ETag of the PX file.</remarks>
+        public override async Task<string> GetSourceVersionAsync(PxFileRef file, CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.FUNCTION] = nameof(GetLastWriteTimeAsync),
+                    [LoggerConsts.FUNCTION] = nameof(GetSourceVersionAsync),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
-                Logger.LogDebug("Getting last write time for PX file {file_id} from file share", file.Id);
+                Logger.LogDebug("Getting source version for PX file {file_id} from file share", file.Id);
 
                 ShareFileClient fileClient = GetFileClient(file.Id + PxFileConstants.FILE_ENDING, file.GetHierarchyLevels());
 
-                if (!await fileClient.ExistsAsync(ct))
+                ShareFileProperties properties;
+                try
                 {
-                    throw new FileNotFoundException($"File {file.Id} not found in database {DataBase.Id}, file share {shareName}.");
+                    properties = await fileClient.GetPropertiesAsync(cancellationToken: ct);
                 }
-
-                ShareFileProperties properties = await fileClient.GetPropertiesAsync(cancellationToken: ct);
-                return properties.LastModified.DateTime;
+                catch (RequestFailedException ex) when (ex.Status == 404)
+                {
+                    throw new FileNotFoundException($"File {file.Id} not found in database {DataBase.Id}, file share {shareName}.", ex);
+                }
+                return properties.ETag.ToString();
             }
         }
 

@@ -44,7 +44,7 @@ namespace PxApi.UnitTests.DataSources
 
             protected override bool UseShortFormNames => false;
 
-            public override Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default)
+            public override Task<string> GetSourceVersionAsync(PxFileRef file, CancellationToken ct = default)
             {
                 throw new NotImplementedException();
             }

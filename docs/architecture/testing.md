@@ -22,6 +22,11 @@ connector tests also verify fixture parsing and required alias files.
 Fixtures are nonparallel because `AppSettings.Active` and HTTP caches are shared.
 Unit tests run in a separate test process and do not depend on these files.
 
+Cache revalidation unit tests use the memory cache's clock to cross the configured
+interval without sleeping. They warm metadata and exact or superset data caches,
+change the source version and metadata, and verify that results remain cached
+before the interval and refresh using the new metadata when it expires.
+
 CI restores and builds the solution once, then runs tests with `--no-build` in
 the same configuration, including coverage runs. Target frameworks come from
 the project files. Do not pass a global `TargetFramework` override to the solution

@@ -21,9 +21,10 @@ namespace PxApi.Caching
 
         private readonly MemoryCacheConfig memoryCacheConfig = AppSettings.Active.Cache;
         private readonly IMemoryCache _cache = memoryCache;
+        private readonly Lock[] _fileCacheLocks = [.. Enumerable.Range(0, 32).Select(_ => new Lock())];
 
         private const string FILE_LIST_SEED = "9afc7b09";
-        private const string LAST_UPDATED_SEED = "553313ea";
+        private const string SOURCE_VERSION_SEED = "553313ea";
         private const string META_SEED = "c4d8ee8f";
         private const string DATA_SEED = "398baf7d";
         private const string DATABASE_NAME_SEED = "1e4c2a77";
@@ -94,24 +95,24 @@ namespace PxApi.Caching
         }
 
         /// <summary>
-        /// Attempts to retrieve the last updated timestamp for the specified file from the cache.
+        /// Attempts to retrieve the last observed source version for the specified file from the cache.
         /// </summary>
-        /// <param name="file">The file for which the last updated timestamp is being retrieved. Cannot be null.</param>
-        /// <param name="lastUpdated">When this method returns, contains a <see cref="Task{DateTime}"/> representing the last updated timestamp 
+        /// <param name="file">The file for which the source version is being retrieved. Cannot be null.</param>
+        /// <param name="sourceVersion">When this method returns, contains a task resolving to the source version
         /// of the file if the operation succeeds; otherwise, <see langword="null"/>.</param>
-        /// <returns><see langword="true"/> if the last updated timestamp was successfully retrieved from the cache; otherwise,
+        /// <returns><see langword="true"/> if the source version was successfully retrieved from the cache; otherwise,
         /// <see langword="false"/>.</returns>
-        public bool TryGetLastUpdated(PxFileRef file, out Task<DateTime>? lastUpdated)
+        public bool TryGetSourceVersion(PxFileRef file, out Task<string>? sourceVersion)
         {
-            return _cache.TryGetValue(HashCode.Combine(LAST_UPDATED_SEED, file), out lastUpdated);
+            return _cache.TryGetValue(HashCode.Combine(SOURCE_VERSION_SEED, file), out sourceVersion);
         }
 
         /// <summary>
-        /// Updates the cache with the last updated timestamp for the specified file.
+        /// Updates the cache with the observed source version for the specified file.
         /// </summary>
-        /// <param name="file">The file for which the last updated timestamp is being set.</param>
-        /// <param name="lastUpdated">A task that resolves to the <see cref="DateTime"/> representing the last updated timestamp.</param>
-        public void SetLastUpdated(PxFileRef file, Task<DateTime> lastUpdated)
+        /// <param name="file">The file for which the source version is being set.</param>
+        /// <param name="sourceVersion">A task that resolves to the source version.</param>
+        public void SetSourceVersion(PxFileRef file, Task<string> sourceVersion)
         {   
             int revalidationIntervalMs = cacheConfigs[file.DataBase.Id].RevalidationIntervalMs
                 ?? throw new InvalidOperationException($"Trying to cache revalidation information for database {file.DataBase.Id} when it should be disabled.");
@@ -121,9 +122,30 @@ namespace PxApi.Caching
                 Size = memoryCacheConfig.DefaultUpdateTaskSize,
                 Priority = CacheItemPriority.Normal,
             };
-            int cacheKey = HashCode.Combine(LAST_UPDATED_SEED, file);
-            _cache.Set(cacheKey, lastUpdated, options);
-            AttachEvictionOnFail(lastUpdated, cacheKey);
+            int cacheKey = HashCode.Combine(SOURCE_VERSION_SEED, file);
+            _cache.Set(cacheKey, sourceVersion, options);
+            AttachEvictionOnFail(sourceVersion, cacheKey);
+        }
+
+        /// <summary>
+        /// Gets the cached source-version task or creates and caches one task for the file.
+        /// </summary>
+        /// <param name="file">The file whose source version is being retrieved.</param>
+        /// <param name="createSourceVersion">Starts the source-version read and returns its task without waiting for it.</param>
+        /// <returns>The shared task producing the source version.</returns>
+        public Task<string> GetOrSetSourceVersion(PxFileRef file, Func<Task<string>> createSourceVersion)
+        {
+            lock (_fileCacheLocks[(uint)file.GetHashCode() % (uint)_fileCacheLocks.Length])
+            {
+                if (TryGetSourceVersion(file, out Task<string>? existing) && existing is not null)
+                {
+                    return existing;
+                }
+
+                Task<string> sourceVersion = createSourceVersion();
+                SetSourceVersion(file, sourceVersion);
+                return sourceVersion;
+            }
         }
 
         /// <summary>
@@ -153,6 +175,30 @@ namespace PxApi.Caching
 
             _cache.Set(cacheKey, metaContainer, options);
             AttachEvictionOnFail(metaContainer, metaContainer.Metadata, cacheKey);
+        }
+
+        /// <summary>
+        /// Returns the cached metadata container if it was loaded from the given source version; otherwise creates, caches and returns a new one.
+        /// The check and publication are atomic per file, so concurrent loads of the same source version share one container.
+        /// </summary>
+        /// <param name="file">The file whose metadata is requested.</param>
+        /// <param name="sourceVersion">The source version observed before reading, or null when revalidation is disabled.</param>
+        /// <param name="createContainer">Creates the container and starts the metadata read. Called at most once, inside the lock, so it must not block.</param>
+        public MetaCacheContainer GetOrSetMetadata(PxFileRef file, string? sourceVersion, Func<MetaCacheContainer> createContainer)
+        {
+            lock (_fileCacheLocks[(uint)file.GetHashCode() % (uint)_fileCacheLocks.Length])
+            {
+                if (TryGetMetadata(file, out MetaCacheContainer? existing) &&
+                    existing is not null &&
+                    string.Equals(existing.SourceVersion, sourceVersion, StringComparison.Ordinal))
+                {
+                    return existing;
+                }
+
+                MetaCacheContainer metaContainer = createContainer();
+                SetMetadata(file, metaContainer);
+                return metaContainer;
+            }
         }
 
         /// <summary>
@@ -269,12 +315,15 @@ namespace PxApi.Caching
         }
 
         /// <summary>
-        /// Clears the last updated timestamp cache for the specified file.
+        /// Clears the cached source version for the specified file.
         /// </summary>
-        /// <param name="file">File for which to clear last updated timestamp cache.</param>
-        public void ClearLastUpdatedCache(PxFileRef file)
+        /// <param name="file">File for which to clear the source version cache.</param>
+        public void ClearSourceVersionCache(PxFileRef file)
         {
-            _cache.Remove(HashCode.Combine(LAST_UPDATED_SEED, file));
+            lock (_fileCacheLocks[(uint)file.GetHashCode() % (uint)_fileCacheLocks.Length])
+            {
+                _cache.Remove(HashCode.Combine(SOURCE_VERSION_SEED, file));
+            }
         }
 
         /// <summary>

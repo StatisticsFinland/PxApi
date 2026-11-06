@@ -67,28 +67,31 @@ namespace PxApi.DataSources
                 [LoggerConsts.CONTAINER_NAME] = ContainerName
             }))
             {
-                ILookup<string, string> metadataBlobs =
+                ILookup<string, BlobListItem> metadataBlobs =
                     await GetMetadataBlobsAsync($"{MetaPrefix}/{DataBase.Id}/", null, ct);
                 return [.. metadataBlobs.Select(group => PxFileRef.ValidateAndCreate(group.Key, DataBase))];
             }
         }
 
         /// <inheritdoc/>
-        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default)
+        /// <remarks>
+        /// The version is the name and ETag of the selected (latest) metadata blob, taken from the blob listing,
+        /// so publishing a new metadata blob or rewriting the selected one changes it without downloading the metadata.
+        /// </remarks>
+        public override async Task<string> GetSourceVersionAsync(PxFileRef file, CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.FUNCTION] = nameof(GetLastWriteTimeAsync),
+                    [LoggerConsts.FUNCTION] = nameof(GetSourceVersionAsync),
                     [LoggerConsts.PX_FILE] = file.Id,
                     [LoggerConsts.CONTAINER_NAME] = ContainerName
                 }))
             {
-                Logger.LogDebug("Getting last write time for meta file {file_id} from blob storage", file.Id);
-                IReadOnlyMatrixMetadata metadata = await ReadMetadataAsync(file, ct);
-                ContentValueList contentDimensionValues = metadata.GetContentDimension().Values;
-                return contentDimensionValues.Map(value => value.LastUpdated).Max();
+                Logger.LogDebug("Getting source version for meta file {file_id} from blob storage", file.Id);
+                BlobListItem metadataBlob = await GetLatestMetadataBlobAsync(file, ct);
+                return $"{metadataBlob.Name}|{metadataBlob.ETag}";
             }
         }
 
@@ -215,13 +218,7 @@ namespace PxApi.DataSources
             {
                 Logger.LogDebug("Reading metadata for meta file {file_id} from blob storage", file.Id);
 
-                string prefix = BuildMetadataPrefix(file.DataBase.Id, file.Id);
-                ILookup<string, string> metadataBlobs = await GetMetadataBlobsAsync(prefix, file.Id, ct);
-                string? selectedBlobName = metadataBlobs[file.Id].OrderDescending(StringComparer.Ordinal).FirstOrDefault();
-                if (selectedBlobName is null)
-                {
-                    throw new FileNotFoundException($"Meta file for id {file.Id} not found in database {DataBase.Id}, blob storage container {ContainerName}.");
-                }
+                string selectedBlobName = (await GetLatestMetadataBlobAsync(file, ct)).Name;
 
                 using Stream stream = await OpenBlobReadStreamAsync(selectedBlobName, ct);
 
@@ -243,21 +240,21 @@ namespace PxApi.DataSources
         }
 
         /// <summary>
-        /// Lists blob names under the given prefix in the configured container.
+        /// Lists blobs under the given prefix in the configured container.
         /// </summary>
         /// <param name="prefix">The blob name prefix to filter by.</param>
         /// <param name="ct">Cancellation token.</param>
-        /// <returns>A list of blob names matching the prefix.</returns>
+        /// <returns>The names and ETags of the blobs matching the prefix.</returns>
         [ExcludeFromCodeCoverage]
-        internal virtual async Task<IReadOnlyList<string>> GetBlobItemsAsync(string prefix, CancellationToken ct = default)
+        internal virtual async Task<IReadOnlyList<BlobListItem>> GetBlobItemsAsync(string prefix, CancellationToken ct = default)
         {
             BlobContainerClient containerClient = GetContainerClient();
-            List<string> names = [];
+            List<BlobListItem> items = [];
             await foreach (BlobItem blob in containerClient.GetBlobsAsync(BlobTraits.None, BlobStates.None, prefix: prefix, cancellationToken: ct))
             {
-                names.Add(blob.Name);
+                items.Add(new BlobListItem(blob.Name, blob.Properties.ETag?.ToString() ?? string.Empty));
             }
-            return names;
+            return items;
         }
 
         /// <summary>
@@ -353,31 +350,39 @@ namespace PxApi.DataSources
             return (headerLength, codec);
         }
 
-        private async Task<ILookup<string, string>> GetMetadataBlobsAsync(
+        private async Task<BlobListItem> GetLatestMetadataBlobAsync(PxFileRef file, CancellationToken ct)
+        {
+            string prefix = BuildMetadataPrefix(file.DataBase.Id, file.Id);
+            ILookup<string, BlobListItem> metadataBlobs = await GetMetadataBlobsAsync(prefix, file.Id, ct);
+            return metadataBlobs[file.Id].MaxBy(blob => blob.Name, StringComparer.Ordinal)
+                ?? throw new FileNotFoundException($"Meta file for id {file.Id} not found in database {DataBase.Id}, blob storage container {ContainerName}.");
+        }
+
+        private async Task<ILookup<string, BlobListItem>> GetMetadataBlobsAsync(
             string prefix, string? requestedTableId, CancellationToken ct)
         {
-            IReadOnlyList<string> blobNames = await GetBlobItemsAsync(prefix, ct);
-            List<(string TableId, string BlobName)> metadataBlobs = [];
+            IReadOnlyList<BlobListItem> blobs = await GetBlobItemsAsync(prefix, ct);
+            List<(string TableId, BlobListItem Blob)> metadataBlobs = [];
             int invalidNames = 0;
-            foreach (string blobName in blobNames.Where(name => name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase)))
+            foreach (BlobListItem blob in blobs.Where(item => item.Name.EndsWith(MetaFileSuffix, StringComparison.OrdinalIgnoreCase)))
             {
                 ct.ThrowIfCancellationRequested();
-                if (!TryParseMetadataBlobName(blobName, out string tableId))
+                if (!TryParseMetadataBlobName(blob.Name, out string tableId))
                 {
                     invalidNames++;
                     continue;
                 }
                 if (requestedTableId is not null && !string.Equals(tableId, requestedTableId, StringComparison.Ordinal)) continue;
 
-                metadataBlobs.Add((tableId, blobName));
+                metadataBlobs.Add((tableId, blob));
             }
 
             if (invalidNames > 0)
             {
                 Logger.LogWarning("Skipped {invalid_metadata_file_count} malformed metadata blob names", invalidNames);
             }
-            ILookup<string, string> groups = metadataBlobs.ToLookup(blob => blob.TableId, blob => blob.BlobName, StringComparer.Ordinal);
-            foreach (IGrouping<string, string> group in groups)
+            ILookup<string, BlobListItem> groups = metadataBlobs.ToLookup(blob => blob.TableId, blob => blob.Blob, StringComparer.Ordinal);
+            foreach (IGrouping<string, BlobListItem> group in groups)
             {
                 int versionCount = group.Count();
                 if (versionCount > 1)
@@ -413,4 +418,11 @@ namespace PxApi.DataSources
             }
         }
     }
+
+    /// <summary>
+    /// A blob returned by a container listing.
+    /// </summary>
+    /// <param name="Name">The full blob name.</param>
+    /// <param name="ETag">The blob's ETag, which changes whenever the blob is rewritten.</param>
+    internal sealed record BlobListItem(string Name, string ETag);
 }

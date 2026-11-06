@@ -26,8 +26,8 @@ namespace PxApi.UnitTests.DataSources
             public override Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct) =>
                 Task.FromResult<PxFileRef[]>([]);
 
-            public override Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct) =>
-                Task.FromResult(DateTime.UtcNow);
+            public override Task<string> GetSourceVersionAsync(PxFileRef file, CancellationToken ct) =>
+                Task.FromResult("version-1");
 
             public override Task<Stream> TryReadAuxiliaryFileAsync(string fileName, string[]? hierarchy, CancellationToken ct = default) =>
                 throw new NotImplementedException();

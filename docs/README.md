@@ -9,7 +9,7 @@ PxApi is a .NET 10.0 Web API for accessing PX statistical datasets. It provides 
 - Data retrieval with filter semantics (code, range, positional) via GET query parameters or POST body (`/data/databases/{database}/tables/{table}`)
 - Content negotiation (JSON-stat 2.0 or CSV) using the `Accept` header
 - Cache management endpoints for entire databases, table lists, and individual tables
-- Global and per-database caching (file lists, metadata, data, last updated timestamps)
+- Global and per-database caching (file lists, metadata, data, source versions)
 - Feature flags (cache and search endpoint visibility, and search OpenAPI documentation visibility)
 - Controller-specific API key authentication for supported controllers
 - Multiple storage types: Mounted (local / network), Azure File Share, Azure Blob Storage, Azure Binary Blob Storage
@@ -180,8 +180,8 @@ Additional methods:
 ### Cache
 Requires feature flag `CacheController = true` and valid API key when authentication is enabled. Cache endpoints are always hidden from OpenAPI documentation.
 
-- `DELETE /cache/databases/{database}` clears all cache entries (file list, metadata, data, last updated) for a database.
-- `DELETE /cache/databases/{database}/tables` clears only the cached table list. The next lookup rebuilds it, discovering newly added tables without clearing existing tables' metadata, data, or last-updated caches.
+- `DELETE /cache/databases/{database}` clears all cache entries (file list, metadata, data, source version) for a database.
+- `DELETE /cache/databases/{database}/tables` clears only the cached table list. The next lookup rebuilds it, discovering newly added tables without clearing existing tables' metadata, data, or source-version caches.
 - `DELETE /cache/databases/{database}/tables/{id}` clears all cache entries for a single table.
 
 Cache invalidation affects only the current API instance.
@@ -313,7 +313,7 @@ Global cache size limit controlled via `Cache.MaxSizeBytes`. Individual item siz
 - File lists
 - Metadata objects
 - Data arrays
-- Last updated timestamps (per PX file)
+- Source versions (per PX file)
 
 ## Storage Backends
 - Mounted (local / network path) direct file access

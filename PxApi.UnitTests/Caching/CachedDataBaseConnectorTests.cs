@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Internal;
 using Moq;
 using Px.Utils.Language;
 using Px.Utils.Models.Data.DataValue;
@@ -269,7 +270,7 @@ namespace PxApi.UnitTests.Caching
             mockConnector.Setup(c => c.DataBase).Returns(dataBase);
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             mockConnector.Setup(c => c.ReadMetadataAsync(fileRef, CancellationToken.None)).ReturnsAsync(metadata);
-            mockConnector.Setup(c => c.GetLastWriteTimeAsync(fileRef, CancellationToken.None)).ReturnsAsync(DateTime.UtcNow);
+            mockConnector.Setup(c => c.GetSourceVersionAsync(fileRef, CancellationToken.None)).ReturnsAsync("version-1");
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             MemoryCache memoryCache = new(new MemoryCacheOptions());
@@ -300,9 +301,130 @@ namespace PxApi.UnitTests.Caching
             observer.VerifyNoOtherCalls();
         }
 
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public async Task GetMetadataCachedAsync_CallerCancelsSharedLoad_OnlyCancelsItsWait(bool cancelFirstCaller, bool waitingForVersion)
+        {
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef file = BuildTestFileRef("file1", dataBase);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            const string sourceVersion = "version-1";
+            TaskCompletionSource<string> versionRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            TaskCompletionSource<IReadOnlyMatrixMetadata> metadataRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            TaskCompletionSource metadataStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            Mock<IDataBaseConnector> mockConnector = new();
+            mockConnector.Setup(c => c.GetSourceVersionAsync(file, It.IsAny<CancellationToken>()))
+                .Returns((PxFileRef _, CancellationToken ct) => versionRead.Task.WaitAsync(ct));
+            mockConnector.Setup(c => c.ReadMetadataAsync(file, It.IsAny<CancellationToken>()))
+                .Returns((PxFileRef _, CancellationToken ct) =>
+                {
+                    metadataStarted.TrySetResult();
+                    return metadataRead.Task.WaitAsync(ct);
+                });
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
+            using MemoryCache memory = new(new MemoryCacheOptions());
+            DatabaseCache cache = new(memory);
+            CachedDataSource firstSource = new(mockFactory.Object, cache);
+            CachedDataSource secondSource = new(mockFactory.Object, cache);
+            using CancellationTokenSource firstCancellation = new();
+            using CancellationTokenSource secondCancellation = new();
+
+            if (!waitingForVersion) versionRead.SetResult(sourceVersion);
+            Task<IReadOnlyMatrixMetadata> first = firstSource.GetMetadataCachedAsync(file, firstCancellation.Token);
+            try
+            {
+                if (!waitingForVersion) await metadataStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Task<IReadOnlyMatrixMetadata> second = secondSource.GetMetadataCachedAsync(file, secondCancellation.Token);
+                Task<IReadOnlyMatrixMetadata> cancelled = cancelFirstCaller ? first : second;
+                Task<IReadOnlyMatrixMetadata> surviving = cancelFirstCaller ? second : first;
+
+                (cancelFirstCaller ? firstCancellation : secondCancellation).Cancel();
+                await Assert.ThatAsync(async () => await cancelled.WaitAsync(TimeSpan.FromSeconds(5)),
+                    Throws.InstanceOf<OperationCanceledException>());
+                Assert.That(surviving.IsCompleted, Is.False);
+
+                versionRead.TrySetResult(sourceVersion);
+                metadataRead.SetResult(metadata);
+                Assert.That(await surviving.WaitAsync(TimeSpan.FromSeconds(5)), Is.SameAs(metadata));
+                Assert.That(await firstSource.GetMetadataCachedAsync(file), Is.SameAs(metadata));
+                mockConnector.Verify(c => c.GetSourceVersionAsync(file, It.IsAny<CancellationToken>()), Times.Once);
+                mockConnector.Verify(c => c.GetSourceVersionAsync(file, CancellationToken.None), Times.Once);
+                mockConnector.Verify(c => c.ReadMetadataAsync(file, It.IsAny<CancellationToken>()), Times.Once);
+                mockConnector.Verify(c => c.ReadMetadataAsync(file, CancellationToken.None), Times.Once);
+            }
+            finally
+            {
+                versionRead.TrySetResult(sourceVersion);
+                metadataRead.TrySetResult(metadata);
+            }
+        }
+
         #endregion
 
         #region GetDataCachedAsync
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task GetDataCachedAsync_CallerCancelsWhileLoadingMetadata_OnlyCancelsItsWait(bool cancelFirstCaller)
+        {
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef file = BuildTestFileRef("file1", dataBase);
+            MatrixMap map = new([new DimensionMap("dim1", ["value1"]), new DimensionMap("dim2", ["2025"])]);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            DoubleDataValue[] expectedData = [new(2, DataValueType.Exists)];
+            TaskCompletionSource<IReadOnlyMatrixMetadata> metadataRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            TaskCompletionSource metadataStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            Mock<IDataBaseConnector> mockConnector = new();
+            mockConnector.Setup(c => c.GetSourceVersionAsync(file, It.IsAny<CancellationToken>()))
+                .ReturnsAsync("version-1");
+            mockConnector.Setup(c => c.ReadMetadataAsync(file, It.IsAny<CancellationToken>()))
+                .Returns((PxFileRef _, CancellationToken ct) =>
+                {
+                    metadataStarted.TrySetResult();
+                    return metadataRead.Task.WaitAsync(ct);
+                });
+            mockConnector.Setup(c => c.ReadDataAsync(file, map, metadata, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expectedData);
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
+            using MemoryCache memory = new(new MemoryCacheOptions());
+            DatabaseCache cache = new(memory);
+            CachedDataSource firstSource = new(mockFactory.Object, cache);
+            CachedDataSource secondSource = new(mockFactory.Object, cache);
+            using CancellationTokenSource firstCancellation = new();
+            using CancellationTokenSource secondCancellation = new();
+
+            Task<DoubleDataValue[]> first = firstSource.GetDataCachedAsync(file, map, firstCancellation.Token);
+            try
+            {
+                await metadataStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Task<DoubleDataValue[]> second = secondSource.GetDataCachedAsync(file, map, secondCancellation.Token);
+                Task<DoubleDataValue[]> cancelled = cancelFirstCaller ? first : second;
+                Task<DoubleDataValue[]> surviving = cancelFirstCaller ? second : first;
+
+                (cancelFirstCaller ? firstCancellation : secondCancellation).Cancel();
+                await Assert.ThatAsync(async () => await cancelled.WaitAsync(TimeSpan.FromSeconds(5)),
+                    Throws.InstanceOf<OperationCanceledException>());
+                Assert.That(surviving.IsCompleted, Is.False);
+                mockConnector.Verify(c => c.ReadDataAsync(file, map, metadata, It.IsAny<CancellationToken>()), Times.Never);
+
+                metadataRead.SetResult(metadata);
+                Assert.That(await surviving.WaitAsync(TimeSpan.FromSeconds(5)), Is.SameAs(expectedData));
+                Assert.That(await firstSource.GetDataCachedAsync(file, map), Is.SameAs(expectedData));
+                mockConnector.Verify(c => c.ReadMetadataAsync(file, It.IsAny<CancellationToken>()), Times.Once);
+                mockConnector.Verify(c => c.ReadMetadataAsync(file, CancellationToken.None), Times.Once);
+                CancellationToken survivingToken = cancelFirstCaller ? secondCancellation.Token : firstCancellation.Token;
+                mockConnector.Verify(c => c.ReadDataAsync(file, map, metadata, It.IsAny<CancellationToken>()), Times.Once);
+                mockConnector.Verify(c => c.ReadDataAsync(file, map, metadata, survivingToken), Times.Once);
+            }
+            finally
+            {
+                metadataRead.TrySetResult(metadata);
+            }
+        }
 
         [Test]
         public async Task GetDataCachedAsync_IdenticalMapsForDifferentTables_ReturnsEachTablesData()
@@ -319,8 +441,8 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnector> connector = new();
             connector.Setup(item => item.ReadMetadataAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
                 .ReturnsAsync(metadata);
-            connector.Setup(item => item.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
-                .ReturnsAsync(DateTime.UtcNow.AddDays(-1));
+            connector.Setup(item => item.GetSourceVersionAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
+                .ReturnsAsync("version-1");
             connector.Setup(item => item.ReadDataAsync(firstFile, map, metadata, CancellationToken.None)).ReturnsAsync(firstData);
             connector.Setup(item => item.ReadDataAsync(secondFile, map, metadata, CancellationToken.None)).ReturnsAsync(secondData);
             Mock<IDataBaseConnectorFactory> factory = new();
@@ -524,7 +646,7 @@ namespace PxApi.UnitTests.Caching
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
             mockConnector.Setup(c => c.ReadMetadataAsync(pxFile, CancellationToken.None)).ReturnsAsync(metadata);
             mockConnector.Setup(c => c.ReadDataAsync(pxFile, map, metadata, CancellationToken.None)).ReturnsAsync([new DoubleDataValue(2, DataValueType.Exists)]);
-            mockConnector.Setup(c => c.GetLastWriteTimeAsync(pxFile, CancellationToken.None)).ReturnsAsync(DateTime.UtcNow.AddMinutes(-5));
+            mockConnector.Setup(c => c.GetSourceVersionAsync(pxFile, CancellationToken.None)).ReturnsAsync("version-1");
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
             Mock<ICacheObserver> observer = new();
@@ -604,8 +726,8 @@ namespace PxApi.UnitTests.Caching
             MatrixMap map = new([new DimensionMap("dim1", ["value1"])]);
             Task<DoubleDataValue[]> data = Task.FromResult<DoubleDataValue[]>([new DoubleDataValue(2, DataValueType.Exists)]);
             dbCache.SetData(file, metaContainer, map, data);
-            Task<DateTime> lastUpdated = Task.FromResult(DateTime.UtcNow);
-            dbCache.SetLastUpdated(file, lastUpdated);
+            Task<string> sourceVersion = Task.FromResult("version-1");
+            dbCache.SetSourceVersion(file, sourceVersion);
             Task<MultilanguageString> databaseName = Task.FromResult(new MultilanguageString("en", "Test database"));
             dbCache.SetDatabaseName(dataBase, databaseName);
             Mock<IDataBaseConnectorFactory> factory = new(MockBehavior.Strict);
@@ -624,8 +746,8 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(retainedMetadata, Is.SameAs(metaContainer));
                 Assert.That(dbCache.TryGetData(file, map, out Task<DoubleDataValue[]>? retainedData, out _), Is.True);
                 Assert.That(retainedData, Is.SameAs(data));
-                Assert.That(dbCache.TryGetLastUpdated(file, out Task<DateTime>? retainedLastUpdated), Is.True);
-                Assert.That(retainedLastUpdated, Is.SameAs(lastUpdated));
+                Assert.That(dbCache.TryGetSourceVersion(file, out Task<string>? retainedSourceVersion), Is.True);
+                Assert.That(retainedSourceVersion, Is.SameAs(sourceVersion));
                 Assert.That(dbCache.TryGetDatabaseName(dataBase, out Task<MultilanguageString>? retainedName), Is.True);
                 Assert.That(retainedName, Is.SameAs(databaseName));
             }
@@ -673,30 +795,30 @@ namespace PxApi.UnitTests.Caching
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
 
-            // Add last updated timestamp to cache
-            Task<DateTime> lastUpdatedTask = Task.FromResult(DateTime.UtcNow);
-            dbCache.SetLastUpdated(file, lastUpdatedTask);
+            // Add source version to cache
+            Task<string> sourceVersionTask = Task.FromResult("version-1");
+            dbCache.SetSourceVersion(file, sourceVersionTask);
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             CachedDataSource connector = new(mockFactory.Object, dbCache);
 
-            // Pre-assert: last updated is present
-            bool hasLastUpdated = dbCache.TryGetLastUpdated(file, out Task<DateTime>? beforeLastUpdated);
+            // Pre-assert: source version is present
+            bool hasSourceVersion = dbCache.TryGetSourceVersion(file, out Task<string>? beforeSourceVersion);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(hasLastUpdated, Is.True);
-                Assert.That(beforeLastUpdated, Is.Not.Null);
+                Assert.That(hasSourceVersion, Is.True);
+                Assert.That(beforeSourceVersion, Is.Not.Null);
             }
 
             // Act
             connector.ClearTableCache(file);
 
-            // Assert: last updated is removed
-            bool afterHasLastUpdated = dbCache.TryGetLastUpdated(file, out Task<DateTime>? afterLastUpdated);
+            // Assert: source version is removed
+            bool afterHasSourceVersion = dbCache.TryGetSourceVersion(file, out Task<string>? afterSourceVersion);
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(afterHasLastUpdated, Is.False);
-                Assert.That(afterLastUpdated, Is.Null);
+                Assert.That(afterHasSourceVersion, Is.False);
+                Assert.That(afterSourceVersion, Is.Null);
             }
         }
 
@@ -773,8 +895,8 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
             // This should never be called since revalidation is disabled
-            mockConnector.Setup(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
-                .ReturnsAsync(DateTime.UtcNow.AddDays(1)); // Future date to make cache invalid if checked
+            mockConnector.Setup(c => c.GetSourceVersionAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
+                .ReturnsAsync("changed-version"); // Differs from the cached version, so the cache would be invalid if checked
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
@@ -791,8 +913,8 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
             }
 
-            // Verify that GetLastWriteTimeAsync was never called since revalidation is disabled
-            mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None), Times.Never);
+            // Verify that GetSourceVersionAsync was never called since revalidation is disabled
+            mockConnector.Verify(c => c.GetSourceVersionAsync(It.IsAny<PxFileRef>(), CancellationToken.None), Times.Never);
         }
 
         [Test]
@@ -828,8 +950,8 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
             // This should never be called since revalidation is disabled
-            mockConnector.Setup(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
-                .ReturnsAsync(DateTime.UtcNow.AddDays(1)); // Future date to make cache invalid if checked
+            mockConnector.Setup(c => c.GetSourceVersionAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
+                .ReturnsAsync("changed-version"); // Differs from the cached version, so the cache would be invalid if checked
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
@@ -845,7 +967,7 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result, Has.Length.EqualTo(1));
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
             }
-            mockConnector.Verify(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None), Times.Never);
+            mockConnector.Verify(c => c.GetSourceVersionAsync(It.IsAny<PxFileRef>(), CancellationToken.None), Times.Never);
         }
 
         [Test]
@@ -874,8 +996,8 @@ namespace PxApi.UnitTests.Caching
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
             // This should never be called since revalidation is disabled
-            mockConnector.Setup(c => c.GetLastWriteTimeAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
-                .ReturnsAsync(DateTime.UtcNow.AddDays(1)); // Future date to make cache invalid if checked
+            mockConnector.Setup(c => c.GetSourceVersionAsync(It.IsAny<PxFileRef>(), CancellationToken.None))
+                .ReturnsAsync("changed-version"); // Differs from the cached version, so the cache would be invalid if checked
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
@@ -906,15 +1028,16 @@ namespace PxApi.UnitTests.Caching
             MemoryCache memoryCache = new(new MemoryCacheOptions());
             DatabaseCache dbCache = new(memoryCache);
             IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
-            MetaCacheContainer metaContainer = new(Task.FromResult(metadata));
+            const string sourceVersion = "version-1";
+            MetaCacheContainer metaContainer = new(Task.FromResult(metadata), sourceVersion);
             dbCache.SetMetadata(pxFile, metaContainer);
             dbCache.SetData(pxFile, metaContainer, map, Task.FromResult(expectedData));
 
             Mock<IDataBaseConnector> mockConnector = new();
             mockConnector.SetupGet(c => c.DataBase).Returns(dataBase);
-            // Cache was created now, but file was modified in the past (cache is valid)
-            mockConnector.Setup(c => c.GetLastWriteTimeAsync(pxFile, CancellationToken.None))
-                .ReturnsAsync(DateTime.UtcNow.AddMinutes(-5));
+            // Source reports the same version that was observed when the metadata was cached
+            mockConnector.Setup(c => c.GetSourceVersionAsync(pxFile, CancellationToken.None))
+                .ReturnsAsync(sourceVersion);
 
             Mock<IDataBaseConnectorFactory> mockFactory = new();
             mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
@@ -931,8 +1054,173 @@ namespace PxApi.UnitTests.Caching
                 Assert.That(result[0].UnsafeValue, Is.EqualTo(2));
             }
 
-            // Verify that GetLastWriteTimeAsync was called since revalidation is enabled
-            mockConnector.Verify(c => c.GetLastWriteTimeAsync(pxFile, CancellationToken.None), Times.Once);
+            // Verify that GetSourceVersionAsync was called since revalidation is enabled
+            mockConnector.Verify(c => c.GetSourceVersionAsync(pxFile, CancellationToken.None), Times.Once);
+        }
+
+        [Test]
+        public async Task GetDataCachedAsync_UnchangedSourceVersion_RepeatedQueriesHitCache()
+        {
+            // Arrange
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef pxFile = PxFileRef.ValidateAndCreate("testfile", dataBase, ["statisticalProgram"]);
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            const string sourceVersion = "meta/testfile_202611031300.meta.json|\"0x8DC1\"";
+            Mock<IDataBaseConnector> mockConnector = new();
+            mockConnector.Setup(c => c.GetSourceVersionAsync(pxFile, It.IsAny<CancellationToken>())).ReturnsAsync(sourceVersion);
+            mockConnector.Setup(c => c.ReadMetadataAsync(pxFile, It.IsAny<CancellationToken>())).ReturnsAsync(metadata);
+            mockConnector.Setup(c => c.ReadDataAsync(pxFile, It.IsAny<IMatrixMap>(), metadata, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => [new DoubleDataValue(2, DataValueType.Exists)]);
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
+            DatabaseCache dbCache = new(new MemoryCache(new MemoryCacheOptions()));
+
+            // Act
+            for (int i = 0; i < 3; i++)
+            {
+                CachedDataSource connector = new(mockFactory.Object, dbCache);
+                await connector.GetMetadataCachedAsync(pxFile);
+                await connector.GetDataCachedAsync(pxFile, map);
+            }
+
+            // Assert
+            mockConnector.Verify(c => c.ReadMetadataAsync(pxFile, It.IsAny<CancellationToken>()), Times.Once);
+            mockConnector.Verify(c => c.ReadDataAsync(pxFile, It.IsAny<IMatrixMap>(), It.IsAny<IReadOnlyMatrixMetadata>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [TestCase("\"0x8DC1\"", "\"0x8DC2\"", false)]
+        [TestCase("\"0x8DC2\"", "\"0x8DC1\"", false)]
+        [TestCase("\"0x8DC1\"", "\"0x8dc1\"", false)]
+        [TestCase("\"0x8DC1\"", "\"0x8DC2\"", true)]
+        [TestCase("\"0x8DC2\"", "\"0x8DC1\"", true)]
+        [TestCase("\"0x8DC1\"", "\"0x8dc1\"", true)]
+        public async Task GetDataCachedAsync_SourceVersionChanged_RevalidatesWarmCacheAtInterval(
+            string cachedVersion, string sourceVersion, bool cacheSuperset)
+        {
+            // Arrange
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef pxFile = PxFileRef.ValidateAndCreate("testfile", dataBase, ["statisticalProgram"]);
+            MatrixMap map = new([
+                new DimensionMap("dim1", ["value1"]),
+                new DimensionMap("dim2", ["2025"])
+            ]);
+            MatrixMap cacheMap = cacheSuperset
+                ? new([new DimensionMap("dim1", ["value1"]), new DimensionMap("dim2", ["2024", "2025"])])
+                : map;
+            IReadOnlyMatrixMetadata originalMetadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            IReadOnlyMatrixMetadata updatedMetadata = await MatrixMetadataUtils.GetMetadataFromFixture(
+                PxFixtures.MinimalPx.MINIMAL_UTF8_N
+                    .Replace("\"2024\",\"2025\"", "\"2024\",\"2025\",\"2026\"", StringComparison.Ordinal)
+                    .Replace("\"2024_en\",\"2025_en\"", "\"2024_en\",\"2025_en\",\"2026_en\"", StringComparison.Ordinal)
+                    .Replace("DATA=1 2;", "DATA=10 20 30;", StringComparison.Ordinal));
+            DoubleDataValue[] originalData = cacheSuperset
+                ? [new(1, DataValueType.Exists), new(2, DataValueType.Exists)]
+                : [new(2, DataValueType.Exists)];
+            DoubleDataValue[] updatedData = [new(20, DataValueType.Exists)];
+            DateTimeOffset now = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+            Mock<ISystemClock> clock = new();
+            clock.SetupGet(c => c.UtcNow).Returns(() => now);
+            using MemoryCache memory = new(new MemoryCacheOptions { Clock = clock.Object });
+            DatabaseCache dbCache = new(memory);
+
+            string currentVersion = cachedVersion;
+            IReadOnlyMatrixMetadata currentMetadata = originalMetadata;
+            Mock<IDataBaseConnector> mockConnector = new(MockBehavior.Strict);
+            mockConnector.Setup(c => c.GetSourceVersionAsync(pxFile, CancellationToken.None)).ReturnsAsync(() => currentVersion);
+            mockConnector.Setup(c => c.ReadMetadataAsync(pxFile, CancellationToken.None)).ReturnsAsync(() => currentMetadata);
+            mockConnector.Setup(c => c.ReadDataAsync(pxFile, cacheMap,
+                    It.Is<IReadOnlyMatrixMetadata>(meta => ReferenceEquals(meta, originalMetadata)), CancellationToken.None))
+                .ReturnsAsync(originalData);
+            mockConnector.Setup(c => c.ReadDataAsync(pxFile, map,
+                    It.Is<IReadOnlyMatrixMetadata>(meta => ReferenceEquals(meta, updatedMetadata)), CancellationToken.None))
+                .ReturnsAsync(updatedData);
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
+            Mock<ICacheObserver> observer = new();
+            CachedDataSource connector = new(mockFactory.Object, dbCache, observer.Object);
+
+            Assert.That(await connector.GetDataCachedAsync(pxFile, cacheMap), Is.SameAs(originalData));
+            Assert.That(await connector.GetMetadataCachedAsync(pxFile), Is.SameAs(originalMetadata));
+            Assert.That(dbCache.TryGetMetadata(pxFile, out MetaCacheContainer? staleContainer), Is.True);
+
+            currentVersion = sourceVersion;
+            currentMetadata = updatedMetadata;
+            now = now.AddMilliseconds(499);
+
+            DoubleDataValue[] beforeInterval = await connector.GetDataCachedAsync(pxFile, map);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(beforeInterval.Select(value => value.UnsafeValue), Is.EqualTo(new[] { 2d }));
+                Assert.That(await connector.GetMetadataCachedAsync(pxFile), Is.SameAs(originalMetadata));
+                Assert.That(dbCache.TryGetMetadata(pxFile, out MetaCacheContainer? retained), Is.True);
+                Assert.That(retained, Is.SameAs(staleContainer));
+            }
+            mockConnector.Verify(c => c.GetSourceVersionAsync(pxFile, CancellationToken.None), Times.Once);
+            mockConnector.Verify(c => c.ReadMetadataAsync(pxFile, CancellationToken.None), Times.Once);
+            mockConnector.Verify(c => c.ReadDataAsync(pxFile, It.IsAny<IMatrixMap>(),
+                It.IsAny<IReadOnlyMatrixMetadata>(), CancellationToken.None), Times.Once);
+            observer.Verify(item => item.RecordDataCacheHit(cacheSuperset), Times.Once);
+            observer.Invocations.Clear();
+
+            // Act
+            now = now.AddMilliseconds(1); // The configured revalidation interval is 500 ms.
+            DoubleDataValue[] result = await connector.GetDataCachedAsync(pxFile, map);
+
+            // Assert
+            bool hasMeta = dbCache.TryGetMetadata(pxFile, out MetaCacheContainer? current);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result, Is.SameAs(updatedData));
+                Assert.That(result.Select(value => value.UnsafeValue), Is.EqualTo(new[] { 20d }));
+                Assert.That(hasMeta, Is.True);
+                Assert.That(current, Is.Not.SameAs(staleContainer));
+                Assert.That(current!.SourceVersion, Is.EqualTo(sourceVersion));
+                Assert.That(await current.Metadata, Is.SameAs(updatedMetadata));
+                Assert.That(await connector.GetMetadataCachedAsync(pxFile), Is.SameAs(updatedMetadata));
+                Assert.That(await connector.GetDataCachedAsync(pxFile, map), Is.SameAs(updatedData));
+            }
+            mockConnector.Verify(c => c.GetSourceVersionAsync(pxFile, CancellationToken.None), Times.Exactly(2));
+            mockConnector.Verify(c => c.ReadMetadataAsync(pxFile, CancellationToken.None), Times.Exactly(2));
+            mockConnector.Verify(c => c.ReadDataAsync(pxFile, cacheMap,
+                It.Is<IReadOnlyMatrixMetadata>(meta => ReferenceEquals(meta, originalMetadata)), CancellationToken.None), Times.Once);
+            mockConnector.Verify(c => c.ReadDataAsync(pxFile, map,
+                It.Is<IReadOnlyMatrixMetadata>(meta => ReferenceEquals(meta, updatedMetadata)), CancellationToken.None), Times.Once);
+            mockConnector.VerifyNoOtherCalls();
+            observer.Verify(item => item.RecordMetadataLookup(false), Times.Once);
+            observer.Verify(item => item.RecordDataCacheMiss(), Times.Once);
+            observer.Verify(item => item.RecordMetadataLookup(true), Times.Once);
+            observer.Verify(item => item.RecordDataCacheHit(false), Times.Once);
+            observer.VerifyNoOtherCalls();
+        }
+
+        [Test]
+        public async Task GetMetadataCachedAsync_ConcurrentColdLoads_ShareOneContainer()
+        {
+            // Arrange
+            DataBaseRef dataBase = DataBaseRef.Create("PxApiUnitTestsDb");
+            PxFileRef pxFile = PxFileRef.ValidateAndCreate("testfile", dataBase, ["statisticalProgram"]);
+            IReadOnlyMatrixMetadata metadata = await MatrixMetadataUtils.GetMetadataFromFixture(PxFixtures.MinimalPx.MINIMAL_UTF8_N);
+            TaskCompletionSource<string> version = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            Mock<IDataBaseConnector> mockConnector = new();
+            mockConnector.Setup(c => c.GetSourceVersionAsync(pxFile, It.IsAny<CancellationToken>())).Returns(version.Task);
+            mockConnector.Setup(c => c.ReadMetadataAsync(pxFile, It.IsAny<CancellationToken>())).ReturnsAsync(metadata);
+            Mock<IDataBaseConnectorFactory> mockFactory = new();
+            mockFactory.Setup(f => f.GetConnector(dataBase)).Returns(mockConnector.Object);
+            DatabaseCache dbCache = new(new MemoryCache(new MemoryCacheOptions()));
+
+            // Act
+            Task<IReadOnlyMatrixMetadata>[] loads = [.. Enumerable.Range(0, 5)
+                .Select(_ => new CachedDataSource(mockFactory.Object, dbCache).GetMetadataCachedAsync(pxFile))];
+            version.SetResult("version-1");
+            await Task.WhenAll(loads);
+
+            // Assert
+            mockConnector.Verify(c => c.GetSourceVersionAsync(pxFile, It.IsAny<CancellationToken>()), Times.Once);
+            mockConnector.Verify(c => c.ReadMetadataAsync(pxFile, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         #endregion

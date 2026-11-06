@@ -12,10 +12,32 @@ The main cache API used by controllers. Wraps raw `IDataBaseConnector` calls and
 - File lists (table listings per database)
 - Metadata objects (parsed PX metadata per table)
 - Data arrays (parsed PX data values per table)
-- Last-updated timestamps (per PX file)
+- Source versions (per PX file)
 - Database names
 
 **Superset optimization**: `GetDataCachedAsync` supports superset cache hits. If a cached matrix contains a superset of the requested dimensions, it uses `DataIndexer` to slice the requested subset from the cached data without re-reading the source. This avoids redundant storage reads for overlapping queries.
+
+**Source versions**: Each connector reports an opaque version for the source state
+it tracks per table. Equality means the connector considers that tracked state
+unchanged; a connector may track only part of a dataset's storage:
+- Mounted: file last-write time (UTC ticks) and length
+- File share and PX blob: the file's ETag
+- Binary blob: name and ETag of the selected (latest) metadata blob, taken from the
+  blob listing, so checks do not download or parse metadata. Rewriting a data blob
+  without changing its metadata blob is not detected.
+
+The version is read before metadata and cached for `RevalidationIntervalMs`.
+Changes after a version is observed may not be detected until that entry expires
+and a later request triggers revalidation. If a metadata read observes an update
+before the version cache does, the next revalidation may cause an unnecessary
+reload. Revalidation therefore provides interval-based freshness, not an atomic
+snapshot or a guarantee of zero staleness during the interval.
+
+**Cancellation**: Metadata and same-file source-version reads are shared across requests.
+Cancelling a request stops only that caller's wait, including when a data request
+is waiting for metadata. The shared read continues and can populate the cache
+even if all callers cancel; request cancellation does not evict it. Data reads
+still receive the requesting caller's cancellation token.
 
 ### DatabaseCache
 
@@ -78,9 +100,9 @@ Global cache capacity is set via `MemoryCacheConfig.MaxSizeBytes`.
 
 Three explicit invalidation paths via `CacheController`:
 
-1. **Single table**: `ClearTableCache(fileRef)` — Removes metadata, data, and last-updated timestamp for one table
+1. **Single table**: `ClearTableCache(fileRef)` — Removes metadata, data, and source version for one table
 2. **Table list only**: `ClearTableListCache(dbRef)` - Removes only the cached file list. The next lookup rebuilds it; table content and database-name caches remain unchanged.
-3. **Entire database**: `ClearDatabaseCacheAsync(dbRef)` — Iterates all files in the database and clears metadata, data, last-updated, file-list, and database-name caches
+3. **Entire database**: `ClearDatabaseCacheAsync(dbRef)` — Iterates all files in the database and clears metadata, data, source-version, file-list, and database-name caches
 
 All are exposed as `DELETE` endpoints on `CacheController` (requires feature flag `CacheController = true`) and affect only the current API instance.
 
@@ -150,7 +172,9 @@ it on each call rather than retaining request state. It forwards decisions to
 `QueryObservation` when a tracked request exists and otherwise does nothing.
 Background cache operations and infrastructure endpoints emit no user completions.
 
-Cache lifetimes, validity checks, loading and superset slicing are unchanged.
+Cache lifetimes, loading and superset slicing are unchanged by request diagnostics.
+Cache validity uses the source-version equality and revalidation interval described
+above.
 Routine hit/miss Debug messages are no longer emitted by `CachedDataSource`,
 which has no logger dependency. Lookup outcomes are reported only through the
 observer; without an observer, including untracked/background work using the
