@@ -1,3 +1,4 @@
+using Azure;
 using Azure.Storage.Files.Shares.Models;
 using Azure.Storage.Files.Shares;
 using Microsoft.Extensions.Azure;
@@ -42,14 +43,14 @@ namespace PxApi.DataSources
                     [LoggerConsts.FUNCTION] = nameof(GetAllFilesAsync)
                 }))
             {
-                Logger.LogDebug("Getting all files from file share {ShareName}", shareName);
+                Logger.LogDebug("Getting all files from file share {share_name}", shareName);
                 List<PxFileRef> files = [];
 
                 ShareDirectoryClient dbDirectory = GetDatabaseDirectoryClient();
 
                 await ListAllFilesRecursivelyAsync(dbDirectory, [], files, DataBase, ct);
 
-                Logger.LogDebug("Found {Count} PX files in file share {ShareName}", files.Count, shareName);
+                Logger.LogDebug("Found {count} PX files in file share {share_name}", files.Count, shareName);
                 return [.. files];
             }
         }
@@ -71,41 +72,43 @@ namespace PxApi.DataSources
                     throw new InvalidOperationException("The file does not belong to the database.");
                 }
 
-                Logger.LogDebug("Reading PX file {FileId} from file share", file.Id);
+                Logger.LogDebug("Reading PX file {file_id} from file share", file.Id);
                 ShareFileClient fileClient = GetFileClient(file.Id + PxFileConstants.FILE_ENDING, file.GetHierarchyLevels());
 
                 if (!await fileClient.ExistsAsync(ct))
                 {
-                    Logger.LogError("PX file {FileId} not found in file share", file.Id);
-                    throw new FileNotFoundException($"File {file.Id} not found in file share {shareName}");
+                    throw new FileNotFoundException($"File {file.Id} not found in database {DataBase.Id}, file share {shareName}.");
                 }
                 return await fileClient.OpenReadAsync(cancellationToken: ct);
             }
         }
 
         /// <inheritdoc/>
-        public override async Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default)
+        /// <remarks>The version is the ETag of the PX file.</remarks>
+        public override async Task<string> GetSourceVersionAsync(PxFileRef file, CancellationToken ct = default)
         {
             using (Logger.BeginScope(
                 new Dictionary<string, object>
                 {
                     [LoggerConsts.DB_ID] = DataBase.Id,
-                    [LoggerConsts.FUNCTION] = nameof(GetLastWriteTimeAsync),
+                    [LoggerConsts.FUNCTION] = nameof(GetSourceVersionAsync),
                     [LoggerConsts.PX_FILE] = file.Id
                 }))
             {
-                Logger.LogDebug("Getting last write time for PX file {FileId} from file share", file.Id);
+                Logger.LogDebug("Getting source version for PX file {file_id} from file share", file.Id);
 
                 ShareFileClient fileClient = GetFileClient(file.Id + PxFileConstants.FILE_ENDING, file.GetHierarchyLevels());
 
-                if (!await fileClient.ExistsAsync(ct))
+                ShareFileProperties properties;
+                try
                 {
-                    Logger.LogError("PX file {FileId} not found in file share", file.Id);
-                    throw new FileNotFoundException($"File {file.Id} not found in file share {shareName}");
+                    properties = await fileClient.GetPropertiesAsync(cancellationToken: ct);
                 }
-
-                ShareFileProperties properties = await fileClient.GetPropertiesAsync(cancellationToken: ct);
-                return properties.LastModified.DateTime;
+                catch (RequestFailedException ex) when (ex.Status == 404)
+                {
+                    throw new FileNotFoundException($"File {file.Id} not found in database {DataBase.Id}, file share {shareName}.", ex);
+                }
+                return properties.ETag.ToString();
             }
         }
 
@@ -123,8 +126,7 @@ namespace PxApi.DataSources
 
                 if (!await fileClient.ExistsAsync(ct))
                 {
-                    Logger.LogWarning("Aux file {AuxFile} not found", fileName);
-                    throw new FileNotFoundException("Auxiliary file not found", fileName);
+                    throw new FileNotFoundException($"Auxiliary file not found in database {DataBase.Id}, file share {shareName}.", fileName);
                 }
 
                 return await fileClient.OpenReadAsync(cancellationToken: ct);

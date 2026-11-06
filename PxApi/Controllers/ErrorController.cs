@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using PxApi.Exceptions;
+using PxApi.Services;
 
 namespace PxApi.Controllers
 {
@@ -38,6 +39,8 @@ namespace PxApi.Controllers
             }
 
             Exception exception = exceptionHandlerPathFeature.Error;
+            QueryObservation? observation = QueryObservation.Get(HttpContext);
+            if (observation is not null) observation.ExceptionReported = true;
 
             if (exception is InvalidModelException modelEx)
             {

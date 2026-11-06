@@ -12,10 +12,32 @@ The main cache API used by controllers. Wraps raw `IDataBaseConnector` calls and
 - File lists (table listings per database)
 - Metadata objects (parsed PX metadata per table)
 - Data arrays (parsed PX data values per table)
-- Last-updated timestamps (per PX file)
+- Source versions (per PX file)
 - Database names
 
 **Superset optimization**: `GetDataCachedAsync` supports superset cache hits. If a cached matrix contains a superset of the requested dimensions, it uses `DataIndexer` to slice the requested subset from the cached data without re-reading the source. This avoids redundant storage reads for overlapping queries.
+
+**Source versions**: Each connector reports an opaque version for the source state
+it tracks per table. Equality means the connector considers that tracked state
+unchanged; a connector may track only part of a dataset's storage:
+- Mounted: file last-write time (UTC ticks) and length
+- File share and PX blob: the file's ETag
+- Binary blob: name and ETag of the selected (latest) metadata blob, taken from the
+  blob listing, so checks do not download or parse metadata. Rewriting a data blob
+  without changing its metadata blob is not detected.
+
+The version is read before metadata and cached for `RevalidationIntervalMs`.
+Changes after a version is observed may not be detected until that entry expires
+and a later request triggers revalidation. If a metadata read observes an update
+before the version cache does, the next revalidation may cause an unnecessary
+reload. Revalidation therefore provides interval-based freshness, not an atomic
+snapshot or a guarantee of zero staleness during the interval.
+
+**Cancellation**: Metadata and same-file source-version reads are shared across requests.
+Cancelling a request stops only that caller's wait, including when a data request
+is waiting for metadata. The shared read continues and can populate the cache
+even if all callers cancel; request cancellation does not evict it. Data reads
+still receive the requesting caller's cancellation token.
 
 ### DatabaseCache
 
@@ -30,7 +52,12 @@ Low-level cache wrapper around `IMemoryCache`. Key behaviors:
 
 **File**: `PxApi/Caching/MetaCacheContainer.cs`
 
-Tracks relationships between metadata entries and their dependent data entries. When metadata is evicted from cache, all related data cache entries are also removed. This ensures data cache entries never outlive their metadata.
+Tracks relationships between metadata entries and their dependent data containers by
+container identity. When metadata is evicted, cleanup removes only data belonging
+to that metadata generation. Exact and superset reads resolve the current metadata
+generation first and revalidate the metadata-container identity after looking up
+data. If metadata was removed or replaced before that final check, the lookup
+returns a miss even if the old data's eviction callback has not run yet.
 
 ### DataCacheContainer
 
@@ -46,7 +73,18 @@ Generic wrapper used to store cached items with metadata needed for cache manage
 
 ## Cache Key Structure
 
-Cache keys combine the database ID, file ID, and entity type. The `DatabaseCache` class manages key construction internally.
+Data cache keys are composite values containing the data-entry discriminator,
+the full `PxFileRef` (database, file ID, and hierarchy), an opaque identity token
+owned by the metadata container, and the existing matrix-map hash. File and
+generation identities are retained for equality comparison, rather than reduced
+to an integer hash. Exact reads, superset reads, submap eviction, metadata eviction,
+and failed-load cleanup use the same table- and generation-scoped key construction.
+
+Identical selections in different tables therefore cannot share data entries or
+evict one another's data. The selection is still represented by a hash, so
+selection-hash collisions within one table and generation remain possible. Other
+cache categories retain their existing keys. `DatabaseCache` manages key
+construction internally.
 
 ## TTL Configuration
 
@@ -60,14 +98,90 @@ Global cache capacity is set via `MemoryCacheConfig.MaxSizeBytes`.
 
 ## Cache Invalidation
 
-Two explicit invalidation paths via `CacheController`:
+Three explicit invalidation paths via `CacheController`:
 
-1. **Single table**: `ClearTableCache(dbRef, fileRef)` — Removes metadata, data, and last-updated timestamp for one table
-2. **Entire database**: `ClearDatabaseCacheAsync(dbRef)` — Iterates all files in the database and clears metadata, data, last-updated, file-list, and database-name caches
+1. **Single table**: `ClearTableCache(fileRef)` — Removes metadata, data, and source version for one table
+2. **Table list only**: `ClearTableListCache(dbRef)` - Removes only the cached file list. The next lookup rebuilds it; table content and database-name caches remain unchanged.
+3. **Entire database**: `ClearDatabaseCacheAsync(dbRef)` — Iterates all files in the database and clears metadata, data, source-version, file-list, and database-name caches
 
-Both are exposed as `DELETE` endpoints on `CacheController` (requires feature flag `CacheController = true`).
+All are exposed as `DELETE` endpoints on `CacheController` (requires feature flag `CacheController = true`) and affect only the current API instance.
+
+Data writes carry the metadata-container reference used for the source read.
+If the related metadata entry is missing or is a different container when
+`SetData` checks the cache, data caching is skipped before any submap eviction
+or relationship changes and reported through the optional cache observer. On tracked requests,
+the completion event includes `data_cache_write_skipped=true`; no separate
+cache diagnostic is emitted. The in-flight request still awaits
+the source read and returns its result; source errors and cancellation still
+propagate normally.
 
 ## Concurrency
+
+Submap filtering is materialized under the related-map list's lock, so callers
+receive a snapshot rather than enumerating a list that eviction callbacks can modify.
+
+Every metadata container has a distinct generation identity, even when its
+metadata has the same shape or uses the same metadata task as its predecessor.
+Numeric-only revisions therefore receive the same isolation as shape-changing
+releases when metadata is replaced or cleared.
+
+Data publication, related-container registration, failure cleanup, and metadata
+eviction cleanup share the metadata container's lock. Registration happens before
+publication so immediate data eviction cannot leave an untracked registration.
+Eviction unregisters only the specific data container, not all entries with an
+identical map; a delayed callback from a replaced entry cannot unregister its
+replacement.
+
+Metadata can still be removed or replaced after the reference check. Such a writer
+can publish only under its old generation's key, which new lookups cannot read.
+The old metadata's eviction callback waits for publication to leave the generation
+lock and then removes that generation's related data. Delayed cleanup never removes
+the replacement generation's data. No storage reads or task waits occur under this
+lock.
+
+Requests whose data lookup passed the final metadata identity check can still
+complete with that result if metadata changes afterward. This is cache lifecycle
+isolation, not an atomic metadata/data snapshot for an entire HTTP response or for
+independently changing source files. It does not enforce generation ordering by
+request arrival or response completion.
+
+### Request diagnostics
+
+Tracked query requests expose `DataCacheOutcome` (`exact_hit`, `superset_hit`,
+`miss`, `not_used`, or `unknown`) and thread-safe metadata/file-list hit/miss
+counters on their single completion event. Counters measure internal lookup
+work, not users, requested tables, or metadata endpoint requests. The first
+lookup initializes both hit/miss counters; untouched cache categories remain
+absent. Search enrichment can accumulate counters concurrently. Cache hits do
+not imply a successfully written response.
+`data_cache_write_skipped=true` is present only when a data-cache write was
+skipped because its metadata entry was missing or had been replaced. This does not change the
+lookup outcome (`miss`) or indicate a failed response.
+
+[CachedDataSource](../../PxApi/Caching/CachedDataSource.cs) reports actual lookup
+decisions and [DatabaseCache](../../PxApi/Caching/DatabaseCache.cs) reports skipped
+data-cache writes through the optional, transport-neutral
+[ICacheObserver](../../PxApi/Caching/ICacheObserver.cs). It does not depend on
+`HttpContext`, `IHttpContextAccessor`, or `QueryObservation`. Manual/background
+callers can omit the observer without changing cache behavior.
+
+The composition root registers
+[HttpCacheObserver](../../PxApi/Services/HttpCacheObserver.cs) as a stateless
+singleton adapter. Only this adapter accesses the current HTTP feature, resolving
+it on each call rather than retaining request state. It forwards decisions to
+`QueryObservation` when a tracked request exists and otherwise does nothing.
+Background cache operations and infrastructure endpoints emit no user completions.
+
+Cache lifetimes, loading and superset slicing are unchanged by request diagnostics.
+Cache validity uses the source-version equality and revalidation interval described
+above.
+Routine hit/miss Debug messages are no longer emitted by `CachedDataSource`,
+which has no logger dependency. Lookup outcomes are reported only through the
+observer; without an observer, including untracked/background work using the
+HTTP adapter, there are no routine outcome logs. Detailed failure diagnostics
+remain at the connector and request-handling boundaries. Canonical user demand
+belongs to the controller's completion fields, not each enriched table's cache
+work.
 
 The `Task<T>` storage pattern in `DatabaseCache` prevents cache stampede. When multiple concurrent requests hit the same cache miss, only one request triggers the actual data fetch. All other requests await the same `Task<T>`, sharing the result.
 

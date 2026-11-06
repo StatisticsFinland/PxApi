@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PxApi.Filters;
+using PxApi.Services;
 
 namespace PxApi.UnitTests.Filters
 {
@@ -73,7 +75,7 @@ namespace PxApi.UnitTests.Filters
         }
 
         [Test]
-        public void OnException_WithOperationCanceledException_LogsDebug()
+        public void OnException_UntrackedOperationCanceledException_LogsDebug()
         {
             // Arrange
             ExceptionContext context = CreateExceptionContext(new OperationCanceledException());
@@ -90,6 +92,25 @@ namespace PxApi.UnitTests.Filters
                     It.IsAny<Exception?>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void OnException_TrackedCancellation_Returns499WithoutDebug(bool taskCancelled)
+        {
+            Exception exception = taskCancelled ? new TaskCanceledException() : new OperationCanceledException();
+            ExceptionContext context = CreateExceptionContext(exception);
+            context.HttpContext.Features.Set(new QueryObservation(new ConfigurationBuilder().Build()));
+
+            _filter.OnException(context);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(context.ExceptionHandled, Is.True);
+                Assert.That(context.Result, Is.InstanceOf<StatusCodeResult>());
+                Assert.That(((StatusCodeResult)context.Result!).StatusCode, Is.EqualTo(499));
+            }
+            _mockLogger.VerifyNoOtherCalls();
         }
 
         [Test]

@@ -29,12 +29,15 @@ namespace PxApi.DataSources
         public Task<PxFileRef[]> GetAllFilesAsync(CancellationToken ct = default);
 
         /// <summary>
-        /// Gets the last write time of a Px file.
+        /// Gets an opaque version of the source state tracked by this connector for cache revalidation.
+        /// Versions are compared only for equality: a changed version indicates that cached content should be refreshed.
+        /// A connector may track only part of a dataset's storage, so changes outside that state may not change the version.
+        /// Reading the version should be much cheaper than reading the metadata.
         /// </summary>
         /// <param name="file"><see cref="PxFileRef"/> reference to the Px file.</param>
         /// <param name="ct">Cancellation token.</param>
-        /// <returns>A task that resolves to the last write time of the file.</returns>
-        public Task<DateTime> GetLastWriteTimeAsync(PxFileRef file, CancellationToken ct = default);
+        /// <returns>A task that resolves to the current source version of the file.</returns>
+        public Task<string> GetSourceVersionAsync(PxFileRef file, CancellationToken ct = default);
 
         /// <summary>
         /// Reads metadata of a Px file.

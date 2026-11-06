@@ -23,7 +23,11 @@ namespace PxApi.Authentication
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             ILogger<ApiKeyAuthAttribute> logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<ApiKeyAuthAttribute>>();
-            
+            if (IsAuthorized(context, logger)) await next();
+        }
+
+        private static bool IsAuthorized(ActionExecutingContext context, ILogger<ApiKeyAuthAttribute> logger)
+        {
             using (logger.BeginScope(new Dictionary<string, object>
             {
                 { LoggerConsts.CONTROLLER, nameof(ApiKeyAuthAttribute) },
@@ -33,26 +37,22 @@ namespace PxApi.Authentication
                 // Check if authentication is configured
                 if (!AppSettings.Active.Authentication.IsEnabled)
                 {
-                    logger.LogDebug("Authentication is not configured, allowing request to proceed");
-                    await next();
-                    return;
+                    return true;
                 }
 
                 // Determine which controller is being called and get the appropriate config
                 ApiKeyConfig? apiKeyConfig = GetApiKeyConfigForController(context);
                 if (apiKeyConfig is null || !apiKeyConfig.IsEnabled)
                 {
-                    logger.LogDebug("API key authentication is not enabled for this controller, allowing request to proceed");
-                    await next();
-                    return;
+                    return true;
                 }
 
                 // Extract API key from request headers
                 if (!context.HttpContext.Request.Headers.TryGetValue(apiKeyConfig.HeaderName, out Microsoft.Extensions.Primitives.StringValues potentialApiKey))
                 {
-                    logger.LogWarning("API key authentication failed: Missing {HeaderName} header", apiKeyConfig.HeaderName);
+                    logger.LogWarning("API key authentication failed: Missing {header_name} header", apiKeyConfig.HeaderName);
                     context.Result = new UnauthorizedObjectResult(new { message = $"Missing {apiKeyConfig.HeaderName} header" });
-                    return;
+                    return false;
                 }
 
                 string providedKey = potentialApiKey.ToString();
@@ -60,7 +60,7 @@ namespace PxApi.Authentication
                 {
                     logger.LogWarning("API key authentication failed: Empty API key provided");
                     context.Result = new UnauthorizedObjectResult(new { message = "Invalid API key" });
-                    return;
+                    return false;
                 }
 
                 // Compare provided key using constant-time comparison to prevent timing attacks
@@ -70,11 +70,11 @@ namespace PxApi.Authentication
                 {
                     logger.LogWarning("API key authentication failed: Invalid API key provided");
                     context.Result = new UnauthorizedObjectResult(new { message = "Invalid API key" });
-                    return;
+                    return false;
                 }
                 
                 logger.LogDebug("API key authentication successful");
-                await next();
+                return true;
             }
         }
         

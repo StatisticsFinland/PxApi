@@ -21,7 +21,7 @@ namespace PxApi.Configuration
         public CacheConfig Data { get; }
 
         /// <summary>
-        /// Configuration for modified time caching.
+        /// Configuration for source-version revalidation.
         /// </summary>
         public int? RevalidationIntervalMs { get; }
 

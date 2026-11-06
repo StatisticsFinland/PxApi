@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging.ApplicationInsights;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using OpenTelemetry.Logs;
 using Microsoft.FeatureManagement;
 using Microsoft.OpenApi;
 using NLog;
 using NLog.Web;
+using NLog.Extensions.Logging;
 using PxApi.Caching;
 using PxApi.Configuration;
 using PxApi.DataSources;
@@ -26,105 +29,25 @@ namespace PxApi
     /// Main entry point of the application.
     /// </summary>
     [ExcludeFromCodeCoverage(Justification = "No meaningful logic to test in Main.")]
-    public static class Program
+    public sealed class Program
     {
+        private Program() { }
+
         /// <summary>
         /// Main entry point of the application.
         /// </summary>
-        public static async Task Main()
+        public static async Task Main(string[] args)
         {
-            // Create the web application builder first so that configuration (including environment specific files)
-            // is available to NLog configuration variable resolution (${configsetting:...}).
-            WebApplicationBuilder builder = WebApplication.CreateBuilder();
-
-            // Explicitly access configuration to force load (appsettings.json + appsettings.{Environment}.json already added by CreateBuilder).
-            // Load strongly typed AppSettings from the aggregated configuration.
-            AppSettings.Load(builder.Configuration);
-
-            // Configure NLog integration AFTER configuration is available and folder exists.
-            builder.Logging.ClearProviders();
-            builder.Host.UseNLog();
-
             Logger logger = LogManager.GetCurrentClassLogger();
             try
             {
-                logger.Debug("Main called and logger initialized. Environment={Environment} AuditEnabled={AuditEnabled}",
-                    builder.Environment.EnvironmentName,
-                    builder.Configuration.GetValue<bool>("LogOptions:AuditLog:Enabled"));
-
-                // Configure Application Insights if connection string is available
-                ApplicationInsightsConfig aiConfig = AppSettings.Active.ApplicationInsights;
-                if (aiConfig.IsEnabled)
-                {
-                    // Add Application Insights telemetry
-                    builder.Services.AddApplicationInsightsTelemetry();
-
-                    // Remove the default Application Insights logger filter rule to allow
-                    // the log level to be controlled via the Logging:ApplicationInsights:LogLevel configuration section
-                    builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
-                    {
-                        LoggerFilterRule? defaultRule = options.Rules.FirstOrDefault(rule => rule.ProviderName
-                            == nameof(ApplicationInsightsLoggerProvider));
-                        if (defaultRule is not null)
-                        {
-                            options.Rules.Remove(defaultRule);
-                        }
-                    });
-                }
-
-                // Add services to the container.
-                AddServices(builder.Services);
-
-                // Configure CORS if allowed origins are specified
-                CorsConfig corsConfig = AppSettings.Active.Cors;
-                if (corsConfig.HasAllowedOrigins)
-                {
-                    builder.Services.AddCors(options =>
-                    {
-                        options.AddDefaultPolicy(policy =>
-                        {
-                            policy.WithOrigins([.. corsConfig.AllowedOrigins])
-                                  .AllowAnyHeader()
-                                  .AllowAnyMethod();
-                        });
-                    });
-                }
-
-                WebApplication app = builder.Build();
-
-                // Configure the HTTP request pipeline.
-                app.UseSwagger(c =>
-                {
-                    c.RouteTemplate = "/{documentName}/document.json";
-                });
-                app.UseSwaggerUI(c =>
-                {
-                    c.SwaggerEndpoint("openapi/document.json", "PxApi");
-                    app.Logger.LogInformation("Swagger UI configured with server {RootUrl}", AppSettings.Active.RootUrl);
-                    c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
-                });
-
-                app.UseExceptionHandler("/error");
-
-                app.UseHttpsRedirection();
-
-                if (corsConfig.HasAllowedOrigins)
-                {
-                    app.UseCors();
-                }
-
-                app.UseAuthorization();
-
-                app.MapControllers();
-
-                logger.Info("Now listening on: {RootUrl}", AppSettings.Active.RootUrl);
-
-                await app.RunAsync();
+                using IHost host = CreateHostBuilder(args).Build();
+                await host.RunAsync();
             }
             catch (Exception ex)
             {
                 logger.Error(ex, "Stopped program because of exception");
-                Environment.ExitCode = 1; // Non-zero exit code indicates failure
+                Environment.ExitCode = 1;
             }
             finally
             {
@@ -132,8 +55,98 @@ namespace PxApi
             }
         }
 
-        [ExcludeFromCodeCoverage] // Not worth it to make public for testing.
-        private static void AddServices(IServiceCollection serviceCollection)
+        /// <summary>
+        /// Creates the application host, allowing tests to replace configuration before services are registered.
+        /// </summary>
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureLogging(logging => logging.ClearProviders())
+                .UseNLog(new NLogAspNetCoreOptions { CaptureEventId = EventIdCaptureType.None })
+                .ConfigureWebHostDefaults(webBuilder => webBuilder
+                    .ConfigureServices((context, services) =>
+                    {
+                        AppSettings.Load(context.Configuration);
+                        services.AddLogging(logging => AddApplicationInsights(logging, AppSettings.Active.ApplicationInsights));
+                        AddServices(services);
+                        CorsConfig corsConfig = AppSettings.Active.Cors;
+                        if (corsConfig.HasAllowedOrigins)
+                        {
+                            services.AddCors(options => options.AddDefaultPolicy(policy =>
+                                policy.WithOrigins([.. corsConfig.AllowedOrigins])
+                                    .AllowAnyHeader()
+                                    .AllowAnyMethod()));
+                        }
+                    })
+                    .Configure(ConfigureApplication));
+
+        private static void ConfigureApplication(IApplicationBuilder app)
+        {
+            ConfigureStartupLogging(app.ApplicationServices);
+
+            app.UseSwagger(c =>
+            {
+                c.RouteTemplate = "/{documentName}/document.json";
+            });
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("openapi/document.json", "PxApi");
+                c.RoutePrefix = string.Empty;
+            });
+
+            app.UseRouting();
+            app.UseMiddleware<QueryCompletionMiddleware>();
+            app.UseExceptionHandler("/error");
+            app.UseHttpsRedirection();
+
+            if (AppSettings.Active.Cors.HasAllowedOrigins)
+            {
+                app.UseCors();
+            }
+
+            app.UseAuthorization();
+            app.UseEndpoints(endpoints => endpoints.MapControllers());
+        }
+
+        internal static void ConfigureStartupLogging(IServiceProvider services)
+        {
+            IHostApplicationLifetime lifetime = services.GetRequiredService<IHostApplicationLifetime>();
+            ILogger<Program> logger = services.GetRequiredService<ILogger<Program>>();
+            lifetime.ApplicationStarted.Register(() =>
+            {
+                IServer server = services.GetRequiredService<IServer>();
+                foreach (string address in server.Features.Get<IServerAddressesFeature>()?.Addresses ?? [])
+                {
+                    logger.LogInformation("Now listening on: {listening_url}", address);
+                }
+
+                IHostEnvironment environment = services.GetRequiredService<IHostEnvironment>();
+                logger.LogInformation("Application started. Hosting environment: {environment}", environment.EnvironmentName);
+            });
+        }
+
+        internal static void AddApplicationInsights(ILoggingBuilder logging, ApplicationInsightsConfig configuration)
+        {
+            if (!configuration.IsEnabled) return;
+
+            logging.Services.AddApplicationInsightsTelemetry(options =>
+            {
+                options.ConnectionString = configuration.ConnectionString;
+                options.SamplingRatio = configuration.SamplingRatio;
+                options.EnableTraceBasedLogsSampler = configuration.EnableTraceBasedLogsSampler;
+            });
+            if (!configuration.IncludeAuditLogs)
+                logging.AddFilter<OpenTelemetryLoggerProvider>(typeof(AuditLogService).FullName, Microsoft.Extensions.Logging.LogLevel.None);
+            logging.Services.Configure<OpenTelemetryLoggerOptions>(options => options.IncludeScopes = true);
+            logging.Services.Configure<LoggerFilterOptions>(options =>
+            {
+                LoggerFilterRule? defaultRule = options.Rules.FirstOrDefault(rule => rule.CategoryName is null &&
+                    (rule.ProviderName == typeof(OpenTelemetryLoggerProvider).FullName || rule.ProviderName == nameof(OpenTelemetryLoggerProvider)));
+                if (defaultRule is not null) options.Rules.Remove(defaultRule);
+            });
+        }
+
+        [ExcludeFromCodeCoverage]
+        internal static void AddServices(IServiceCollection serviceCollection)
         {
             // Add feature management first and API explorer conventions to control Swagger visibility
             serviceCollection.AddFeatureManagement();
@@ -142,6 +155,7 @@ namespace PxApi
             {
                 options.Filters.Add<LoggingScopeActionFilter>();
                 options.Filters.Add<OperationCanceledExceptionFilter>();
+                options.Filters.Add<QueryResponseExecutionFilter>();
                 options.Conventions.Add(new ApiExplorerConventionsFactory());
             })
             .AddJsonOptions(options =>
@@ -182,7 +196,7 @@ namespace PxApi
                         Url = openApiConfig.ContactUrl,
                         Email = openApiConfig.ContactEmail
                     },
-                    License = new OpenApiLicense
+                    License = string.IsNullOrWhiteSpace(openApiConfig.LicenseName) ? null : new OpenApiLicense
                     {
                         Name = openApiConfig.LicenseName,
                         Url = openApiConfig.LicenseUrl
@@ -256,6 +270,7 @@ namespace PxApi
 
             // Register HttpContextAccessor and audit logging service
             serviceCollection.AddHttpContextAccessor();
+            serviceCollection.AddSingleton<ICacheObserver, HttpCacheObserver>();
             serviceCollection.AddScoped<IAuditLogService, AuditLogService>();
 
             // Register search service: use Elasticsearch when the feature is enabled,

@@ -8,15 +8,28 @@ namespace PxApi.Caching
     /// Container for matrix metadata with tracking of related cached data containers.
     /// Provides coordination between metadata and its associated data containers in the cache.
     /// </summary>
-    public class MetaCacheContainer(Task<IReadOnlyMatrixMetadata> meta) : CacheContainer
+    /// <param name="meta">Task producing the matrix metadata.</param>
+    /// <param name="sourceVersion">The source version observed before the metadata was read, or null when revalidation is disabled.</param>
+    public class MetaCacheContainer(Task<IReadOnlyMatrixMetadata> meta, string? sourceVersion = null) : CacheContainer
     {
         /// <summary>
         /// Gets the metadata for the matrix.
         /// </summary>
         public Task<IReadOnlyMatrixMetadata> Metadata { get; private init; } = meta;
 
-        private readonly Lock _listAccessLock = new();
-        private readonly List<IMatrixMap> _relatedCachedData = [];
+        /// <summary>
+        /// Gets the source version observed before the metadata was read.
+        /// The entry is stale when the source reports a different version. Versions are opaque and compared for equality only.
+        /// </summary>
+        public string? SourceVersion { get; } = sourceVersion;
+
+        internal object Generation { get; } = new();
+
+        internal Lock DataAccessLock { get; } = new();
+
+        // The non-generic base allows keys for DataCacheContainer<TData> instances of any data type.
+        // Track by container identity so delayed eviction cannot unregister a replacement with the same map.
+        private readonly Dictionary<CacheContainer, IMatrixMap> _relatedCachedData = new(ReferenceEqualityComparer.Instance);
 
         /// <summary>
         /// Checks if the collection of related maps contains a map identical to the provided map.
@@ -25,9 +38,9 @@ namespace PxApi.Caching
         /// <returns>True if an identical map exists in the related maps; otherwise, false.</returns>
         public bool HasIdenticalMap(IMatrixMap map)
         {
-            lock (_listAccessLock)
+            lock (DataAccessLock)
             {
-                return _relatedCachedData.Any(m => m.IsIdenticalMapTo(map));
+                return _relatedCachedData.Values.Any(m => m.IsIdenticalMapTo(map));
             }
         }
 
@@ -39,9 +52,9 @@ namespace PxApi.Caching
         /// <returns>True if a superset map was found; otherwise, false.</returns>
         public bool TryGetSuperMap(IMatrixMap map, [NotNullWhen(true)] out IMatrixMap? super)
         {
-            lock (_listAccessLock)
+            lock (DataAccessLock)
             {
-                foreach (IMatrixMap related in _relatedCachedData)
+                foreach (IMatrixMap related in _relatedCachedData.Values)
                 {
                     if (related.IsSupermapOf(map))
                     {
@@ -55,15 +68,15 @@ namespace PxApi.Caching
         }
 
         /// <summary>
-        /// Gets all related maps that are submaps of the provided map.
+        /// Gets a snapshot of all related maps that are submaps of the provided map.
         /// </summary>
         /// <param name="map">The matrix map to find submaps for.</param>
         /// <returns>A collection of matrix maps that are submaps of the provided map.</returns>
         public IEnumerable<IMatrixMap> GetSubMaps(IMatrixMap map)
         {
-            lock (_listAccessLock)
+            lock (DataAccessLock)
             {
-                return _relatedCachedData.Where(m => m.IsSubmapOf(map));
+                return [.._relatedCachedData.Values.Where(m => m.IsSubmapOf(map))];
             }
         }
 
@@ -73,10 +86,10 @@ namespace PxApi.Caching
         /// <returns>A list containing copies of all related matrix maps.</returns>
         public List<IMatrixMap> GetRelatedMaps()
         {
-            lock (_listAccessLock)
+            lock (DataAccessLock)
             {
                 // Return a shallow copy to avoid external modifications or read/write conflicts
-                return [.. _relatedCachedData];
+                return [.. _relatedCachedData.Values];
             }
         }
 
@@ -87,10 +100,12 @@ namespace PxApi.Caching
         /// <param name="container">The data container to track.</param>
         public void AddDataContainer<TData>(DataCacheContainer<TData> container)
         {
-            container.EvictedFromCache += TryRemoveDataContainer;
-            lock (_listAccessLock)
+            lock (DataAccessLock)
             {
-                _relatedCachedData.Add(container.Map);
+                if (_relatedCachedData.TryAdd(container, container.Map))
+                {
+                    container.EvictedFromCache += TryRemoveDataContainer;
+                }
             }
         }
 
@@ -101,10 +116,10 @@ namespace PxApi.Caching
         /// <param name="container">The data container to remove.</param>
         public void TryRemoveDataContainer<TData>(DataCacheContainer<TData> container)
         {
-            container.EvictedFromCache -= TryRemoveDataContainer;
-            lock (_listAccessLock)
+            lock (DataAccessLock)
             {
-                _relatedCachedData.RemoveAll(m => m.IsIdenticalMapTo(container.Map));
+                container.EvictedFromCache -= TryRemoveDataContainer;
+                _relatedCachedData.Remove(container);
             }
         }
     }

@@ -69,12 +69,12 @@ Content negotiation is handled by `ContentNegotiation` utility class.
 ### CacheController
 
 **File**: `PxApi/Controllers/CacheController.cs`
-**Route**: `/cache/databases/{database}` and `/cache/databases/{database}/tables/{id}`
+**Routes**: `/cache/databases/{database}`, `/cache/databases/{database}/tables`, and `/cache/databases/{database}/tables/{id}`
 **Methods**: DELETE
 **Auth header**: `X-Cache-API-Key`
 **Feature flag**: `CacheController` must be `true` in `FeatureManagement`
 
-Clears cache entries for a single table or entire database. Hidden from OpenAPI spec via `ApiExplorerConventions`.
+Clears cache entries for a single table, the table list only, or an entire database. Clearing the table list leaves content caches unchanged; the next lookup rebuilds the list. Hidden from OpenAPI spec via `ApiExplorerConventions`.
 
 ### HealthController
 

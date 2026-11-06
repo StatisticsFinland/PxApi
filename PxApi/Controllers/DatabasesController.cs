@@ -91,7 +91,7 @@ namespace PxApi.Controllers
                 result.Add(item);
             }
 
-            logger.LogInformation("Database listing returned {DatabaseCount} items.", result.Count);
+            logger.LogInformation("Database listing returned {database_count} items.", result.Count);
             return Ok(result);
         }
 

@@ -88,7 +88,7 @@ namespace PxApi.DataSources
                     }
                 }
 
-                Logger.LogDebug("Found {Count} PX files.", files.Count);
+                Logger.LogDebug("Found {count} PX files.", files.Count);
                 return [.. files];
             }
         }
@@ -123,8 +123,7 @@ namespace PxApi.DataSources
                 BlobClient blob = containerClient.GetBlobClient(blobName);
                 if (!await blob.ExistsAsync(ct))
                 {
-                    Logger.LogWarning("Aux file {AuxFile} not found", blobName);
-                    throw new FileNotFoundException("Auxiliary file not found", blobName);
+                    throw new FileNotFoundException($"Auxiliary file not found in database {DataBase.Id}, blob storage container {ContainerName}.", blobName);
                 }
                 return await blob.OpenReadAsync(cancellationToken: ct);
             }
@@ -150,7 +149,7 @@ namespace PxApi.DataSources
                     [LoggerConsts.CONTAINER_NAME] = ContainerName
                 }))
             {
-                Logger.LogDebug("Reading PX file {FileId} from blob storage", file.Id);
+                Logger.LogDebug("Reading PX file {file_id} from blob storage", file.Id);
 
                 if (file.DataBase.Id != DataBase.Id)
                 {
@@ -164,8 +163,7 @@ namespace PxApi.DataSources
 
                 if (!await blobClient.ExistsAsync(ct))
                 {
-                    Logger.LogError("PX file {FileId} not found in blob storage path {Path}", file.Id, blobPath);
-                    throw new FileNotFoundException($"File {file.Id} not found in blob storage path {blobPath}.");
+                    throw new FileNotFoundException($"File {file.Id} not found in database {DataBase.Id}, blob storage container {ContainerName}, path {blobPath}.");
                 }
                 return await blobClient.OpenReadAsync(cancellationToken: ct);
             }

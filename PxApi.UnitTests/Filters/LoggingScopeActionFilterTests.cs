@@ -131,7 +131,7 @@ namespace PxApi.UnitTests.Filters
             await _filter.OnActionExecutionAsync(executingContext, next);
 
             // Assert
-            Assert.That(capturedScope![LoggerConsts.ACTION], Is.EqualTo("Unknown"));
+            Assert.That(capturedScope![LoggerConsts.ACTION], Is.EqualTo("unknown"));
         }
 
         private sealed class TestController : ControllerBase { }

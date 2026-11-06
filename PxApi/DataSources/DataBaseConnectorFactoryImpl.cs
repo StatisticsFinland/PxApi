@@ -25,14 +25,12 @@ namespace PxApi.DataSources
                     [LoggerConsts.FUNCTION] = nameof(GetConnector)
                 }))
             {
-                _logger.LogDebug("Getting database connector for database {DatabaseId}", database.Id);
                 try
                 {
                     return _serviceProvider.GetRequiredKeyedService<IDataBaseConnector>(database.Id);
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "Database connector not found for database {DatabaseId}", database.Id);
                     throw new InvalidOperationException($"Database connector not found for database {database.Id}", ex);
                 }
             }
@@ -48,8 +46,6 @@ namespace PxApi.DataSources
                     [LoggerConsts.FUNCTION] = nameof(GetAvailableDatabases)
                 }))
             {
-                _logger.LogDebug("Getting list of all available databases");
-
                 List<DataBaseRef> databases = [];
 
                 foreach (DataBaseConfig dbConfig in AppSettings.Active.DataBases)
@@ -58,7 +54,6 @@ namespace PxApi.DataSources
                     databases.Add(database);
                 }
 
-                _logger.LogDebug("Found {DatabaseCount} available databases", databases.Count);
                 return databases;
             }
         }

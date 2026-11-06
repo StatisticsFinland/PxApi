@@ -52,18 +52,31 @@ namespace PxApi.Controllers
             [FromQuery][Range(1, 100)] int pageSize = 50,
             CancellationToken ct = default)
         {
-            if (page < 1 || pageSize < 1) return BadRequest("Invalid paging values.");
+            QueryObservation? observation = QueryObservation.Get(HttpContext);
+            observation?.Set(LoggerConsts.Query.Fields.Page, page);
+            if (page < 1 || pageSize < 1)
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidPaging);
+                return BadRequest("Invalid paging values.");
+            }
             if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
+            observation?.Set(LoggerConsts.Query.Fields.PageSize, pageSize);
 
             AppSettings settings = AppSettings.Active;
             string actualLang = lang ?? settings.Localization.DefaultLanguage;
-            if (!settings.Localization.SupportedLanguages.Contains(actualLang)) return BadRequest("The requested language is not supported.");
+            if (!settings.Localization.SupportedLanguages.Contains(actualLang))
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidLanguage);
+                return BadRequest("The requested language is not supported.");
+            }
+            observation?.Set(LoggerConsts.Query.Fields.Language, actualLang);
 
             try
             {
                 DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
                 if (dataBaseRef is null)
                 {
+                    observation?.Reject(LoggerConsts.Query.ErrorCode.DatabaseNotFound);
                     using (logger.BeginDbNotFoundScope())
                     {
                         auditLogger.LogAuditEvent();
@@ -71,11 +84,13 @@ namespace PxApi.Controllers
                     return NotFound("Database not found.");
                 }
 
+                observation?.Set(LoggerConsts.Query.Fields.DatabaseId, dataBaseRef.Value.Id);
                 using (logger.BeginDbScope(dataBaseRef.Value.Id))
                 {
                     auditLogger.LogAuditEvent();
 
                     ImmutableSortedDictionary<string, PxFileRef> tableList = await cachedConnector.GetFileListCachedAsync(dataBaseRef.Value, ct);
+                    observation?.Set(LoggerConsts.Query.Fields.TotalTables, tableList.Count);
                     PagedTableList pagedTableList = new()
                     {
                         Tables = [],
@@ -89,6 +104,7 @@ namespace PxApi.Controllers
 
                     int startIndex = pageSize * (page - 1);
                     int endExclusive = pageSize * page;
+                    List<string> returnedIds = [];
                     for (int i = startIndex; i < endExclusive; i++)
                     {
                         if (i >= tableList.Count) break;
@@ -103,21 +119,26 @@ namespace PxApi.Controllers
                                 .AddRelativePath("meta", "databases", dataBaseRef.Value.Id, "tables", table.Key)
                                 .AddQueryParameters(("lang", actualLang));
                             pagedTableList.Tables.Add(BuildTableListingItem(summary, fileUri));
+                            if (observation?.CaptureResultIds == true) returnedIds.Add(table.Value.Id);
 
                         }
                         catch (Exception idReadEx) when (idReadEx is not OperationCanceledException)
                         {
-                            logger.LogError(idReadEx, "Failed to build listing summary for table {Table}", table.Key);
+                            observation?.Reject(LoggerConsts.Query.ErrorCode.MetadataUnavailable);
+                            logger.LogError(idReadEx, "Failed to build listing summary for table {table}", table.Key);
                             return StatusCode(StatusCodes.Status500InternalServerError, "A table on the requested page could not be loaded.");
                         }
                     }
 
-                    logger.LogInformation("Tables listing returned {ReturnedTables} table summaries.", pagedTableList.Tables.Count);
+                    observation?.Set(LoggerConsts.Query.Fields.ReturnedTables, pagedTableList.Tables.Count);
+                    observation?.Set(LoggerConsts.Query.Fields.Format, "application/json");
+                    observation?.ResultIds(LoggerConsts.Query.Fields.ReturnedTableIds, returnedIds);
                     return Ok(pagedTableList);
                 }
             }
             catch (DirectoryNotFoundException dnfe)
             {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.DatabaseNotFound);
                 logger.LogInformation(dnfe, "Failed to get tables for database.");
                 return NotFound("Database not found.");
             }
@@ -139,10 +160,18 @@ namespace PxApi.Controllers
         [ProducesResponseType(404)]
         public IActionResult HeadTablesAsync(string database, int page = 1, int pageSize = 50)
         {
-            if (page < 1 || pageSize < 1 || pageSize > MAX_PAGE_SIZE) return BadRequest();
+            QueryObservation? observation = QueryObservation.Get(HttpContext);
+            observation?.Set(LoggerConsts.Query.Fields.Page, page);
+            observation?.Set(LoggerConsts.Query.Fields.PageSize, pageSize);
+            if (page < 1 || pageSize < 1 || pageSize > MAX_PAGE_SIZE)
+            {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.InvalidPaging);
+                return BadRequest();
+            }
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
             if (dataBaseRef is null)
             {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.DatabaseNotFound);
                 using (logger.BeginDbNotFoundScope())
                 {
                     auditLogger.LogAuditEvent();
@@ -150,6 +179,7 @@ namespace PxApi.Controllers
                 }
             }
 
+            observation?.Set(LoggerConsts.Query.Fields.DatabaseId, dataBaseRef.Value.Id);
             using (logger.BeginDbScope(dataBaseRef.Value.Id))
             {
                 // Audit successful HEAD validation.
@@ -172,9 +202,11 @@ namespace PxApi.Controllers
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Needs to match route signature.")]
         public IActionResult OptionsTables(string database)
         {
+            QueryObservation? observation = QueryObservation.Get(HttpContext);
             DataBaseRef? dataBaseRef = cachedConnector.GetDataBaseReference(database);
             if (dataBaseRef is null)
             {
+                observation?.Reject(LoggerConsts.Query.ErrorCode.DatabaseNotFound);
                 using (logger.BeginDbNotFoundScope())
                 {
                     auditLogger.LogAuditEvent();
@@ -182,6 +214,7 @@ namespace PxApi.Controllers
                 return NotFound("Database not found.");
             }
 
+            observation?.Set(LoggerConsts.Query.Fields.DatabaseId, dataBaseRef.Value.Id);
             using (logger.BeginDbScope(dataBaseRef.Value.Id))
             {
                 const string methods = "GET,HEAD,OPTIONS";

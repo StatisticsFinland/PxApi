@@ -9,9 +9,9 @@ using System.Collections.Immutable;
 namespace PxApi.Caching
 {
     /// <summary>
-    /// Provides caching operations for matrix metadata and data containers.
+    /// Provides caching operations for matrix metadata and data containers, reporting skipped writes through an optional observer.
     /// </summary>
-    public class DatabaseCache(IMemoryCache memoryCache)
+    public class DatabaseCache(IMemoryCache memoryCache, ICacheObserver? cacheObserver = null)
     {
         private readonly Dictionary<string, DatabaseCacheConfig> cacheConfigs = 
             AppSettings.Active.DataBases.ToDictionary(
@@ -21,9 +21,10 @@ namespace PxApi.Caching
 
         private readonly MemoryCacheConfig memoryCacheConfig = AppSettings.Active.Cache;
         private readonly IMemoryCache _cache = memoryCache;
+        private readonly Lock[] _fileCacheLocks = [.. Enumerable.Range(0, 32).Select(_ => new Lock())];
 
         private const string FILE_LIST_SEED = "9afc7b09";
-        private const string LAST_UPDATED_SEED = "553313ea";
+        private const string SOURCE_VERSION_SEED = "553313ea";
         private const string META_SEED = "c4d8ee8f";
         private const string DATA_SEED = "398baf7d";
         private const string DATABASE_NAME_SEED = "1e4c2a77";
@@ -94,24 +95,24 @@ namespace PxApi.Caching
         }
 
         /// <summary>
-        /// Attempts to retrieve the last updated timestamp for the specified file from the cache.
+        /// Attempts to retrieve the last observed source version for the specified file from the cache.
         /// </summary>
-        /// <param name="file">The file for which the last updated timestamp is being retrieved. Cannot be null.</param>
-        /// <param name="lastUpdated">When this method returns, contains a <see cref="Task{DateTime}"/> representing the last updated timestamp 
+        /// <param name="file">The file for which the source version is being retrieved. Cannot be null.</param>
+        /// <param name="sourceVersion">When this method returns, contains a task resolving to the source version
         /// of the file if the operation succeeds; otherwise, <see langword="null"/>.</param>
-        /// <returns><see langword="true"/> if the last updated timestamp was successfully retrieved from the cache; otherwise,
+        /// <returns><see langword="true"/> if the source version was successfully retrieved from the cache; otherwise,
         /// <see langword="false"/>.</returns>
-        public bool TryGetLastUpdated(PxFileRef file, out Task<DateTime>? lastUpdated)
+        public bool TryGetSourceVersion(PxFileRef file, out Task<string>? sourceVersion)
         {
-            return _cache.TryGetValue(HashCode.Combine(LAST_UPDATED_SEED, file), out lastUpdated);
+            return _cache.TryGetValue(HashCode.Combine(SOURCE_VERSION_SEED, file), out sourceVersion);
         }
 
         /// <summary>
-        /// Updates the cache with the last updated timestamp for the specified file.
+        /// Updates the cache with the observed source version for the specified file.
         /// </summary>
-        /// <param name="file">The file for which the last updated timestamp is being set.</param>
-        /// <param name="lastUpdated">A task that resolves to the <see cref="DateTime"/> representing the last updated timestamp.</param>
-        public void SetLastUpdated(PxFileRef file, Task<DateTime> lastUpdated)
+        /// <param name="file">The file for which the source version is being set.</param>
+        /// <param name="sourceVersion">A task that resolves to the source version.</param>
+        public void SetSourceVersion(PxFileRef file, Task<string> sourceVersion)
         {   
             int revalidationIntervalMs = cacheConfigs[file.DataBase.Id].RevalidationIntervalMs
                 ?? throw new InvalidOperationException($"Trying to cache revalidation information for database {file.DataBase.Id} when it should be disabled.");
@@ -121,9 +122,30 @@ namespace PxApi.Caching
                 Size = memoryCacheConfig.DefaultUpdateTaskSize,
                 Priority = CacheItemPriority.Normal,
             };
-            int cacheKey = HashCode.Combine(LAST_UPDATED_SEED, file);
-            _cache.Set(cacheKey, lastUpdated, options);
-            AttachEvictionOnFail(lastUpdated, cacheKey);
+            int cacheKey = HashCode.Combine(SOURCE_VERSION_SEED, file);
+            _cache.Set(cacheKey, sourceVersion, options);
+            AttachEvictionOnFail(sourceVersion, cacheKey);
+        }
+
+        /// <summary>
+        /// Gets the cached source-version task or creates and caches one task for the file.
+        /// </summary>
+        /// <param name="file">The file whose source version is being retrieved.</param>
+        /// <param name="createSourceVersion">Starts the source-version read and returns its task without waiting for it.</param>
+        /// <returns>The shared task producing the source version.</returns>
+        public Task<string> GetOrSetSourceVersion(PxFileRef file, Func<Task<string>> createSourceVersion)
+        {
+            lock (_fileCacheLocks[(uint)file.GetHashCode() % (uint)_fileCacheLocks.Length])
+            {
+                if (TryGetSourceVersion(file, out Task<string>? existing) && existing is not null)
+                {
+                    return existing;
+                }
+
+                Task<string> sourceVersion = createSourceVersion();
+                SetSourceVersion(file, sourceVersion);
+                return sourceVersion;
+            }
         }
 
         /// <summary>
@@ -149,10 +171,34 @@ namespace PxApi.Caching
             };
 
             int cacheKey = HashCode.Combine(META_SEED, file);
-            options.RegisterPostEvictionCallback(OnMetaCacheEvicted);
+            options.RegisterPostEvictionCallback(OnMetaCacheEvicted, file);
 
             _cache.Set(cacheKey, metaContainer, options);
             AttachEvictionOnFail(metaContainer, metaContainer.Metadata, cacheKey);
+        }
+
+        /// <summary>
+        /// Returns the cached metadata container if it was loaded from the given source version; otherwise creates, caches and returns a new one.
+        /// The check and publication are atomic per file, so concurrent loads of the same source version share one container.
+        /// </summary>
+        /// <param name="file">The file whose metadata is requested.</param>
+        /// <param name="sourceVersion">The source version observed before reading, or null when revalidation is disabled.</param>
+        /// <param name="createContainer">Creates the container and starts the metadata read. Called at most once, inside the lock, so it must not block.</param>
+        public MetaCacheContainer GetOrSetMetadata(PxFileRef file, string? sourceVersion, Func<MetaCacheContainer> createContainer)
+        {
+            lock (_fileCacheLocks[(uint)file.GetHashCode() % (uint)_fileCacheLocks.Length])
+            {
+                if (TryGetMetadata(file, out MetaCacheContainer? existing) &&
+                    existing is not null &&
+                    string.Equals(existing.SourceVersion, sourceVersion, StringComparison.Ordinal))
+                {
+                    return existing;
+                }
+
+                MetaCacheContainer metaContainer = createContainer();
+                SetMetadata(file, metaContainer);
+                return metaContainer;
+            }
         }
 
         /// <summary>
@@ -167,11 +213,15 @@ namespace PxApi.Caching
         }
 
         /// <summary>
-        /// Attempts to retrieve cached data for the specified matrix map.
+        /// Attempts to retrieve cached data for the specified file and matrix map.
         /// </summary>
-        public bool TryGetData<TData>(IMatrixMap map, out Task<TData[]>? data, out DateTime? cached)
+        public bool TryGetData<TData>(PxFileRef file, IMatrixMap map, out Task<TData[]>? data, out DateTime? cached)
         {
-            if (_cache.TryGetValue(HashCode.Combine(DATA_SEED, MapHash(map)), out DataCacheContainer<TData>? dataContainer))
+            if (TryGetMetadata(file, out MetaCacheContainer? metaContainer) &&
+                metaContainer is not null &&
+                _cache.TryGetValue(GetDataCacheKey(file, metaContainer, map), out DataCacheContainer<TData>? dataContainer) &&
+                TryGetMetadata(file, out MetaCacheContainer? currentMetadata) &&
+                ReferenceEquals(currentMetadata, metaContainer))
             {
                 data = dataContainer!.Data;
                 cached = dataContainer!.CachedUtc;
@@ -195,7 +245,9 @@ namespace PxApi.Caching
             if (_cache.TryGetValue(HashCode.Combine(META_SEED, file), out MetaCacheContainer? metaContainer) &&
                 metaContainer is not null &&
                 metaContainer.TryGetSuperMap(map, out supersetMap) &&
-                _cache.TryGetValue(HashCode.Combine(DATA_SEED, MapHash(supersetMap)), out DataCacheContainer<TData>? superContainer))
+                _cache.TryGetValue(GetDataCacheKey(file, metaContainer, supersetMap), out DataCacheContainer<TData>? superContainer) &&
+                TryGetMetadata(file, out MetaCacheContainer? currentMetadata) &&
+                ReferenceEquals(currentMetadata, metaContainer))
             {
                 data = superContainer!.Data;
                 cached = superContainer!.CachedUtc;
@@ -210,16 +262,29 @@ namespace PxApi.Caching
 
         /// <summary>
         /// Stores data for the specified matrix map in the cache and manages eviction of submaps.
+        /// Skips caching and notifies the observer if the related metadata entry was cleared, evicted, or replaced during processing.
         /// </summary>
-        public void SetData<TData>(PxFileRef file, MatrixMap map, Task<TData[]> data)
+        /// <param name="file">The file whose data is being cached.</param>
+        /// <param name="expectedMetaContainer">The metadata container used to read the data. It must still be the current cached container.</param>
+        /// <param name="map">The matrix map describing the data selection.</param>
+        /// <param name="data">The task producing the selected data.</param>
+        public void SetData<TData>(PxFileRef file, MetaCacheContainer expectedMetaContainer, MatrixMap map, Task<TData[]> data)
         {
-            if (_cache.TryGetValue(HashCode.Combine(META_SEED, file), out MetaCacheContainer? metaContainer))
+            lock (expectedMetaContainer.DataAccessLock)
             {
-                List<IMatrixMap> subMaps = [..metaContainer!.GetSubMaps(map)];
+                if (!TryGetMetadata(file, out MetaCacheContainer? metaContainer) ||
+                    metaContainer is null ||
+                    !ReferenceEquals(metaContainer, expectedMetaContainer))
+                {
+                    cacheObserver?.RecordDataCacheWriteSkipped();
+                    return;
+                }
+
+                List<IMatrixMap> subMaps = [..metaContainer.GetSubMaps(map)];
                 foreach (IMatrixMap subMap in subMaps)
                 { 
                     // Triggers eviction
-                    _cache.Remove(HashCode.Combine(DATA_SEED, MapHash(subMap)));
+                    _cache.Remove(GetDataCacheKey(file, metaContainer, subMap));
                 }
 
                 CacheConfig config = cacheConfigs[file.DataBase.Id].Data;
@@ -233,14 +298,11 @@ namespace PxApi.Caching
 
                 DataCacheContainer<TData> value = new(map, data);
                 options.RegisterPostEvictionCallback(value.EvictionCallback);
-                int cacheKey = HashCode.Combine(DATA_SEED, MapHash(map));
-                _cache.Set(cacheKey, value, options);
+                (string, PxFileRef, object, int) cacheKey = GetDataCacheKey(file, metaContainer, map);
+                // Register before publishing so even immediate eviction can remove this container's registration.
                 metaContainer.AddDataContainer(value);
-                AttachEvictionOnFail(value, value.Data, cacheKey);
-            }
-            else
-            {
-                throw new InvalidOperationException($"Unable to set data container to cache, related meta container for tableId '{file}' not found.");
+                _cache.Set(cacheKey, value, options);
+                AttachEvictionOnFail(value, value.Data, cacheKey, metaContainer.DataAccessLock);
             }
         }
 
@@ -253,12 +315,15 @@ namespace PxApi.Caching
         }
 
         /// <summary>
-        /// Clears the last updated timestamp cache for the specified file.
+        /// Clears the cached source version for the specified file.
         /// </summary>
-        /// <param name="file">File for which to clear last updated timestamp cache.</param>
-        public void ClearLastUpdatedCache(PxFileRef file)
+        /// <param name="file">File for which to clear the source version cache.</param>
+        public void ClearSourceVersionCache(PxFileRef file)
         {
-            _cache.Remove(HashCode.Combine(LAST_UPDATED_SEED, file));
+            lock (_fileCacheLocks[(uint)file.GetHashCode() % (uint)_fileCacheLocks.Length])
+            {
+                _cache.Remove(HashCode.Combine(SOURCE_VERSION_SEED, file));
+            }
         }
 
         /// <summary>
@@ -270,7 +335,7 @@ namespace PxApi.Caching
             _cache.Remove(HashCode.Combine(DATABASE_NAME_SEED, dbRef));
         }
 
-        private void AttachEvictionOnFail(object cacheItem, Task task, int cacheKey)
+        private void AttachEvictionOnFail(object cacheItem, Task task, object cacheKey, Lock? evictionLock = null)
         {
             task.ContinueWith(
                 t =>
@@ -279,11 +344,26 @@ namespace PxApi.Caching
                     // The exceptions should be handled by the initial caller of the task, but just to be safe.
                     _ = t.Exception;
 
-                    // Make sure we remove the right items, since this callback is task and not key based.
-                    if (_cache.TryGetValue(cacheKey, out object? current) &&
-                        ReferenceEquals(current, cacheItem))
+                    if (evictionLock is null)
                     {
-                        _cache.Remove(cacheKey);
+                        RemoveIfCurrent();
+                    }
+                    else
+                    {
+                        lock (evictionLock)
+                        {
+                            RemoveIfCurrent();
+                        }
+                    }
+
+                    void RemoveIfCurrent()
+                    {
+                        // Failed loads must not remove replacements that reuse the same key.
+                        if (_cache.TryGetValue(cacheKey, out object? current) &&
+                            ReferenceEquals(current, cacheItem))
+                        {
+                            _cache.Remove(cacheKey);
+                        }
                     }
                 },
                 CancellationToken.None,
@@ -299,12 +379,20 @@ namespace PxApi.Caching
 
         private void OnMetaCacheEvicted(object? key, object? value, EvictionReason reason, object? state)
         {
-            if (value is MetaCacheContainer metaContainder)
+            if (value is MetaCacheContainer metaContainer && state is PxFileRef file)
             {
-                metaContainder.GetRelatedMaps().ForEach(map =>
-                    _cache.Remove(HashCode.Combine(DATA_SEED, MapHash(map))));
+                lock (metaContainer.DataAccessLock)
+                {
+                    foreach (IMatrixMap map in metaContainer.GetRelatedMaps())
+                    {
+                        _cache.Remove(GetDataCacheKey(file, metaContainer, map));
+                    }
+                }
             }
         }
+
+        private static (string, PxFileRef, object, int) GetDataCacheKey(PxFileRef file, MetaCacheContainer metaContainer, IMatrixMap map) =>
+            (DATA_SEED, file, metaContainer.Generation, MapHash(map));
 
         private static int MapHash(IMatrixMap map)
         {

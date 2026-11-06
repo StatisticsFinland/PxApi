@@ -22,20 +22,16 @@ namespace PxApi.UnitTests.DataSources
             Assert.That(prefix, Is.EqualTo("meta/db1/table_"));
         }
 
-        [Test]
-        public void BuildDataBlobName_ReturnsExpectedFormat()
+        [TestCase("db1", "table", "cv1", "202501010930", "bin/db1/table/cv1_202501010930.pxb")]
+        [TestCase("Db_1", "Table_one-2", "CV_one-2", "202502281245", "bin/Db_1/Table_one-2/CV_one-2_202502281245.pxb")]
+        public void BuildDataBlobName_ReturnsExpectedFormat(
+            string dbId, string fileId, string contentValueCode, string timestamp, string expectedBlobName)
         {
-            // Arrange
-            const string dbId = "db1";
-            const string fileId = "table";
-            const string contentValueCode = "cv1";
-            const string timestamp = "202501010930";
-
             // Act
             string blobName = BinaryBlobDataBaseConnector.BuildDataBlobName(dbId, fileId, contentValueCode, timestamp);
 
             // Assert
-            Assert.That(blobName, Is.EqualTo("bin/db1/table_cv1_202501010930.pxb"));
+            Assert.That(blobName, Is.EqualTo(expectedBlobName));
         }
 
         [Test]

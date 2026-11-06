@@ -1,0 +1,52 @@
+@root = http://localhost:5080
+
+### Application readiness (no search backend required)
+GET {{root}}/health
+
+### Sample database
+GET {{root}}/meta/databases
+
+### Both sample tables
+GET {{root}}/meta/databases/sample/tables
+
+### Two-dimensional metadata
+GET {{root}}/meta/databases/sample/tables/flows
+
+### All 24 flow values
+GET {{root}}/data/databases/sample/tables/flows?filters=MEASURE:code=*
+Accept: application/json
+
+### Filtered data: two years, one measure (100, 110)
+POST {{root}}/data/databases/sample/tables/flows
+Content-Type: application/json
+Accept: application/json
+
+{
+  "TIME": { "type": "first", "query": 2 },
+  "MEASURE": { "type": "code", "query": ["IN"] }
+}
+
+### CSV export
+GET {{root}}/data/databases/sample/tables/flows?filters=TIME:last=2
+Accept: text/csv
+
+### Three-dimensional metadata
+GET {{root}}/meta/databases/sample/tables/observations
+
+### All 65 observation values (explicitly include every region)
+GET {{root}}/data/databases/sample/tables/observations?filters=REGION:code=*
+Accept: application/json
+
+### One observation (REGION=B, TIME=2015, MEASURE=COUNT): value 22
+POST {{root}}/data/databases/sample/tables/observations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "REGION": { "type": "code", "query": ["B"] },
+  "TIME": { "type": "code", "query": ["2015"] },
+  "MEASURE": { "type": "code", "query": ["COUNT"] }
+}
+
+### Clear sample database caches
+DELETE {{root}}/cache/databases/sample

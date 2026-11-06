@@ -8,8 +8,8 @@ PxApi is a .NET 10.0 Web API for accessing PX statistical datasets. It provides 
 - Table metadata in JSON-stat 2.0 (`/meta/databases/{database}/tables/{table}`)
 - Data retrieval with filter semantics (code, range, positional) via GET query parameters or POST body (`/data/databases/{database}/tables/{table}`)
 - Content negotiation (JSON-stat 2.0 or CSV) using the `Accept` header
-- Cache management endpoints (database level and single table) (`/cache/databases/{database}` / `/cache/databases/{database}/tables/{id}`)
-- Global and per-database caching (file lists, metadata, data, last updated timestamps)
+- Cache management endpoints for entire databases, table lists, and individual tables
+- Global and per-database caching (file lists, metadata, data, source versions)
 - Feature flags (cache and search endpoint visibility, and search OpenAPI documentation visibility)
 - Controller-specific API key authentication for supported controllers
 - Multiple storage types: Mounted (local / network), Azure File Share, Azure Blob Storage, Azure Binary Blob Storage
@@ -180,8 +180,11 @@ Additional methods:
 ### Cache
 Requires feature flag `CacheController = true` and valid API key when authentication is enabled. Cache endpoints are always hidden from OpenAPI documentation.
 
-- `DELETE /cache/databases/{database}` clears all cache entries (file list, metadata, data, last updated) for a database.
+- `DELETE /cache/databases/{database}` clears all cache entries (file list, metadata, data, source version) for a database.
+- `DELETE /cache/databases/{database}/tables` clears only the cached table list. The next lookup rebuilds it, discovering newly added tables without clearing existing tables' metadata, data, or source-version caches.
 - `DELETE /cache/databases/{database}/tables/{id}` clears all cache entries for a single table.
+
+Cache invalidation affects only the current API instance.
 
 Responses:
 - `200 OK` success message
@@ -310,13 +313,19 @@ Global cache size limit controlled via `Cache.MaxSizeBytes`. Individual item siz
 - File lists
 - Metadata objects
 - Data arrays
-- Last updated timestamps (per PX file)
+- Source versions (per PX file)
 
 ## Storage Backends
 - Mounted (local / network path) direct file access
 - Azure File Share via Azure Storage SDK
 - Azure Blob Storage via Azure Storage SDK
 - Azure Binary Blob Storage via Azure Storage SDK (binary-optimized blob access)
+
+### Binary Blob Storage Layout
+
+`BinaryBlobStorage` expects these paths inside the configured container:
+- Metadata: `meta/{database}/{table}_{timestamp}.meta.json`
+- Binary data: `bin/{database}/{table}/{contentValueCode}_{timestamp}.pxb`
 
 ## Content Negotiation
 Specify desired format with `Accept` header:
@@ -331,6 +340,92 @@ Central exception handling returns standardized 500 responses and 400 responses 
 1. Configure `appsettings.json` with databases, cache settings, and optionally authentication.
 2. Run the application.
 3. Access Swagger UI at root (`/`) for interactive documentation (`openapi/document.json`).
+
+## Running with the sample database
+
+The repository includes a small, version-controlled database in
+[`PxApi.IntegrationTests/SampleDatabases/sample`](../PxApi.IntegrationTests/SampleDatabases/sample).
+It contains two English-language PX tables with fictional values:
+
+| Table | Dimensions | Cells |
+|---|---|---|
+| `flows` | 12 years, 2 measures | 24 |
+| `observations` | 5 regions, 13 years, 1 measure | 65 |
+
+These are generic test fixtures, not official statistics. They contain no real
+organization, contact, geographic or source-system identifiers. The observations
+table includes an "All regions" elimination value; explicitly filter
+`REGION:code=*` when requesting every region. Unfiltered non-time dimensions
+default to a single value; use `MEASURE:code=*` to retrieve both flow measures.
+
+### Automated integration tests
+
+From the repository root:
+
+```bash
+dotnet test PxApi.IntegrationTests/PxApi.IntegrationTests.csproj
+```
+
+The NUnit suite starts the real application pipeline through
+`WebApplicationFactory<Program>` and a shared `HttpClient`. No listening port,
+external services, credentials or separate startup command are required.
+It checks discovery, metadata, every synthetic data cell, GET/POST filters,
+CSV, cache clearing, HEAD/OPTIONS, expected errors and Swagger.
+
+The factory clears default application configuration sources and loads only
+[`appsettings.testing.json`](../PxApi.IntegrationTests/appsettings.testing.json),
+with an absolute fixture path. Local base settings and application environment
+overrides cannot introduce additional databases. Telemetry and search are disabled.
+Fixtures and settings are copied only into integration-test output, not normal
+API build/publish output.
+
+The fixtures are nonparallel because application settings are static and cache
+tests mutate shared state. Unit and integration projects run in separate test
+processes. Adding the integration project to the solution includes it in the
+existing solution-level CI test commands.
+
+### Optional manual API session
+
+Build the API, then launch it from the integration project's directory:
+
+```bash
+dotnet build PxApi/PxApi.csproj
+cd PxApi.IntegrationTests
+ASPNETCORE_ENVIRONMENT=testing DOTNET_ENVIRONMENT=testing \
+  dotnet ../PxApi/bin/Debug/net10.0/PxApi.dll
+```
+
+The working directory is important: the database path is relative to it.
+Use lowercase `testing` for case-sensitive configuration filenames. The API
+listens at `http://localhost:5080`; Swagger UI is available at that address.
+Use [`SampleDatabase.http`](../PxApi.IntegrationTests/SampleDatabase.http) for
+interactive requests. Stop the process when finished.
+
+The testing configuration enables local Debug application logs at repository-root
+`agent_tmp/sample-database-testing/manual/nlog-YYYY-MM-DD.log`; audit logs and
+telemetry remain disabled. Read these logs alongside endpoint responses when
+debugging. For isolated sessions, override `LogOptions:Folder` with an absolute
+path to a unique task-owned directory under `agent_tmp/`. Inspect Debug records,
+warnings/errors and exception details, then stop the server and clean up only
+that session's files. Integration tests verify log writing/reading and use
+unique directories that are removed at teardown.
+
+Manual startup uses normal ASP.NET Core configuration merging, so environment
+overrides still apply. Do not use production credentials or enable external
+services. Cache endpoints are unauthenticated in this local-only configuration.
+For strictly isolated checks, prefer the automated suite.
+
+When local networking is allowed in an agent sandbox but its proxy cannot reach
+the sandbox's API listener, connect directly to loopback without changing global
+proxy settings:
+
+```bash
+curl --noproxy localhost,127.0.0.1 --fail --silent --show-error \
+  http://localhost:5080/health
+```
+
+This keeps both processes inside the sandbox. It does not enable local-network
+access when sandbox policy forbids it.
 
 ## License
 Apache License 2.0. See `docs/LICENSE.md`.

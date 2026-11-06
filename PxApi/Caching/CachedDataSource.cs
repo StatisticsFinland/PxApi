@@ -11,7 +11,7 @@ using System.Text;
 namespace PxApi.Caching
 {
     /// <inheritdoc/>
-    public class CachedDataSource(IDataBaseConnectorFactory dbConnectorFactory, DatabaseCache cache, ILogger<CachedDataSource> logger) : ICachedDataSource
+    public class CachedDataSource(IDataBaseConnectorFactory dbConnectorFactory, DatabaseCache cache, ICacheObserver? cacheObserver = null) : ICachedDataSource
     {
         private const string GROUP_ALIAS_PREFIX = "Alias_"; // Files like Alias_fi.txt inside group folder
         private const string GROUP_ALIAS_SUFFIX = ".txt";
@@ -43,11 +43,11 @@ namespace PxApi.Caching
         {
             if (cache.TryGetFileList(dataBase, out Task<ImmutableSortedDictionary<string, PxFileRef>>? files))
             {
-                logger.LogDebug("File list cache hit.");
+                cacheObserver?.RecordFileListLookup(true);
                 return await files!;
             }
 
-            logger.LogDebug("File list cache miss. Reading from database.");
+            cacheObserver?.RecordFileListLookup(false);
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(dataBase);
             Task<ImmutableSortedDictionary<string, PxFileRef>> fileListTask = dbConnector.GetAllFilesAsync(ct)
                 .ContinueWith(t =>
@@ -58,7 +58,7 @@ namespace PxApi.Caching
                         fileDict.TryAdd(file.Id, file);
                     }
                     return fileDict.ToImmutableSortedDictionary();
-                });
+                }, CancellationToken.None);
 
             cache.SetFileList(dataBase, fileListTask);
             return await fileListTask;
@@ -76,7 +76,7 @@ namespace PxApi.Caching
         public async Task<IReadOnlyMatrixMetadata> GetMetadataCachedAsync(PxFileRef pxFile, CancellationToken ct = default)
         {
             MetaCacheContainer container = await GetMetaContainer(pxFile, ct);
-            return await container.Metadata;
+            return await container.Metadata.WaitAsync(ct);
         }
 
         /// <inheritdoc/>
@@ -96,36 +96,31 @@ namespace PxApi.Caching
         /// <inheritdoc/>
         public async Task<DoubleDataValue[]> GetDataCachedAsync(PxFileRef pxFile, IMatrixMap map, CancellationToken ct = default)
         {
-            if (cache.TryGetData(map, out Task<DoubleDataValue[]>? data, out DateTime? cached))
+            // Data entries are scoped to a metadata generation, so revalidating (and if needed replacing) the
+            // metadata first makes any data found below at least as fresh as the validated metadata.
+            MetaCacheContainer metaContainer = await GetMetaContainer(pxFile, ct, recordHit: false); // Hits are recorded by the metadata request
+
+            if (cache.TryGetData(pxFile, map, out Task<DoubleDataValue[]>? data, out _))
             {
-                if (await CheckCacheValidity(pxFile, cached!.Value, ct))
-                {
-                    logger.LogDebug("Data cache exact hit.");
-                    return await data!;
-                }
-                cache.TryRemoveMeta(pxFile);
+                cacheObserver?.RecordDataCacheHit(isSuperset: false);
+                return await data!;
             }
-            else if (cache.TryGetDataSuperset(pxFile, map, out IMatrixMap? superMap, out Task<DoubleDataValue[]>? superData, out cached))
+            else if (cache.TryGetDataSuperset(pxFile, map, out IMatrixMap? superMap, out Task<DoubleDataValue[]>? superData, out _))
             {
-                if (await CheckCacheValidity(pxFile, cached!.Value, ct))
-                {
-                    logger.LogDebug("Data cache superset hit.");
-                    DataIndexer indexer = new(superMap!, map);
-                    DoubleDataValue[] result = new DoubleDataValue[indexer.DataLength];
-                    DoubleDataValue[] superDataArray = await superData!;
-                    int index =0;
-                    do result[index++] = superDataArray[indexer.CurrentIndex];
-                    while (indexer.Next());
-                    return result;
-                }
-                cache.TryRemoveMeta(pxFile);
+                cacheObserver?.RecordDataCacheHit(isSuperset: true);
+                DataIndexer indexer = new(superMap!, map);
+                DoubleDataValue[] result = new DoubleDataValue[indexer.DataLength];
+                DoubleDataValue[] superDataArray = await superData!;
+                int index =0;
+                do result[index++] = superDataArray[indexer.CurrentIndex];
+                while (indexer.Next());
+                return result;
             }
 
-            logger.LogDebug("Data cache miss. Reading from database.");
+            cacheObserver?.RecordDataCacheMiss();
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
-            MetaCacheContainer metaContainer = await GetMetaContainer(pxFile, ct);
-            Task<DoubleDataValue[]> dataTask = dbConnector.ReadDataAsync(pxFile, map, await metaContainer.Metadata, ct);
-            cache.SetData(pxFile, new MatrixMap([.. map.DimensionMaps]), dataTask);
+            Task<DoubleDataValue[]> dataTask = dbConnector.ReadDataAsync(pxFile, map, await metaContainer.Metadata.WaitAsync(ct), ct);
+            cache.SetData(pxFile, metaContainer, new MatrixMap([.. map.DimensionMaps]), dataTask);
             return await dataTask;
         }
 
@@ -137,9 +132,15 @@ namespace PxApi.Caching
             foreach (PxFileRef file in files.Values)
             {
                 ClearMetadataCacheAsync(file);
-                ClearLastUpdatedCacheAsync(file);
+                ClearSourceVersionCache(file);
             }
             cache.ClearDatabaseNameCache(dataBase);
+            cache.ClearFileListCache(dataBase);
+        }
+
+        /// <inheritdoc/>
+        public void ClearTableListCache(DataBaseRef dataBase)
+        {
             cache.ClearFileListCache(dataBase);
         }
 
@@ -147,7 +148,7 @@ namespace PxApi.Caching
         public void ClearTableCache(PxFileRef file)
         {
             ClearMetadataCacheAsync(file);
-            ClearLastUpdatedCacheAsync(file);
+            ClearSourceVersionCache(file);
         }
 
         private void ClearMetadataCacheAsync(PxFileRef file)
@@ -155,42 +156,49 @@ namespace PxApi.Caching
             cache.TryRemoveMeta(file);
         }
 
-        private void ClearLastUpdatedCacheAsync(PxFileRef file)
+        private void ClearSourceVersionCache(PxFileRef file)
         {
-            cache.ClearLastUpdatedCache(file);
+            cache.ClearSourceVersionCache(file);
         }
 
-        private async Task<MetaCacheContainer> GetMetaContainer(PxFileRef pxFile, CancellationToken ct = default)
+        private async Task<MetaCacheContainer> GetMetaContainer(PxFileRef pxFile, CancellationToken ct = default, bool recordHit = true)
         {
             if (cache.TryGetMetadata(pxFile, out MetaCacheContainer? metaContainer) &&
-                await CheckCacheValidity(pxFile, metaContainer!.CachedUtc, ct))
+                await IsSourceUnchanged(pxFile, metaContainer!, ct))
             {
-                logger.LogDebug("Metadata cache hit.");
+                if (recordHit) cacheObserver?.RecordMetadataLookup(true);
                 return metaContainer!;
             }
 
-            logger.LogDebug("Metadata cache miss. Reading from database.");
+            cacheObserver?.RecordMetadataLookup(false);
+            // Version observation precedes the metadata load, but interval caching means this is not an atomic source snapshot.
+            string? sourceVersion = IsRevalidationEnabled(pxFile) ? await GetSourceVersionAsync(pxFile, ct) : null;
+
             IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(pxFile.DataBase);
-            Task<IReadOnlyMatrixMetadata> meta = dbConnector.ReadMetadataAsync(pxFile, ct);
-            metaContainer = new MetaCacheContainer(meta);
-            cache.SetMetadata(pxFile, metaContainer);
-            return metaContainer;
+            // Task.Run keeps connector work, including synchronous prefixes or throws, outside the publication lock.
+            // Shared reads outlive individual requests; cancellation only stops each caller's wait.
+            return cache.GetOrSetMetadata(pxFile, sourceVersion,
+                () => new MetaCacheContainer(Task.Run(() => dbConnector.ReadMetadataAsync(pxFile, CancellationToken.None), CancellationToken.None), sourceVersion));
         }
 
-        private async Task<bool> CheckCacheValidity(PxFileRef file, DateTime cachedUtc, CancellationToken ct = default)
+        private bool IsRevalidationEnabled(PxFileRef file) =>
+            cacheConfigs[file.DataBase.Id].RevalidationIntervalMs is int interval && interval != 0;
+
+        // Source versions are opaque per connector (e.g. ETags) and are compared for equality only, never against the clock.
+        private async Task<bool> IsSourceUnchanged(PxFileRef file, MetaCacheContainer metaContainer, CancellationToken ct)
         {
-            int? revalidationInterval = cacheConfigs[file.DataBase.Id].RevalidationIntervalMs;
-            if (revalidationInterval is null || revalidationInterval == 0) return true;
+            if (!IsRevalidationEnabled(file) || metaContainer.SourceVersion is null) return true;
+            return string.Equals(await GetSourceVersionAsync(file, ct), metaContainer.SourceVersion, StringComparison.Ordinal);
+        }
 
-            if (cache.TryGetLastUpdated(file, out Task<DateTime>? cachedTask))
+        private Task<string> GetSourceVersionAsync(PxFileRef file, CancellationToken ct)
+        {
+            Task<string> sourceVersion = cache.GetOrSetSourceVersion(file, () =>
             {
-                return cachedUtc > await cachedTask!;
-            }
-
-            IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(file.DataBase);
-            Task<DateTime> lastModified = dbConnector.GetLastWriteTimeAsync(file, ct);
-            cache.SetLastUpdated(file, lastModified);
-            return cachedUtc > await lastModified;
+                IDataBaseConnector dbConnector = dbConnectorFactory.GetConnector(file.DataBase);
+                return dbConnector.GetSourceVersionAsync(file, CancellationToken.None);
+            });
+            return sourceVersion.WaitAsync(ct);
         }
 
         // Reads alias files (Alias_{lang}.txt) from a folder and builds a MultilanguageString from the first line of each file.

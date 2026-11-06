@@ -281,8 +281,7 @@ namespace PxApi.UnitTests.ControllerTests
 
             IMemoryCache memoryCache = new MemoryCache(new MemoryCacheOptions());
             DatabaseCache databaseCache = new(memoryCache);
-            Mock<ILogger<CachedDataSource>> cachedDataSourceLoggerMock = new();
-            _cachedDataSource = new CachedDataSource(_mockConnectorFactory.Object, databaseCache, cachedDataSourceLoggerMock.Object);
+            _cachedDataSource = new CachedDataSource(_mockConnectorFactory.Object, databaseCache);
             
             _controller = new DataController(_cachedDataSource, _mockLogger.Object, _mockAuditLogService.Object)
             {
@@ -346,8 +345,8 @@ namespace PxApi.UnitTests.ControllerTests
                 {
                     return Task.FromResult(ReadFixtureData(targetMap, meta));
                 });
-            _mockConnector.Setup(c => c.GetLastWriteTimeAsync(_testTable, CancellationToken.None))
-                .ReturnsAsync(DateTime.UtcNow.AddMinutes(-10));
+            _mockConnector.Setup(c => c.GetSourceVersionAsync(_testTable, CancellationToken.None))
+                .ReturnsAsync("version-1");
             _mockConnector.Setup(c => c.GetAllFilesAsync(CancellationToken.None))
                 .ReturnsAsync([_testTable]);
             _mockConnector.Setup(c => c.TryReadAuxiliaryFileAsync(It.IsAny<string>(), It.IsAny<string[]?>(), CancellationToken.None))

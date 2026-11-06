@@ -112,6 +112,36 @@ namespace PxApi.UnitTests.Models.QueryFilters
             Assert.That(() => JsonSerializer.Deserialize<Filter>(json, _options), Throws.InstanceOf<JsonException>());
         }
 
+        [TestCase("{}")]
+        [TestCase("{\"first\":2}")]
+        [TestCase("{\"type\":\"First\"}")]
+        [TestCase("{\"query\":[\"A\"]}")]
+        public void Deserialize_FilterMissingRequiredProperty_ThrowsJsonException(string json)
+        {
+            Assert.That(() => JsonSerializer.Deserialize<Filter>(json, _options), Throws.InstanceOf<JsonException>());
+        }
+
+        [TestCase("null")]
+        [TestCase("{\"type\":\"Code\",\"query\":null}")]
+        [TestCase("{\"type\":\"From\",\"query\":null}")]
+        [TestCase("{\"type\":\"To\",\"query\":null}")]
+        [TestCase("{\"type\":\"First\",\"query\":null}")]
+        [TestCase("{\"type\":\"Last\",\"query\":null}")]
+        [TestCase("{\"type\":\"Code\",\"query\":[null]}")]
+        [TestCase("{\"type\":\"Code\",\"query\":[\"A\",null]}")]
+        [TestCase("{\"type\":99,\"query\":1}")]
+        [TestCase("{\"type\":-1,\"query\":1}")]
+        public void Deserialize_InvalidFilterValue_ThrowsJsonException(string json)
+        {
+            Assert.That(() => JsonSerializer.Deserialize<Filter>(json, _options), Throws.TypeOf<JsonException>());
+        }
+
+        [Test]
+        public void Serialize_NullFilter_WritesNull()
+        {
+            Assert.That(JsonSerializer.Serialize<Filter>(null!, _options), Is.EqualTo("null"));
+        }
+
         private static bool JsonEquals(string a, string b)
         {
             using JsonDocument ja = JsonDocument.Parse(a);

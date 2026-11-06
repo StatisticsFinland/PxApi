@@ -108,6 +108,60 @@ namespace PxApi.UnitTests.ControllerTests
         }
 
         [Test]
+        public void ClearTableListCache_DatabaseExists_ClearsOnlyTableList_ReturnsOk()
+        {
+            DataBaseRef dbRef = DataBaseRef.Create("testdb");
+            _cachedDbConnector.Setup(connector => connector.GetDataBaseReference("testdb")).Returns(dbRef);
+
+            ActionResult result = _controller.ClearTableListCache("testdb");
+
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(((OkObjectResult)result).StatusCode, Is.EqualTo(200));
+                Assert.That(((OkObjectResult)result).Value, Is.EqualTo("Cached table list cleared successfully"));
+            }
+            _cachedDbConnector.Verify(connector => connector.GetDataBaseReference("testdb"), Times.Once);
+            _cachedDbConnector.Verify(connector => connector.ClearTableListCache(dbRef), Times.Once);
+            _cachedDbConnector.VerifyNoOtherCalls();
+        }
+
+        [Test]
+        public void ClearTableListCache_DatabaseDoesNotExist_ReturnsNotFound()
+        {
+            _cachedDbConnector.Setup(connector => connector.GetDataBaseReference("missing")).Returns((DataBaseRef?)null);
+
+            ActionResult result = _controller.ClearTableListCache("missing");
+
+            Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(((NotFoundObjectResult)result).StatusCode, Is.EqualTo(404));
+                Assert.That(((NotFoundObjectResult)result).Value, Is.EqualTo("Database not found"));
+            }
+            _cachedDbConnector.Verify(connector => connector.GetDataBaseReference("missing"), Times.Once);
+            _cachedDbConnector.VerifyNoOtherCalls();
+        }
+
+        [Test]
+        public void ClearTableListCache_ExceptionThrown_ReturnsStatusCode500()
+        {
+            DataBaseRef dbRef = DataBaseRef.Create("testdb");
+            _cachedDbConnector.Setup(connector => connector.GetDataBaseReference("testdb")).Returns(dbRef);
+            _cachedDbConnector.Setup(connector => connector.ClearTableListCache(dbRef))
+                .Throws(new InvalidOperationException("Internal failure"));
+
+            ActionResult result = _controller.ClearTableListCache("testdb");
+
+            Assert.That(result, Is.InstanceOf<ObjectResult>());
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(((ObjectResult)result).StatusCode, Is.EqualTo(500));
+                Assert.That(((ObjectResult)result).Value, Is.EqualTo("Error clearing cached table list"));
+            }
+        }
+
+        [Test]
         public async Task ClearAllCache_DatabaseExists_CallsClearDatabaseCacheAsyncMethod_ReturnsOk()
         {
             // Arrange
